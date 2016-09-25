@@ -24,6 +24,8 @@ class SkinControls;
 class ControlPushButton;
 class BackUpSettings;
 
+struct LibraryScanResultSummary;
+
 namespace mixxx {
 
 class ControlIndicatorTimer;

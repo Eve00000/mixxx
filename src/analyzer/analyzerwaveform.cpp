@@ -6,6 +6,7 @@
 #include "analyzer/analyzertrack.h"
 #include "analyzer/constants.h"
 #include "engine/filters/enginefilterbessel4.h"
+#include "library/overviewcache.h"
 #include "track/track.h"
 #include "util/logger.h"
 #include "waveform/waveform.h"

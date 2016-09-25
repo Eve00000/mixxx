@@ -41,7 +41,7 @@ QString normalizeNumberString(const QString& number, bool* pValid) {
     } else {
         // stripped leading '+' sign -> no more leading signs '+'/'-' allowed
         if ((normalized == stripLeadingSign(normalized, '+')) &&
-            (normalized == stripLeadingSign(normalized, '-'))) {
+                (normalized == stripLeadingSign(normalized, '-'))) {
             if (pValid) {
                 *pValid = true;
             }
@@ -82,7 +82,7 @@ double ReplayGain::ratioFromString(const QString& dbGain, bool* pValid) {
             }
             return ratio;
         } else {
-            qDebug() << "ReplayGain: Invalid gain value:" << dbGain << " -> "<< ratio;
+            qDebug() << "ReplayGain: Invalid gain value:" << dbGain << " -> " << ratio;
         }
     } else {
         qDebug() << "ReplayGain: Failed to parse gain:" << dbGain;
@@ -90,9 +90,13 @@ double ReplayGain::ratioFromString(const QString& dbGain, bool* pValid) {
     return kRatioUndefined;
 }
 
-QString ReplayGain::ratioToString(double ratio) {
+QString ReplayGain::ratioToString(double ratio, std::optional<int> precision) {
     if (isValidRatio(ratio)) {
-        return QString::number(ratio2db(ratio)) + kGainSuffix;
+        if (precision.has_value() && precision.value() >= 0) {
+            return QString::number(ratio2db(ratio), 'f', precision.value()) + kGainSuffix;
+        } else {
+            return QString::number(ratio2db(ratio)) + kGainSuffix;
+        }
     } else {
         return QString();
     }
@@ -128,7 +132,7 @@ CSAMPLE ReplayGain::peakFromString(const QString& strPeak, bool* pValid) {
             }
             return peak;
         } else {
-            qDebug() << "ReplayGain: Invalid peak value:" << strPeak << " -> "<< peak;
+            qDebug() << "ReplayGain: Invalid peak value:" << strPeak << " -> " << peak;
         }
     } else {
         qDebug() << "ReplayGain: Failed to parse peak:" << strPeak;

@@ -23,7 +23,6 @@
 #include "widget/wlibrarysidebar.h"
 #endif
 
-
 MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
         UserSettingsPointer pConfig)
         : LibraryFeature(pLibrary, pConfig, QStringLiteral("tracks")),
@@ -61,6 +60,7 @@ MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
             LIBRARYTABLE_FILETYPE,
             LIBRARYTABLE_DATETIMEADDED,
             TRACKLOCATIONSTABLE_LOCATION,
+            TRACKLOCATIONSTABLE_DIRECTORY,
             TRACKLOCATIONSTABLE_FSDELETED,
             LIBRARYTABLE_COMMENT,
             LIBRARYTABLE_MIXXXDELETED,
@@ -70,7 +70,8 @@ MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
             LIBRARYTABLE_COVERART_LOCATION,
             LIBRARYTABLE_COVERART_COLOR,
             LIBRARYTABLE_COVERART_DIGEST,
-            LIBRARYTABLE_COVERART_HASH};
+            LIBRARYTABLE_COVERART_HASH,
+            LIBRARYTABLE_WAVESUMMARYHEX};
     QStringList searchColumns = {
             LIBRARYTABLE_ARTIST,
             LIBRARYTABLE_ALBUM,

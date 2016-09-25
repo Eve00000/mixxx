@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <QObject>
@@ -56,6 +57,7 @@ class ColumnCache : public QObject {
         COLUMN_LIBRARYTABLE_LAST_PLAYED_AT,
 
         COLUMN_TRACKLOCATIONSTABLE_LOCATION,
+        COLUMN_TRACKLOCATIONSTABLE_DIRECTORY,
         COLUMN_TRACKLOCATIONSTABLE_FSDELETED,
 
         COLUMN_PLAYLISTTRACKSTABLE_TRACKID,
@@ -123,6 +125,10 @@ class ColumnCache : public QObject {
     KeyUtils::KeyNotation keyNotation() const {
         return KeyUtils::keyNotationFromNumericValue(
                 m_pKeyNotationCP->get());
+    }
+
+    int endFieldIndex() const {
+        return m_columnsByIndex.size();
     }
 
   private slots:

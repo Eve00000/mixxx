@@ -47,7 +47,7 @@ WOverview::WOverview(
         : WWidget(parent),
           m_group(group),
           m_pConfig(pConfig),
-          m_type(OverviewType::RGB),
+          m_type(mixxx::OverviewType::RGB),
           m_stereo(true),
           m_actualCompletion(0),
           m_pixmapDone(false),
@@ -2083,30 +2083,27 @@ bool WOverview::drawNextPixmapPart() {
                 static_cast<float>(pWaveform->getAll(currentCompletion + 1)));
     }
 
-    if (m_type == OverviewType::Filtered) {
+    if (m_type == mixxx::OverviewType::Filtered) {
         waveformOverviewRenderer::drawWaveformPartLMH(
                 &painter,
                 pWaveform,
                 &m_actualCompletion,
                 nextCompletion,
-                m_signalColors,
-                !m_stereo);
-    } else if (m_type == OverviewType::HSV) {
+                m_signalColors);
+    } else if (m_type == mixxx::OverviewType::HSV) {
         waveformOverviewRenderer::drawWaveformPartHSV(
                 &painter,
                 pWaveform,
                 &m_actualCompletion,
                 nextCompletion,
-                m_signalColors,
-                !m_stereo);
-    } else { // OverviewType::RGB:
+                m_signalColors);
+    } else { // mixxx::OverviewType::RGB:
         waveformOverviewRenderer::drawWaveformPartRGB(
                 &painter,
                 pWaveform,
                 &m_actualCompletion,
                 nextCompletion,
-                m_signalColors,
-                !m_stereo);
+                m_signalColors);
     }
 
     m_waveformImageScaled = QImage();

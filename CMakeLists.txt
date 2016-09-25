@@ -1260,6 +1260,7 @@ add_library(
   src/library/missing_hidden/hiddentablemodel.cpp
   src/library/missing_hidden/missingtablemodel.cpp
   src/library/mixxxlibraryfeature.cpp
+  src/library/overviewcache.cpp
   src/library/parser.cpp
   src/library/parsercsv.cpp
   src/library/parserm3u.cpp
@@ -1286,9 +1287,12 @@ add_library(
   src/library/tabledelegates/checkboxdelegate.cpp
   src/library/tabledelegates/colordelegate.cpp
   src/library/tabledelegates/coverartdelegate.cpp
+  src/library/tabledelegates/defaultdelegate.cpp
+  src/library/tabledelegates/defaultdelegate.cpp
   src/library/tabledelegates/keydelegate.cpp
   src/library/tabledelegates/locationdelegate.cpp
   src/library/tabledelegates/multilineeditdelegate.cpp
+  src/library/tabledelegates/overviewdelegate.cpp
   src/library/tabledelegates/previewbuttondelegate.cpp
   src/library/tabledelegates/stardelegate.cpp
   src/library/tabledelegates/stareditor.cpp
@@ -4901,9 +4905,32 @@ if(VINYLCONTROL)
 endif()
 
 # rendergraph
+# add_subdirectory(src/rendergraph)
+# target_link_libraries(mixxx-lib PUBLIC rendergraph_gl)
+# target_compile_definitions(mixxx-lib PUBLIC rendergraph=rendergraph_gl)
+
+# rendergraph
 add_subdirectory(src/rendergraph)
+target_compile_definitions(
+  rendergraph_gl
+  PUBLIC $<$<CONFIG:Debug>:MIXXX_DEBUG_ASSERTIONS_ENABLED>
+)
 target_link_libraries(mixxx-lib PUBLIC rendergraph_gl)
 target_compile_definitions(mixxx-lib PUBLIC rendergraph=rendergraph_gl)
+target_compile_definitions(mixxx-lib PRIVATE allshader=allshader_gl)
+if(BUILD_TESTING)
+  target_compile_definitions(mixxx-test PRIVATE allshader=allshader_gl)
+endif()
+if(QML)
+  target_compile_definitions(
+    rendergraph_sg
+    PUBLIC $<$<CONFIG:Debug>:MIXXX_DEBUG_ASSERTIONS_ENABLED>
+  )
+  target_link_libraries(mixxx-qml-lib PRIVATE rendergraph_sg)
+  target_compile_definitions(mixxx-qml-lib PRIVATE rendergraph=rendergraph_sg)
+  target_compile_definitions(mixxx-qml-lib PRIVATE __SCENEGRAPH__)
+  target_compile_definitions(mixxx-qml-lib PRIVATE allshader=allshader_sg)
+endif()
 
 # WavPack audio file support
 find_package(wavpack)

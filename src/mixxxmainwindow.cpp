@@ -40,6 +40,7 @@
 #ifdef __ENGINEPRIME__
 #include "library/export/libraryexporter.h"
 #endif
+#include "library/overviewcache.h"
 #include "library/trackcollectionmanager.h"
 #include "mixer/nowplaying.h"
 #include "mixer/playerinfo.h"
@@ -281,6 +282,19 @@ void MixxxMainWindow::initialize() {
     WaveformWidgetFactory::createInstance(); // takes a long time
     WaveformWidgetFactory::instance()->setConfig(m_pCoreServices->getSettings());
     WaveformWidgetFactory::instance()->startVSync(m_pGuiTick, m_pVisualsManager, false);
+
+    // Connect OverviewCache so we can clear and re-render overviews in the library
+    // when "OverviewNormalized" or "VisualGain_0" (all) have been changed in the
+    // preferences.
+    /*auto* pOverviewCache = OverviewCache::instance();
+    connect(WaveformWidgetFactory::instance(),
+            &WaveformWidgetFactory::visualGainChanged,
+            pOverviewCache,
+            &OverviewCache::onNormalizeOrVisualGainChanged);
+    connect(WaveformWidgetFactory::instance(),
+            &WaveformWidgetFactory::overviewNormalizeChanged,
+            pOverviewCache,
+            &OverviewCache::onNormalizeOrVisualGainChanged);*/
 
     connect(this,
             &MixxxMainWindow::skinLoaded,

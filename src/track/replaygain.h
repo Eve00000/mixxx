@@ -22,13 +22,13 @@ namespace mixxx {
 // ratio and peak values need to be normalized before writing them
 // as a string into file tags.
 class ReplayGain final {
-public:
+  public:
     static constexpr double kRatioUndefined = 0.0;
     static constexpr double kRatioMin = 0.0; // lower bound (exclusive)
     static constexpr double kRatio0dB = 1.0;
 
     static constexpr CSAMPLE kPeakUndefined = -CSAMPLE_PEAK;
-    static constexpr CSAMPLE kPeakMin = CSAMPLE_ZERO; // lower bound (inclusive)
+    static constexpr CSAMPLE kPeakMin = CSAMPLE_ZERO;  // lower bound (inclusive)
     static constexpr CSAMPLE kPeakClip = CSAMPLE_PEAK; // upper bound (inclusive) represents digital full scale without clipping
 
     static_assert(ReplayGain::kPeakClip == 1.0,
@@ -38,11 +38,11 @@ public:
             "where 1.0 represents digital full scale");
 
     ReplayGain()
-        : ReplayGain(kRatioUndefined, kPeakUndefined) {
+            : ReplayGain(kRatioUndefined, kPeakUndefined) {
     }
     ReplayGain(double ratio, CSAMPLE peak)
-        : m_ratio(ratio)
-        , m_peak(peak) {
+            : m_ratio(ratio),
+              m_peak(peak) {
     }
 
     static bool isValidRatio(double ratio) {
@@ -64,7 +64,8 @@ public:
     // Parsing and formatting of gain values according to the
     // ReplayGain 1.0/2.0 specification.
     static double ratioFromString(const QString& dBGain, bool* pValid = 0);
-    static QString ratioToString(double ratio);
+    static QString ratioToString(double ratio,
+            std::optional<int> precision = std::nullopt);
 
     static double normalizeRatio(double ratio);
 
@@ -104,18 +105,15 @@ public:
     CSAMPLE m_peak;
 };
 
-inline
-bool operator==(const ReplayGain& lhs, const ReplayGain& rhs) {
+inline bool operator==(const ReplayGain& lhs, const ReplayGain& rhs) {
     return (lhs.getRatio() == rhs.getRatio()) && (lhs.getPeak() == rhs.getPeak());
 }
 
-inline
-bool operator!=(const ReplayGain& lhs, const ReplayGain& rhs) {
+inline bool operator!=(const ReplayGain& lhs, const ReplayGain& rhs) {
     return !(lhs == rhs);
 }
 
-inline
-QDebug operator<<(QDebug dbg, const ReplayGain& arg) {
+inline QDebug operator<<(QDebug dbg, const ReplayGain& arg) {
     return dbg << "ratio =" << arg.getRatio() << "/" << "peak =" << arg.getPeak();
 }
 

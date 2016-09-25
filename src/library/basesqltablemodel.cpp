@@ -147,6 +147,9 @@ void BaseSqlTableModel::initSortColumnMapping() {
     m_columnIndexBySortColumnId[static_cast<int>(
             TrackModel::SortColumnId::PlaylistDateTimeAdded)] =
             fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::Directory)] =
+            fieldIndex(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_DIRECTORY);
 
     m_sortColumnIdByColumnIndex.clear();
     for (int i = static_cast<int>(TrackModel::SortColumnId::IdMin);
@@ -867,6 +870,8 @@ bool BaseSqlTableModel::setTrackValueForColumn(
         pTrack->setBpmLocked(value.toBool());
     } else {
         // We never should get up to this point!
+        // Might happen editing read-only column values, so make sure to return
+        // the read-only flags for those in BaseTrackTableModel::readWriteFlags().
         qWarning() << "Column"
                    << columnNameForFieldIndex(column)
                    << "is not editable!";
