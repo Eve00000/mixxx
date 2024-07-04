@@ -74,6 +74,14 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotCueModeCombobox);
 
+    // create nowplayingfile checkbox
+    CreateNowPlayingFileCheckBox->setChecked(m_pConfig->getValue(
+            ConfigKey("[Controls]", "CreateNowPlayingFile"), true));			
+	connect(CreateNowPlayingFileCheckBox,
+            &QCheckBox::stateChanged,
+            this,
+            &DlgPrefDeck::slotToggleCreateNowPlayingFile);	
+		
     // create statusfiles checkbox
     CreateStatusFilesCheckBox->setChecked(m_pConfig->getValue(
             ConfigKey("[Controls]", "CreateStatusFiles"), true));			
@@ -773,7 +781,8 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermLeft"), m_dRatePermCoarse);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermRight"), m_dRatePermFine);
 
-    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateStatusFiles"), false));				
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateStatusFiles"), false));	
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), false));				
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -867,3 +876,9 @@ void DlgPrefDeck::slotToggleCreateStatusFiles(int buttonState) {
     m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"),
             enable);
 }		
+
+void DlgPrefDeck::slotToggleCreateNowPlayingFile(int buttonState) {
+    bool enable = buttonState == Qt::Checked;
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"),
+            enable);			
+}
