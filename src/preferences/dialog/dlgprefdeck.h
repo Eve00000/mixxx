@@ -98,6 +98,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
   private slots:
     // create statusfiles checkbox
     void slotToggleCreateStatusFiles(int buttonState);	
+    // create nowplayingfile checkbox
+    void slotToggleCreateNowPlayingFile(int buttonState);	
 
   private:
     // Because the CueDefault list is out of order, we have to set the combo
