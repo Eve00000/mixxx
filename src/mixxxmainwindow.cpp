@@ -763,8 +763,9 @@ void MixxxMainWindow::slotUpdateWindowTitle(TrackPointer pTrack) {
         QString trackInfo = pTrack->getInfo();
         if (!trackInfo.isEmpty()) {
             appTitle = QString("%1 | %2").arg(trackInfo, appTitle);
-            //          writing the artist & title of the playing track not only to the windowtitle but also to a file
-            //          location and name for nowplayingfile
+            //  writing the artist & title of the playing track not only 
+            //  to the windowtitle but also to a file
+            //  location and name for nowplayingfile
             if (m_pCoreServices->getSettings()->getValueString(ConfigKey("[Controls]", "CreateNowPlayingFile")) != "0") {			
                 QString StatusNowPlayingFilePath = m_pCoreServices->getSettings()->getSettingsPath();
                 QString StatusNowPlayingFileLocation = StatusNowPlayingFilePath + "/NowPlaying.txt";
