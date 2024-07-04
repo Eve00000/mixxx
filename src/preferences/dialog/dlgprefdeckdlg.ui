@@ -660,7 +660,7 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
               </sizepolicy>
-            </property>            
+            </property>
             <property name="text">
               <string>Create Statusfile for each deck</string>
             </property>
@@ -674,7 +674,7 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
           <widget class="QCheckBox" name="CreateStatusFilesCheckBox">
             <property name="toolTip">
          <string>Statusfile:
-If checked, a Statusfile will be created in map with the custom controllermappings. 
+If checked, a Statusfile will be created in map with the custom controllermappings.
 A statusfile is a javascriptfile that contains
 - Track-Artist
 - Track-Title
@@ -689,11 +689,11 @@ So if you ejected a track in deck 4, the focus can stay on deck 4 to load anothe
 The statusfiles need to be included in the header of the xml-file.
 
 Statusfiles are named:
-Status[ChannelX].js, Status[ChannelY].js ... 
+Status[ChannelX].js, Status[ChannelY].js ...
 Status[SamplerX].js, Status[SamplerY].js ...
 
 The contents:
-var TrackDeckX = { 
+var TrackDeckX = {
 Artist : "trackartist",
 Title : "tracktitle",
 Time : "12:52:44",
@@ -702,7 +702,7 @@ Time : "12:52:44",
 In the beginning of the controller.js file you can load the contents of the Statusfiles
 in a arrays to use them for displaying.
 
-             </string>			
+             </string>
             </property>
           </widget>
         </item>
@@ -739,7 +739,7 @@ in a arrays to use them for displaying.
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
               </sizepolicy>
-            </property>            
+            </property>
             <property name="text">
               <string>Create nowplayingfile</string>
             </property>
@@ -772,7 +772,7 @@ This is the same string that occurs as title in the Mixxx-window.</string>
         </item>
       </layout>
     </widget>
-   </item>   
+   </item>
    <item row="2" column="0">
     <spacer name="verticalSpacer2">
      <property name="orientation">
