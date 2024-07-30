@@ -2776,6 +2776,7 @@ if(QML)
     src/qml/qmlplayermanagerproxy.cpp
     src/qml/qmlplayerproxy.cpp
     src/qml/qmlvisibleeffectsmodel.cpp
+    src/qml/qmlchainpresetmodel.cpp
     src/qml/qmlwaveformoverview.cpp
     # The following sources need to be in this target to get QML_ELEMENT properly interpreted
     src/control/controlmodel.cpp
@@ -3450,13 +3451,26 @@ if (STEM)
   target_sources(mixxx-test PUBLIC
     src/test/stemtest.cpp
     src/test/steminfotest.cpp
+    src/test/stemcontrolobjecttest.cpp
   )
   list(APPEND MIXXX_LIB_PRECOMPILED_HEADER src/track/steminfo.h)
   target_sources(mixxx-lib PRIVATE
     src/sources/soundsourcestem.cpp
     src/track/steminfoimporter.cpp
     src/track/steminfo.cpp
+    src/widget/wstemcontrol.cpp
   )
+  if(QOPENGL)
+    target_sources(mixxx-lib PRIVATE
+      src/waveform/renderers/allshader/waveformrendererstem.cpp
+    )
+  endif()
+  if(QML)
+    target_compile_definitions(mixxx-qml-lib PUBLIC __STEM__)
+    target_sources(mixxx-qml-lib PRIVATE
+      src/qml/qmlstemsmodel.cpp
+    )
+  endif()
 endif()
 
 # Test Suite
