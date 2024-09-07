@@ -1,3 +1,4 @@
+#pragma comment(lib, "winmm.lib")
 #include "engine/enginebuffer.h"
 
 #include <QtDebug>
@@ -40,6 +41,21 @@
 #ifdef __VINYLCONTROL__
 #include "engine/controls/vinylcontrolcontrol.h"
 #endif
+
+// EVE OSC
+#include <stdlib.h>
+#include <string.h>
+
+#include <cstring>
+#include <iostream>
+
+#include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+
+#define ADDRESS "192.168.0.125"
+#define PORT 9000
+#define OUTPUT_BUFFER_SIZE 1024
+#define IP_MTU_SIZE 1536
 
 namespace {
 const mixxx::Logger kLogger("EngineBuffer");
@@ -300,6 +316,7 @@ EngineBuffer::EngineBuffer(const QString& group,
     // EngineControl::setEngineBuffer entirely and pass them through the
     // constructor.
     setEngineMixer(pMixingEngine);
+
 }
 
 EngineBuffer::~EngineBuffer() {
@@ -706,6 +723,60 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
 
     // Eve end
 
+    //  EveOSC begin
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+    UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
+
+    QString oscTrackInfoDeck = getGroup();
+    oscTrackInfoDeck.replace("[", "");
+    oscTrackInfoDeck.replace("]", "");
+
+    QString oscMessageHeaderArtist = "/" + oscTrackInfoDeck + "@TrackArtist";
+    QByteArray oscMessageHeaderArtistBa = oscMessageHeaderArtist.toLocal8Bit();
+    const char* oscBeginMessageArtist = oscMessageHeaderArtistBa.data();
+
+    QString oscTrackInfoArtist = pTrack->getArtist();
+    QByteArray oscTrackInfoArtistBa = oscTrackInfoArtist.toLocal8Bit();
+    const char* oscBodyMessageArtist = oscTrackInfoArtistBa.data();
+
+    QString oscMessageHeaderTitle = "/" + oscTrackInfoDeck + "@TrackTitle";
+    QByteArray oscMessageHeaderTitleBa = oscMessageHeaderTitle.toLocal8Bit();
+    const char* oscBeginMessageTitle = oscMessageHeaderTitleBa.data();
+
+    QString oscTrackInfoTitle = pTrack->getTitle();
+    QByteArray oscTrackInfoTitleBa = oscTrackInfoTitle.toLocal8Bit();
+    const char* oscBodyMessageTitle = oscTrackInfoTitleBa.data();
+
+    QString oscMessageHeaderDuration = "/" + oscTrackInfoDeck + "@Duration";
+    QByteArray oscMessageHeaderDurationBa = oscMessageHeaderDuration.toLocal8Bit();
+    const char* oscBeginMessageDuration = oscMessageHeaderDurationBa.data();
+
+    float oscTrackInfoDuration = pTrack->getDuration();
+    int oscTrackInfoDurationCalcMin = oscTrackInfoDuration / 60;
+    int oscTrackInfoDurationCalcSec = oscTrackInfoDuration - (oscTrackInfoDurationCalcMin * 60);
+
+    QString oscTrackInfoDurationCalc;
+
+    if (oscTrackInfoDurationCalcSec < 10) {
+        oscTrackInfoDurationCalc = QString("%1:0%2").arg(oscTrackInfoDurationCalcMin).arg(oscTrackInfoDurationCalcSec);
+    } else {
+        oscTrackInfoDurationCalc = QString("%1:%2").arg(oscTrackInfoDurationCalcMin).arg(oscTrackInfoDurationCalcSec);
+    };
+
+    QByteArray oscTrackInfoDurationBa = oscTrackInfoDurationCalc.toLocal8Bit();
+    const char* oscBodyMessageDuration = oscTrackInfoDurationBa.data();
+    
+    p.Clear();
+    p << osc::BeginBundle();
+    p << osc::BeginMessage(oscBeginMessageArtist) << oscBodyMessageArtist << osc::EndMessage;
+    p << osc::BeginMessage(oscBeginMessageTitle) << oscBodyMessageTitle << osc::EndMessage;
+    p << osc::BeginMessage(oscBeginMessageDuration) << oscBodyMessageDuration << osc::EndMessage;
+    p << osc::EndBundle;
+    transmitSocket.Send(p.Data(), p.Size());
+
+    // EveOSC end
+
     // Reset slip mode
     m_pSlipButton->set(0);
     m_bSlipEnabledProcessing = false;
@@ -790,6 +861,37 @@ void EngineBuffer::ejectTrack() {
     m_pTrackTitle_3->set(0);
     m_pTrackTitle_4->set(0);
     m_pTrackTitle_5->set(0);
+
+        //  EveOSC begin
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+    UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
+
+    QString oscTrackInfoDeck = getGroup();
+    oscTrackInfoDeck.replace("[", "");
+    oscTrackInfoDeck.replace("]", "");
+
+    QString oscMessageHeaderArtist = "/" + oscTrackInfoDeck + "@TrackArtist";
+    QByteArray oscMessageHeaderArtistBa = oscMessageHeaderArtist.toLocal8Bit();
+    const char* oscBeginMessageArtist = oscMessageHeaderArtistBa.data();
+
+    QString oscMessageHeaderTitle = "/" + oscTrackInfoDeck + "@TrackTitle";
+    QByteArray oscMessageHeaderTitleBa = oscMessageHeaderTitle.toLocal8Bit();
+    const char* oscBeginMessageTitle = oscMessageHeaderTitleBa.data();
+
+    QString oscMessageHeaderDuration = "/" + oscTrackInfoDeck + "@Duration";
+    QByteArray oscMessageHeaderDurationBa = oscMessageHeaderDuration.toLocal8Bit();
+    const char* oscBeginMessageDuration = oscMessageHeaderDurationBa.data();
+
+    p.Clear();
+    p << osc::BeginBundle();
+    p << osc::BeginMessage(oscBeginMessageArtist) << "no track loaded" << osc::EndMessage;
+    p << osc::BeginMessage(oscBeginMessageTitle) << "no track loaded" << osc::EndMessage;
+    p << osc::BeginMessage(oscBeginMessageDuration) << "0:00" << osc::EndMessage;
+    p << osc::EndBundle;
+    transmitSocket.Send(p.Data(), p.Size());
+
+    // EveOSC end
 
     m_playButton->set(0.0);
     m_playposSlider->set(0);
