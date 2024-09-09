@@ -34,11 +34,13 @@
 	requested that these non-binding requests be included whenever the
 	above license is reproduced.
 */
+
 #ifndef INCLUDED_OSCPACK_OSCPACKETLISTENER_H
 #define INCLUDED_OSCPACK_OSCPACKETLISTENER_H
 
 #include "OscReceivedElements.h"
 #include "../ip/PacketListener.h"
+
 
 
 namespace osc{
@@ -72,6 +74,7 @@ public:
         else
             ProcessMessage( ReceivedMessage(p), remoteEndpoint );
     }
+
 };
 
 } // namespace osc
