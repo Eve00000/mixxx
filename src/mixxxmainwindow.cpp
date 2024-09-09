@@ -57,6 +57,21 @@
 #include "waveform/waveformwidgetfactory.h"
 #include "widget/wglwidget.h"
 #include "widget/wmainmenubar.h"
+// EveOSC
+#define oscClientAddress "192.168.0.125"
+#define oscPortOut 9000
+#define oscPortIn 9001
+#define OUTPUT_BUFFER_SIZE 1024
+#define IP_MTU_SIZE 1536
+
+#include <iostream>
+#include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+//#include "osc/osclistenercontroller.h"
+
+//#include "engine/sidechain/engineosclistener.cpp"
+#include "OscReceiveTest.cpp "
+//  EveOSC
 
 #ifdef __VINYLCONTROL__
 #include "vinylcontrol/vinylcontrolmanager.h"
@@ -132,6 +147,9 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
+// EveOSC
+    oscReceiver(oscPortIn);
+// EveOSC
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -460,6 +478,11 @@ MixxxMainWindow::~MixxxMainWindow() {
             QString(saveGeometry().toBase64()));
     m_pCoreServices->getSettings()->set(ConfigKey("[MainWindow]", "state"),
             QString(saveState().toBase64()));
+
+// EveOSC
+// EveOscIn();
+//   oscReceiver(oscPortIn);
+// EveOSC
 
     // GUI depends on KeyboardEventFilter, PlayerManager, Library
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting skin";
@@ -1457,4 +1480,26 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+void MixxxMainWindow::oscReceiver(int port) {
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+    UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, oscPortOut));
+
+    p.Clear();
+    p << osc::BeginBundle();
+    p << osc::BeginMessage("/Open") << "Start" << osc::EndMessage;
+    p << osc::EndBundle;
+    transmitSocket.Send(p.Data(), p.Size());
+
+    QString MixxxOSCStatusFilePath = m_pCoreServices->getSettings()->getSettingsPath();
+    QString MixxxOSCStatusFileLocation = MixxxOSCStatusFilePath + "/MixxxOSCStatus.txt";
+    QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
+//    MixxxOSCStatusFile.remove();
+    MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+    QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
+    MixxxOSCStatusTxt << QString("Listening on port %1").arg(port) << "\n";
+    MixxxOSCStatusFile.close();
+    EveOscIn();
 }

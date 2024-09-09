@@ -52,8 +52,8 @@
 #include "ip/UdpSocket.h"
 #include "osc/OscOutboundPacketStream.h"
 
-#define ADDRESS "192.168.0.125"
-#define PORT 9000
+#define oscClientAddress "192.168.0.125"
+#define oscPortOut 9000
 #define OUTPUT_BUFFER_SIZE 1024
 #define IP_MTU_SIZE 1536
 
@@ -721,12 +721,10 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackArtist_4->set(TrackArtistPart_4);
     m_pTrackArtist_5->set(TrackArtistPart_5);
 
-    // Eve end
-
     //  EveOSC begin
     char buffer[IP_MTU_SIZE];
     osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
-    UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
+    UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, oscPortOut));
 
     QString oscTrackInfoDeck = getGroup();
     oscTrackInfoDeck.replace("[", "");
@@ -865,7 +863,7 @@ void EngineBuffer::ejectTrack() {
         //  EveOSC begin
     char buffer[IP_MTU_SIZE];
     osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
-    UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
+    UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, oscPortOut));
 
     QString oscTrackInfoDeck = getGroup();
     oscTrackInfoDeck.replace("[", "");

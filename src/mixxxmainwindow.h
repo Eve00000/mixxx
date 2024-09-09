@@ -10,6 +10,10 @@
 #include "util/parented_ptr.h"
 #include "util/singleton.h"
 
+// EveOsc
+//#include "osc/common.h"
+//#include "osc/osclistenercontroller.h"
+
 class ControlObject;
 class DlgDeveloperTools;
 class DlgPreferences;
@@ -60,6 +64,11 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
   protected:
     MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServices);
     ~MixxxMainWindow() override;
+ //EveOSC
+ private:
+//    QList<OscListenerController*> oscListeners;
+//    QList<OscMessageContainer> receivedMessages;
+ // EveOSC
 
     friend class Singleton<MixxxMainWindow>;
   public slots:
@@ -111,6 +120,10 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
   private:
     void initializeWindow();
     void checkDirectRendering();
+// EveOSC
+    void oscReceiver(int port);
+//    void createOscListener(int port);
+ // EveOSC
 
     /// Load skin to a QWidget that we set as the central widget.
     bool loadConfiguredSkin();
