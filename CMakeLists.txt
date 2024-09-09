@@ -1738,6 +1738,15 @@ if(WIN32)
 
   # shoutidjc/shout.h checks for WIN32 to see if we are on Windows.
   target_compile_definitions(mixxx-lib PUBLIC WIN32)
+  
+  # Add the static library 'Lib.lib', marking it as an IMPORT.
+#add_library(MyLib STATIC IMPORTED)
+# Define the location of the library dependency.
+#set(MYLIB_FILE_PATH "D:/mixxx-git/mixxx/src/oscpack.lib")
+#set(MYLIB_FILE_PATH "src/oscpack.lib")
+# Tell CMake where to find the library.
+#set_target_properties(MyLib PROPERTIES IMPORTED_LOCATION ${MYLIB_FILE_PATH})
+#target_link_libraries(mixxx-lib PRIVATE comctl32 shell32 oscpack)
 
   target_link_libraries(mixxx-lib PRIVATE comctl32 shell32)
 
@@ -2284,8 +2293,20 @@ if(WIN32)
   target_include_directories(mixxx PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 # liblo
-find_package(liblo REQUIRED)
-target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+#find_package(liblo REQUIRED)
+#target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+
+# Add the static library 'Lib.lib', marking it as an IMPORT.
+#add_library(MyLib STATIC IMPORTED)
+# Define the location of the library dependency.
+#set(MYLIB_FILE_PATH "D:/mixxx-git/mixxx/src/oscpack.lib")
+# Tell CMake where to find the library.
+#set_target_properties(MyLib PROPERTIES IMPORTED_LOCATION ${MYLIB_FILE_PATH})
+
+# oscpack
+#find_package(oscpack REQUIRED)
+#target_link_libraries(mixxx-lib oscpack)
+
 
 # Chromaprint
 find_package(Chromaprint REQUIRED)
@@ -2558,6 +2579,44 @@ add_library(rekordbox_metadata STATIC EXCLUDE_FROM_ALL
 )
 target_include_directories(rekordbox_metadata SYSTEM PUBLIC lib/rekordbox-metadata)
 target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
+
+IF(WIN32)
+	 set(IpSystemTypePath src/ip/win32)
+#	 set(LIBS ${LIBS} Ws2_32 winmm)
+	ELSE(WIN32)
+	 set(IpSystemTypePath src/ip/posix)
+	ENDIF(WIN32)
+
+#eve osc
+ADD_LIBRARY(oscpack 
+	src/ip/IpEndpointName.h
+	src/ip/IpEndpointName.cpp
+	src/ip/NetworkingUtils.h
+	${IpSystemTypePath}/NetworkingUtils.cpp
+#	src/ip/win32/NetworkingUtils.cpp
+	src/ip/UdpSocket.h
+	${IpSystemTypePath}/UdpSocket.cpp
+#	src/ip/win32/UdpSocket.cpp
+	src/ip/PacketListener.h
+	src/ip/TimerListener.h
+	src/osc/OscTypes.h
+	src/osc/OscTypes.cpp 
+	src/osc/OscHostEndianness.h
+	src/osc/OscException.h
+	src/osc/OscPacketListener.h
+	src/osc/MessageMappingOscPacketListener.h
+	src/osc/OscReceivedElements.h
+	src/osc/OscReceivedElements.cpp
+	src/osc/OscPrintReceivedElements.h
+	src/osc/OscPrintReceivedElements.cpp
+	src/osc/OscOutboundPacketStream.h
+	src/osc/OscOutboundPacketStream.cpp
+	)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
+#target_link_libraries(mixxx oscpack ${LIBS})
+target_include_directories(mixxx-lib SYSTEM PRIVATE ip)
+target_include_directories(mixxx-lib SYSTEM PRIVATE osc)
+target_link_libraries(mixxx-lib PRIVATE oscpack)
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
