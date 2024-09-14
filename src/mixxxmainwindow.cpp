@@ -1528,5 +1528,3 @@ void MixxxMainWindow::oscReceiver() {
         MixxxOSCStatusFile.close();
     }
 }
-
-

@@ -211,5 +211,3 @@ void DlgPrefOsc::slotToggleOscReceiver4Active(int buttonState) {
 }
 void DlgPrefOsc::slotToggleOscReceiver5Active(int buttonState) {
 }
-
-

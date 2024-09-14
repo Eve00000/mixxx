@@ -103,7 +103,7 @@ class OscReceiveTestPacketListener : public osc::OscPacketListener{
             QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
             MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
             QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
-//            MixxxOSCStatusTxt << QString(" an error occured parsing OscMessage from %1 : %2").arg(m.AddressPattern()).arg(osc::e.what()) << "\n";
+//            MixxxOSCStatusTxt << QString(" an error occurred parsing OscMessage from %1 : %2").arg(m.AddressPattern()).arg(osc::e.what()) << "\n";
             MixxxOSCStatusFile.close();
         }
     }    

@@ -46,4 +46,3 @@ class OscReceiveTest : public QObject {
 };
 
 #endif /* INCLUDED_OSCSENDTESTS_H */
-
