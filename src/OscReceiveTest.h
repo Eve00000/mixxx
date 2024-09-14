@@ -26,10 +26,10 @@ class OscReceiveTest : public QObject {
 //    Q_OBJECT
   public:
 
-    OscReceiveTest(QObject* pParent,
-            UserSettingsPointer pConfig);
-
-//    int OscReceiveTestMain();
+//    OscReceiveTest(QObject* pParent,
+//            UserSettingsPointer pConfig);
+    OscReceiveTest();
+    //    int OscReceiveTestMain();
 
   private slots:
     void RunReceiveTest(int oscportin);
@@ -38,7 +38,7 @@ class OscReceiveTest : public QObject {
   protected:
 
   private:
-    UserSettingsPointer m_pConfig;
+//    UserSettingsPointer m_pConfig;
 
 //    ControlProxy* m_pCOCrossfader;
 //    ControlProxy* m_pCOCrossfaderReverse;
