@@ -27,7 +27,7 @@
        <property name="baseSize">
         <size>
          <width>0</width>
-         <height>150</height>
+         <height>200</height>
         </size>
        </property>
        <property name="title">
@@ -138,6 +138,70 @@
         </property>
         <property name="maximum">
          <number>9999</number>
+        </property>
+       </widget>
+       <widget class="QLabel" name="OscOutputBufferSizeLabel">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>130</y>
+          <width>120</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>OSC Output Buffer Size</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="OscIpMtuSizeLabel">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>160</y>
+          <width>120</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>OSC IP MTU Size</string>
+        </property>
+       </widget>
+       <widget class="QSpinBox" name="OscOutputBufferSize">
+        <property name="geometry">
+         <rect>
+          <x>150</x>
+          <y>140</y>
+          <width>120</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="minimum">
+         <number>1024</number>
+        </property>
+        <property name="maximum">
+         <number>10240</number>
+        </property>
+        <property name="singleStep">
+         <number>1024</number>
+        </property>
+       </widget>
+       <widget class="QSpinBox" name="OscIpMtuSize">
+        <property name="geometry">
+         <rect>
+          <x>150</x>
+          <y>160</y>
+          <width>120</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="minimum">
+         <number>60</number>
+        </property>
+        <property name="maximum">
+         <number>9999</number>
+        </property>
+        <property name="singleStep">
+         <number>0</number>
         </property>
        </widget>
       </widget>
@@ -983,6 +1047,8 @@
   <tabstop>OscEnabledCheckBox</tabstop>
   <tabstop>OscPortIn</tabstop>
   <tabstop>OscPortOut</tabstop>
+  <tabstop>OscOutputBufferSize</tabstop>
+  <tabstop>OscIpMtuSize</tabstop>
   <tabstop>OscReceiver1ActiveCheckBox</tabstop>
   <tabstop>OscReceiver1IpByte1</tabstop>
   <tabstop>OscReceiver1IpByte2</tabstop>

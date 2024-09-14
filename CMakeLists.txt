@@ -1065,6 +1065,8 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/preferences/dialog/dlgpreflibrarydlg.ui
   src/preferences/dialog/dlgprefmixer.cpp
   src/preferences/dialog/dlgprefmixerdlg.ui
+  src/preferences/dialog/dlgprefosc.cpp
+  src/preferences/dialog/dlgprefoscdlg.ui
   src/preferences/dialog/dlgprefrecord.cpp
   src/preferences/dialog/dlgprefrecorddlg.ui
   src/preferences/dialog/dlgprefreplaygain.cpp

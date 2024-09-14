@@ -727,8 +727,8 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, oscPortOut));
 
     QString oscTrackInfoDeck = getGroup();
-//    oscTrackInfoDeck.replace("[", "");
-//    oscTrackInfoDeck.replace("]", "");
+    oscTrackInfoDeck.replace("[", "");
+    oscTrackInfoDeck.replace("]", "");
 
     QString oscMessageHeaderArtist = "/" + oscTrackInfoDeck + "@TrackArtist";
     QByteArray oscMessageHeaderArtistBa = oscMessageHeaderArtist.toLocal8Bit();

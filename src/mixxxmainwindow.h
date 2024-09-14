@@ -9,10 +9,7 @@
 #include "track/track_decl.h"
 #include "util/parented_ptr.h"
 #include "util/singleton.h"
-
-// EveOsc
-//#include "osc/common.h"
-//#include "osc/osclistenercontroller.h"
+#include "OscReceiveTest.h"
 
 class ControlObject;
 class DlgDeveloperTools;
@@ -55,20 +52,18 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
     void setInhibitScreensaver(mixxx::preferences::ScreenSaver inhibit);
     mixxx::preferences::ScreenSaver getInhibitScreensaver();
 
-    inline GuiTick* getGuiTick() { return m_pGuiTick; };
+    inline GuiTick* getGuiTick() {
+        return m_pGuiTick;
+    };
 
     static void destroy() {
         Singleton<MixxxMainWindow>::destroy();
     };
 
+  
   protected:
     MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServices);
     ~MixxxMainWindow() override;
- //EveOSC
- private:
-//    QList<OscListenerController*> oscListeners;
-//    QList<OscMessageContainer> receivedMessages;
- // EveOSC
 
     friend class Singleton<MixxxMainWindow>;
   public slots:
@@ -114,16 +109,13 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
 
   protected:
     /// Event filter to block certain events (eg. tooltips if tooltips are disabled)
-    bool eventFilter(QObject *obj, QEvent *event) override;
-    void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 
   private:
     void initializeWindow();
     void checkDirectRendering();
-// EveOSC
-    void oscReceiver(int port);
-//    void createOscListener(int port);
- // EveOSC
+    void oscReceiver();
 
     /// Load skin to a QWidget that we set as the central widget.
     bool loadConfiguredSkin();
@@ -135,7 +127,7 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
 #endif
 
     QDialog::DialogCode soundDeviceErrorDlg(
-            const QString &title, const QString &text, bool* retryClicked);
+            const QString& title, const QString& text, bool* retryClicked);
     QDialog::DialogCode soundDeviceBusyDlg(bool* retryClicked);
     QDialog::DialogCode soundDeviceErrorMsgDlg(
             SoundDeviceStatus status, bool* retryClicked);
@@ -174,3 +166,13 @@ class MixxxMainWindow : public QMainWindow, public Singleton<MixxxMainWindow> {
 
     QSet<ControlObject*> m_skinCreatedControls;
 };
+
+//namespace osc {
+//class OscReceiveTestPacketListener;
+
+//void OscReceiveTestMain();
+//void RunReceiveTest(int OscPortIn);
+//UserSettingsPointer m_pConfig;
+
+
+//} // namespace osc

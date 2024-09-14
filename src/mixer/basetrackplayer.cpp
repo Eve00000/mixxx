@@ -28,8 +28,8 @@
 #include <iostream>
 #include <cstring>
 
-#define ADDRESS "192.168.0.125"
-#define PORT 9000
+#define oscAddress "192.168.0.125"
+#define oscPortOut 9000
 #define OUTPUT_BUFFER_SIZE 1024
 #define IP_MTU_SIZE 1536
 
@@ -1048,11 +1048,11 @@ void BaseTrackPlayerImpl::slotPlayToggled(double value) {
         //  EveOSC begin
         char buffer[IP_MTU_SIZE];
         osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
-        UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
+        UdpTransmitSocket transmitSocket(IpEndpointName(oscAddress, oscPortOut));
 
         QString oscTrackInfoDeck = getGroup();
-        oscTrackInfoDeck.replace("[", "");
-        oscTrackInfoDeck.replace("]", "");
+//        oscTrackInfoDeck.replace("[", "");
+//        oscTrackInfoDeck.replace("]", "");
 
         QString oscMessageHeaderDeckPlay = "/" + oscTrackInfoDeck + "@Play";
         QByteArray oscMessageHeaderDeckPlayBa = oscMessageHeaderDeckPlay.toLocal8Bit();

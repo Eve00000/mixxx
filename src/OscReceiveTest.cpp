@@ -1,156 +1,173 @@
-/*
-	oscpack -- Open Sound Control (OSC) packet manipulation library
-    http://www.rossbencina.com/code/oscpack
-
-    Copyright (c) 2004-2013 Ross Bencina <rossb@audiomulch.com>
-
-	Permission is hereby granted, free of charge, to any person obtaining
-	a copy of this software and associated documentation files
-	(the "Software"), to deal in the Software without restriction,
-	including without limitation the rights to use, copy, modify, merge,
-	publish, distribute, sublicense, and/or sell copies of the Software,
-	and to permit persons to whom the Software is furnished to do so,
-	subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be
-	included in all copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-	EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-	MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-	IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
-	ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-	CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-	WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/*
-	The text above constitutes the entire oscpack license; however, 
-	the oscpack developer(s) also make the following non-binding requests:
-
-	Any person wishing to distribute modifications to the Software is
-	requested to send the modifications to the original developer so that
-	they can be incorporated into the canonical version. It is also 
-	requested that these non-binding requests be included whenever the
-	above license is reproduced.
-*/
 #include "OscReceiveTest.h"
+#include "osc/OscReceivedElements.h"
+#include "ip/UdpSocket.h"
+#include "osc/OscPacketListener.h"
+#include "control/controlobject.h"
+#include "control/controlproxy.h"
+#include "config.h"
+#include "preferences/configobject.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <QThread>
-//#include <threads>
-#include <mutex>
+#include <QSharedPointer>
+//#include <mutex>
 
 
 #define oscClientAddress "192.168.0.125"
-#define oscPortOut 9000
-#define oscPortIn 9001
+//#define OscPortOut 9000
+//#define OscPortIn 9001
 #define OUTPUT_BUFFER_SIZE 1024
 #define IP_MTU_SIZE 1536
 
-////
+//namespace osc{
 
+OscReceiveTest::OscReceiveTest(
+        QObject* pParent,
+        UserSettingsPointer pConfig)
+        : QObject(pParent),
+          m_pConfig(pConfig) {
+}
 
-#include "osc/OscReceivedElements.h"
-
-#include "ip/UdpSocket.h"
-#include "osc/OscPacketListener.h"
-
-#include "control/controlobject.h"
-#include "control/controlproxy.h"
-///
-
-#include "controllers/scripting/legacy/controllerscriptinterfacelegacy.h"
-
-///
-//float a3;
-
-namespace osc{
-
-class OscReceiveTestPacketListener : public OscPacketListener{
+class OscReceiveTestPacketListener : public osc::OscPacketListener{
+//  private:
+    UserSettingsPointer m_pConfig;
   protected:
 
-    void ProcessMessage( const osc::ReceivedMessage& m, 
-            const IpEndpointName& remoteEndpoint )
+    void ProcessMessage(const osc::ReceivedMessage& m,
+            const IpEndpointName& remoteEndpoint)      
     {
-        (void) remoteEndpoint; // suppress unused parameter warning
+        (void) remoteEndpoint; 
+          //  std::mutex mmm;
+          //  constexpr int max_loop = 10;
+          //  std::lock_guard<std::mutex> lock(mmm);
+          //  for (int i = 0; i < max_loop; i++) {
+          //    QString TempOscPortIn = m_pConfig->getValueString(ConfigKey("[OSC]", "OscPortIn"));
+          //    QString TempOscPortIn = std::m_pConfig->getValueString(ConfigKey("[OSC]", "OscPortIn"));
+          //    QString TempOscPortOut = m_pCorenfig->getValueString(ConfigKey("[OSC]", "OscPortOut"));
+          //    QString MixxxOSCStatusFilePath = m_pCoreServices->getSettings()->getSettingsPath();
+          //    QString MixxxOSCStatusFilePath = m_pCoreServices->getSettings()->getSettingsPath();
+          //    std::shared_ptr<mixxx::CoreServices> pCoreServices : m_pCoreServices
+          //  }
+          //  std::lock_guard<std::mutex> unlock(mmm);
+
         try {
-            ReceivedMessageArgumentStream args = m.ArgumentStream();
-            ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
 
-//                bool a1;
-//                osc::int32 a2;
-                float a3;
-//                  float oscValue;
-//                const char *a4;
-//                args >> a1 >> a2 >> a3 >> a4 >> osc::EndMessage;
-//                args >> oscValue >> osc::EndMessage;
-                args >> a3 >> osc::EndMessage;
+            float oscInVal;
+            args >> oscInVal >> osc::EndMessage;
 
-                oscResult oscIn;
+            oscResult oscIn;
+            oscIn.oscAddress = m.AddressPattern();
+            oscIn.oscGroup, oscIn.oscKey;
+            oscIn.oscAddress.replace("/", "");
+            oscIn.oscValue = oscInVal;
+            int posDel = oscIn.oscAddress.indexOf("@", 0, Qt::CaseInsensitive); 
+            if (posDel > 0) {
+                oscIn.oscGroup = oscIn.oscAddress.mid(0, posDel);
+                oscIn.oscGroup = "[" + oscIn.oscGroup + "]";
+                oscIn.oscKey = oscIn.oscAddress.mid(posDel + 1, oscIn.oscAddress.length());
 
-                oscIn.oscAddress = m.AddressPattern();
-                oscIn.oscGroup, oscIn.oscKey;
-                oscIn.oscAddress.replace("/", "");
-                oscIn.oscValue = a3;
-                int posDel = oscIn.oscAddress.indexOf("@", 0, Qt::CaseInsensitive); 
-                if (posDel > 0) {
-                    oscIn.oscGroup = oscIn.oscAddress.mid(0, posDel);
-                    oscIn.oscKey = oscIn.oscAddress.mid(posDel + 1, oscIn.oscAddress.length());
+//              QString MixxxOSCStatusFileLocation = m_pConfig->getSettingsPath() + "/MixxxOSCStatus.txt";
+                QString MixxxOSCStatusFileLocation = "/MixxxOSCStatus.txt";
+                QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
+                MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+                QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
+                MixxxOSCStatusTxt << QString(" received message @ GROUP: %1, KEY: %2 and VALUE : %3").arg(oscIn.oscGroup).arg(oscIn.oscKey).arg(oscIn.oscValue) << "\n";
+                ControlObject::getControl(oscIn.oscGroup, oscIn.oscKey)->set(oscIn.oscValue);
+                MixxxOSCStatusFile.close();
 
-                    QString MixxxOSCStatusFileLocation = "/MixxxOSCStatus.txt";
-                    QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
-                    MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
-                    QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
-                    MixxxOSCStatusTxt << QString(" received message @ GROUP: %1, KEY: %2 and VALUE : %3").arg(oscIn.oscGroup).arg(oscIn.oscKey).arg(oscIn.oscValue) << "\n";
-                    MixxxOSCStatusFile.close();
+                char buffer[IP_MTU_SIZE];
+                osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+                UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, 9000));
+//              UdpTransmitSocket transmitSocket(IpEndpointName(oscClientAddress, OscPortOut));
 
-                    ControlObject::getControl(oscIn.oscGroup, oscIn.oscKey)->set(oscIn.oscValue);
-                }
+                QString oscMessageHeader = "/" + oscIn.oscAddress;
+                QByteArray oscMessageHeaderBa = oscMessageHeader.toLocal8Bit();
+                const char* oscMessage = oscMessageHeaderBa.data();
+//              float coVal = ControlObject::getControl(oscIn.oscGroup, oscIn.oscKey)->getValue;
+
+                p.Clear();
+                p << osc::BeginBundle();
+                p << osc::BeginMessage(oscMessage) << oscIn.oscValue << osc::EndMessage;
+                p << osc::EndBundle;
+                transmitSocket.Send(p.Data(), p.Size());
+            };
 
 
-        }catch( Exception& e ){
-            std::cout << "error while parsing message: "
-                        << m.AddressPattern() << ": " << e.what() << "\n";
+        }catch( osc::Exception& e ){
+//            std::cout << "error while parsing message: " << m.AddressPattern() << ": " << e.what() << "\n";
+            QString MixxxOSCStatusFileLocation = "/MixxxOSCStatus.txt";
+            QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
+            MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+            QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
+//            MixxxOSCStatusTxt << QString(" an error occured parsing OscMessage from %1 : %2").arg(m.AddressPattern()).arg(osc::e.what()) << "\n";
+            MixxxOSCStatusFile.close();
         }
     }    
 };
 
 
-void RunReceiveTest(int oscportin) {
-    osc::OscReceiveTestPacketListener listener;
+void RunReceiveTest(int OscPortIn) {
+    //    osc::OscReceiveTestPacketListener listener;
+    OscReceiveTestPacketListener listener;
 	UdpListeningReceiveSocket s(
-            IpEndpointName( IpEndpointName::ANY_ADDRESS, oscportin ),
+            IpEndpointName( IpEndpointName::ANY_ADDRESS, OscPortIn ),
             &listener );
-
+    //            IpEndpointName(IpEndpointName::ANY_ADDRESS, OscPortIn),
+//    QString MixxxOSCStatusFileLocation = m_pConfig->getSettingsPath() + "/MixxxOSCStatus.txt";
     QString MixxxOSCStatusFileLocation = "/MixxxOSCStatus.txt";
     QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
     //    MixxxOSCStatusFile.remove();
     MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
     QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
-    MixxxOSCStatusTxt << QString(" listening on port : %1").arg(oscportin) << "\n";
+//    MixxxOSCStatusTxt << QString(" listening on port : %1").arg(m_pConfig->getValue(ConfigKey("[OSC]", "OscPortIn"))) << "\n";    
+    MixxxOSCStatusTxt << QString(" listening on port : %1").arg(OscPortIn) << "\n";
     MixxxOSCStatusFile.close();
 
     s.Run();
 }
 
-} // namespace osc
+//} // namespace osc
 
 #ifndef NO_OSC_TEST_MAIN
 
-int EveOscIn()
-{
+int OscReceiveTestMain() {   
+
     QString MixxxOSCStatusFileLocation = "/MixxxOSCStatus.txt";
+//    QString MixxxOSCStatusFileLocation = std::shared_ptr<mixxx>::m_pConfig->getSettingsPath() + "/MixxxOSCStatus.txt";
+//    QString MixxxOSCStatusFileLocation = m_pConfig->getSettingsPath() + "/MixxxOSCStatus.txt";
+    //    QString MixxxOSCStatusFileLocation = MixxxMainWindow::MixxxMainWindow::m_pCoreServices->getSettings()->getSettingsPath() + "/MixxxOSCStatus.txt";
+//         QString DeckStatusFilePath = m_pConfig->getSettingsPath();
+    //    QString MixxxOSCStatusFilePath = MixxxMainWindow::m_pCoreServices->getSettings()->getSettingsPath() + "/MixxxOSCStatus.txt";
     QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
     MixxxOSCStatusFile.remove();
-	int oscportin = 9001;
 
-    std::thread tosc(osc::RunReceiveTest, oscportin);
-    tosc.detach();
+    MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+    QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
+    //    MixxxOSCStatusTxt << QString(" listening on port : %1").arg(m_pConfig->getValue(ConfigKey("[OSC]", "OscPortIn"))) << "\n";
+    //    MixxxOSCStatusTxt << QString(" listening on port : %1").arg(TempOscPortOut) << "\n";
+  
+
+    //    if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    //if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    //    MixxxOSCStatusTxt << QString(" this line is in the m_pconfig if") << "\n";
+//    QString CKOscPortIn = m_pConfig->getValue(ConfigKey("[OSC]", "OscPortIn"));
+//    int CKOscPortInInt =  CKOscPortIn.toInt();
+
+         //std::thread tosc(osc::RunReceiveTest, CKOscPortInInt);
+    //    std::thread tosc(osc::RunReceiveTest, TempOscPortOutInt);
+
+    std::thread tosc(RunReceiveTest, 9001);
+        //std::thread tosc(osc::RunReceiveTest, 9001);
+        tosc.detach();
+  //}
+
+    MixxxOSCStatusFile.close();
+
     return 0;
 }
 
 #endif /* NO_OSC_TEST_MAIN */
-

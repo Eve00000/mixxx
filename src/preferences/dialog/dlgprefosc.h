@@ -1,38 +1,30 @@
-#ifndef DLGPREFOSC_H
-#define DLGPREFOSC_H
+#pragma once
 
-#include <QRadioButton>
-#include <QWidget>
-
-#include "preferences/usersettings.h"
-//#include "preferences/dialog/ui_dlgprefoscdlg.h"
+#include "preferences/dialog/dlgpreferencepage.h"
+#include "preferences/dialog/ui_dlgprefoscdlg.h"
 //#include "preferences/dialog/dlgprefoscdlg.ui"
-//#include "preferences/dlgpreferencespage.h"
-#include "preferences/dlgpreferences.h"
+#include "preferences/usersettings.h"
 
-class ControlObject;
-class ControlObjectThread;
+class QWidget;
 
-class DlgPrefOsc : public DlgPreferencePage, public Ui::DlgPrefOscDlg  {
+class DlgPrefOsc : public DlgPreferencePage, public Ui::DlgPrefOscDlg {
     Q_OBJECT
   public:
-    DlgPrefOsc(QWidget *parent, UserSettingsPointer& pConfig);
-    virtual ~DlgPrefOsc();
+    DlgPrefOsc(QWidget* pParent, UserSettingsPointer pConfig);
 
   public slots:
-    // Apply changes to widget
-    void slotApply();
-    void slotUpdate();
-    void slotResetToDefaults();
+    void slotUpdate() override;
+    void slotApply() override;
+    void slotResetToDefaults() override;
 
-
-
-  signals:
-    void apply(const QString &);
+  private slots:
+    void slotToggleOscReceiver1Active(int buttonState);
+    void slotToggleOscReceiver2Active(int buttonState);
+    void slotToggleOscReceiver3Active(int buttonState);
+    void slotToggleOscReceiver4Active(int buttonState);
+    void slotToggleOscReceiver5Active(int buttonState);
 
   private:
-    // Pointer to config object
+
     UserSettingsPointer m_pConfig;
 };
-
-#endif

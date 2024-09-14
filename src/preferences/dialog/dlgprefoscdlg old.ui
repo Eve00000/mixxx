@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+  <class>DlgPrefOscDlg</class>
+  <widget class="QWidget" name="DlgPrefOscDlg">
+    <property name="geometry">
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>658</width>
+        <height>239</height>
+      </rect>
+    </property>
+    <property name="windowTitle">
+      <string>Mixxx OSC Settings Preferences</string>
+    </property>
+    <layout class="QVBoxLayout" name="OscGridLayout">
+
+      <item>
+        <widget class="QGroupBox" name="OscEnable">
+          <property name="title">
+            <string>OSC Settings</string>
+          </property>
+          <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+          <layout class="QGridLayout" name="OscEnableLayout">
+
+            <item row="0" column="0">
+              <widget class="QLabel" name="OscEnableLabel">
+                <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                  </sizepolicy>
+                </property>
+                <property name="text">
+                  <string>Enable the OSC-functions in Mixxx</string>
+                </property>
+                <property name="buddy">
+                  <cstringOscEnableCheckBox</cstring>
+                </property>
+              </widget>
+          </item>
+
+          <item row="0" column="1">
+          <widget class="QCheckBox" name="OscEnableCheckBox"/>
+        </item>
+
+          <item row="0" column="2">
+            <spacer name="horizontalSpacerxfaderbehaviour">
+              <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                  <horstretch>1</horstretch>
+                  <verstretch>0</verstretch>
+                </sizepolicy>
+              </property>
+            </spacer>
+          </item>
+
+          <item row="1" column="0" colspan="3">
+            <widget class="QLabel" name="OscEnabledHintText">
+              <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                </sizepolicy>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="text">
+                <string>Enabling OSC maker that Mixxx can send and receive OSC messages.</string>
+              </property>
+            </widget>
+          </item>
+
+         <item row="0" column="0">
+           <widget class="QLabel" name="OscEnableLabel">
+             <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+               </sizepolicy>
+             </property>
+             <property name="toolTip">
+               <string>Check, activate the OSC-capabilities of Mixxx.</string>
+             </property>
+             <property name="text">
+               <string>Check, activate the OSC-capabilities of Mixxx.</string>
+             </property>
+             <property name="buddy">
+               <cstring>OscReceiver1ActiveCheckBox</cstring>
+             </property>
+           </widget>
+         </item>
+
+         <item row="0" column="0">
+           <widget class="QLabel" name="OscReceiver1ActiveLabel">
+             <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+               </sizepolicy>
+             </property>
+             <property name="toolTip">
+               <string>Check, to let the machine with this ip-address receive OSC-Messages from Mixxx.</string>
+             </property>
+             <property name="text">
+               <string>Check, to let the machine with this ip-address receive OSC-Messages from Mixxx.</string>
+             </property>
+             <property name="buddy">
+               <cstring>OscReceiver1ActiveCheckBox</cstring>
+             </property>
+           </widget>
+         </item>
+
+         <item row="1" column="1">
+           <widget class="QCheckBox" name="OscReceiver1ActiveCheckBox">
+             <property name="toolTip">
+               <string>Check to send OSC messages from Mixxx to this receiver.</string>
+             </property>
+             <property name="text">
+               <string/>
+             </property>
+           </widget>
+         </item>
+	   
+         <item row="2" column="1">
+           <widget class="QCheckBox" name="OscReceiver1ActiveCheckBox">
+             <property name="toolTip">
+               <string>Check to send OSC messages from Mixxx to this receiver.</string>
+             </property>
+             <property name="text">
+               <string/>
+             </property>
+           </widget>
+         </item>	   
+
+         <item>
+           <spacer name="verticalSpacer">
+             <property name="orientation">
+               <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>1</verstretch>
+               </sizepolicy>
+             </property>
+           </spacer>
+         </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <!-- tabstops -->
+ <connections/>
+</ui>
