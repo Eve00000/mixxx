@@ -58,6 +58,17 @@
 #include "widget/wglwidget.h"
 #include "widget/wmainmenubar.h"
 
+//  EveOSC
+#include <iostream>
+#include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+#include "OscReceiveTest.cpp"
+
+#include "control/controlobject.h"
+#include "control/controlproxy.h"
+//  EveOSC
+
 #ifdef __VINYLCONTROL__
 #include "vinylcontrol/vinylcontrolmanager.h"
 #endif
@@ -132,6 +143,9 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
+    // EveOSC
+    oscReceiver();
+    // EveOSC
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -325,7 +339,7 @@ void MixxxMainWindow::initialize() {
         reportCriticalErrorAndQuit(
                 "default skin cannot be loaded - see <b>mixxx</b> trace for more information");
         m_pCentralWidget = oldWidget;
-        //TODO (XXX) add dialog to warn user and launch skin choice page
+        // TODO (XXX) add dialog to warn user and launch skin choice page
     } else {
         m_pMenuBar->setStyleSheet(m_pCentralWidget->styleSheet());
     }
@@ -600,7 +614,7 @@ void MixxxMainWindow::alwaysHideMenuBarDlg() {
 #endif
 
 QDialog::DialogCode MixxxMainWindow::soundDeviceErrorDlg(
-        const QString &title, const QString &text, bool* retryClicked) {
+        const QString& title, const QString& text, bool* retryClicked) {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.setWindowTitle(title);
@@ -615,8 +629,7 @@ QDialog::DialogCode MixxxMainWindow::soundDeviceErrorDlg(
     QPushButton* exitButton =
             msgBox.addButton(tr("Exit"), QMessageBox::ActionRole);
 
-    while (true)
-    {
+    while (true) {
         msgBox.exec();
 
         if (msgBox.clickedButton() == retryButton) {
@@ -705,19 +718,18 @@ QDialog::DialogCode MixxxMainWindow::noOutputDlg(bool* continueClicked) {
     msgBox.setWindowTitle(tr("No Output Devices"));
     msgBox.setText(
             "<html>" + tr("Mixxx was configured without any output sound devices. "
-            "Audio processing will be disabled without a configured output device.") +
+                          "Audio processing will be disabled without a configured output device.") +
             "<ul>"
-                "<li>" +
-                    tr("<b>Continue</b> without any outputs.") +
-                "</li>"
-                "<li>" +
-                    tr("<b>Reconfigure</b> Mixxx's sound device settings.") +
-                "</li>"
-                "<li>" +
-                    tr("<b>Exit</b> Mixxx.") +
-                "</li>"
-            "</ul></html>"
-    );
+            "<li>" +
+            tr("<b>Continue</b> without any outputs.") +
+            "</li>"
+            "<li>" +
+            tr("<b>Reconfigure</b> Mixxx's sound device settings.") +
+            "</li>"
+            "<li>" +
+            tr("<b>Exit</b> Mixxx.") +
+            "</li>"
+            "</ul></html>");
 
     QPushButton* continueButton =
             msgBox.addButton(tr("Continue"), QMessageBox::ActionRole);
@@ -726,8 +738,7 @@ QDialog::DialogCode MixxxMainWindow::noOutputDlg(bool* continueClicked) {
     QPushButton* exitButton =
             msgBox.addButton(tr("Exit"), QMessageBox::ActionRole);
 
-    while (true)
-    {
+    while (true) {
         msgBox.exec();
 
         if (msgBox.clickedButton() == continueButton) {
@@ -763,6 +774,19 @@ void MixxxMainWindow::slotUpdateWindowTitle(TrackPointer pTrack) {
         QString trackInfo = pTrack->getInfo();
         if (!trackInfo.isEmpty()) {
             appTitle = QString("%1 | %2").arg(trackInfo, appTitle);
+            //  writing the artist & title of the playing track
+            //  not only to the windowtitle but also to a file
+            //  location and name for nowplayingfile
+            QString StatusNowPlayingFilePath = m_pCoreServices->getSettings()->getSettingsPath();
+            QString StatusNowPlayingFileLocation = StatusNowPlayingFilePath + "/NowPlaying.txt";
+            QFile StatusNowPlayingFile(StatusNowPlayingFileLocation);
+            //          remove previous nowplayingfile
+            StatusNowPlayingFile.remove();
+            StatusNowPlayingFile.open(QIODevice::ReadWrite);
+            QTextStream StatusNowPlayingTxt(&StatusNowPlayingFile);
+            //          write Artist - Trackname to nowplayingfile
+            StatusNowPlayingTxt << QString("%1").arg(trackInfo) << "\n";
+            StatusNowPlayingFile.close();
         }
         filePath = pTrack->getLocation();
     }
@@ -987,7 +1011,7 @@ void MixxxMainWindow::slotFileLoadSongPlayer(int deck) {
 
     QString loadTrackText = tr("Load track to Deck %1").arg(QString::number(deck));
     QString deckWarningMessage = tr("Deck %1 is currently playing a track.")
-            .arg(QString::number(deck));
+                                         .arg(QString::number(deck));
     QString areYouSure = tr("Are you sure you want to load a new track?");
 
     if (ControlObject::get(ConfigKey(group, "play")) > 0.0) {
@@ -1196,8 +1220,8 @@ void MixxxMainWindow::rebootMixxxView() {
 
     if (!loadConfiguredSkin()) {
         QMessageBox::critical(this,
-                              tr("Error in skin file"),
-                              tr("The selected skin cannot be loaded."));
+                tr("Error in skin file"),
+                tr("The selected skin cannot be loaded."));
         // m_pWidgetParent is NULL, we can't continue.
         return;
     }
@@ -1340,7 +1364,7 @@ bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
     return QMainWindow::eventFilter(obj, event);
 }
 
-void MixxxMainWindow::closeEvent(QCloseEvent *event) {
+void MixxxMainWindow::closeEvent(QCloseEvent* event) {
     // WARNING: We can receive a CloseEvent while only partially
     // initialized. This is because we call QApplication::processEvents to
     // render LaunchImage progress in the constructor.
@@ -1369,7 +1393,7 @@ void MixxxMainWindow::checkDirectRendering() {
     UserSettingsPointer pConfig = m_pCoreServices->getSettings();
 
     if (!factory->isOpenGlAvailable() && !factory->isOpenGlesAvailable() &&
-        pConfig->getValueString(ConfigKey("[Direct Rendering]", "Warned")) != QString("yes")) {
+            pConfig->getValueString(ConfigKey("[Direct Rendering]", "Warned")) != QString("yes")) {
         QMessageBox::warning(nullptr,
                 tr("OpenGL Direct Rendering"),
                 tr("Direct rendering is not enabled on your machine.<br><br>"
@@ -1407,31 +1431,29 @@ bool MixxxMainWindow::confirmExit() {
     }
     if (playing) {
         QMessageBox::StandardButton btn = QMessageBox::question(this,
-            tr("Confirm Exit"),
-            tr("A deck is currently playing. Exit Mixxx?"),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                tr("Confirm Exit"),
+                tr("A deck is currently playing. Exit Mixxx?"),
+                QMessageBox::Yes | QMessageBox::No,
+                QMessageBox::No);
         if (btn == QMessageBox::No) {
             return false;
         }
     } else if (playingSampler) {
         QMessageBox::StandardButton btn = QMessageBox::question(this,
-            tr("Confirm Exit"),
-            tr("A sampler is currently playing. Exit Mixxx?"),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                tr("Confirm Exit"),
+                tr("A sampler is currently playing. Exit Mixxx?"),
+                QMessageBox::Yes | QMessageBox::No,
+                QMessageBox::No);
         if (btn == QMessageBox::No) {
             return false;
         }
     }
     if (m_pPrefDlg && m_pPrefDlg->isVisible()) {
         QMessageBox::StandardButton btn = QMessageBox::question(
-            this, tr("Confirm Exit"),
-            tr("The preferences window is still open.") + "<br>" +
-            tr("Discard any changes and exit Mixxx?"),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                this, tr("Confirm Exit"), tr("The preferences window is still open.") + "<br>" + tr("Discard any changes and exit Mixxx?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (btn == QMessageBox::No) {
             return false;
-        }
-        else {
+        } else {
             m_pPrefDlg->close();
         }
     }
@@ -1444,4 +1466,65 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+void MixxxMainWindow::oscReceiver() {
+    // EveOSC
+// #define oscClientAddress "192.168.0.125"
+// #define oscPortOut 9000
+// #define oscPortIn 9001
+#define OUTPUT_BUFFER_SIZE 1024
+#define IP_MTU_SIZE 1536
+
+    QString MixxxOSCStatusFilePath = m_pCoreServices->getSettings()->getSettingsPath();
+    QString MixxxOSCStatusFileLocation = MixxxOSCStatusFilePath + "/MixxxOSCStatus.txt";
+    QFile MixxxOSCStatusFile(MixxxOSCStatusFileLocation);
+    MixxxOSCStatusFile.remove();
+    MixxxOSCStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+    QTextStream MixxxOSCStatusTxt(&MixxxOSCStatusFile);
+
+    if (m_pCoreServices->getSettings()->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+        QString CKOscPortOut = m_pCoreServices->getSettings()->getValue(ConfigKey("[OSC]", "OscPortOut"));
+        QString CKOscPortIn = m_pCoreServices->getSettings()->getValue(ConfigKey("[OSC]", "OscPortIn"));
+        //        QString CKOscBuffer = m_pCoreServices->getSettings()->getValue(ConfigKey("[OSC]", "OscOutputBufferSize"));
+        //        QString CKOscMtuSize = m_pCoreServices->getSettings()->getValue(ConfigKey("[OSC]", "OscIpMtuSize"));
+        QString CKOscClient1Ip = m_pCoreServices->getSettings()->getValue(ConfigKey("[OSC]", "OscReceiver1Ip"));
+
+        int CKOscPortOutInt = CKOscPortOut.toInt();
+        int CKOscPortInInt = CKOscPortIn.toInt();
+        //        int CKOscBufferInt = CKOscBuffer.toInt();
+        //        int CKOscMtuSizeInt = CKOscMtuSize.toInt();
+        //        const int CKOscMtuSizeIntConst = CKOscMtuSizeInt;
+
+        QByteArray CKOscClient1Ipba = CKOscClient1Ip.toLocal8Bit();
+        const char* CKOscClient1IpChar = CKOscClient1Ipba.data();
+        //       const char* CKOscClient1IpChar = CKOscClient1Ip.toLocal8Bit().data();
+
+        MixxxOSCStatusTxt << QString("OSC enabled") << "\n";
+        MixxxOSCStatusTxt << QString("portin : %1").arg(CKOscPortInInt) << "\n";
+        MixxxOSCStatusTxt << QString("portout : %1").arg(CKOscPortOutInt) << "\n";
+        MixxxOSCStatusTxt << QString("client ipaddress : %1").arg(CKOscClient1IpChar) << "\n";
+        MixxxOSCStatusFile.close();
+
+        char buffer[IP_MTU_SIZE];
+        osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+        //        UdpTransmitSocket transmitSocket(IpEndpointName("192.168.0.125", CKOscPortOutInt));
+        UdpTransmitSocket transmitSocket(IpEndpointName(CKOscClient1IpChar, CKOscPortOutInt));
+
+        p.Clear();
+        p << osc::BeginBundle();
+        p << osc::BeginMessage("/Open") << "Start" << osc::EndMessage;
+        p << osc::EndBundle;
+        transmitSocket.Send(p.Data(), p.Size());
+
+//        OscReceiveTest aaaa;
+//        aaaa.
+        OscReceiveTestMain();
+        //        std::thread tosc(osc::RunReceiveTest, CKOscPortOutInt);
+//        tosc.detach();
+
+    } else {
+        MixxxOSCStatusTxt << QString("OSC NOT enabled") << "\n";
+        MixxxOSCStatusFile.close();
+    }
 }
