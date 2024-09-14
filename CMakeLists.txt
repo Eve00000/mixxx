@@ -1740,7 +1740,7 @@ if(WIN32)
 
   # shoutidjc/shout.h checks for WIN32 to see if we are on Windows.
   target_compile_definitions(mixxx-lib PUBLIC WIN32)
-  
+
   # Add the static library 'Lib.lib', marking it as an IMPORT.
 #add_library(MyLib STATIC IMPORTED)
 # Define the location of the library dependency.
@@ -2174,7 +2174,7 @@ add_executable(mixxx-test
   src/util/moc_included_test.cpp
   src/test/helpers/log_test.cpp
 )
-	
+
 if (QML)
   target_sources(mixxx-test PRIVATE
     src/test/controller_mapping_file_handler_test.cpp
@@ -2590,7 +2590,7 @@ IF(WIN32)
 	ENDIF(WIN32)
 
 #eve osc
-ADD_LIBRARY(oscpack 
+ADD_LIBRARY(oscpack
 	src/ip/IpEndpointName.h
 	src/ip/IpEndpointName.cpp
 	src/ip/NetworkingUtils.h
@@ -2602,7 +2602,7 @@ ADD_LIBRARY(oscpack
 	src/ip/PacketListener.h
 	src/ip/TimerListener.h
 	src/osc/OscTypes.h
-	src/osc/OscTypes.cpp 
+	src/osc/OscTypes.cpp
 	src/osc/OscHostEndianness.h
 	src/osc/OscException.h
 	src/osc/OscPacketListener.h
@@ -4006,4 +4006,3 @@ if(APPLE AND MACOS_BUNDLE)
     configure_file(cmake/modules/BundleInstall.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake" @ONLY)
     install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake")
 endif()
-
