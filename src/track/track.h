@@ -320,11 +320,7 @@ class Track : public QObject {
             int hotCueIndex,
             double startPositionSamples,
             double endPositionSamples,
-            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor,
-            double stem1vol = 1.0,
-            double stem2vol = 1.0,
-            double stem3vol = 1.0,
-            double stem4vol = 1.0) {
+            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor) {
         return createAndAddCue(type,
                 hotCueIndex,
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(

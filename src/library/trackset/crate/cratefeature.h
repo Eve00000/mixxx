@@ -79,7 +79,7 @@ class CrateFeature : public BaseTrackSetFeature {
     void slotTrackSelected(TrackId trackId);
     void slotResetSelectedTrack();
     void slotUpdateCrateLabels(const QSet<CrateId>& updatedCrateIds);
-    void slotShowInPreparationWindow();
+    // void slotShowInPreparationWindow();
 
   private:
     void initActions();

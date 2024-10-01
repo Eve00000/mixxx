@@ -9,7 +9,8 @@ const bool sDebug = false;
 WLibrary::WLibrary(QWidget* parent)
         : WLibraryBaseWindow(parent) {
     const_cast<QString&>(m_callingParent) = "WLibrary"; // Override parentName
-    qDebug() << "WLibraryPreparationWindow initialized with parent:" << m_callingParent;
-
-    qDebug() << "WLibrary initialized as WLibraryBaseWindow";
+    if (sDebug) {
+        qDebug() << "WLibraryPreparationWindow initialized with parent:" << m_callingParent;
+        qDebug() << "WLibrary initialized as WLibraryBaseWindow";
+    }
 }
