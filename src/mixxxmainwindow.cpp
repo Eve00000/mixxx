@@ -68,6 +68,11 @@
 #include "vinylcontrol/vinylcontrolmanager.h"
 #endif
 
+//  EveOSC
+#include "osc/oscfunctions.h"
+#include "osc/oscreceiver.cpp"
+//  EveOSC
+
 namespace {
 #ifdef __LINUX__
 // Detect if the desktop supports a global menu to decide whether we need to rebuild
@@ -149,6 +154,9 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
+    // EveOSC
+    oscEnable();
+    // EveOSC
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -1631,4 +1639,14 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+void MixxxMainWindow::oscEnable() {
+    UserSettingsPointer pConfig;
+    if (m_pCoreServices->getSettings()->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+        qDebug() << "Mixxx OSC Service Enabled";
+        OscReceiverMain(m_pCoreServices->getSettings());
+    } else {
+        qDebug() << "Mixxx OSC Service NOT Enabled";
+    }
 }
