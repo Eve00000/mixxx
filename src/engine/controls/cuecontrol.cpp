@@ -912,7 +912,7 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
             auto getMuteMultiplier = [](const QString& group) -> int {
                 if (ControlObject::exists(ConfigKey(group, "mute"))) {
                     auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return proxyMute->get() ? -1 : 1;
+                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
                 }
                 return 1; // Default multiplier when no mute
             };
@@ -979,7 +979,7 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
             auto getMuteMultiplier = [](const QString& group) -> int {
                 if (ControlObject::exists(ConfigKey(group, "mute"))) {
                     auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return proxyMute->get() ? -1 : 1;
+                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
                 }
                 return 1; // Default multiplier when no mute
             };
