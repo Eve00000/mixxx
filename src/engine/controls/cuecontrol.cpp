@@ -908,25 +908,25 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                     QString("[%1Stem4]").arg(groupBaseName),
             };
 
-            // Helper lambda to get the mute multiplier
+            // get the mute multiplier
             auto getMuteMultiplier = [](const QString& group) -> int {
                 if (ControlObject::exists(ConfigKey(group, "mute"))) {
                     auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
                     return proxyMute->get() ? -1 : 1;
                 }
-                return 1; // Default multiplier when no mute exists
+                return 1; // Default multiplier when no mute
             };
 
-            // Helper lambda to get the volume value adjusted by the mute multiplier
+            // get the volume value adjusted by the mute multiplier
             auto getVolume = [](const QString& group, int muteMultiplier) -> int {
                 if (ControlObject::exists(ConfigKey(group, "volume"))) {
                     auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
                     return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
                 }
-                return 100 * muteMultiplier; // Default value when no volume exists
+                return 100 * muteMultiplier; // Default value when volume not changed
             };
 
-            // Retrieve and assign stem volume values using helpers
+            // calc stem volume values
             passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
             passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
             passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
@@ -975,25 +975,25 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                     QString("[%1Stem4]").arg(groupBaseName),
             };
 
-            // Helper lambda to get the mute multiplier
+            // get the mute multiplier
             auto getMuteMultiplier = [](const QString& group) -> int {
                 if (ControlObject::exists(ConfigKey(group, "mute"))) {
                     auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
                     return proxyMute->get() ? -1 : 1;
                 }
-                return 1; // Default multiplier when no mute exists
+                return 1; // Default multiplier when no mute
             };
 
-            // Helper lambda to get the volume value adjusted by the mute multiplier
+            // get the volume value * mute multiplier
             auto getVolume = [](const QString& group, int muteMultiplier) -> int {
                 if (ControlObject::exists(ConfigKey(group, "volume"))) {
                     auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
                     return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
                 }
-                return 100 * muteMultiplier; // Default value when no volume exists
+                return 100 * muteMultiplier; // Default value when no volume changed
             };
 
-            // Retrieve and assign stem volume values using helpers
+            // assign stem volume values
             passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
             passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
             passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
