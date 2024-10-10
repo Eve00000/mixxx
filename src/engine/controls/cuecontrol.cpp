@@ -108,8 +108,10 @@ CueControl::CueControl(const QString& group,
     m_pTrackSamples = ControlObject::getControl(ConfigKey(group, "track_samples"));
 
     m_pQuantizeEnabled = ControlObject::getControl(ConfigKey(group, "quantize"));
-    connect(m_pQuantizeEnabled, &ControlObject::valueChanged,
-            this, &CueControl::quantizeChanged,
+    connect(m_pQuantizeEnabled,
+            &ControlObject::valueChanged,
+            this,
+            &CueControl::quantizeChanged,
             Qt::DirectConnection);
 
     m_pClosestBeat = ControlObject::getControl(ConfigKey(group, "beat_closest"));
@@ -341,8 +343,10 @@ void CueControl::connectControls() {
 
     // Hotcue controls
     for (const auto& pControl : std::as_const(m_hotcueControls)) {
-        connect(pControl, &HotcueControl::hotcuePositionChanged,
-                this, &CueControl::hotcuePositionChanged,
+        connect(pControl,
+                &HotcueControl::hotcuePositionChanged,
+                this,
+                &CueControl::hotcuePositionChanged,
                 Qt::DirectConnection);
         connect(pControl,
                 &HotcueControl::hotcueEndPositionChanged,
@@ -607,8 +611,8 @@ void CueControl::seekOnLoad(mixxx::audio::FramePos seekOnLoadPosition) {
 }
 
 void CueControl::cueUpdated() {
-    //auto lock = lockMutex(&m_mutex);
-    // We should get a trackCuesUpdated call anyway, so do nothing.
+    // auto lock = lockMutex(&m_mutex);
+    //  We should get a trackCuesUpdated call anyway, so do nothing.
 }
 
 void CueControl::loadCuesFromTrack() {
@@ -839,7 +843,7 @@ mixxx::RgbColor CueControl::colorFromConfig(const ConfigKey& configKey) {
 };
 
 void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode mode) {
-    //qDebug() << "CueControl::hotcueSet" << value;
+    // qDebug() << "CueControl::hotcueSet" << value;
 
     if (value <= 0) {
         return;
@@ -887,54 +891,59 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
         }
     }
 
+    // EveCue-Loop
+    bool TrackStem = false;
+    if (ControlObject::exists(ConfigKey(getGroup(), "stem_count"))) {
+        PollingControlProxy proxyStem(getGroup(), "stem_count");
+        TrackStem = proxyStem.get() > 1;
+    }
+
+    if (TrackStem) {
+        const QString groupBaseName = getGroup().remove("[").remove("]");
+        const QString stemGroups[] = {
+                QString("[%1Stem1]").arg(groupBaseName),
+                QString("[%1Stem2]").arg(groupBaseName),
+                QString("[%1Stem3]").arg(groupBaseName),
+                QString("[%1Stem4]").arg(groupBaseName),
+        };
+
+        // get the mute multiplier
+        auto getMuteMultiplier = [](const QString& group) -> int {
+            if (ControlObject::exists(ConfigKey(group, "mute"))) {
+                auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
+                return static_cast<bool>(proxyMute->get()) ? -1 : 1;
+            }
+            return 1; // Default multiplier when no mute
+        };
+
+        // get the volume value adjusted by the mute multiplier
+        auto getVolume = [](const QString& group, int muteMultiplier) -> int {
+            if (ControlObject::exists(ConfigKey(group, "volume"))) {
+                auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
+                return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
+            }
+            return 100 * muteMultiplier; // Default value when volume not changed
+        };
+
+        // calc stem volume values
+        passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
+        passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
+        passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
+        passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
+
+    } else {
+        passStem1Vol = 100;
+        passStem2Vol = 100;
+        passStem3Vol = 100;
+        passStem4Vol = 100;
+    }
+    // EveCue-Loop
+
     switch (mode) {
     case HotcueSetMode::Cue: {
         // If no loop is enabled, just store regular jump cue
         cueStartPosition = getQuantizedCurrentPosition();
         cueType = mixxx::CueType::HotCue;
-        // EveCue
-        bool TrackStem = m_pLoadedTrack->hasStem();
-
-        if (TrackStem) {
-            const QString groupBaseName = getGroup().remove("[").remove("]");
-            const QString stemGroups[] = {
-                    QString("[%1Stem1]").arg(groupBaseName),
-                    QString("[%1Stem2]").arg(groupBaseName),
-                    QString("[%1Stem3]").arg(groupBaseName),
-                    QString("[%1Stem4]").arg(groupBaseName),
-            };
-
-            // Helper lambda to get the mute multiplier
-            auto getMuteMultiplier = [](const QString& group) -> int {
-                if (ControlObject::exists(ConfigKey(group, "mute"))) {
-                    auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
-                }
-                return 1; // Default multiplier when no mute exists
-            };
-
-            // Helper lambda to get the volume value adjusted by the mute multiplier
-            auto getVolume = [](const QString& group, int muteMultiplier) -> int {
-                if (ControlObject::exists(ConfigKey(group, "volume"))) {
-                    auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
-                    return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
-                }
-                return 100 * muteMultiplier; // Default value when no volume exists
-            };
-
-            // Retrieve and assign stem volume values using helpers
-            passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
-            passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
-            passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
-            passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
-
-        } else {
-            passStem1Vol = 100;
-            passStem2Vol = 100;
-            passStem3Vol = 100;
-            passStem4Vol = 100;
-        }
-        // EveCue
         break;
     }
     case HotcueSetMode::Loop: {
@@ -959,49 +968,6 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                 cueEndPosition = pBeats->findNBeatsFromPosition(cueStartPosition, beatloopSize);
             }
         }
-        // EveLoop
-        bool TrackStem = m_pLoadedTrack->hasStem();
-
-        if (TrackStem) {
-            const QString groupBaseName = getGroup().remove("[").remove("]");
-            const QString stemGroups[] = {
-                    QString("[%1Stem1]").arg(groupBaseName),
-                    QString("[%1Stem2]").arg(groupBaseName),
-                    QString("[%1Stem3]").arg(groupBaseName),
-                    QString("[%1Stem4]").arg(groupBaseName),
-            };
-
-            // Helper lambda to get the mute multiplier
-            auto getMuteMultiplier = [](const QString& group) -> int {
-                if (ControlObject::exists(ConfigKey(group, "mute"))) {
-                    auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
-                }
-                return 1; // Default multiplier when no mute exists
-            };
-
-            // Helper lambda to get the volume value adjusted by the mute multiplier
-            auto getVolume = [](const QString& group, int muteMultiplier) -> int {
-                if (ControlObject::exists(ConfigKey(group, "volume"))) {
-                    auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
-                    return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
-                }
-                return 100 * muteMultiplier; // Default value when no volume exists
-            };
-
-            // Retrieve and assign stem volume values using helpers
-            passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
-            passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
-            passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
-            passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
-
-        } else {
-            passStem1Vol = 100;
-            passStem2Vol = 100;
-            passStem3Vol = 100;
-            passStem4Vol = 100;
-        }
-        // EveLoop
         cueType = mixxx::CueType::Loop;
         break;
     }
@@ -1202,14 +1168,19 @@ void CueControl::hotcueCueLoop(HotcueControl* pControl, double value) {
 }
 
 void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSetMode mode) {
-    //qDebug() << "CueControl::hotcueActivate" << value;
+    // qDebug() << "CueControl::hotcueActivate" << value;
 
     CuePointer pCue = pControl->getCue();
     if (value > 0) {
         // pressed
         if (pCue && pCue->getPosition().isValid() &&
                 pCue->getType() != mixxx::CueType::Invalid) {
-            bool TrackStem = m_pLoadedTrack->hasStem();
+            //            bool TrackStem = m_pLoadedTrack->hasStem();
+            bool TrackStem = false;
+            if (ControlObject::exists(ConfigKey(getGroup(), "stem_count"))) {
+                PollingControlProxy proxyStem(getGroup(), "stem_count");
+                TrackStem = proxyStem.get() > 1;
+            }
 
             if (TrackStem) {
                 const QString groupBaseName = getGroup().remove('[').remove(']');
@@ -1699,7 +1670,7 @@ void CueControl::cueDefault(double v) {
 
 void CueControl::pause(double v) {
     auto lock = lockMutex(&m_trackMutex);
-    //qDebug() << "CueControl::pause()" << v;
+    // qDebug() << "CueControl::pause()" << v;
     if (v > 0.0) {
         m_pPlay->set(0.0);
     }
@@ -1707,7 +1678,7 @@ void CueControl::pause(double v) {
 
 void CueControl::playStutter(double v) {
     auto lock = lockMutex(&m_trackMutex);
-    //qDebug() << "playStutter" << v;
+    // qDebug() << "playStutter" << v;
     if (v > 0.0) {
         if (m_pPlay->toBool()) {
             if (m_currentlyPreviewingIndex != Cue::kNoHotCue) {
@@ -2135,8 +2106,8 @@ void CueControl::outroEndActivate(double value) {
 // This is also called from the engine thread. No locking allowed.
 bool CueControl::updateIndicatorsAndModifyPlay(
         bool newPlay, bool oldPlay, bool playPossible) {
-    //qDebug() << "updateIndicatorsAndModifyPlay" << newPlay << playPossible
-    //        << m_iCurrentlyPreviewingHotcues << m_bPreviewing;
+    // qDebug() << "updateIndicatorsAndModifyPlay" << newPlay << playPossible
+    //         << m_iCurrentlyPreviewingHotcues << m_bPreviewing;
     CueMode cueMode = static_cast<CueMode>(static_cast<int>(m_pCueMode->get()));
     if ((cueMode == CueMode::Denon || cueMode == CueMode::Numark) &&
             newPlay && !oldPlay && playPossible &&
