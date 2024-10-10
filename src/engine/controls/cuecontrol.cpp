@@ -892,7 +892,11 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     }
 
     // EveCue-Loop
-    bool TrackStem = m_pLoadedTrack->hasStem();
+    bool TrackStem = false;
+    if (ControlObject::exists(ConfigKey(getGroup(), "stem_count"))) {
+        PollingControlProxy proxyStem(getGroup(), "stem_count");
+        TrackStem = proxyStem.get() > 1;
+    }
 
     if (TrackStem) {
         const QString groupBaseName = getGroup().remove("[").remove("]");
@@ -1171,7 +1175,12 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
         // pressed
         if (pCue && pCue->getPosition().isValid() &&
                 pCue->getType() != mixxx::CueType::Invalid) {
-            bool TrackStem = m_pLoadedTrack->hasStem();
+            //            bool TrackStem = m_pLoadedTrack->hasStem();
+            bool TrackStem = false;
+            if (ControlObject::exists(ConfigKey(getGroup(), "stem_count"))) {
+                PollingControlProxy proxyStem(getGroup(), "stem_count");
+                TrackStem = proxyStem.get() > 1;
+            }
 
             if (TrackStem) {
                 const QString groupBaseName = getGroup().remove('[').remove(']');
