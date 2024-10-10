@@ -260,10 +260,10 @@ SeratoMarkersEntryPointer SeratoMarkersEntry::parseMP4(const QByteArray& data) {
     quint8 colorGreen;
     quint8 colorBlue;
     quint8 type;
-    int stem1vol;
-    int stem2vol;
-    int stem3vol;
-    int stem4vol;
+    int m_stem1vol;
+    int m_stem2vol;
+    int m_stem3vol;
+    int m_stem4vol;
     bool isLocked;
 
     QDataStream stream(data);
@@ -323,10 +323,10 @@ SeratoMarkersEntryPointer SeratoMarkersEntry::parseMP4(const QByteArray& data) {
                     type == static_cast<quint8>(TypeId::Loop),
                     endPosition,
                     color,
-                    stem1vol,
-                    stem2vol,
-                    stem3vol,
-                    stem4vol,
+                    100,
+                    100,
+                    100,
+                    100,
                     type,
                     isLocked));
     kLogger.trace() << "SeratoMarkersEntry (MP4)" << *pEntry;
