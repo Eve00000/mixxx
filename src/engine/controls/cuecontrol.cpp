@@ -891,54 +891,55 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
         }
     }
 
+    // EveCue-Loop
+    bool TrackStem = m_pLoadedTrack->hasStem();
+
+    if (TrackStem) {
+        const QString groupBaseName = getGroup().remove("[").remove("]");
+        const QString stemGroups[] = {
+                QString("[%1Stem1]").arg(groupBaseName),
+                QString("[%1Stem2]").arg(groupBaseName),
+                QString("[%1Stem3]").arg(groupBaseName),
+                QString("[%1Stem4]").arg(groupBaseName),
+        };
+
+        // get the mute multiplier
+        auto getMuteMultiplier = [](const QString& group) -> int {
+            if (ControlObject::exists(ConfigKey(group, "mute"))) {
+                auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
+                return static_cast<bool>(proxyMute->get()) ? -1 : 1;
+            }
+            return 1; // Default multiplier when no mute
+        };
+
+        // get the volume value adjusted by the mute multiplier
+        auto getVolume = [](const QString& group, int muteMultiplier) -> int {
+            if (ControlObject::exists(ConfigKey(group, "volume"))) {
+                auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
+                return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
+            }
+            return 100 * muteMultiplier; // Default value when volume not changed
+        };
+
+        // calc stem volume values
+        passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
+        passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
+        passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
+        passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
+
+    } else {
+        passStem1Vol = 100;
+        passStem2Vol = 100;
+        passStem3Vol = 100;
+        passStem4Vol = 100;
+    }
+    // EveCue-Loop
+
     switch (mode) {
     case HotcueSetMode::Cue: {
         // If no loop is enabled, just store regular jump cue
         cueStartPosition = getQuantizedCurrentPosition();
         cueType = mixxx::CueType::HotCue;
-        // EveCue
-        bool TrackStem = m_pLoadedTrack->hasStem();
-
-        if (TrackStem) {
-            const QString groupBaseName = getGroup().remove("[").remove("]");
-            const QString stemGroups[] = {
-                    QString("[%1Stem1]").arg(groupBaseName),
-                    QString("[%1Stem2]").arg(groupBaseName),
-                    QString("[%1Stem3]").arg(groupBaseName),
-                    QString("[%1Stem4]").arg(groupBaseName),
-            };
-
-            // get the mute multiplier
-            auto getMuteMultiplier = [](const QString& group) -> int {
-                if (ControlObject::exists(ConfigKey(group, "mute"))) {
-                    auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
-                }
-                return 1; // Default multiplier when no mute
-            };
-
-            // get the volume value adjusted by the mute multiplier
-            auto getVolume = [](const QString& group, int muteMultiplier) -> int {
-                if (ControlObject::exists(ConfigKey(group, "volume"))) {
-                    auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
-                    return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
-                }
-                return 100 * muteMultiplier; // Default value when volume not changed
-            };
-
-            // calc stem volume values
-            passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
-            passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
-            passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
-            passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
-
-        } else {
-            passStem1Vol = 100;
-            passStem2Vol = 100;
-            passStem3Vol = 100;
-            passStem4Vol = 100;
-        }
-        // EveCue
         break;
     }
     case HotcueSetMode::Loop: {
@@ -963,49 +964,6 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                 cueEndPosition = pBeats->findNBeatsFromPosition(cueStartPosition, beatloopSize);
             }
         }
-        // EveLoop
-        bool TrackStem = m_pLoadedTrack->hasStem();
-
-        if (TrackStem) {
-            const QString groupBaseName = getGroup().remove("[").remove("]");
-            const QString stemGroups[] = {
-                    QString("[%1Stem1]").arg(groupBaseName),
-                    QString("[%1Stem2]").arg(groupBaseName),
-                    QString("[%1Stem3]").arg(groupBaseName),
-                    QString("[%1Stem4]").arg(groupBaseName),
-            };
-
-            // get the mute multiplier
-            auto getMuteMultiplier = [](const QString& group) -> int {
-                if (ControlObject::exists(ConfigKey(group, "mute"))) {
-                    auto proxyMute = std::make_unique<PollingControlProxy>(group, "mute");
-                    return static_cast<bool>(proxyMute->get()) ? -1 : 1;
-                }
-                return 1; // Default multiplier when no mute
-            };
-
-            // get the volume value * mute multiplier
-            auto getVolume = [](const QString& group, int muteMultiplier) -> int {
-                if (ControlObject::exists(ConfigKey(group, "volume"))) {
-                    auto proxyVolume = std::make_unique<PollingControlProxy>(group, "volume");
-                    return static_cast<int>(proxyVolume->get() * 100 * muteMultiplier);
-                }
-                return 100 * muteMultiplier; // Default value when no volume changed
-            };
-
-            // assign stem volume values
-            passStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
-            passStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
-            passStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
-            passStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
-
-        } else {
-            passStem1Vol = 100;
-            passStem2Vol = 100;
-            passStem3Vol = 100;
-            passStem4Vol = 100;
-        }
-        // EveLoop
         cueType = mixxx::CueType::Loop;
         break;
     }
