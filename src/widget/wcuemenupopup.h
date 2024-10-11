@@ -52,12 +52,6 @@ class WCueMenuPopup : public QWidget {
     void show() {
         setColorPalette(m_colorPaletteSettings.getHotcueColorPalette());
         m_pEditLabel->setFocus();
-        // EVE
-        m_pEditStem1vol;
-        m_pEditStem2vol;
-        m_pEditStem3vol;
-        m_pEditStem4vol;
-        // EVE
         emit aboutToShow();
         QWidget::show();
     }
