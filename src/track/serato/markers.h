@@ -47,6 +47,10 @@ class SeratoMarkersEntry {
               m_isLocked(isLocked),
               m_startPosition(startPosition),
               m_endPosition(endPosition),
+              m_stem1vol(stem1vol),
+              m_stem2vol(stem2vol),
+              m_stem3vol(stem2vol),
+              m_stem4vol(stem4vol),
               m_type(type) {
     }
     ~SeratoMarkersEntry() = default;
@@ -108,6 +112,10 @@ class SeratoMarkersEntry {
     quint32 m_startPosition;
     quint32 m_endPosition;
     quint8 m_type;
+    int m_stem1vol = 100;
+    int m_stem2vol = 100;
+    int m_stem3vol = 100;
+    int m_stem4vol = 100;
 };
 
 inline bool operator==(const SeratoMarkersEntry& lhs, const SeratoMarkersEntry& rhs) {
