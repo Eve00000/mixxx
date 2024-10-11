@@ -47,10 +47,6 @@ class SeratoMarkersEntry {
               m_isLocked(isLocked),
               m_startPosition(startPosition),
               m_endPosition(endPosition),
-              m_stem1vol(stem1vol),
-              m_stem2vol(stem2vol),
-              m_stem3vol(stem3vol),
-              m_stem4vol(stem4vol),
               m_type(type) {
     }
     ~SeratoMarkersEntry() = default;
@@ -111,10 +107,6 @@ class SeratoMarkersEntry {
     bool m_isLocked;
     quint32 m_startPosition;
     quint32 m_endPosition;
-    int m_stem1vol;
-    int m_stem2vol;
-    int m_stem3vol;
-    int m_stem4vol;
     quint8 m_type;
 };
 
