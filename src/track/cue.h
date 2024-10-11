@@ -123,10 +123,10 @@ class Cue : public QObject {
     const int m_iHotCue;
     QString m_label;
     mixxx::RgbColor m_color;
-    const int m_stem1vol;
-    const int m_stem2vol;
-    const int m_stem3vol;
-    const int m_stem4vol;
+    int m_stem1vol;
+    int m_stem2vol;
+    int m_stem3vol;
+    int m_stem4vol;
 
     friend class Track;
     friend class CueDAO;

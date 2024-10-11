@@ -275,7 +275,10 @@ void Cue::setStem1vol(int stem1vol) {
     if (m_stem1vol == stem1vol) {
         return;
     }
-    //    m_stem1vol = stem1vol;
+    //    if (stem1vol < -100 || stem1vol > 100) {
+    //        return;
+    //    }
+    m_stem1vol = stem1vol;
     m_bDirty = true;
     lock.unlock();
     emit updated();
@@ -286,7 +289,10 @@ void Cue::setStem2vol(int stem2vol) {
     if (m_stem2vol == stem2vol) {
         return;
     }
-    //    m_stem2vol = stem2vol;
+    //    if (stem2vol < -100 || stem2vol > 100) {
+    //        return;
+    //    }
+    m_stem2vol = stem2vol;
     m_bDirty = true;
     lock.unlock();
     emit updated();
@@ -297,7 +303,10 @@ void Cue::setStem3vol(int stem3vol) {
     if (m_stem3vol == stem3vol) {
         return;
     }
-    //    m_stem3vol = stem3vol;
+    //    if (stem3vol < -100 || stem1vo3 > 100) {
+    //        return;
+    //    }
+    m_stem3vol = stem3vol;
     m_bDirty = true;
     lock.unlock();
     emit updated();
@@ -308,7 +317,10 @@ void Cue::setStem4vol(int stem4vol) {
     if (m_stem4vol == stem4vol) {
         return;
     }
-    //    m_stem4vol = stem4vol;
+    //    if (stem4vol < -100 || stem4vol > 100) {
+    //        return;
+    //    }
+    m_stem4vol = stem4vol;
     m_bDirty = true;
     lock.unlock();
     emit updated();
