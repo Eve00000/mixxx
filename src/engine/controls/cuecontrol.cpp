@@ -2789,7 +2789,6 @@ void HotcueControl::setCue(const CuePointer& pCue) {
     setEndPosition(pos.endPosition);
     // qDebug() << "HotcueControl::setCue";
     setColor(pCue->getColor());
-    //    setStemvol(int stemvol);
     setStatus((pCue->getType() == mixxx::CueType::Invalid)
                     ? HotcueControl::Status::Empty
                     : HotcueControl::Status::Set);
