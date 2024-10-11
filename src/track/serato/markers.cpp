@@ -260,6 +260,10 @@ SeratoMarkersEntryPointer SeratoMarkersEntry::parseMP4(const QByteArray& data) {
     quint8 colorGreen;
     quint8 colorBlue;
     quint8 type;
+    //    int m_stem1vol;
+    //    int m_stem2vol;
+    //    int m_stem3vol;
+    //    int m_stem4vol;
     bool isLocked;
 
     QDataStream stream(data);
