@@ -311,6 +311,7 @@ class Track : public QObject {
             double stem2vol = 1.0,
             double stem3vol = 1.0,
             double stem4vol = 1.0);
+
     CuePointer createAndAddCue(
             mixxx::CueType type,
             int hotCueIndex,
@@ -327,11 +328,7 @@ class Track : public QObject {
                         startPositionSamples),
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
                         endPositionSamples),
-                color,
-                stem1vol,
-                stem2vol,
-                stem3vol,
-                stem4vol);
+                color);
     }
     CuePointer findCueByType(mixxx::CueType type) const; // NOTE: Cannot be used for hotcues.
     CuePointer findCueById(DbId id) const;

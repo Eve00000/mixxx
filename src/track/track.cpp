@@ -955,11 +955,7 @@ void Track::setMainCuePosition(mixxx::audio::FramePos position) {
                     Cue::kNoHotCue,
                     position,
                     mixxx::audio::kInvalidFramePos,
-                    mixxx::PredefinedColorPalettes::kDefaultCueColor,
-                    100,
-                    100,
-                    100,
-                    100));
+                    mixxx::PredefinedColorPalettes::kDefaultCueColor));
             // While this method could be called from any thread,
             // associated Cue objects should always live on the
             // same thread as their host, namely this->thread().
@@ -1029,11 +1025,7 @@ CuePointer Track::createAndAddCue(
             hotCueIndex,
             startPosition,
             endPosition,
-            color,
-            stem1vol,
-            stem2vol,
-            stem3vol,
-            stem4vol));
+            color));
     // While this method could be called from any thread,
     // associated Cue objects should always live on the
     // same thread as their host, namely this->thread().

@@ -1186,24 +1186,6 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                     proxyVolume.set(std::abs(volume));
                 };
 
-                //                auto setMuteAndVolume = [](const QString&
-                //                group, double volume) {
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "mute"))) {
-                //                        auto proxyMute =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "mute"); proxyMute->set(volume < 0 ? 1
-                //                        : 0);
-                //                    }
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "volume"))) {
-                //                        auto proxyVol =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "volume");
-                //                        proxyVol->set(std::abs(volume));
-                //                    }
-                //                };
-
                 setMuteAndVolume(stemGroups[0], pCue->getStem1vol());
                 setMuteAndVolume(stemGroups[1], pCue->getStem2vol());
                 setMuteAndVolume(stemGroups[2], pCue->getStem3vol());
@@ -2573,15 +2555,6 @@ HotcueControl::HotcueControl(const QString& group, int hotcueIndex)
     // Add an alias for the legacy hotcue_X_enabled CO
     m_pHotcueStatus->addAlias(keyForControl(QStringLiteral("enabled")));
 
-    m_hotcueStem1vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem1vol")));
-    m_hotcueStem2vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem2vol")));
-    m_hotcueStem3vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem3vol")));
-    m_hotcueStem4vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem4vol")));
-    m_hotcueStem1vol->setReadOnly();
-    m_hotcueStem2vol->setReadOnly();
-    m_hotcueStem3vol->setReadOnly();
-    m_hotcueStem4vol->setReadOnly();
-
     m_hotcueType = std::make_unique<ControlObject>(keyForControl(QStringLiteral("type")));
     m_hotcueType->setReadOnly();
 
@@ -2792,7 +2765,6 @@ void HotcueControl::setCue(const CuePointer& pCue) {
     setEndPosition(pos.endPosition);
     // qDebug() << "HotcueControl::setCue";
     setColor(pCue->getColor());
-    //    setStemvol(int stemvol);
     setStatus((pCue->getType() == mixxx::CueType::Invalid)
                     ? HotcueControl::Status::Empty
                     : HotcueControl::Status::Set);

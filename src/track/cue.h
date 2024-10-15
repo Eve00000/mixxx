@@ -83,7 +83,6 @@ class Cue : public QObject {
     mixxx::audio::FrameDiff_t getLengthFrames() const;
 
     int getHotCue() const;
-
     double getStem1vol() const;
     double getStem2vol() const;
     double getStem3vol() const;
