@@ -704,6 +704,93 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
                     pTrack->getSampleRate() * pTrack->getDuration()));
 }
 
+// Helper function to convert characters and store them in an array
+void convertStringToCharArray(const QString& input, int* outputArray, int maxLength) {
+    qDebug() << "EVE convertStringToCharArray ";
+    int length = qMin(input.length(), maxLength);
+    for (int i = 0; i < length; ++i) {
+        char currentChar = input.at(i).toLatin1();
+        outputArray[i] = (currentChar < 0) ? currentChar + 300 : currentChar;
+    }
+}
+
+// Helper function to calculate track part value from the character array
+double calculateTrackPart(const int* charArray, int offset) {
+    qDebug() << "EVE Calculatetrackpart ";
+    return (1.0 * charArray[offset] * 1000000000000) +
+            (1.0 * charArray[offset + 1] * 1000000000) +
+            (1.0 * charArray[offset + 2] * 1000000) +
+            (1.0 * charArray[offset + 3] * 1000) +
+            (1.0 * charArray[offset + 4] * 1);
+}
+
+// Set the track control values based on character parts
+void setTrackPartValues(const int* charArray,
+        std::unique_ptr<ControlObject>& trackPart1,
+        std::unique_ptr<ControlObject>& trackPart2,
+        std::unique_ptr<ControlObject>& trackPart3,
+        std::unique_ptr<ControlObject>& trackPart4,
+        std::unique_ptr<ControlObject>& trackPart5) {
+    trackPart1->set(calculateTrackPart(charArray, 0));
+    trackPart2->set(calculateTrackPart(charArray, 5));
+    trackPart3->set(calculateTrackPart(charArray, 10));
+    trackPart4->set(calculateTrackPart(charArray, 15));
+    trackPart5->set(calculateTrackPart(charArray, 20));
+}
+
+// Function to handle string length and trimming
+QString handleStringLength(const QString& input,
+        int maxLength,
+        std::unique_ptr<ControlObject>& lengthControl) {
+    qDebug() << "EVE handleStringLength ";
+    QString result = input.left(maxLength);
+    lengthControl->set(input.length());
+    return result;
+}
+
+// Refactored function that manages track and artist information processing
+void processTrackInfo(std::unique_ptr<ControlObject>& trackTypeControl,
+        std::unique_ptr<ControlObject>& trackTypeLengthControl,
+        std::unique_ptr<ControlObject>& trackTitleLengthControl,
+        std::unique_ptr<ControlObject>& trackArtistLengthControl,
+        std::unique_ptr<ControlObject>& trackTitle1,
+        std::unique_ptr<ControlObject>& trackTitle2,
+        std::unique_ptr<ControlObject>& trackTitle3,
+        std::unique_ptr<ControlObject>& trackTitle4,
+        std::unique_ptr<ControlObject>& trackTitle5,
+        std::unique_ptr<ControlObject>& trackArtist1,
+        std::unique_ptr<ControlObject>& trackArtist2,
+        std::unique_ptr<ControlObject>& trackArtist3,
+        std::unique_ptr<ControlObject>& trackArtist4,
+        std::unique_ptr<ControlObject>& trackArtist5,
+        const QString& trackType,
+        const QString& trackTitle,
+        const QString& trackArtist) {
+    // Process Type
+    qDebug() << "EVE processTrackInfo ";
+    QString processedType = handleStringLength(trackType, 5, trackTypeLengthControl);
+    int charType[5] = {0};
+    convertStringToCharArray(processedType, charType, 5);
+    trackTypeControl->set(calculateTrackPart(charType, 0));
+
+    // Process Title
+    QString processedTitle = handleStringLength(trackTitle, 25, trackTitleLengthControl);
+    int charTitle[200] = {0};
+    convertStringToCharArray(processedTitle, charTitle, 25);
+    setTrackPartValues(charTitle, trackTitle1, trackTitle2, trackTitle3, trackTitle4, trackTitle5);
+
+    // Process Artist
+    QString processedArtist = handleStringLength(trackArtist, 25, trackArtistLengthControl);
+    int charArtist[200] = {0};
+    convertStringToCharArray(processedArtist, charArtist, 25);
+    setTrackPartValues(charArtist,
+            trackArtist1,
+            trackArtist2,
+            trackArtist3,
+            trackArtist4,
+            trackArtist5);
+}
+
 // WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
@@ -740,85 +827,152 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackLoaded->forceSet(1);
 
     // Eve start
+    qDebug() << "EVE START: ";
+
+    QString trackType = pTrack->getType();
+    QString trackTitle = pTrack->getTitle();
+    QString trackArtist = pTrack->getArtist();
+
+    auto trackTypeControl = std::make_unique<ControlObject>(ConfigKey("group", "track_type"));
+    auto trackTypeLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_type_length"));
+    auto trackTitleLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_title_length"));
+    auto trackArtistLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_artist_length"));
+
+    auto trackTitle1 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_1"));
+    auto trackTitle2 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_2"));
+    auto trackTitle3 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_3"));
+    auto trackTitle4 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_4"));
+    auto trackTitle5 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_5"));
+
+    auto trackArtist1 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_1"));
+    auto trackArtist2 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_2"));
+    auto trackArtist3 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_3"));
+    auto trackArtist4 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_4"));
+    auto trackArtist5 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_5"));
+
+    processTrackInfo(trackTypeControl,
+            trackTypeLengthControl,
+            trackTitleLengthControl,
+            trackArtistLengthControl,
+            trackTitle1,
+            trackTitle2,
+            trackTitle3,
+            trackTitle4,
+            trackTitle5,
+            trackArtist1,
+            trackArtist2,
+            trackArtist3,
+            trackArtist4,
+            trackArtist5,
+            trackType,
+            trackTitle,
+            trackArtist);
+
+    qDebug() << "EVE END: ";
+    qDebug() << "trackTypeControl: " << &trackTypeControl;
+    qDebug() << "trackTypeLengthControl: " << &trackTypeLengthControl;
+    qDebug() << "trackTitleLengthControl: " << &trackTitleLengthControl;
+    qDebug() << "trackArtistLengthControl: " << &trackArtistLengthControl;
+    //    qDebug() << "trackTitle1: " << std::format("{}", std::numbers::&trackTitle1<double>);
+    // qDebug() << "trackTitle1: " << &trackTitle1.toInt();
+    // fmt::print("{}", M_PI);
+    PollingControlProxy proxyTitle1("group", "track_title_1");
+
+    // ControlObject>(ConfigKey("group", "track_title_1")
+    qDebug() << "trackTitle1: proxt " << proxyTitle1.get();
+    qDebug() << "trackTitle1: " << &trackTitle1;
+    qDebug() << "trackTitle2: " << &trackTitle2;
+    qDebug() << "trackTitle3: " << &trackTitle3;
+    qDebug() << "trackTitle4: " << &trackTitle4;
+    qDebug() << "trackTitle5: " << &trackTitle5;
+    qDebug() << "trackArtist1: " << &trackArtist1;
+    qDebug() << "trackArtist2: " << &trackArtist2;
+    qDebug() << "trackArtist3: " << &trackArtist3;
+    qDebug() << "trackArtist4: " << &trackArtist4;
+    qDebug() << "trackArtist5: " << &trackArtist5;
+
     // Type
-    QString TrackInfoType = pTrack->getType();
-    QString TrackInfoTypeTest = TrackInfoType;
-    int TrackInfoTypeTestLength = TrackInfoTypeTest.length();
-    if (TrackInfoTypeTestLength > 5) {
-        TrackInfoType = TrackInfoTypeTest.mid(0, 5);
-    };
-    m_pTrackTypeLength->set(TrackInfoTypeTestLength);
+    ////QString TrackInfoType = pTrack->getType();
+    ////QString TrackInfoTypeTest = TrackInfoType;
+    ////int TrackInfoTypeTestLength = TrackInfoTypeTest.length();
+    ////if (TrackInfoTypeTestLength > 5) {
+    ////        TrackInfoType = TrackInfoTypeTest.mid(0, 5);
+    ////};
+    ////m_pTrackTypeLength->set(TrackInfoTypeTestLength);
 
-    int CharType[5];
-    for (int i = 1; i <= 5; i++) {
-        CharType[i - 1] = 0;
-    }
+    ////int CharType[5];
+    ////for (int i = 1; i <= 5; i++) {
+    ////        CharType[i - 1] = 0;
+    ////}
 
-    for (int i = 1; i <= TrackInfoType.length(); i++) {
-        if ((TrackInfoType.at(i - 1).toLatin1()) < 0) {
-            CharType[i - 1] = ((TrackInfoType.at(i - 1).toLatin1()) + 300);
-        } else {
-            CharType[i - 1] = (TrackInfoType.at(i - 1).toLatin1());
-        };
-    }
+    ////for (int i = 1; i <= TrackInfoType.length(); i++) {
+    ////        if ((TrackInfoType.at(i - 1).toLatin1()) < 0) {
+    ////CharType[i - 1] = ((TrackInfoType.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharType[i - 1] = (TrackInfoType.at(i - 1).toLatin1());
+    ////        };
+    ////}
 
-    double TrackTypePart = 0.0;
-    TrackTypePart = (1.0 * CharType[0] * 1000000000000) +
-            (1.0 * CharType[1] * 1000000000) + (1.0 * CharType[2] * 1000000) +
-            (1.0 * CharType[3] * 1000) + (1.0 * CharType[4] * 1);
-    m_pTrackType->set(TrackTypePart);
+    ////double TrackTypePart = 0.0;
+    ////TrackTypePart = (1.0 * CharType[0] * 1000000000000) +
+    ////(1.0 * CharType[1] * 1000000000) + (1.0 * CharType[2] * 1000000) +
+    ////(1.0 * CharType[3] * 1000) + (1.0 * CharType[4] * 1);
+    ////m_pTrackType->set(TrackTypePart);
 
     // Title
-    QString TrackInfoTitle = pTrack->getTitle();
-    QString TrackInfoTitleTest = TrackInfoTitle;
-    int TrackInfoTitleTestLength = TrackInfoTitleTest.length();
-    if (TrackInfoTitleTestLength > 200) {
-        TrackInfoTitle = TrackInfoTitleTest.mid(0, 200);
-    };
-    m_pTrackTitleLength->set(TrackInfoTitleTestLength);
+    ////QString TrackInfoTitle = pTrack->getTitle();
+    ////QString TrackInfoTitleTest = TrackInfoTitle;
+    ////int TrackInfoTitleTestLength = TrackInfoTitleTest.length();
+    ////if (TrackInfoTitleTestLength > 200) {
+    ////TrackInfoTitle = TrackInfoTitleTest.mid(0, 200);
+    ////};
+    ////m_pTrackTitleLength->set(TrackInfoTitleTestLength);
 
-    int CharTitle[200];
-    for (int i = 1; i <= 200; i++) {
-        CharTitle[i - 1] = 0;
-    }
+    ////int CharTitle[200];
+    ////for (int i = 1; i <= 200; i++) {
+    ////CharTitle[i - 1] = 0;
+    ////}
 
     //    for (int i = 1; i <= TrackInfoTitle.length(); i++) {
-    for (int i = 1; i <= 25; i++) {
-        if ((TrackInfoTitle.at(i - 1).toLatin1()) < 0) {
-            CharTitle[i - 1] = ((TrackInfoTitle.at(i - 1).toLatin1()) + 300);
-        } else {
-            CharTitle[i - 1] = (TrackInfoTitle.at(i - 1).toLatin1());
-        };
-    }
+    ////for (int i = 1; i <= 25; i++) {
+    ////        if ((TrackInfoTitle.at(i - 1).toLatin1()) < 0) {
+    ////CharTitle[i - 1] = ((TrackInfoTitle.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharTitle[i - 1] = (TrackInfoTitle.at(i - 1).toLatin1());
+    ////        };
+    ////}
 
     // Artist
-    QString TrackInfoArtist = pTrack->getArtist();
-    QString TrackInfoArtistTest = TrackInfoArtist;
-    int TrackInfoArtistTestLength = TrackInfoArtistTest.length();
-    if (TrackInfoArtistTestLength > 200) {
-        TrackInfoArtist = TrackInfoArtist.mid(0, 200);
-    };
-    m_pTrackArtistLength->set(TrackInfoArtistTestLength);
+    ////QString TrackInfoArtist = pTrack->getArtist();
+    ////QString TrackInfoArtistTest = TrackInfoArtist;
+    ////int TrackInfoArtistTestLength = TrackInfoArtistTest.length();
+    ////if (TrackInfoArtistTestLength > 200) {
+    ////        TrackInfoArtist = TrackInfoArtist.mid(0, 200);
+    ////};
+    ////m_pTrackArtistLength->set(TrackInfoArtistTestLength);
 
-    int CharArtist[200];
-    for (int i = 1; i <= 200; i++) {
-        CharArtist[i - 1] = 0;
-    }
+    ////int CharArtist[200];
+    ////for (int i = 1; i <= 200; i++) {
+    ////        CharArtist[i - 1] = 0;
+    ////}
 
     //    for (int i = 1; i <= TrackInfoArtist.length(); i++) {
-    for (int i = 1; i <= 25; i++) {
-        if ((TrackInfoArtist.at(i - 1).toLatin1()) < 0) {
-            CharArtist[i - 1] = ((TrackInfoArtist.at(i - 1).toLatin1()) + 300);
-        } else {
-            CharArtist[i - 1] = (TrackInfoArtist.at(i - 1).toLatin1());
-        };
-    }
+    ////for (int i = 1; i <= 25; i++) {
+    ////        if ((TrackInfoArtist.at(i - 1).toLatin1()) < 0) {
+    ////CharArtist[i - 1] = ((TrackInfoArtist.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharArtist[i - 1] = (TrackInfoArtist.at(i - 1).toLatin1());
+    ////        };
+    ////}
 
-    double TrackTitlePart_1 = 0.0;
-    double TrackTitlePart_2 = 0.0;
-    double TrackTitlePart_3 = 0.0;
-    double TrackTitlePart_4 = 0.0;
-    double TrackTitlePart_5 = 0.0;
+    ////double TrackTitlePart_1 = 0.0;
+    ////double TrackTitlePart_2 = 0.0;
+    ////double TrackTitlePart_3 = 0.0;
+    ////    double TrackTitlePart_4 = 0.0;
+    ////    double TrackTitlePart_5 = 0.0;
     //    double TrackTitlePart_6 = 0.0;
     //    double TrackTitlePart_7 = 0.0;
     //    double TrackTitlePart_8 = 0.0;
@@ -855,24 +1009,24 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     //    double TrackTitlePart_39 = 0.0;
     //    double TrackTitlePart_40 = 0.0;
 
-    TrackTitlePart_1 = (1.0 * CharTitle[0] * 1000000000000) +
-            (1.0 * CharTitle[1] * 1000000000) + (1.0 * CharTitle[2] * 1000000) +
-            (1.0 * CharTitle[3] * 1000) + (1.0 * CharTitle[4] * 1);
-    TrackTitlePart_2 = (1.0 * CharTitle[5] * 1000000000000) +
-            (1.0 * CharTitle[6] * 1000000000) + (1.0 * CharTitle[7] * 1000000) +
-            (1.0 * CharTitle[8] * 1000) + (1.0 * CharTitle[9] * 1);
-    TrackTitlePart_3 = (1.0 * CharTitle[10] * 1000000000000) +
-            (1.0 * CharTitle[11] * 1000000000) +
-            (1.0 * CharTitle[12] * 1000000) + (1.0 * CharTitle[13] * 1000) +
-            (1.0 * CharTitle[14] * 1);
-    TrackTitlePart_4 = (1.0 * CharTitle[15] * 1000000000000) +
-            (1.0 * CharTitle[16] * 1000000000) +
-            (1.0 * CharTitle[17] * 1000000) + (1.0 * CharTitle[18] * 1000) +
-            (1.0 * CharTitle[19] * 1);
-    TrackTitlePart_5 = (1.0 * CharTitle[20] * 1000000000000) +
-            (1.0 * CharTitle[21] * 1000000000) +
-            (1.0 * CharTitle[22] * 1000000) + (1.0 * CharTitle[23] * 1000) +
-            (1.0 * CharTitle[24] * 1);
+    ////TrackTitlePart_1 = (1.0 * CharTitle[0] * 1000000000000) +
+    ////(1.0 * CharTitle[1] * 1000000000) + (1.0 * CharTitle[2] * 1000000) +
+    ////(1.0 * CharTitle[3] * 1000) + (1.0 * CharTitle[4] * 1);
+    ////TrackTitlePart_2 = (1.0 * CharTitle[5] * 1000000000000) +
+    ////(1.0 * CharTitle[6] * 1000000000) + (1.0 * CharTitle[7] * 1000000) +
+    ////(1.0 * CharTitle[8] * 1000) + (1.0 * CharTitle[9] * 1);
+    ////TrackTitlePart_3 = (1.0 * CharTitle[10] * 1000000000000) +
+    ////(1.0 * CharTitle[11] * 1000000000) +
+    ////(1.0 * CharTitle[12] * 1000000) + (1.0 * CharTitle[13] * 1000) +
+    ////    (1.0 * CharTitle[14] * 1);
+    ////TrackTitlePart_4 = (1.0 * CharTitle[15] * 1000000000000) +
+    ////(1.0 * CharTitle[16] * 1000000000) +
+    ////(1.0 * CharTitle[17] * 1000000) + (1.0 * CharTitle[18] * 1000) +
+    ////    (1.0 * CharTitle[19] * 1);
+    ////TrackTitlePart_5 = (1.0 * CharTitle[20] * 1000000000000) +
+    ////(1.0 * CharTitle[21] * 1000000000) +
+    ////    (1.0 * CharTitle[22] * 1000000) + (1.0 * CharTitle[23] * 1000) +
+    ////(1.0 * CharTitle[24] * 1);
     //    TrackTitlePart_6 = (1.0 * CharTitle[25] * 1000000000000) + (1.0 *
     //    CharTitle[26] * 1000000000) + (1.0 * CharTitle[27] * 1000000) + (1.0 *
     //    CharTitle[28] * 1000) + (1.0 * CharTitle[29] * 1); TrackTitlePart_7 =
@@ -979,11 +1133,11 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     //    CharTitle[197] * 1000000) + (1.0 * CharTitle[198] * 1000) + (1.0 *
     //    CharTitle[199] * 1);
 
-    m_pTrackTitle_1->set(TrackTitlePart_1);
-    m_pTrackTitle_2->set(TrackTitlePart_2);
-    m_pTrackTitle_3->set(TrackTitlePart_3);
-    m_pTrackTitle_4->set(TrackTitlePart_4);
-    m_pTrackTitle_5->set(TrackTitlePart_5);
+    ////m_pTrackTitle_1->set(TrackTitlePart_1);
+    ////m_pTrackTitle_2->set(TrackTitlePart_2);
+    ////m_pTrackTitle_3->set(TrackTitlePart_3);
+    ////m_pTrackTitle_4->set(TrackTitlePart_4);
+    ////m_pTrackTitle_5->set(TrackTitlePart_5);
     //    m_pTrackTitle_6->set(TrackTitlePart_6);
     //    m_pTrackTitle_7->set(TrackTitlePart_7);
     //    m_pTrackTitle_8->set(TrackTitlePart_8);
@@ -1020,11 +1174,11 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     //    m_pTrackTitle_39->set(TrackTitlePart_39);
     //    m_pTrackTitle_40->set(TrackTitlePart_40);
 
-    double TrackArtistPart_1 = 0.0;
-    double TrackArtistPart_2 = 0.0;
-    double TrackArtistPart_3 = 0.0;
-    double TrackArtistPart_4 = 0.0;
-    double TrackArtistPart_5 = 0.0;
+    ////double TrackArtistPart_1 = 0.0;
+    ////double TrackArtistPart_2 = 0.0;
+    ////double TrackArtistPart_3 = 0.0;
+    ////double TrackArtistPart_4 = 0.0;
+    ////double TrackArtistPart_5 = 0.0;
     //    double TrackArtistPart_6 = 0.0;
     //    double TrackArtistPart_7 = 0.0;
     //    double TrackArtistPart_8 = 0.0;
@@ -1061,26 +1215,26 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     //    double TrackArtistPart_39 = 0.0;
     //    double TrackArtistPart_40 = 0.0;
 
-    TrackArtistPart_1 = (1.0 * CharArtist[0] * 1000000000000) +
-            (1.0 * CharArtist[1] * 1000000000) +
-            (1.0 * CharArtist[2] * 1000000) + (1.0 * CharArtist[3] * 1000) +
-            (1.0 * CharArtist[4] * 1);
-    TrackArtistPart_2 = (1.0 * CharArtist[5] * 1000000000000) +
-            (1.0 * CharArtist[6] * 1000000000) +
-            (1.0 * CharArtist[7] * 1000000) + (1.0 * CharArtist[8] * 1000) +
-            (1.0 * CharArtist[9] * 1);
-    TrackArtistPart_3 = (1.0 * CharArtist[10] * 1000000000000) +
-            (1.0 * CharArtist[11] * 1000000000) +
-            (1.0 * CharArtist[12] * 1000000) + (1.0 * CharArtist[13] * 1000) +
-            (1.0 * CharArtist[14] * 1);
-    TrackArtistPart_4 = (1.0 * CharArtist[15] * 1000000000000) +
-            (1.0 * CharArtist[16] * 1000000000) +
-            (1.0 * CharArtist[17] * 1000000) + (1.0 * CharArtist[18] * 1000) +
-            (1.0 * CharArtist[19] * 1);
-    TrackArtistPart_5 = (1.0 * CharArtist[20] * 1000000000000) +
-            (1.0 * CharArtist[21] * 1000000000) +
-            (1.0 * CharArtist[22] * 1000000) + (1.0 * CharArtist[23] * 1000) +
-            (1.0 * CharArtist[24] * 1);
+    ////TrackArtistPart_1 = (1.0 * CharArtist[0] * 1000000000000) +
+    ////(1.0 * CharArtist[1] * 1000000000) +
+    ////(1.0 * CharArtist[2] * 1000000) + (1.0 * CharArtist[3] * 1000) +
+    ////(1.0 * CharArtist[4] * 1);
+    ////TrackArtistPart_2 = (1.0 * CharArtist[5] * 1000000000000) +
+    ////(1.0 * CharArtist[6] * 1000000000) +
+    ////(1.0 * CharArtist[7] * 1000000) + (1.0 * CharArtist[8] * 1000) +
+    ////(1.0 * CharArtist[9] * 1);
+    ////TrackArtistPart_3 = (1.0 * CharArtist[10] * 1000000000000) +
+    ////(1.0 * CharArtist[11] * 1000000000) +
+    ////(1.0 * CharArtist[12] * 1000000) + (1.0 * CharArtist[13] * 1000) +
+    ////(1.0 * CharArtist[14] * 1);
+    ////TrackArtistPart_4 = (1.0 * CharArtist[15] * 1000000000000) +
+    ////(1.0 * CharArtist[16] * 1000000000) +
+    ////(1.0 * CharArtist[17] * 1000000) + (1.0 * CharArtist[18] * 1000) +
+    ////(1.0 * CharArtist[19] * 1);
+    ////TrackArtistPart_5 = (1.0 * CharArtist[20] * 1000000000000) +
+    ////(1.0 * CharArtist[21] * 1000000000) +
+    ////(1.0 * CharArtist[22] * 1000000) + (1.0 * CharArtist[23] * 1000) +
+    ////(1.0 * CharArtist[24] * 1);
     //    TrackArtistPart_6 = (1.0 * CharArtist[25] * 1000000000000) + (1.0 *
     //    CharArtist[26] * 1000000000) + (1.0 * CharArtist[27] * 1000000) + (1.0
     //    * CharArtist[28] * 1000) + (1.0 * CharArtist[29] * 1);
@@ -1187,11 +1341,11 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     //    CharArtist[136] * 1000000000) + (1.0 * CharArtist[197] * 1000000) +
     //    (1.0 * CharArtist[198] * 1000) + (1.0 * CharArtist[199] * 1);
 
-    m_pTrackArtist_1->set(TrackArtistPart_1);
-    m_pTrackArtist_2->set(TrackArtistPart_2);
-    m_pTrackArtist_3->set(TrackArtistPart_3);
-    m_pTrackArtist_4->set(TrackArtistPart_4);
-    m_pTrackArtist_5->set(TrackArtistPart_5);
+    ////m_pTrackArtist_1->set(TrackArtistPart_1);
+    ////m_pTrackArtist_2->set(TrackArtistPart_2);
+    ////m_pTrackArtist_3->set(TrackArtistPart_3);
+    ////m_pTrackArtist_4->set(TrackArtistPart_4);
+    ////m_pTrackArtist_5->set(TrackArtistPart_5);
 
     //    m_pTrackArtist_6->set(TrackArtistPart_6);
     //    m_pTrackArtist_7->set(TrackArtistPart_7);
