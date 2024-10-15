@@ -1186,24 +1186,6 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                     proxyVolume.set(std::abs(volume));
                 };
 
-                //                auto setMuteAndVolume = [](const QString&
-                //                group, double volume) {
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "mute"))) {
-                //                        auto proxyMute =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "mute"); proxyMute->set(volume < 0 ? 1
-                //                        : 0);
-                //                    }
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "volume"))) {
-                //                        auto proxyVol =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "volume");
-                //                        proxyVol->set(std::abs(volume));
-                //                    }
-                //                };
-
                 setMuteAndVolume(stemGroups[0], pCue->getStem1vol());
                 setMuteAndVolume(stemGroups[1], pCue->getStem2vol());
                 setMuteAndVolume(stemGroups[2], pCue->getStem3vol());
