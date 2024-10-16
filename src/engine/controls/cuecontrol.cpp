@@ -863,10 +863,6 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     mixxx::audio::FramePos cueStartPosition;
     mixxx::audio::FramePos cueEndPosition;
     mixxx::CueType cueType = mixxx::CueType::Invalid;
-    int passStem1Vol;
-    int passStem2Vol;
-    int passStem3Vol;
-    int passStem4Vol;
 
     bool loopEnabled = m_pLoopEnabled->toBool();
     if (mode == HotcueSetMode::Auto) {
