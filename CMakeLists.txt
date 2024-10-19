@@ -1309,6 +1309,12 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
+  #EVE
+  src/library/trackset/smarties/smartiesfeature.cpp
+  src/library/trackset/smarties/smartiesfeaturehelper.cpp
+  src/library/trackset/smarties/smartiesstorage.cpp
+  src/library/trackset/smarties/smartiestablemodel.cpp
+  src/library/trackset/smarties/dlgsmartiesdlg.ui
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
