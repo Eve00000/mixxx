@@ -8,6 +8,14 @@
 #include "util/parented_ptr.h"
 #include "widget/wbasewidget.h"
 
+// EVE
+#include "library/basesqltablemodel.h"
+#include "library/library.h"
+#include "library/trackset/smarties/smartiesid.h"
+#include "library/trackset/tracksettablemodel.h"
+
+// EVE
+
 class QDomNode;
 class SkinContext;
 class QCompleter;
@@ -53,6 +61,7 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
     void search(const QString& text);
     FocusWidget setLibraryFocus(FocusWidget newFocusWidget,
             Qt::FocusReason focusReason = Qt::OtherFocusReason);
+    void newSmarties(const QString& text);
 
   public slots:
     void slotSetFont(const QFont& font);
@@ -62,6 +71,10 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
 
     void slotClearSearch();
     bool slotClearSearchIfClearButtonHasFocus();
+    // EVE
+    void slot2Smarties();
+    bool slot2SmartiesIf2SmartiesButtonHasFocus();
+    // EVE
 
     /// The function selects an entry relative to the currently selected
     /// entry in the history and executes the search.
@@ -113,7 +126,9 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
 
     parented_ptr<QCompleter> m_completer;
     parented_ptr<QToolButton> const m_clearButton;
-
+    // EVE
+    parented_ptr<QToolButton> const m_2SmartiesButton;
+    // EVE
     QTimer m_debouncingTimer;
     QTimer m_saveTimer;
     bool m_queryEmitted;

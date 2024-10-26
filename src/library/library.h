@@ -140,6 +140,8 @@ class Library: public QObject {
     void slotSearchInAllTracks();
     // EVE
     void slotCreateSmarties();
+    //    void slotCreateSmartiesFromSearch();
+    void slotCreateSmartiesFromSearch(const QString& text);
     // EVE
     void onSkinLoadFinished();
     void slotSaveCurrentViewState() const;
@@ -161,6 +163,11 @@ class Library: public QObject {
 #endif
     void restoreSearch(const QString&);
     void search(const QString& text);
+    // EVE
+    //    void newSmartiesFromSearch(const QString& text);
+    //    void newSmartiesFromSearch();
+    //    void newSmartiesFromSearch(const QString& text);
+    // EVE
     void disableSearch();
     void pasteFromSidebar();
     // emit this signal to enable/disable the cover art widget
