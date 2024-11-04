@@ -1314,6 +1314,7 @@ add_library(
   src/library/trackset/smarties/smartiesfeaturehelper.cpp
   src/library/trackset/smarties/smartiesstorage.cpp
   src/library/trackset/smarties/smartiestablemodel.cpp
+  src/library/trackset/smarties/dlgsmartiesinfo.cpp
   src/library/trackset/smarties/dlgsmartiesinfo.ui
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
@@ -1677,6 +1678,7 @@ set(
   src/engine/channelhandle.h
   src/engine/engine.h
   src/errordialoghandler.h
+  src/library/trackset/smarties/dlgsmartiesinfo.h
   src/track/track.h
   src/track/track_decl.h
   src/track/trackid.h
