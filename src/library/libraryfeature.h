@@ -138,7 +138,7 @@ class LibraryFeature : public QObject {
     virtual void SetActiveSmartiesToLastRightClicked(const QModelIndex& index) {
         Q_UNUSED(index);
     }
-    // EVE
+
     //  Only implement this, if using incremental or lazy childmodels, see BrowseFeature.
     //  This method is executed whenever you **double** click child items
     virtual void onLazyChildExpandation(const QModelIndex& index) {
