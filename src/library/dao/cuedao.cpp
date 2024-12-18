@@ -200,7 +200,6 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
             query.bindValue(":stem_2_vol", cue->getStem2vol()),
             query.bindValue(":stem_3_vol", cue->getStem3vol()),
             query.bindValue(":stem_4_vol", cue->getStem4vol());
-
     if (!query.exec()) {
         if (!query.exec()) {
             LOG_FAILED_QUERY(query);

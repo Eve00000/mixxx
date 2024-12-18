@@ -33,6 +33,9 @@
 // EVE
 #include "library/trackset/playlistfeature.h"
 #include "library/trackset/setlogfeature.h"
+// Eve
+#include "library/trackset/crate/groupedcratesfeature.h"
+// Eve
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
 #include "moc_library.cpp"
@@ -126,6 +129,9 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
+        addFeature(new GroupedCratesFeature(this, UserSettingsPointer(m_pConfig)));
+    }
 
     m_pBrowseFeature = new BrowseFeature(
             this, m_pConfig, pRecordingManager);

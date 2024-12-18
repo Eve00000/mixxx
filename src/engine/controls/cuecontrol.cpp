@@ -1192,16 +1192,14 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                 setMuteAndVolume(stemGroups[3], pCue->getStem4vol());
             }
             // EveCue-Loop
+
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
                 // playing by Play button
-
                 switch (pCue->getType()) {
                 case mixxx::CueType::HotCue:
-
                     hotcueGoto(pControl, value);
                     break;
                 case mixxx::CueType::Loop:
-
                     if (m_pCurrentSavedLoopControl != pControl) {
                         setCurrentSavedLoopControlAndActivate(pControl);
                     } else {
