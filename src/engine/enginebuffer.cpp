@@ -41,6 +41,8 @@
 #include "engine/controls/vinylcontrolcontrol.h"
 #endif
 
+const bool sDebug = false;
+
 namespace {
 const mixxx::Logger kLogger("EngineBuffer");
 
@@ -717,7 +719,9 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
 
 // Helper function to convert characters and store them in an array
 void convertStringToCharArray(const QString& input, int* outputArray, int maxLength) {
-    qDebug() << "EVE convertStringToCharArray ";
+    if (sDebug) {
+        qDebug() << "EVE convertStringToCharArray ";
+    }
     int length = qMin(input.length(), maxLength);
     for (int i = 0; i < length; ++i) {
         char currentChar = input.at(i).toLatin1();
@@ -727,7 +731,9 @@ void convertStringToCharArray(const QString& input, int* outputArray, int maxLen
 
 // Helper function to calculate track part value from the character array
 double calculateTrackPart(const int* charArray, int offset) {
-    qDebug() << "EVE Calculatetrackpart ";
+    if (sDebug) {
+        qDebug() << "EVE Calculatetrackpart ";
+    }
     return (1.0 * charArray[offset] * 1000000000000) +
             (1.0 * charArray[offset + 1] * 1000000000) +
             (1.0 * charArray[offset + 2] * 1000000) +
@@ -753,7 +759,9 @@ void setTrackPartValues(const int* charArray,
 QString handleStringLength(const QString& input,
         int maxLength,
         std::unique_ptr<ControlObject>& lengthControl) {
-    qDebug() << "EVE handleStringLength ";
+    if (sDebug) {
+        qDebug() << "EVE handleStringLength ";
+    }
     QString result = input.left(maxLength);
     lengthControl->set(input.length());
     return result;
@@ -778,7 +786,9 @@ void processTrackInfo(std::unique_ptr<ControlObject>& trackTypeControl,
         const QString& trackTitle,
         const QString& trackArtist) {
     // Process Type
-    qDebug() << "EVE processTrackInfo ";
+    if (sDebug) {
+        qDebug() << "EVE processTrackInfo ";
+    }
     QString processedType = handleStringLength(trackType, 5, trackTypeLengthControl);
     int charType[5] = {0};
     convertStringToCharArray(processedType, charType, 5);
@@ -850,7 +860,9 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     // EveOSC end
 
     // Eve start
-    qDebug() << "EVE START: ";
+    if (sDebug) {
+        qDebug() << "EVE START: ";
+    }
 
     QString trackType = pTrack->getType();
     QString trackTitle = pTrack->getTitle();
@@ -893,29 +905,32 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
             trackType,
             trackTitle,
             trackArtist);
-
-    qDebug() << "EVE END: ";
-    qDebug() << "trackTypeControl: " << &trackTypeControl;
-    qDebug() << "trackTypeLengthControl: " << &trackTypeLengthControl;
-    qDebug() << "trackTitleLengthControl: " << &trackTitleLengthControl;
-    qDebug() << "trackArtistLengthControl: " << &trackArtistLengthControl;
-    //    qDebug() << "trackTitle1: " << std::format("{}", std::numbers::&trackTitle1<double>);
-    // qDebug() << "trackTitle1: " << &trackTitle1.toInt();
-    // fmt::print("{}", M_PI);
+    if (sDebug) {
+        qDebug() << "EVE END: ";
+        qDebug() << "trackTypeControl: " << &trackTypeControl;
+        qDebug() << "trackTypeLengthControl: " << &trackTypeLengthControl;
+        qDebug() << "trackTitleLengthControl: " << &trackTitleLengthControl;
+        qDebug() << "trackArtistLengthControl: " << &trackArtistLengthControl;
+        // qDebug() << "trackTitle1: " << std::format("{}", std::numbers::&trackTitle1<double>);
+        // qDebug() << "trackTitle1: " << &trackTitle1.toInt();
+        // fmt::print("{}", M_PI);
+    }
     PollingControlProxy proxyTitle1("group", "track_title_1");
 
     // ControlObject>(ConfigKey("group", "track_title_1")
-    qDebug() << "trackTitle1: proxt " << proxyTitle1.get();
-    qDebug() << "trackTitle1: " << &trackTitle1;
-    qDebug() << "trackTitle2: " << &trackTitle2;
-    qDebug() << "trackTitle3: " << &trackTitle3;
-    qDebug() << "trackTitle4: " << &trackTitle4;
-    qDebug() << "trackTitle5: " << &trackTitle5;
-    qDebug() << "trackArtist1: " << &trackArtist1;
-    qDebug() << "trackArtist2: " << &trackArtist2;
-    qDebug() << "trackArtist3: " << &trackArtist3;
-    qDebug() << "trackArtist4: " << &trackArtist4;
-    qDebug() << "trackArtist5: " << &trackArtist5;
+    if (sDebug) {
+        qDebug() << "trackTitle1: proxt " << proxyTitle1.get();
+        qDebug() << "trackTitle1: " << &trackTitle1;
+        qDebug() << "trackTitle2: " << &trackTitle2;
+        qDebug() << "trackTitle3: " << &trackTitle3;
+        qDebug() << "trackTitle4: " << &trackTitle4;
+        qDebug() << "trackTitle5: " << &trackTitle5;
+        qDebug() << "trackArtist1: " << &trackArtist1;
+        qDebug() << "trackArtist2: " << &trackArtist2;
+        qDebug() << "trackArtist3: " << &trackArtist3;
+        qDebug() << "trackArtist4: " << &trackArtist4;
+        qDebug() << "trackArtist5: " << &trackArtist5;
+    }
 
     // Type
     ////QString TrackInfoType = pTrack->getType();

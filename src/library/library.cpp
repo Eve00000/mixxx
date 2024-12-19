@@ -29,13 +29,11 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 // EVE
+#include "library/trackset/crate/groupedcratesfeature.h"
 #include "library/trackset/smarties/smartiesfeature.h"
 // EVE
 #include "library/trackset/playlistfeature.h"
 #include "library/trackset/setlogfeature.h"
-// Eve
-#include "library/trackset/crate/groupedcratesfeature.h"
-// Eve
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
 #include "moc_library.cpp"
@@ -113,6 +111,9 @@ Library::Library(
     m_pCrateFeature = new CrateFeature(this, m_pConfig);
     addFeature(m_pCrateFeature);
     // EVE
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
+        addFeature(new GroupedCratesFeature(this, UserSettingsPointer(m_pConfig)));
+    }
     m_pSmartiesFeature = new SmartiesFeature(this, m_pConfig);
     addFeature(m_pSmartiesFeature);
     // EVE
@@ -129,9 +130,6 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
-    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
-        addFeature(new GroupedCratesFeature(this, UserSettingsPointer(m_pConfig)));
-    }
 
     m_pBrowseFeature = new BrowseFeature(
             this, m_pConfig, pRecordingManager);

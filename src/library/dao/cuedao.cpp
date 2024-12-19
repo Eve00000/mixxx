@@ -50,7 +50,6 @@ CuePointer cueFromRow(const QSqlRecord& row) {
     double stem2vol = row.value(row.indexOf("stem_2_vol")).toDouble();
     double stem3vol = row.value(row.indexOf("stem_3_vol")).toDouble();
     double stem4vol = row.value(row.indexOf("stem_4_vol")).toDouble();
-
     VERIFY_OR_DEBUG_ASSERT(color) {
         return CuePointer();
     }
@@ -72,7 +71,11 @@ CuePointer cueFromRow(const QSqlRecord& row) {
             lengthFrames,
             hotcue,
             label,
-            *color));
+            *color,
+            stem1vol,
+            stem2vol,
+            stem3vol,
+            stem4vol));
     return pCue;
 }
 
@@ -195,27 +198,26 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
     query.bindValue(":length", cue->getLengthFrames() * mixxx::kEngineChannelOutputCount);
     query.bindValue(":hotcue", cue->getHotCue());
     query.bindValue(":label", labelToQVariant(cue->getLabel()));
-    query.bindValue(":color", mixxx::RgbColor::toQVariant(cue->getColor()));
-    query.bindValue(":stem_1_vol", cue->getStem1vol()),
+    query.bindValue(":color", mixxx::RgbColor::toQVariant(cue->getColor())),
+            query.bindValue(":stem_1_vol", cue->getStem1vol()),
             query.bindValue(":stem_2_vol", cue->getStem2vol()),
             query.bindValue(":stem_3_vol", cue->getStem3vol()),
             query.bindValue(":stem_4_vol", cue->getStem4vol());
     if (!query.exec()) {
-        if (!query.exec()) {
-            LOG_FAILED_QUERY(query);
-            return false;
-        }
-
-        if (!cue->getId().isValid()) {
-            // New cue
-            const auto newId = DbId(query.lastInsertId());
-            DEBUG_ASSERT(newId.isValid());
-            cue->setId(newId);
-        }
-        DEBUG_ASSERT(cue->getId().isValid());
-        cue->setDirty(false);
-        return true;
+        LOG_FAILED_QUERY(query);
+        return false;
     }
+
+    if (!cue->getId().isValid()) {
+        // New cue
+        const auto newId = DbId(query.lastInsertId());
+        DEBUG_ASSERT(newId.isValid());
+        cue->setId(newId);
+    }
+    DEBUG_ASSERT(cue->getId().isValid());
+    cue->setDirty(false);
+    return true;
+}
 
 void CueDAO::saveTrackCues(
         TrackId trackId,

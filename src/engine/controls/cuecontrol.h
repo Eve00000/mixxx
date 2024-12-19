@@ -171,6 +171,10 @@ class HotcueControl : public QObject {
     std::unique_ptr<ControlObject> m_hotcueEndPosition;
     std::unique_ptr<ControlObject> m_pHotcueStatus;
     std::unique_ptr<ControlObject> m_hotcueType;
+    std::unique_ptr<ControlObject> m_hotcueStem1vol;
+    std::unique_ptr<ControlObject> m_hotcueStem2vol;
+    std::unique_ptr<ControlObject> m_hotcueStem3vol;
+    std::unique_ptr<ControlObject> m_hotcueStem4vol;
     std::unique_ptr<ControlObject> m_hotcueColor;
     // Hotcue button controls
     std::unique_ptr<ControlPushButton> m_hotcueSet;

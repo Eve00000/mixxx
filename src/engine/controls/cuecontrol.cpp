@@ -2552,7 +2552,14 @@ HotcueControl::HotcueControl(const QString& group, int hotcueIndex)
 
     // Add an alias for the legacy hotcue_X_enabled CO
     m_pHotcueStatus->addAlias(keyForControl(QStringLiteral("enabled")));
-
+    m_hotcueStem1vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem1vol")));
+    m_hotcueStem2vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem2vol")));
+    m_hotcueStem3vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem3vol")));
+    m_hotcueStem4vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem4vol")));
+    m_hotcueStem1vol->setReadOnly();
+    m_hotcueStem2vol->setReadOnly();
+    m_hotcueStem3vol->setReadOnly();
+    m_hotcueStem4vol->setReadOnly();
     m_hotcueType = std::make_unique<ControlObject>(keyForControl(QStringLiteral("type")));
     m_hotcueType->setReadOnly();
 

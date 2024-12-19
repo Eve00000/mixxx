@@ -83,12 +83,6 @@ class Ui_DlgPrefLibraryDlg {
     QRadioButton* radioButton_grouped_crates_var_mask;
     QSpinBox* spinBox_grouped_crates_fixed_length;
     QLineEdit* lineEdit_grouped_crates_var_mask;
-    QGroupBox* groupBoxGroupedSmarties;
-    QSpinBox* spinBox_grouped_smarties_fixed_length;
-    QRadioButton* radioButton_grouped_smarties_fixed_length;
-    QLineEdit* lineEdit_grouped_smarties_var_mask;
-    QRadioButton* radioButton_grouped_smarties_var_mask;
-    QCheckBox* checkBox_grouped_smarties_enable;
     QGroupBox* groupBox_external_libraries;
     QGridLayout* gridLayout_external_libraries;
     QCheckBox* checkBox_show_rhythmbox;
@@ -403,33 +397,6 @@ class Ui_DlgPrefLibraryDlg {
         lineEdit_grouped_crates_var_mask->setGeometry(QRect(460, 70, 113, 20));
 
         verticalLayout->addWidget(groupBox_GroupedCrates);
-
-        groupBoxGroupedSmarties = new QGroupBox(DlgPrefLibraryDlg);
-        groupBoxGroupedSmarties->setObjectName("groupBoxGroupedSmarties");
-        groupBoxGroupedSmarties->setMinimumSize(QSize(0, 100));
-        spinBox_grouped_smarties_fixed_length = new QSpinBox(groupBoxGroupedSmarties);
-        spinBox_grouped_smarties_fixed_length->setObjectName(
-                "spinBox_grouped_smarties_fixed_length");
-        spinBox_grouped_smarties_fixed_length->setGeometry(QRect(460, 40, 42, 22));
-        spinBox_grouped_smarties_fixed_length->setMaximum(20);
-        radioButton_grouped_smarties_fixed_length = new QRadioButton(groupBoxGroupedSmarties);
-        radioButton_grouped_smarties_fixed_length->setObjectName(
-                "radioButton_grouped_smarties_fixed_length");
-        radioButton_grouped_smarties_fixed_length->setGeometry(QRect(50, 40, 400, 20));
-        radioButton_grouped_smarties_fixed_length->setMinimumSize(QSize(400, 0));
-        lineEdit_grouped_smarties_var_mask = new QLineEdit(groupBoxGroupedSmarties);
-        lineEdit_grouped_smarties_var_mask->setObjectName("lineEdit_grouped_smarties_var_mask");
-        lineEdit_grouped_smarties_var_mask->setGeometry(QRect(460, 70, 113, 20));
-        radioButton_grouped_smarties_var_mask = new QRadioButton(groupBoxGroupedSmarties);
-        radioButton_grouped_smarties_var_mask->setObjectName(
-                "radioButton_grouped_smarties_var_mask");
-        radioButton_grouped_smarties_var_mask->setGeometry(QRect(50, 70, 400, 20));
-        radioButton_grouped_smarties_var_mask->setMinimumSize(QSize(400, 0));
-        checkBox_grouped_smarties_enable = new QCheckBox(groupBoxGroupedSmarties);
-        checkBox_grouped_smarties_enable->setObjectName("checkBox_grouped_smarties_enable");
-        checkBox_grouped_smarties_enable->setGeometry(QRect(10, 20, 300, 20));
-
-        verticalLayout->addWidget(groupBoxGroupedSmarties);
 
         groupBox_external_libraries = new QGroupBox(DlgPrefLibraryDlg);
         groupBox_external_libraries->setObjectName("groupBox_external_libraries");
@@ -798,22 +765,6 @@ class Ui_DlgPrefLibraryDlg {
                 QCoreApplication::translate("DlgPrefLibraryDlg",
                         "Variable length, multilevel: grouping: Groups are "
                         "delimited with a mask: ",
-                        nullptr));
-        groupBoxGroupedSmarties->setTitle(QCoreApplication::translate(
-                "DlgPrefLibraryDlg", "Grouped Smarties", nullptr));
-        radioButton_grouped_smarties_fixed_length->setText(
-                QCoreApplication::translate("DlgPrefLibraryDlg",
-                        "Fixed length: 1 level of grouping: Group = "
-                        "#Characters",
-                        nullptr));
-        radioButton_grouped_smarties_var_mask->setText(
-                QCoreApplication::translate("DlgPrefLibraryDlg",
-                        "Variable length, multilevel: grouping: Groups are "
-                        "delimited with a mask: ",
-                        nullptr));
-        checkBox_grouped_smarties_enable->setText(
-                QCoreApplication::translate("DlgPrefLibraryDlg",
-                        "Enable Grouped Smartiess (Mixxx restart needed)",
                         nullptr));
         groupBox_external_libraries->setTitle(QCoreApplication::translate(
                 "DlgPrefLibraryDlg", "External Libraries", nullptr));

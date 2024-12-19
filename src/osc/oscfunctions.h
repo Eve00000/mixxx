@@ -15,6 +15,8 @@ constexpr int IP_MTU_SIZE = 1536;
 #include "osc/osc/OscPacketListener.h"
 #include "osc/osc/OscReceivedElements.h"
 
+const bool sDebug = false;
+
 enum class DefOscBodyType {
     STRINGBODY,
     INTBODY,
@@ -30,10 +32,12 @@ void sendOscMessage(const char* receiverIp,
     if (receiverIp) {
         UdpTransmitSocket transmitSocket(IpEndpointName(receiverIp, port));
         transmitSocket.Send(p.Data(), p.Size());
-        qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
-                            .arg(receiverIp)
-                            .arg(port)
-                            .arg(header, statusTxtBody);
+        if (sDebug) {
+            qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
+                                .arg(receiverIp)
+                                .arg(port)
+                                .arg(header, statusTxtBody);
+        }
     }
 }
 
@@ -108,7 +112,9 @@ void OscFunctionsSendPtrType(UserSettingsPointer m_pConfig,
             }
         }
     } else {
-        qDebug() << "OSC NOT Enabled";
+        if (sDebug) {
+            qDebug() << "OSC NOT Enabled";
+        }
     }
 }
 

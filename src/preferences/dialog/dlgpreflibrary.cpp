@@ -273,6 +273,7 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_rekordbox->setChecked(true);
 
     checkBox_grouped_crates_enable->setChecked(false);
+    checkBox_grouped_smarties_enable->setChecked(false);
 }
 
 void DlgPrefLibrary::slotUpdate() {
@@ -362,6 +363,29 @@ void DlgPrefLibrary::slotUpdate() {
     lineEdit_grouped_crates_var_mask->setToolTip(
             tr("Enter the mask you want to use between the groupname(s) and "
                "the cratename.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
+    checkBox_grouped_smarties_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSmartiesEnabled"), true));
+    int GroupedSmartiesLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSmartiesLength"));
+
+    if (GroupedSmartiesLength == 0) {
+        radioButton_grouped_smarties_fixed_length->setChecked(true);
+    } else if (GroupedSmartiesLength == 1) {
+        radioButton_grouped_smarties_var_mask->setChecked(true);
+    }
+    spinBox_grouped_smarties_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSmartiesFixedLength")));
+    spinBox_grouped_smarties_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "smartiesnames representing the group"));
+    lineEdit_grouped_smarties_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSmartiesVarLengthMask")));
+    lineEdit_grouped_smarties_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the smartiesname.") +
             "\n" +
             tr("Don't use spaces around the delimiter (or around the mask), "
                "these can break the detection process."));
@@ -624,6 +648,21 @@ void DlgPrefLibrary::slotApply() {
             ConfigValue(spinBox_grouped_crates_fixed_length->value()));
     m_pConfig->set(ConfigKey("[Library]", "GroupedCratesVarLengthMask"),
             ConfigValue(lineEdit_grouped_crates_var_mask->text()));
+
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSmartiesEnabled"),
+            ConfigValue((int)checkBox_grouped_smarties_enable->isChecked()));
+
+    if (radioButton_grouped_smarties_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSmartiesLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_smarties_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSmartiesLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSmartiesFixedLength"),
+            ConfigValue(spinBox_grouped_smarties_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSmartiesVarLengthMask"),
+            ConfigValue(lineEdit_grouped_smarties_var_mask->text()));
 
     BaseTrackTableModel::setApplyPlayedTrackColor(
             checkbox_played_track_color->isChecked());
