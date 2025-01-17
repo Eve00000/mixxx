@@ -188,7 +188,7 @@ void GroupedCratesFeature::connectTrackCollection() {
 }
 
 QVariant GroupedCratesFeature::title() {
-    return tr("GroupedCrates");
+    return tr("Crates (Grouped)");
 }
 
 QString GroupedCratesFeature::formatRootViewHtml() const {
@@ -311,7 +311,7 @@ void GroupedCratesFeature::oldactivateChild(const QModelIndex& index) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     emit saveModelState();
-    QList<QVariantMap> groupedCrates = m_crateTableModel.getGroupedCrates();
+    // QList<QVariantMap> groupedCrates = m_crateTableModel.getGroupedCrates();
     m_crateTableModel.selectCrate(crateId);
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
@@ -781,8 +781,10 @@ void GroupedCratesFeature::slotExportPlaylist() {
     }
 
     QString lastCrateDirectory = m_pConfig->getValue(
-            kConfigKeyLastImportExportCrateDirectoryKey,
-            QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
+            kConfigKeyLastImportExportCrateDirectoryKey);
+    //    QString lastCrateDirectory = m_pConfig->getValue(
+    //            kConfigKeyLastImportExportCrateDirectoryKey,
+    //            QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
 
     // Open a dialog to let the user choose the file location for crate export.
     // The location is set to the last used directory for import/export and the file
@@ -1023,19 +1025,19 @@ QModelIndex GroupedCratesFeature::rebuildChildModel(CrateId selectedCrateId) {
     if (m_pConfig->getValue<int>(ConfigKey("[Library]", "GroupedCratesLength")) == 0) {
         // Fixed prefix length
         QMap<QString, int> groupCounts;
-        for (const QVariantMap& crateData : groupedCrates) {
+        for (int i = 0; i < groupedCrates.size(); ++i) {
+            const auto& crateData = groupedCrates[i];
             const QString& groupName = crateData["group_name"].toString();
             groupCounts[groupName]++;
         }
 
         QMap<QString, TreeItem*> groupItems;
         std::vector<std::unique_ptr<TreeItem>> modelRows;
-        int selectedRow = -1;
 
-        for (const QVariantMap& crateData : groupedCrates) {
+        for (int i = 0; i < groupedCrates.size(); ++i) {
+            const auto& crateData = groupedCrates[i];
             const QString& groupName = crateData["group_name"].toString();
             CrateId crateId(crateData["crate_id"]);
-            const QString& crateName = crateData["crate_name"].toString();
 
             CrateSummary crateSummary;
             if (!m_pTrackCollection->crates().readCrateSummaryById(crateId, &crateSummary)) {
@@ -1072,18 +1074,12 @@ QModelIndex GroupedCratesFeature::rebuildChildModel(CrateId selectedCrateId) {
                     qDebug() << "[GROUPEDCRATESFEATURE] Added CrateId to group:"
                              << crateId << "Group:" << groupName;
                 }
-                if (selectedCrateId == crateId) {
-                    selectedRow = static_cast<int>(modelRows.size()) - 1;
-                }
             } else {
                 auto newCrate = std::make_unique<TreeItem>(
                         crateSummaryName, crateId.toVariant().toInt());
                 newCrate->setFullPath(crateSummaryName);
                 updateTreeItemForCrateSummary(newCrate.get(), crateSummary);
 
-                if (selectedCrateId == crateId) {
-                    selectedRow = static_cast<int>(modelRows.size());
-                }
                 modelRows.push_back(std::move(newCrate));
             }
         }
@@ -1094,7 +1090,8 @@ QModelIndex GroupedCratesFeature::rebuildChildModel(CrateId selectedCrateId) {
     } else {
         // variable group prefix length with mask
         QMap<QString, QList<QVariantMap>> topLevelGroups;
-        for (const QVariantMap& crateData : groupedCrates) {
+        for (int i = 0; i < groupedCrates.size(); ++i) {
+            const auto& crateData = groupedCrates[i];
             const QString& groupName = crateData["group_name"].toString();
             const QString& topGroup = groupName.section(delimiter, 0, 0);
             topLevelGroups[topGroup].append(crateData);
@@ -1299,12 +1296,10 @@ void GroupedCratesFeature::updateChildModel(const QSet<CrateId>& updatedCrateIds
     QList<QVariantMap> groupedCrates = m_crateTableModel.getGroupedCrates();
 
     QMap<QString, QList<QVariantMap>> groupedCratesMap;
-    for (const QVariantMap& crateData : groupedCrates) {
+    for (int i = 0; i < groupedCrates.size(); ++i) {
+        const auto& crateData = groupedCrates[i];
         groupedCratesMap[crateData["group_name"].toString()].append(crateData);
     }
-
-    //    const QString& delimiter = m_pConfig->getValue(ConfigKey("[Library]",
-    //    "GroupedCratesVarLengthMask"));
 
     // Update full paths recursively for all items starting from the root
     updateFullPathRecursive(m_pSidebarModel->getRootItem(), QString());
@@ -1320,7 +1315,6 @@ void GroupedCratesFeature::updateChildModel(const QSet<CrateId>& updatedCrateIds
                 });
 
         if (updatedGroup != groupedCrates.end()) {
-            const QString& groupName = (*updatedGroup)["group_name"].toString();
             QModelIndex index = indexFromCrateId(crateId);
             if (index.isValid()) {
                 // Update the existing item

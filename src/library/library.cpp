@@ -77,6 +77,7 @@ Library::Library(
           m_pMixxxLibraryFeature(nullptr),
           m_pPlaylistFeature(nullptr),
           m_pCrateFeature(nullptr),
+          m_pGroupedCratesFeature(nullptr),
           m_pSmartiesFeature(nullptr),
           m_pAnalysisFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
@@ -108,11 +109,22 @@ Library::Library(
     m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPlaylistFeature);
 
-    m_pCrateFeature = new CrateFeature(this, m_pConfig);
-    addFeature(m_pCrateFeature);
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"), false))) {
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"));
+
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"));
+    } else {
+        m_pCrateFeature = new CrateFeature(this, m_pConfig);
+        addFeature(m_pCrateFeature);
+    }
+
     // EVE
     if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
-        addFeature(new GroupedCratesFeature(this, UserSettingsPointer(m_pConfig)));
+        m_pGroupedCratesFeature = new GroupedCratesFeature(this, m_pConfig);
+        addFeature(m_pGroupedCratesFeature);
     }
     m_pSmartiesFeature = new SmartiesFeature(this, m_pConfig);
     addFeature(m_pSmartiesFeature);
@@ -161,6 +173,10 @@ Library::Library(
             m_pAnalysisFeature,
             &AnalysisFeature::analyzeTracks);
     // EVE
+    connect(m_pGroupedCratesFeature,
+            &GroupedCratesFeature::analyzeTracks,
+            m_pAnalysisFeature,
+            &AnalysisFeature::analyzeTracks);
     connect(m_pSmartiesFeature,
             &SmartiesFeature::analyzeTracks,
             m_pAnalysisFeature,

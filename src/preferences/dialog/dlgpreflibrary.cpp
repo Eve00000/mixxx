@@ -273,6 +273,7 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_rekordbox->setChecked(true);
 
     checkBox_grouped_crates_enable->setChecked(false);
+    checkBox_grouped_crates_replace->setChecked(false);
     checkBox_grouped_smarties_enable->setChecked(false);
 }
 
@@ -345,6 +346,8 @@ void DlgPrefLibrary::slotUpdate() {
 
     checkBox_grouped_crates_enable->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "GroupedCratesEnabled"), true));
+    checkBox_grouped_crates_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesReplace"), true));
     int GroupedCratesLength = m_pConfig->getValue<int>(
             ConfigKey("[Library]", "GroupedCratesLength"));
 
@@ -636,6 +639,8 @@ void DlgPrefLibrary::slotApply() {
 
     m_pConfig->set(ConfigKey("[Library]", "GroupedCratesEnabled"),
             ConfigValue((int)checkBox_grouped_crates_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesReplace"),
+            ConfigValue((int)checkBox_grouped_crates_replace->isChecked()));
 
     if (radioButton_grouped_crates_fixed_length->isChecked()) {
         m_pConfig->set(ConfigKey("[Library]", "GroupedCratesLength"),

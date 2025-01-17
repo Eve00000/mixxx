@@ -23,6 +23,7 @@ class BrowseFeature;
 class ControlObject;
 class CrateFeature;
 // EVE
+class GroupedCratesFeature;
 class SmartiesFeature;
 // EVE
 class LibraryControl;
@@ -187,6 +188,7 @@ class Library: public QObject {
     MixxxLibraryFeature* m_pMixxxLibraryFeature;
     PlaylistFeature* m_pPlaylistFeature;
     CrateFeature* m_pCrateFeature;
+    GroupedCratesFeature* m_pGroupedCratesFeature;
     SmartiesFeature* m_pSmartiesFeature;
     AnalysisFeature* m_pAnalysisFeature;
     BrowseFeature* m_pBrowseFeature;
