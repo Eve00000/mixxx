@@ -47,7 +47,7 @@ QList<QVariantMap> SmartiesTableModel::getGroupedSmarties() {
     QList<QVariantMap> groupedSmarties;
 
     QSqlQuery query(m_database);
-    QString queryString;
+    // QString queryString;
 
     if (sDebug) {
         qDebug() << "[GROUPEDSMARTIESTABLEMODEL] configvalue GroupedSmartiesLength = "

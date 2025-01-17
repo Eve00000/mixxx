@@ -1385,7 +1385,7 @@ void SmartiesFeature::slotResetSelectedTrack() {
 
 QModelIndex SmartiesFeature::rebuildChildModel(SmartiesId selectedSmartiesId) {
     if (sDebug) {
-        qDebug() << "[GROUPEDCRATESFEATURE] -> rebuildChildModel()" << selectedSmartiesId;
+        qDebug() << "[GROUPEDSMARTIESFEATURE] -> rebuildChildModel()" << selectedSmartiesId;
     }
 
     QModelIndex previouslySelectedIndex = m_lastRightClickedIndex;
@@ -1423,19 +1423,19 @@ QModelIndex SmartiesFeature::rebuildChildModel(SmartiesId selectedSmartiesId) {
     if (m_pConfig->getValue<int>(ConfigKey("[Library]", "GroupedSmartiesLength")) == 0) {
         // Fixed prefix length
         QMap<QString, int> groupCounts;
-        for (const QVariantMap& smartiesData : groupedSmarties) {
+        for (int i = 0; i < groupedSmarties.size(); ++i) {
+            const auto& smartiesData = groupedSmarties[i];
             const QString& groupName = smartiesData["group_name"].toString();
             groupCounts[groupName]++;
         }
 
         QMap<QString, TreeItem*> groupItems;
         std::vector<std::unique_ptr<TreeItem>> modelRows;
-        int selectedRow = -1;
 
-        for (const QVariantMap& smartiesData : groupedSmarties) {
+        for (int i = 0; i < groupedSmarties.size(); ++i) {
+            const auto& smartiesData = groupedSmarties[i];
             const QString& groupName = smartiesData["group_name"].toString();
             SmartiesId smartiesId(smartiesData["smarties_id"]);
-            const QString& smartiesName = smartiesData["smarties_name"].toString();
 
             SmartiesSummary smartiesSummary;
             if (!m_pTrackCollection->smarties().readSmartiesSummaryById(
@@ -1460,7 +1460,7 @@ QModelIndex SmartiesFeature::rebuildChildModel(SmartiesId selectedSmartiesId) {
                 const QString& displaySmartiesName =
                         smartiesSummaryName.mid(groupName.length()).trimmed();
                 if (sDebug) {
-                    qDebug() << "[GROUPEDSMARTIES] -> smartiesSummaryName - "
+                    qDebug() << "[GROUPEDSMARTIESFEATURE] -> smartiesSummaryName - "
                                 "displaySmartiesName = "
                              << smartiesSummaryName << " - " << displaySmartiesName;
                 }
@@ -1473,18 +1473,12 @@ QModelIndex SmartiesFeature::rebuildChildModel(SmartiesId selectedSmartiesId) {
                     qDebug() << "[GROUPEDSMARTIESFEATURE] Added SmartiesId to group:"
                              << smartiesId << "Group:" << groupName;
                 }
-                if (selectedSmartiesId == smartiesId) {
-                    selectedRow = static_cast<int>(modelRows.size()) - 1;
-                }
             } else {
                 auto newSmarties = std::make_unique<TreeItem>(
                         smartiesSummaryName, smartiesId.toVariant().toInt());
                 newSmarties->setFullPath(smartiesSummaryName);
                 updateTreeItemForSmartiesSummary(newSmarties.get(), smartiesSummary);
 
-                if (selectedSmartiesId == smartiesId) {
-                    selectedRow = static_cast<int>(modelRows.size());
-                }
                 modelRows.push_back(std::move(newSmarties));
             }
         }
@@ -1495,7 +1489,8 @@ QModelIndex SmartiesFeature::rebuildChildModel(SmartiesId selectedSmartiesId) {
     } else {
         // variable group prefix length with mask
         QMap<QString, QList<QVariantMap>> topLevelGroups;
-        for (const QVariantMap& smartiesData : groupedSmarties) {
+        for (int i = 0; i < groupedSmarties.size(); ++i) {
+            const auto& smartiesData = groupedSmarties[i];
             const QString& groupName = smartiesData["group_name"].toString();
             const QString& topGroup = groupName.section(delimiter, 0, 0);
             topLevelGroups[topGroup].append(smartiesData);
@@ -1707,7 +1702,8 @@ void SmartiesFeature::updateChildModel(const QSet<SmartiesId>& updatedSmartiesId
     QList<QVariantMap> groupedSmarties = m_smartiesTableModel.getGroupedSmarties();
 
     QMap<QString, QList<QVariantMap>> groupedSmartiesMap;
-    for (const QVariantMap& smartiesData : groupedSmarties) {
+    for (int i = 0; i < groupedSmarties.size(); ++i) {
+        const auto& smartiesData = groupedSmarties[i];
         groupedSmartiesMap[smartiesData["group_name"].toString()].append(smartiesData);
     }
 
@@ -1728,7 +1724,8 @@ void SmartiesFeature::updateChildModel(const QSet<SmartiesId>& updatedSmartiesId
                 });
 
         if (updatedGroup != groupedSmarties.end()) {
-            const QString& groupName = (*updatedGroup)["group_name"].toString();
+            /////////            // const QString& groupName =
+            ///(*updatedGroup)["group_name"].toString();
             QModelIndex index = indexFromSmartiesId(smartiesId);
             if (index.isValid()) {
                 // Update the existing item
