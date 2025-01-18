@@ -1,4 +1,3 @@
-
 #include "oscreceiver.h"
 
 #include <QThread>
@@ -14,8 +13,6 @@
 #include "osc/osc/OscPacketListener.h"
 #include "osc/osc/OscReceivedElements.h"
 #include "oscfunctions.h"
-
-// const bool sDebug = false;
 
 void OscFunctionsSendPtrType(UserSettingsPointer m_pConfig,
         const QString& OscGroup,
@@ -43,10 +40,8 @@ class OscReceivePacketListener : public osc::OscPacketListener {
             }
             processOscMessage(oscMessage);
         } catch (const osc::Exception& e) {
-            if (sDebug) {
-                qDebug() << "OSC Error parsing Msg from "
-                         << oscMessage.AddressPattern() << " error: " << e.what();
-            }
+            qDebug() << "OSC Error parsing Msg from "
+                     << oscMessage.AddressPattern() << " error: " << e.what();
         }
     }
 
@@ -62,7 +57,8 @@ class OscReceivePacketListener : public osc::OscPacketListener {
     void determineOscAction(oscResult& oscIn) {
         bool oscGetP = oscIn.oscAddress.startsWith("GetP#", Qt::CaseInsensitive);
         bool oscGetV = oscIn.oscAddress.startsWith("GetV#", Qt::CaseInsensitive);
-        bool oscSet = !(oscGetP || oscGetV);
+        bool oscGetT = oscIn.oscAddress.startsWith("GetT#", Qt::CaseInsensitive);
+        bool oscSet = !(oscGetP || oscGetV || oscGetT);
 
         int posDel = oscIn.oscAddress.indexOf("@", 0, Qt::CaseInsensitive);
         if (posDel > 0) {
@@ -78,6 +74,8 @@ class OscReceivePacketListener : public osc::OscPacketListener {
                 doGetP(oscIn);
             } else if (oscGetV) {
                 doGetV(oscIn);
+            } else if (oscGetT) {
+                doGetT(oscIn);
             } else if (oscSet) {
                 doSet(oscIn, oscIn.oscValue);
             }
@@ -96,10 +94,8 @@ class OscReceivePacketListener : public osc::OscPacketListener {
                     0,
                     0,
                     static_cast<float>(proxy->get()));
-            if (sDebug) {
-                qDebug() << "OSC Msg Snd: Group, Key: Value:" << oscIn.oscGroup
-                         << "," << oscIn.oscKey << ":" << proxy->get();
-            }
+            qDebug() << "OSC Msg Snd: Group, Key: Value:" << oscIn.oscGroup
+                     << "," << oscIn.oscKey << ":" << proxy->get();
         }
     }
 
@@ -116,11 +112,28 @@ class OscReceivePacketListener : public osc::OscPacketListener {
                     static_cast<float>(ControlObject::getControl(
                             oscIn.oscGroup, oscIn.oscKey)
                                                ->get()));
-            if (sDebug) {
-                qDebug() << "OSC Msg Rcvd: Get Group, Key: Value:" << oscIn.oscGroup
-                         << "," << oscIn.oscKey << ":" << oscIn.oscValue;
-            }
+            qDebug() << "OSC Msg Rcvd: Get Group, Key: Value:" << oscIn.oscGroup
+                     << "," << oscIn.oscKey << ":" << oscIn.oscValue;
         }
+    }
+
+    // OSC wants info from Mixxx -> TrackArtist & TrackTitle
+    void doGetT(oscResult& oscIn) {
+        QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
+        qDebug() << "OSC Msg Rcvd: Get Group, TrackInfo: " << oscIn.oscGroup
+                 << "," << oscIn.oscKey;
+        const QString& sendOscValue = m_pConfig->getValue(ConfigKey("[OSC]", searchOscKey));
+        OscFunctionsSendPtrType(m_pConfig,
+                oscIn.oscGroup,
+                oscIn.oscKey,
+                DefOscBodyType::STRINGBODY,
+                sendOscValue,
+                0,
+                0,
+                0);
+
+        qDebug() << "OSC Msg Rcvd: Get TrackInfo, Key: Value:" << oscIn.oscGroup
+                 << "," << oscIn.oscKey << ":" << sendOscValue;
     }
 
     // Input from OSC -> Changes in Mixxx
@@ -136,24 +149,18 @@ class OscReceivePacketListener : public osc::OscPacketListener {
                     0,
                     0,
                     value);
-            if (sDebug) {
-                qDebug() << "OSC Msg Rcvd: Group, Key: Value:" << oscIn.oscGroup
-                         << "," << oscIn.oscKey << ":" << value;
-            }
+            qDebug() << "OSC Msg Rcvd: Group, Key: Value:" << oscIn.oscGroup
+                     << "," << oscIn.oscKey << ":" << value;
         } else {
-            if (sDebug) {
-                qDebug() << "OSC Msg Rcvd for non-existing Control Object: Group, "
-                            "Key: Value:"
-                         << oscIn.oscGroup << "," << oscIn.oscKey << ":" << value;
-            }
+            qDebug() << "OSC Msg Rcvd for non-existing Control Object: Group, "
+                        "Key: Value:"
+                     << oscIn.oscGroup << "," << oscIn.oscKey << ":" << value;
         }
     }
 
     // trigger OSC to sync
     void sendOscSyncTriggers(UserSettingsPointer m_pConfig) {
-        if (sDebug) {
-            qDebug() << "Mixxx OSC SendSyncTrigger";
-        }
+        qDebug() << "Mixxx OSC SendSyncTrigger";
         int interval = m_pConfig
                                ->getValue(ConfigKey(
                                        "[OSC]", "OscSendSyncTriggersInterval"))
@@ -161,9 +168,7 @@ class OscReceivePacketListener : public osc::OscPacketListener {
                 1000;
         int checkStamp = QDateTime::currentDateTime().toString("ss").toInt();
 
-        if (sDebug) {
-            qDebug() << "Mixxx OSC SENT SendSyncTrigger: checkStamp:" << checkStamp;
-        }
+        qDebug() << "Mixxx OSC SENT SendSyncTrigger: checkStamp:" << checkStamp;
         if (checkStamp % interval == 0) {
             OscFunctionsSendPtrType(m_pConfig,
                     "[Osc]",
@@ -179,9 +184,7 @@ class OscReceivePacketListener : public osc::OscPacketListener {
 };
 
 void RunOscReceiver(int OscPortIn, UserSettingsPointer m_pConfig) {
-    if (sDebug) {
-        qDebug() << "Mixxx OSC Service Thread started (RunOscReceiver -> OscReceivePacketListener)";
-    }
+    qDebug() << "Mixxx OSC Service Thread started (RunOscReceiver -> OscReceivePacketListener)";
     OscReceivePacketListener listener(m_pConfig);
     UdpListeningReceiveSocket socket(IpEndpointName(IpEndpointName::ANY_ADDRESS, OscPortIn),
             &listener);
@@ -193,9 +196,7 @@ void RunOscReceiver(int OscPortIn, UserSettingsPointer m_pConfig) {
 void OscReceiverMain(UserSettingsPointer m_pConfig) {
     if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
         int CKOscPortInInt = m_pConfig->getValue(ConfigKey("[OSC]", "OscPortIn")).toInt();
-        if (sDebug) {
-            qDebug() << "OSC Enabled -> Started";
-        }
+        qDebug() << "OSC Enabled -> Started";
 
         // qDebuf print active receivers and ip's
         for (int i = 1; i <= 5; ++i) {
@@ -204,16 +205,12 @@ void OscReceiverMain(UserSettingsPointer m_pConfig) {
 
             if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", receiverActive))) {
                 const QString& CKOscRecIp = m_pConfig->getValue(ConfigKey("[OSC]", receiverIp));
-                if (sDebug) {
-                    qDebug() << QString(
-                            "Mixxx OSC Receiver %1 with ip-address: %2 Activated")
-                                        .arg(i)
-                                        .arg(CKOscRecIp);
-                }
+                qDebug() << QString(
+                        "Mixxx OSC Receiver %1 with ip-address: %2 Activated")
+                                    .arg(i)
+                                    .arg(CKOscRecIp);
             } else {
-                if (sDebug) {
-                    qDebug() << QString("Mixxx OSC Receiver %1 Not Activated").arg(i);
-                }
+                qDebug() << QString("Mixxx OSC Receiver %1 Not Activated").arg(i);
             }
         }
 
@@ -222,18 +219,12 @@ void OscReceiverMain(UserSettingsPointer m_pConfig) {
             OscNoTrackLoadedInGroup(m_pConfig, OscTrackGroup);
         }
 
-        if (sDebug) {
-            qDebug() << "Mixxx OSC Service Thread starting";
-        }
+        qDebug() << "Mixxx OSC Service Thread starting";
         std::thread oscThread(RunOscReceiver, CKOscPortInInt, m_pConfig);
         oscThread.detach();
-        if (sDebug) {
-            qDebug() << "Mixxx OSC Service Thread quit";
-        }
+        qDebug() << "Mixxx OSC Service Thread quit";
     } else {
-        if (sDebug) {
-            qDebug() << "Mixxx OSC Service NOT Enabled";
-        }
+        qDebug() << "Mixxx OSC Service NOT Enabled";
     }
 }
 

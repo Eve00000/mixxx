@@ -15,8 +15,6 @@ constexpr int IP_MTU_SIZE = 1536;
 #include "osc/osc/OscPacketListener.h"
 #include "osc/osc/OscReceivedElements.h"
 
-const bool sDebug = false;
-
 enum class DefOscBodyType {
     STRINGBODY,
     INTBODY,
@@ -32,12 +30,10 @@ void sendOscMessage(const char* receiverIp,
     if (receiverIp) {
         UdpTransmitSocket transmitSocket(IpEndpointName(receiverIp, port));
         transmitSocket.Send(p.Data(), p.Size());
-        if (sDebug) {
-            qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
-                                .arg(receiverIp)
-                                .arg(port)
-                                .arg(header, statusTxtBody);
-        }
+        qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
+                            .arg(receiverIp)
+                            .arg(port)
+                            .arg(header, statusTxtBody);
     }
 }
 
@@ -112,9 +108,7 @@ void OscFunctionsSendPtrType(UserSettingsPointer m_pConfig,
             }
         }
     } else {
-        if (sDebug) {
-            qDebug() << "OSC NOT Enabled";
-        }
+        qDebug() << "OSC NOT Enabled";
     }
 }
 
@@ -159,6 +153,11 @@ void OscNoTrackLoadedInGroup(UserSettingsPointer m_pConfig, const QString& OscGr
             0,
             0,
             0);
+    QString oscKeyArtist = QString(OscGroup + "TrackArtist");
+    QString oscKeyValueNoTrackLoaded = QString("no track loaded");
+    m_pConfig->set(ConfigKey("[OSC]", oscKeyArtist), oscKeyValueNoTrackLoaded);
+    QString oscKeyTitle = QString(OscGroup + "TrackTitle");
+    m_pConfig->set(ConfigKey("[OSC]", oscKeyTitle), oscKeyValueNoTrackLoaded);
 }
 
 void OscTrackLoadedInGroup(UserSettingsPointer m_pConfig,
@@ -208,6 +207,10 @@ void OscTrackLoadedInGroup(UserSettingsPointer m_pConfig,
             0,
             0,
             playposition);
+    QString oscKeyArtist = QString(OscGroup + "TrackArtist");
+    m_pConfig->set(ConfigKey("[OSC]", oscKeyArtist), TrackArtist);
+    QString oscKeyTitle = QString(OscGroup + "TrackTitle");
+    m_pConfig->set(ConfigKey("[OSC]", oscKeyTitle), TrackTitle);
 }
 
 void OscChangedPlayState(UserSettingsPointer m_pConfig,
