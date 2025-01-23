@@ -57,14 +57,14 @@ const QString kAppGroup = QStringLiteral("[App]");
 } // anonymous namespace
 
 // EveOSC
-void OscTrackLoadedInGroup(UserSettingsPointer m_pConfig,
-        const QString& OscGroup,
-        const QString& TrackArtist,
-        const QString& TrackTitle,
+void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
+        const QString& oscGroup,
+        const QString& trackArtist,
+        const QString& trackTitle,
         float track_loaded,
         float duration,
         float playposition);
-void OscNoTrackLoadedInGroup(UserSettingsPointer m_pConfig, const QString& OscGroup);
+void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup);
 // EveOSC
 
 EngineBuffer::EngineBuffer(const QString& group,
@@ -849,7 +849,7 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
 
     //  EveOSC begin
     if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-        OscTrackLoadedInGroup(m_pConfig,
+        sendTrackInfoToOscClients(m_pConfig,
                 getGroup(),
                 pTrack->getArtist().toLatin1(),
                 pTrack->getTitle().toLatin1(),
@@ -1494,7 +1494,7 @@ void EngineBuffer::ejectTrack() {
 
     //  EveOSC begin
     if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-        OscNoTrackLoadedInGroup(m_pConfig, getGroup());
+        sendNoTrackLoadedToOscClients(m_pConfig, getGroup());
     }
     //  EveOSC end
 
