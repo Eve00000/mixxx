@@ -120,7 +120,6 @@ WTrackMenu::WTrackMenu(
           m_pNumPreviewDecks(kAppGroup, QStringLiteral("num_preview_decks")),
           m_bPlaylistMenuLoaded(false),
           m_bCrateMenuLoaded(false),
-          m_bSmartiesMenuLoaded(false),
           m_eActiveFeatures(flags),
           m_eTrackModelFeatures(Feature::TrackModelFeatures) {
     // Warn if any of the chosen features depend on a TrackModel
@@ -195,7 +194,7 @@ void WTrackMenu::createMenus() {
         connect(m_pCrateMenu, &QMenu::aboutToShow, this, &WTrackMenu::slotPopulateCrateMenu);
     }
 
-    // EVE
+    // EVE -> SMARTIES
     if (featureIsEnabled(Feature::Smarties)) {
         m_pSmartiesMenu = make_parented<QMenu>(this);
         m_pSmartiesMenu->setTitle(tr("Smarties"));
@@ -647,10 +646,6 @@ void WTrackMenu::setupActions() {
 
     if (featureIsEnabled(Feature::Crate)) {
         addMenu(m_pCrateMenu);
-    }
-
-    if (featureIsEnabled(Feature::Smarties)) {
-        addMenu(m_pSmartiesMenu);
     }
 
     if (featureIsEnabled(Feature::Remove)) {
@@ -1114,13 +1109,12 @@ void WTrackMenu::updateMenus() {
         m_bCrateMenuLoaded = false;
     }
 
-    // EVE
+    // EVE -> SMARTIES
     if (featureIsEnabled(Feature::Smarties)) {
         // Smarties menu is lazy loaded on hover by slotPopulateSmartiesMenu
         // to avoid unnecessary database queries
         m_bSmartiesMenuLoaded = false;
     }
-
     // EVE
 
     if (featureIsEnabled(Feature::Remove)) {
@@ -1712,7 +1706,7 @@ void WTrackMenu::slotPopulateCrateMenu() {
     m_bCrateMenuLoaded = true;
 }
 
-// EVE
+// EVE -> SMARTIES
 void WTrackMenu::slotPopulateSmartiesMenu() {
     // The user may open the Smarties submenu, move their cursor away, then
     // return to the Smarties submenu before exiting the track context menu.
@@ -2112,7 +2106,7 @@ class ResetPlayCounterTrackPointerOperation : public mixxx::TrackPointerOperatio
 
 } // anonymous namespace
 
-//slot for reset played count, sets count to 0 of one or more tracks
+// slot for reset played count, sets count to 0 of one or more tracks
 void WTrackMenu::slotClearPlayCount() {
     const auto progressLabelText =
             tr("Resetting play count of %n track(s)", "", getTrackCount());
@@ -2161,7 +2155,7 @@ class ResetRatingTrackPointerOperation : public mixxx::TrackPointerOperation {
 
 } // anonymous namespace
 
-//slot for reset played count, sets count to 0 of one or more tracks
+// slot for reset played count, sets count to 0 of one or more tracks
 void WTrackMenu::slotClearRating() {
     const auto progressLabelText =
             tr("Clearing rating of %n track(s)", "", getTrackCount());
@@ -2184,7 +2178,7 @@ class ClearCommentTrackPointerOperation : public mixxx::TrackPointerOperation {
 
 } // anonymous namespace
 
-//slot for clearing the comment field of one or more tracks
+// slot for clearing the comment field of one or more tracks
 void WTrackMenu::slotClearComment() {
     const auto progressLabelText =
             tr("Clearing comment of %n track(s)", "", getTrackCount());
@@ -3023,9 +3017,6 @@ bool WTrackMenu::featureIsEnabled(Feature flag) const {
                         TrackModel::Capability::LoadToPreviewDeck);
     case Feature::Playlist:
     case Feature::Crate:
-        return m_pTrackModel->hasCapabilities(
-                TrackModel::Capability::AddToTrackSet);
-    case Feature::Smarties:
         return m_pTrackModel->hasCapabilities(
                 TrackModel::Capability::AddToTrackSet);
     case Feature::Remove:

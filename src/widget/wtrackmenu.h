@@ -20,7 +20,7 @@
 class DlgTagFetcher;
 class DlgTrackInfo;
 class DlgTrackInfoMulti;
-//class DlgDeleteFilesConfirmation;
+// class DlgDeleteFilesConfirmation;
 class ExternalTrackCollection;
 class Library;
 class TrackModel;
@@ -59,7 +59,6 @@ class WTrackMenu : public QMenu {
         SelectInLibrary = 1 << 16,
         Analyze = 1 << 17,
         FindOnWeb = 1 << 18,
-
         TrackModelFeatures = Remove | HideUnhidePurge,
         All = AutoDJ | LoadTo | Playlist | Crate | Remove | Metadata | Reset | Analyze |
                 BPM | Color | HideUnhidePurge | RemoveFromDisk | FileBrowser |
