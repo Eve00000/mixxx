@@ -1543,6 +1543,7 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
@@ -1553,6 +1554,7 @@ add_library(
   src/widget/wnumberrate.cpp
   src/widget/woverview.cpp
   src/widget/wpixmapstore.cpp
+  src/widget/wpreparationwindowtracktableview.cpp
   src/widget/wpushbutton.cpp
   src/widget/wraterange.cpp
   src/widget/wstarratingaction.cpp
