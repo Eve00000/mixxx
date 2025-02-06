@@ -9,6 +9,7 @@
 #include "library/trackset/basetracksetfeature.h"
 #include "track/trackid.h"
 
+class ControlObject;
 class WLibrary;
 class WLibraryPreparationWindow;
 class KeyboardEventFilter;
