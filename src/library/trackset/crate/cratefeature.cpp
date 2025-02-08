@@ -331,7 +331,8 @@ void CrateFeature::activateChild(const QModelIndex& index) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     emit saveModelState();
-    m_crateTableModel.selectCrate(crateId, "lib");
+    sendTargetWindow("Library");
+    m_crateTableModel.selectCrate(crateId, "Library");
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
 }
@@ -354,7 +355,8 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     emit saveModelState();
-    m_crateTableModel.selectCrate(crateId, "library");
+    sendTargetWindow("Library");
+    m_crateTableModel.selectCrate(crateId, "Library");
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
     // Update selection
@@ -497,7 +499,8 @@ void CrateFeature::slotShowInPreparationWindow() {
     }
 
     // emit saveModelState();
-    m_crateTableModel.selectCrate(crateId, "library");
+    sendTargetWindow("PreparationWindow");
+    m_crateTableModel.selectCrate(crateId, "PreparationWindow");
     // emit showTrackModel(&m_crateTableModel);
     emit showTrackModelInPreparationWindow(&m_crateTableModel);
     // emit enableCoverArtDisplay(true);
@@ -727,7 +730,7 @@ void CrateFeature::slotImportPlaylistFile(const QString& playlistFile, CrateId c
         // crate selected which is not the crate that received the right-click.
         std::unique_ptr<CrateTableModel> pCrateTableModel =
                 std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-        pCrateTableModel->selectCrate(crateId, "library");
+        pCrateTableModel->selectCrate(crateId, "Library");
         pCrateTableModel->select();
         pCrateTableModel->addTracks(QModelIndex(), locations);
     }
@@ -852,7 +855,7 @@ void CrateFeature::slotExportPlaylist() {
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
             std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-    pCrateTableModel->selectCrate(crateId, "library");
+    pCrateTableModel->selectCrate(crateId, "Library");
     pCrateTableModel->select();
 
     if (fileLocation.endsWith(".csv", Qt::CaseInsensitive)) {
@@ -882,7 +885,7 @@ void CrateFeature::slotExportTrackFiles() {
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
             std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-    pCrateTableModel->selectCrate(crateId, "library");
+    pCrateTableModel->selectCrate(crateId, "Library");
     pCrateTableModel->select();
 
     int rows = pCrateTableModel->rowCount();
