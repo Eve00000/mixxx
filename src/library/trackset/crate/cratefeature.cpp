@@ -331,7 +331,7 @@ void CrateFeature::activateChild(const QModelIndex& index) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     emit saveModelState();
-    sendTargetWindow("Library");
+    emit sendTargetWindow("Library");
     m_crateTableModel.selectCrate(crateId, "Library");
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
@@ -355,7 +355,7 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     emit saveModelState();
-    sendTargetWindow("Library");
+    emit sendTargetWindow("Library");
     m_crateTableModel.selectCrate(crateId, "Library");
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
@@ -499,7 +499,7 @@ void CrateFeature::slotShowInPreparationWindow() {
     }
 
     // emit saveModelState();
-    sendTargetWindow("PreparationWindow");
+    emit sendTargetWindow("PreparationWindow");
     m_crateTableModel.selectCrate(crateId, "PreparationWindow");
     // emit showTrackModel(&m_crateTableModel);
     emit showTrackModelInPreparationWindow(&m_crateTableModel);
