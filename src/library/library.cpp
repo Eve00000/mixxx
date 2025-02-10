@@ -513,7 +513,7 @@ void Library::bindLibraryPreparationWindowWidget(
     connect(this,
             &Library::switchToView,
             m_pLibraryPreparationWindowWidget,
-            &WLibraryPreparationWindow::switchToView);
+            &WLibraryPreparationWindow::switchToViewInPreparationWindow);
     connect(this,
             &Library::sendTargetWindow,
             pLibraryPreparationWindowTrackTableView,
@@ -668,7 +668,7 @@ void Library::slotShowTrackModelInPreparationWindow(QAbstractItemModel* model) {
     // emit showTrackModelInPreparationWindow(model);
     emit sendTargetWindow("PreparationWindow");
     emit showTrackModelInPreparationWindow(model);
-    // emit switchToViewInPreparationWindow(m_sTrackViewName);
+    // emit switchToView(m_sTrackViewName);
     emit switchToView(m_sTrackViewName, "PreparationWindow");
     emit restoreSearch(trackModel->currentSearch());
 }
