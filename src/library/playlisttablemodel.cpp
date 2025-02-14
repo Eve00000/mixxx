@@ -406,7 +406,8 @@ TrackModel::Capabilities PlaylistTableModel::getCapabilities() const {
         caps |= Capability::AddToAutoDJ | Capability::RemovePlaylist;
     } else {
         // EVE ADDED | Capability::ReceiveDrops for AutoDJ in PreparationWindow
-        caps |= Capability::ReceiveDrops | Capability::Remove;
+        // Capability::ReceiveDrops |  -> trying to get it working for autodj in prepwin
+        caps |= Capability::Remove;
     }
     if (m_pTrackCollectionManager->internalCollection()
                     ->getPlaylistDAO()
