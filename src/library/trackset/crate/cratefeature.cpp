@@ -1014,7 +1014,7 @@ void CrateFeature::slotResetSelectedTrack() {
 //     emit showTrackModel(nullptr);      // Clears the track model from the
 //     view emit enableCoverArtDisplay(false); // Disable cover art
 ////    m_crateTableModel.clear();         // Clear or reset any models, if
-///needed /    m_pLibraryWidget->removeView(m_rootViewName);
+/// needed /    m_pLibraryWidget->removeView(m_rootViewName);
 //}
 //
 // void LibraryFeature::switchToFeature(LibraryFeature* newFeature) {
