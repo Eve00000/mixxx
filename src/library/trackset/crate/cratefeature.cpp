@@ -77,7 +77,6 @@ void CrateFeature::initActions() {
             &QAction::triggered,
             this,
             &CrateFeature::slotCreateCrate);
-
     m_pRenameCrateAction = make_parented<QAction>(tr("Rename"), this);
     m_pRenameCrateAction->setShortcut(kRenameSidebarItemShortcutKey);
     connect(m_pRenameCrateAction.get(),
@@ -304,6 +303,8 @@ void CrateFeature::bindLibraryPreparationWindowWidget(
             &WLibraryTextBrowser::anchorClicked,
             this,
             &CrateFeature::htmlLinkClicked);
+    //    libraryPreparationWindowWidget->registerView(m_rootViewName, edit, "PreparationWindow");
+    //      libraryPreparationWindowWidget->registerView(m_rootViewName, edit, "PreparationWindow");
     libraryPreparationWindowWidget->registerView(m_rootViewName, edit);
 }
 
@@ -331,8 +332,9 @@ void CrateFeature::activateChild(const QModelIndex& index) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     ////emit saveModelState();
-    emit sendTargetWindow("Library");
-    m_crateTableModel.selectCrate(crateId, "Library");
+    // emit sendTargetWindow("Library");
+    // m_crateTableModel.selectCrate(crateId, "Library");
+    m_crateTableModel.selectCrate(crateId);
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
 }
@@ -355,13 +357,38 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
     ////emit saveModelState();
-    emit sendTargetWindow("Library");
-    m_crateTableModel.selectCrate(crateId, "Library");
+    // emit sendTargetWindow("Library");
+    // m_crateTableModel.selectCrate(crateId, "Library");
+    m_crateTableModel.selectCrate(crateId);
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
     // Update selection
     emit featureSelect(this, m_lastClickedIndex);
     return true;
+}
+
+void CrateFeature::slotShowInPreparationWindow() {
+    CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
+    qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
+
+    if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
+        auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
+        proxy->set(1);
+    }
+
+    //    libraryPreparationWindowWidget->registerView(m_rootViewName, edit);
+    // emit saveModelState();
+    // emit sendTargetWindow("PreparationWindow");
+    // m_crateTableModel.selectCrate(crateId, "PreparationWindow");
+    // emit showTrackModel(&m_crateTableModel);
+    // emit showTrackModelInPreparationWindow(&m_crateTableModel);
+    // emit enableCoverArtDisplay(true);
+
+    // m_crateTableModel.selectCrate(crateId, "PreparationWindow");
+    m_crateTableModel.selectCrate(crateId);
+    emit showTrackModelInPreparationWindow(&m_crateTableModel);
+    emit enableCoverArtDisplay(true);
+    emit featureSelect(this, m_lastClickedIndex);
 }
 
 bool CrateFeature::readLastRightClickedCrate(Crate* pCrate) const {
@@ -487,23 +514,6 @@ void CrateFeature::slotDeleteCrate() {
         }
     }
     qWarning() << "Failed to delete selected crate";
-}
-
-void CrateFeature::slotShowInPreparationWindow() {
-    CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
-    qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
-
-    if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
-        auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
-        proxy->set(1);
-    }
-
-    //// emit saveModelState();
-    emit sendTargetWindow("PreparationWindow");
-    m_crateTableModel.selectCrate(crateId, "PreparationWindow");
-    // emit showTrackModel(&m_crateTableModel);
-    emit showTrackModelInPreparationWindow(&m_crateTableModel);
-    // emit enableCoverArtDisplay(true);
 }
 
 void CrateFeature::renameItem(const QModelIndex& index) {
@@ -730,7 +740,8 @@ void CrateFeature::slotImportPlaylistFile(const QString& playlistFile, CrateId c
         // crate selected which is not the crate that received the right-click.
         std::unique_ptr<CrateTableModel> pCrateTableModel =
                 std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-        pCrateTableModel->selectCrate(crateId, "Library");
+        // pCrateTableModel->selectCrate(crateId, "Library");
+        pCrateTableModel->selectCrate(crateId);
         pCrateTableModel->select();
         pCrateTableModel->addTracks(QModelIndex(), locations);
     }
@@ -855,7 +866,8 @@ void CrateFeature::slotExportPlaylist() {
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
             std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-    pCrateTableModel->selectCrate(crateId, "Library");
+    // pCrateTableModel->selectCrate(crateId, "Library");
+    pCrateTableModel->selectCrate(crateId);
     pCrateTableModel->select();
 
     if (fileLocation.endsWith(".csv", Qt::CaseInsensitive)) {
@@ -885,7 +897,8 @@ void CrateFeature::slotExportTrackFiles() {
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
             std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
-    pCrateTableModel->selectCrate(crateId, "Library");
+    // pCrateTableModel->selectCrate(crateId, "Library");
+    pCrateTableModel->selectCrate(crateId);
     pCrateTableModel->select();
 
     int rows = pCrateTableModel->rowCount();
@@ -995,3 +1008,23 @@ void CrateFeature::slotTrackSelected(TrackId trackId) {
 void CrateFeature::slotResetSelectedTrack() {
     slotTrackSelected(TrackId{});
 }
+
+// void CrateFeature::deactivate() {
+//     qDebug() << "CrateFeature::deactivate()";
+//     emit showTrackModel(nullptr);      // Clears the track model from the
+//     view emit enableCoverArtDisplay(false); // Disable cover art
+////    m_crateTableModel.clear();         // Clear or reset any models, if
+///needed /    m_pLibraryWidget->removeView(m_rootViewName);
+//}
+//
+// void LibraryFeature::switchToFeature(LibraryFeature* newFeature) {
+//    if (this != newFeature) {
+//        // Deactivate the current feature
+//        this->deactivate(); // This will call the appropriate deactivate()
+//        method of the current feature
+//
+//        // Now, activate the new feature
+//        newFeature->activate(); // This will call the appropriate activate()
+//        method of the new feature
+//    }
+//}
