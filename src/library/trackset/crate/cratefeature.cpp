@@ -303,8 +303,6 @@ void CrateFeature::bindLibraryPreparationWindowWidget(
             &WLibraryTextBrowser::anchorClicked,
             this,
             &CrateFeature::htmlLinkClicked);
-    //    libraryPreparationWindowWidget->registerView(m_rootViewName, edit, "PreparationWindow");
-    //      libraryPreparationWindowWidget->registerView(m_rootViewName, edit, "PreparationWindow");
     libraryPreparationWindowWidget->registerView(m_rootViewName, edit);
 }
 
@@ -356,9 +354,7 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     m_lastClickedIndex = index;
     m_lastRightClickedIndex = QModelIndex();
     m_prevSiblingCrate = CrateId();
-    ////emit saveModelState();
-    // emit sendTargetWindow("Library");
-    // m_crateTableModel.selectCrate(crateId, "Library");
+    emit saveModelState();
     m_crateTableModel.selectCrate(crateId);
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
@@ -376,15 +372,7 @@ void CrateFeature::slotShowInPreparationWindow() {
         proxy->set(1);
     }
 
-    //    libraryPreparationWindowWidget->registerView(m_rootViewName, edit);
-    // emit saveModelState();
-    // emit sendTargetWindow("PreparationWindow");
-    // m_crateTableModel.selectCrate(crateId, "PreparationWindow");
-    // emit showTrackModel(&m_crateTableModel);
-    // emit showTrackModelInPreparationWindow(&m_crateTableModel);
-    // emit enableCoverArtDisplay(true);
-
-    // m_crateTableModel.selectCrate(crateId, "PreparationWindow");
+    emit saveModelState();
     m_crateTableModel.selectCrate(crateId);
     emit showTrackModelInPreparationWindow(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
@@ -1008,23 +996,3 @@ void CrateFeature::slotTrackSelected(TrackId trackId) {
 void CrateFeature::slotResetSelectedTrack() {
     slotTrackSelected(TrackId{});
 }
-
-// void CrateFeature::deactivate() {
-//     qDebug() << "CrateFeature::deactivate()";
-//     emit showTrackModel(nullptr);      // Clears the track model from the
-//     view emit enableCoverArtDisplay(false); // Disable cover art
-////    m_crateTableModel.clear();         // Clear or reset any models, if
-/// needed /    m_pLibraryWidget->removeView(m_rootViewName);
-//}
-//
-// void LibraryFeature::switchToFeature(LibraryFeature* newFeature) {
-//    if (this != newFeature) {
-//        // Deactivate the current feature
-//        this->deactivate(); // This will call the appropriate deactivate()
-//        method of the current feature
-//
-//        // Now, activate the new feature
-//        newFeature->activate(); // This will call the appropriate activate()
-//        method of the new feature
-//    }
-//}
