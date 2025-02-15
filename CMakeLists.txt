@@ -1511,6 +1511,7 @@ add_library(
   src/widget/findonwebmenuservices/findonwebmenulastfm.cpp
   src/widget/findonwebmenuservices/findonwebmenusoundcloud.cpp
   src/widget/hexspinbox.cpp
+  src/widget/hotcuedrag.cpp
   src/widget/paintable.cpp
   src/widget/wanalysislibrarytableview.cpp
   src/widget/wbasewidget.cpp
@@ -1556,6 +1557,7 @@ add_library(
   src/widget/wnumberrate.cpp
   src/widget/woverview.cpp
   src/widget/wpixmapstore.cpp
+  src/widget/wplaybutton.cpp
   src/widget/wpushbutton.cpp
   src/widget/wraterange.cpp
   src/widget/wstarratingaction.cpp
@@ -2421,6 +2423,7 @@ if(BUILD_TESTING)
     src/test/beatmaptest.cpp
     src/test/beatstest.cpp
     src/test/beatstranslatetest.cpp
+    src/test/borrowabletest.cpp
     src/test/bpmtest.cpp
     src/test/bpmcontrol_test.cpp
     src/test/broadcastprofile_test.cpp
@@ -2463,6 +2466,7 @@ if(BUILD_TESTING)
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp
     src/test/hotcuecontrol_test.cpp
+    src/test/hotcueorderbyposition_test.cpp
     src/test/imageutils_test.cpp
     src/test/indexrange_test.cpp
     src/test/itunesxmlimportertest.cpp
@@ -2770,7 +2774,7 @@ option(ENGINEPRIME "Support for library export to Denon Engine Prime" ON)
 if(ENGINEPRIME)
   # libdjinterop does not currently have a stable ABI, so we fetch sources for a specific tag, build here, and link
   # statically.  This situation should be reviewed once libdjinterop hits version 1.x.
-  set(LIBDJINTEROP_VERSION 0.22.1)
+  set(LIBDJINTEROP_VERSION 0.24.3)
   # Look whether an existing installation of libdjinterop matches the required version.
   find_package(DjInterop ${LIBDJINTEROP_VERSION} EXACT CONFIG)
   if(NOT DjInterop_FOUND)
@@ -2833,7 +2837,7 @@ if(ENGINEPRIME)
         "https://github.com/xsco/libdjinterop/archive/refs/tags/${LIBDJINTEROP_VERSION}.tar.gz"
         "https://launchpad.net/~xsco/+archive/ubuntu/djinterop/+sourcefiles/libdjinterop/${LIBDJINTEROP_VERSION}-0ubuntu1/libdjinterop_${LIBDJINTEROP_VERSION}.orig.tar.gz"
       URL_HASH
-        SHA256=e811158d42c3864f5b682bcf76e0af78278050439d82d14d592dd0a391da6b20
+        SHA256=df41fe39bed9d16d27a3649d237b68edd2cdb6fc71a82cae5cd746d4e4ef6578
       DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/downloads"
       DOWNLOAD_NAME "libdjinterop-${LIBDJINTEROP_VERSION}.tar.gz"
       INSTALL_DIR ${DJINTEROP_INSTALL_DIR}
@@ -2888,6 +2892,13 @@ if(ENGINEPRIME)
         IMPORTED_LOCATION "${DJINTEROP_INSTALL_DIR}/${DJINTEROP_LIBRARY}"
     )
     add_dependencies(mixxx-libdjinterop libdjinterop)
+    # Add the local include directory explicitly before linking the library
+    # to make sure not the system provided headers are used
+    target_include_directories(
+      mixxx-lib
+      BEFORE
+      PRIVATE "${DJINTEROP_INSTALL_DIR}/include"
+    )
     target_link_libraries(mixxx-lib PRIVATE mixxx-libdjinterop)
   endif()
 
@@ -3256,6 +3267,16 @@ if(QT_EXTRA_COMPONENTS)
 endif()
 
 if(QML)
+  if(QT_KNOWN_POLICY_QTP0004)
+    # See: https://doc.qt.io/qt-6/qt-cmake-policy-qtp0004.html
+    # OLD (Qt < 6.8) requires to import qml modules with a folder e.g.:
+    # fragmentShader: "qrc:/shaders/rgbsignal_qml.frag.qsb"
+    # For using NEW, we need to back-port:
+    # https://github.com/qt/qtdeclarative/commit/6314d305ee0d9064ca848980ef2dab1793c191b8
+    # until Qt 6.8 lands in all supported distros
+    qt6_policy(SET QTP0004 OLD)
+  endif()
+
   add_subdirectory(res/shaders)
 
   set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
