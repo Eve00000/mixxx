@@ -39,7 +39,6 @@ DlgAutoDJ::DlgAutoDJ(
           //                  parent->getTrackTableBackgroundColorOpacity(),
           //                  /*no sorting*/ false)),
           //          m_bShowButtonText(parent->getShowButtonText()),
-          m_pAutoDJTableModel(nullptr),
           // Casting to check if parent is WLibrary or WLibraryPreparationWidget
           m_pTrackTableView(new WTrackTableView(this,
                   m_pConfig,
@@ -61,7 +60,8 @@ DlgAutoDJ::DlgAutoDJ(
                                                       WLibraryPreparationWindow*>(
                                                       parent)
                                                       ->getShowButtonText()
-                                            : false)) {
+                                            : false)),
+          m_pAutoDJTableModel(nullptr) {
     setupUi(this);
 
     m_pTrackTableView->installEventFilter(pKeyboard);
