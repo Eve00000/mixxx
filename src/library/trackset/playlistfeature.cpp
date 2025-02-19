@@ -328,9 +328,9 @@ QModelIndex PlaylistFeature::constructChildModel(int selectedId) {
     return m_pSidebarModel->index(selectedRow, 0);
 }
 
-QModelIndex PlaylistFeature::constructSmartiesChildModel(int selectedId) {
+QModelIndex PlaylistFeature::constructSearchCrateChildModel(int selectedId) {
     qDebug() << "[SMARTIES] [EDIT] "
-                "constructSmartiesChildModelPlaylistFeature::"
+                "constructSearchCrateChildModelPlaylistFeature::"
                 "constructChildModel() id:"
              << selectedId;
 
@@ -406,7 +406,7 @@ void PlaylistFeature::slotPlaylistTableChanged(int playlistId) {
     }
 }
 
-void PlaylistFeature::slotSmartiesContentOrLockChanged(const QSet<int>& playlistIds) {
+void PlaylistFeature::slotSearchCrateContentOrLockChanged(const QSet<int>& playlistIds) {
     // qDebug() << "PlaylistFeature::slotPlaylistContentOrLockChanged() playlistId:" << playlistIds;
     QSet<int> idsToBeUpdated;
     for (const auto playlistId : std::as_const(playlistIds)) {

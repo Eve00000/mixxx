@@ -44,7 +44,7 @@ class WTrackMenu : public QMenu {
         LoadTo = 1 << 1,
         Playlist = 1 << 2,
         Crate = 1 << 3,
-        Smarties = 1 << 4,
+        SearchCrate = 1 << 4,
         Remove = 1 << 5,
         Metadata = 1 << 6,
         Reset = 1 << 7,
@@ -73,7 +73,7 @@ class WTrackMenu : public QMenu {
             WTrackMenu::Feature::SearchRelated |
             WTrackMenu::Feature::Playlist |
             WTrackMenu::Feature::Crate |
-            WTrackMenu::Feature::Smarties |
+            WTrackMenu::Feature::SearchCrate |
             WTrackMenu::Feature::Metadata |
             WTrackMenu::Feature::Reset |
             WTrackMenu::Feature::Analyze |
@@ -185,8 +185,8 @@ class WTrackMenu : public QMenu {
     void slotPopulateCrateMenu();
     void addSelectionToNewCrate();
 
-    // Smarties
-    void slotPopulateSmartiesMenu();
+    // SearchCrate
+    void slotPopulateSearchCrateMenu();
 
     // Auto DJ
     void slotAddToAutoDJBottom();
@@ -293,7 +293,7 @@ class WTrackMenu : public QMenu {
     parented_ptr<QMenu> m_pSamplerMenu;
     parented_ptr<QMenu> m_pPlaylistMenu;
     parented_ptr<QMenu> m_pCrateMenu;
-    parented_ptr<QMenu> m_pSmartiesMenu;
+    parented_ptr<QMenu> m_pSearchCrateMenu;
     parented_ptr<QMenu> m_pMetadataMenu;
     parented_ptr<QMenu> m_pMetadataUpdateExternalCollectionsMenu;
     parented_ptr<QMenu> m_pHotcueMenu;
@@ -401,7 +401,7 @@ class WTrackMenu : public QMenu {
 
     bool m_bPlaylistMenuLoaded;
     bool m_bCrateMenuLoaded;
-    bool m_bSmartiesMenuLoaded;
+    bool m_bSearchCrateMenuLoaded;
 
     Features m_eActiveFeatures;
     const Features m_eTrackModelFeatures;
