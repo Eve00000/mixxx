@@ -1513,6 +1513,7 @@ add_library(
   src/network/jsonwebtask.cpp
   src/network/networktask.cpp
   src/network/webtask.cpp
+  src/osc/oscreceiver.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -2161,6 +2162,8 @@ if(MSVC)
     target_compile_definitions(
       mixxx-lib
       PUBLIC
+        # Eve: to prevent multiple instances of winsock(2) being loaded
+        WIN32_LEAN_AND_MEAN
         _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
         _CRT_SECURE_NO_WARNINGS
     )
@@ -2254,6 +2257,8 @@ if(WIN32)
   # _WIN32_WINNT_WIN7 = 0x0601
   target_compile_definitions(mixxx-lib PUBLIC WINVER=0x0601)
   target_compile_definitions(mixxx-lib PUBLIC _WIN32_WINNT=0x0601)
+  # Eve: to prevent multiple instances of winsock(2) being loaded
+  target_compile_definitions(mixxx-lib PUBLIC WIN32_LEAN_AND_MEAN)
   if(MSVC)
     target_compile_definitions(mixxx-lib PUBLIC _USE_MATH_DEFINES)
   endif()
@@ -3156,6 +3161,8 @@ add_custom_target(
 
 # Windows-only resource file
 if(WIN32)
+  # EVE
+  ###add_definitions(-DWIN32_LEAN_AND_MEAN)
   string(TIMESTAMP MIXXX_YEAR "%Y")
 
   set(
@@ -3577,42 +3584,10 @@ target_include_directories(
 )
 target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
 
-if(WIN32)
-  set(IpSystemTypePath src/osc/ip/win32)
-  set(LIBS ${LIBS} Ws2_32 winmm)
-else()
-  set(IpSystemTypePath src/osc/ip/posix)
-endif()
-
 #eve osc
-add_library(
-  oscpack
-  src/osc/ip/IpEndpointName.cpp
-  src/osc/ip/IpEndpointName.h
-  src/osc/ip/NetworkingUtils.h
-  ${IpSystemTypePath}/NetworkingUtils.cpp
-  src/osc/ip/PacketListener.h
-  src/osc/ip/TimerListener.h
-  src/osc/ip/UdpSocket.h
-  ${IpSystemTypePath}/UdpSocket.cpp
-  src/osc/osc/MessageMappingOscPacketListener.h
-  src/osc/osc/OscException.h
-  src/osc/osc/OscHostEndianness.h
-  src/osc/osc/OscOutboundPacketStream.cpp
-  src/osc/osc/OscOutboundPacketStream.h
-  src/osc/osc/OscPacketListener.h
-  src/osc/osc/OscPrintReceivedElements.cpp
-  src/osc/osc/OscPrintReceivedElements.h
-  src/osc/osc/OscReceivedElements.cpp
-  src/osc/osc/OscReceivedElements.h
-  src/osc/osc/OscTypes.cpp
-  src/osc/osc/OscTypes.h
-)
-include_directories(${CMAKE_SOURCE_DIR})
-#target_link_libraries(mixxx oscpack ${LIBS})
-target_include_directories(mixxx-lib SYSTEM PRIVATE ip)
-target_include_directories(mixxx-lib SYSTEM PRIVATE osc)
-target_link_libraries(mixxx-lib PRIVATE oscpack)
+# liblo
+find_package(Liblo REQUIRED)
+target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -4373,6 +4348,14 @@ else()
             applocal
         )
       endif()
+      #install(
+      #  IMPORTED_RUNTIME_ARTIFACTS
+      #    Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
+      #    DESTINATION
+      #    "${MIXXX_INSTALL_DATADIR}/styles"
+      #    COMPONENT
+      #    applocal
+      #)
     endif()
     if(APPLE)
       install(
