@@ -86,10 +86,10 @@ uint64_t timing_get_time(void)
 
 void timing_sleep(uint64_t sleeptime)
 {
-    struct timeval sleeper;
+    //struct timeval sleeper;
 
-    sleeper.tv_sec = (long)(sleeptime / 1000);
-    sleeper.tv_usec = (long)((sleeptime % 1000) * 1000);
+    //sleeper.tv_sec = (long)(sleeptime / 1000);
+    //sleeper.tv_usec = (long)((sleeptime % 1000) * 1000);
 
     /* NOTE:
      * This should be 0 for the first argument.  The linux manpage

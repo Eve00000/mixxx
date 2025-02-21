@@ -1,9 +1,6 @@
 #ifndef OSCFUNCTIONS_H
 #define OSCFUNCTIONS_H
 
-constexpr int OUTPUT_BUFFER_SIZE = 1024;
-constexpr int IP_MTU_SIZE = 1536;
-
 #include <QChar>
 #include <QDataStream>
 #include <QFile>
@@ -13,10 +10,7 @@ constexpr int IP_MTU_SIZE = 1536;
 #include <iostream>
 #include <memory>
 
-#include "osc/ip/UdpSocket.h"
-#include "osc/osc/OscOutboundPacketStream.h"
-#include "osc/osc/OscPacketListener.h"
-#include "osc/osc/OscReceivedElements.h"
+#include "lo/lo.h"
 
 enum class DefOscBodyType {
     STRINGBODY,
@@ -40,19 +34,55 @@ QString escapeStringToJsonUnicode(const QString& input) {
     return escaped;
 }
 
+// Function to send OSC message with liblo
+// void sendOscMessage(const char* receiverIp, int port, const QString&
+// oscMessageHeader, const char* bodyType, const QString& oscMessageBodyData) {
 void sendOscMessage(const char* receiverIp,
         int port,
-        osc::OutboundPacketStream& p,
-        const QString& header,
-        const QString& statusTxtBody) {
-    if (receiverIp) {
-        UdpTransmitSocket transmitSocket(IpEndpointName(receiverIp, port));
-        transmitSocket.Send(p.Data(), p.Size());
-        qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
-                            .arg(receiverIp)
-                            .arg(port)
-                            .arg(header, statusTxtBody);
-    }
+        const QString& oscMessageHeader,
+        const char* bodyType,
+        QVariant oscMessageBodyData) {
+    //    if (receiverIp) {
+    //        // lo_address address = lo_address_new_with_proto(LO_UDP,
+    //        receiverIp, "9000"); lo_address address =
+    //        lo_address_new_with_proto(LO_UDP, receiverIp,
+    //        std::to_string(port).c_str());
+    //
+    //        if (!address) {
+    //            qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC
+    //            address."; return;
+    //        }
+    //
+    //        // Create a new OSC message
+    //        lo_message msg = lo_message_new();
+    //        int result = -1;
+    //        result = lo_send(address, oscMessageHeader.toLocal8Bit().data(),
+    //        bodyType, oscMessageBodyData.toString().toLocal8Bit().data()); if
+    //        (result == -1) {
+    //            qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC
+    //            message.";
+    //        } else {
+    //            //if (sDebug) {
+    //                qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
+    //                Receiver (%1:%2) : <%3 : %4>")
+    //                                    .arg(receiverIp)
+    //                                    .arg(port)
+    //                                    .arg(oscMessageHeader)
+    //                                    .arg(bodyType)
+    //                                .arg(oscMessageBodyData.toString());
+    //            //}
+    //        }
+    //        lo_message_free(msg);
+    ////        if (sDebug) {
+    //            qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
+    //            Receiver (%1:%2) : <%3 : %4>")
+    //                                .arg(receiverIp)
+    //                                .arg(port)
+    //                                .arg(oscMessageHeader)
+    //                                .arg(bodyType)
+    //                            .arg(oscMessageBodyData.toString());
+    //        //        }
+    //    }
 }
 
 void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
@@ -63,48 +93,21 @@ void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
         int oscMessageBodyInt,
         double oscMessageBodyDouble,
         float oscMessageBodyFloat) {
-    // QString oscMessageHeader = "/" + oscGroup + "@" + oscKey;
     QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
-    // oscMessageHeader.replace("[", "(");
     oscMessageHeader.replace("[", "");
-    // oscMessageHeader.replace("]", ")");
     oscMessageHeader.replace("]", "");
-
-    QByteArray oscMessageHeaderBa = oscMessageHeader.toLocal8Bit();
-    const char* oscMessageHeaderChar = oscMessageHeaderBa.data();
+    qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
+    if (!pConfig) {
+        qWarning() << "[OSC] [OSCFUNCTIONS] -> pConfig is nullptr! Aborting OSC send.";
+        return;
+    }
+    // lo_address address = lo_address_new_with_proto(LO_UDP, receiverIp,
+    // std::to_string(port).c_str()); if (!address) {
+    //     qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC
+    //     address."; return;
+    // }
 
     if (pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-        char buffer[IP_MTU_SIZE];
-        osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
-        QString oscStatusTxtBody;
-
-        // Creation of package
-        p.Clear();
-        p << osc::BeginBundle();
-        switch (oscBodyType) {
-        case DefOscBodyType::STRINGBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar)
-              << oscMessageBodyQString.toLocal8Bit().data() << osc::EndMessage;
-            oscStatusTxtBody = oscMessageBodyQString;
-            break;
-        case DefOscBodyType::INTBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyInt << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyInt);
-            break;
-        case DefOscBodyType::DOUBLEBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyDouble << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyDouble);
-            break;
-        case DefOscBodyType::FLOATBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyFloat << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyFloat);
-            break;
-        }
-        p << osc::EndBundle;
-
-        // Retrieve output port
-        int ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
-
         // List of similar parts of receiver
         const QList<std::pair<QString, QString>> receivers = {
                 {"[OSC]", "OscReceiver1"},
@@ -121,15 +124,95 @@ void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
                                 ->getValue(ConfigKey(
                                         receiver.first, receiver.second + "Ip"))
                                 .toLocal8Bit();
-                sendOscMessage(receiverIpBa.data(),
-                        ckOscPortOutInt,
-                        p,
-                        oscMessageHeader,
-                        oscStatusTxtBody);
+                int ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
+                // Send the message to the receiver
+                //                sendOscMessage(receiverIpBa.data(),
+                //                ckOscPortOutInt, oscMessageHeader,
+                //                oscStatusTxtType, oscStatusTxtBody);
+
+                /*if (!address) {
+                    qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC address.";
+                    return;
+                }*/
+
+                // Create a new OSC message
+                lo_address address = lo_address_new_with_proto(LO_UDP,
+                        receiverIpBa.data(),
+                        std::to_string(ckOscPortOutInt).c_str());
+                lo_message msg = lo_message_new();
+                int result = -1;
+                QString oscStatusTxtBody;
+                // QVariant oscStatusTxtBody;
+                // const char* oscStatusTxtType;
+                // Prepare the message body
+                switch (oscBodyType) {
+                case DefOscBodyType::STRINGBODY:
+                    // oscStatusTxtType = "s";
+                    oscStatusTxtBody = oscMessageBodyQString;
+                    // oscStatusTxtBody = oscMessageBodyQString;
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "s",
+                            oscMessageBodyQString.toLocal8Bit().data());
+                    break;
+                case DefOscBodyType::INTBODY:
+                    // oscStatusTxtType = "i";
+                    oscStatusTxtBody = QString::number(oscMessageBodyInt);
+                    // oscStatusTxtBody = oscMessageBodyInt;
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "i",
+                            oscMessageBodyInt);
+                    break;
+                case DefOscBodyType::DOUBLEBODY:
+                    // oscStatusTxtType = "d";
+                    oscStatusTxtBody = QString::number(oscMessageBodyDouble);
+                    // oscStatusTxtBody = oscMessageBodyDouble;
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "d",
+                            oscMessageBodyDouble);
+                    break;
+                case DefOscBodyType::FLOATBODY:
+                    // oscStatusTxtType = "f";
+                    oscStatusTxtBody = QString::number(oscMessageBodyFloat);
+                    // oscStatusTxtBody = oscMessageBodyFloat;
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "f",
+                            oscMessageBodyFloat);
+                    break;
+                }
+                if (result == -1) {
+                    qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
+                } else {
+                    // if (sDebug) {
+                    qDebug()
+                            << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
+                                       "Receiver (%1:%2) : <%3 : %4>")
+                                       .arg(receiverIpBa.data())
+                                       .arg(ckOscPortOutInt)
+                                       .arg(oscMessageHeader)
+                                       //.arg(oscBodyType.toString())
+                                       .arg(oscStatusTxtBody);
+                    //}
+                }
+                lo_message_free(msg);
+                //        if (sDebug) {
+                // qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
+                // Receiver (%1:%2) : <%3 : %4>")
+                //                    .arg(receiverIp)
+                //                    .arg(port)
+                //                    .arg(oscMessageHeader)
+                //                    .arg(bodyType)
+                //                    .arg(oscMessageBodyData.toString());
+                //        }
             }
         }
     } else {
-        qDebug() << "OSC NOT Enabled";
+        // if (sDebug) {
+        qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC NOT Enabled";
+        //}
     }
 }
 
@@ -347,8 +430,10 @@ QString translatePath(const QString& inputPath) {
     }
 
     // Return the input path unchanged if no matches are found
-    qDebug() << "[OSC] OSCFUNCTIONS Original path:" << originalPath
+    // if (sDebug) {
+    qDebug() << "[OSC] [OSCFUNCTIONS] -> Original path:" << originalPath
              << " Translated path:" << inputPath;
+    // }
     return inputPath;
 }
 #endif /* OSCFUNCTIONS_H */
