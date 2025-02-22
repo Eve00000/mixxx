@@ -372,81 +372,108 @@ void OscReceiver::sendOscSyncTriggers() {
     }
 }
 
+// with QT Event Loop
+// void OscReceiver::startOscReceiver(int oscPortin) {
+//    std::string portStr = std::to_string(oscPortin);
+//
+//    // Create a new OSC server (not a server thread)
+//    lo_server server = lo_server_new_with_proto(portStr.c_str(), LO_UDP,
+//    errorCallback); if (!server) {
+//        qWarning() << "[OSC] [OSCREVEIVER] -> Failed to create OSC server.";
+//        return;
+//    }
+//
+//    // Add methods to the server
+//    lo_server_add_method(server, "/quit", "", quit_handler, nullptr);
+//    lo_server_add_method(server, nullptr, nullptr, messageCallback, this); //
+//    Pass `this` as user_data
+//
+//    qDebug() << "[OSC] Receiver started and awaiting messages...";
+//
+//    // Use a QTimer to periodically process OSC messages
+//    QTimer* timer = new QTimer(this);
+//    connect(timer, &QTimer::timeout, this, [server]() {
+//        // Process OSC messages (non-blocking)
+//        lo_server_recv_noblock(server, 0);
+//    });
+//    timer->start(100); // Process messages every 100ms
+//}
+
 // liblo without own thread
-// int OscReceiver::startOscReceiver(int oscPortin, UserSettingsPointer m_pConfig) {
-int OscReceiver::startOscReceiver(int oscPortin) {
-    std::string portStr = std::to_string(oscPortin);
-
-    // Create a new OSC server (not a server thread)
-    lo_server server = lo_server_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
-    if (!server) {
-        qWarning() << "[OSC] [OSCREVEIVER] -> Failed to create OSC server.";
-        return -1;
-    }
-    // Add methods to the server
-    lo_server_add_method(server, "/quit", "", quit_handler, nullptr);
-    lo_server_add_method(server,
-            nullptr,
-            nullptr,
-            messageCallback,
-            this); // Pass `this` as user_data
-    qDebug() << "[OSC] Receiver started and awaiting messages...";
-    // Main loop to process OSC messages
-    while (!m_stopFlag) {
-        // Process OSC messages (non-blocking)
-        int timeout_ms = 100; // Wait for 100ms for incoming messages
-        lo_server_recv_noblock(server, timeout_ms);
-    }
-    // Stop the server when done
-    lo_server_free(server);
-
-    qDebug() << "[OSC] [OSCREVEIVER] -> Receiver stopped";
-}
-
-// liblo in own thread
 // int OscReceiver::startOscReceiver(int oscPortin, UserSettingsPointer m_pConfig) {
 // int OscReceiver::startOscReceiver(int oscPortin) {
 //    std::string portStr = std::to_string(oscPortin);
-//    lo_server_thread st = lo_server_thread_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
-//    lo_server s = lo_server_thread_get_server(st);
-//    lo_server_thread_add_method(st, "/quit", "", quit_handler, NULL);
-//    lo_server_thread_add_method(st, NULL, NULL, messageCallback, s);
-//    lo_server_thread_start(st);
-//    // lo_address a = 0;
-//    // a = lo_address_new_with_proto(LO_UDP, "192.168.0.125", "9000");
-//    // if (!a) {
-//    //     qDebug() << "EVE -> LIBLO -> Error creating destination address.\n";
-//    //     exit(1);
-//    // }
-//    // qDebug() << "EVE -> LIBLO -> Sending message to " << a;
-//    // int r = lo_send_from(a, s, LO_TT_IMMEDIATE, "/test", "ifs", 1, 2.0f, "3");
-//    // if (r < 0)
-//    //     qDebug() << "EVE -> LIBLO -> Error sending initial message.\n";
-//    qDebug() << "[OSC] Receiver started and awaiting messages...";
 //
-//    while (!m_stopFlag) {
-//        QThread::msleep(100); // Sleep for a short period
+//    // Create a new OSC server (not a server thread)
+//    lo_server server = lo_server_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
+//    if (!server) {
+//        qWarning() << "[OSC] [OSCREVEIVER] -> Failed to create OSC server.";
+//        return -1;
 //    }
-//
-//    // while (true) {
-//    //     // mutexlocker added for safe adding flag
-//    //     QMutexLocker locker(&m_mutex);
-//    //     if (m_stopFlag) {
-//    //         break; // If the stop flag is set, exit the loop
-//    //     }
-//
-//    //    // Sleep for a short period before checking the flag again
-//    //    QThread::msleep(100);
-//    //}
-//
+//    // Add methods to the server
+//    lo_server_add_method(server, "/quit", "", quit_handler, nullptr);
+//    lo_server_add_method(server,
+//            nullptr,
+//            nullptr,
+//            messageCallback,
+//            this); // Pass `this` as user_data
+//    qDebug() << "[OSC] Receiver started and awaiting messages...";
+//    // Main loop to process OSC messages
+//    while (!m_stopFlag) {
+//        // Process OSC messages (non-blocking)
+//        int timeout_ms = 100; // Wait for 100ms for incoming messages
+//        lo_server_recv_noblock(server, timeout_ms);
+//    }
 //    // Stop the server when done
-//    lo_server_thread_stop(st);
-//    lo_server_thread_free(st);
+//    lo_server_free(server);
 //
 //    qDebug() << "[OSC] [OSCREVEIVER] -> Receiver stopped";
-//
-//    return 0;
 //}
+
+// liblo in own thread
+// int OscReceiver::startOscReceiver(int oscPortin, UserSettingsPointer m_pConfig) {
+int OscReceiver::startOscReceiver(int oscPortin) {
+    std::string portStr = std::to_string(oscPortin);
+    lo_server_thread st = lo_server_thread_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
+    lo_server s = lo_server_thread_get_server(st);
+    lo_server_thread_add_method(st, "/quit", "", quit_handler, NULL);
+    lo_server_thread_add_method(st, NULL, NULL, messageCallback, s);
+    lo_server_thread_start(st);
+    // lo_address a = 0;
+    // a = lo_address_new_with_proto(LO_UDP, "192.168.0.125", "9000");
+    // if (!a) {
+    //     qDebug() << "EVE -> LIBLO -> Error creating destination address.\n";
+    //     exit(1);
+    // }
+    // qDebug() << "EVE -> LIBLO -> Sending message to " << a;
+    // int r = lo_send_from(a, s, LO_TT_IMMEDIATE, "/test", "ifs", 1, 2.0f, "3");
+    // if (r < 0)
+    //     qDebug() << "EVE -> LIBLO -> Error sending initial message.\n";
+    qDebug() << "[OSC] Receiver started and awaiting messages...";
+
+    while (!m_stopFlag) {
+        QThread::msleep(100); // Sleep for a short period
+    }
+
+    // while (true) {
+    //     // mutexlocker added for safe adding flag
+    //     QMutexLocker locker(&m_mutex);
+    //     if (m_stopFlag) {
+    //         break; // If the stop flag is set, exit the loop
+    //     }
+
+    //    // Sleep for a short period before checking the flag again
+    //    QThread::msleep(100);
+    //}
+
+    // Stop the server when done
+    lo_server_thread_stop(st);
+    lo_server_thread_free(st);
+
+    qDebug() << "[OSC] [OSCREVEIVER] -> Receiver stopped";
+
+    return 0;
+}
 
 void OscReceiver::oscReceiverMain(UserSettingsPointer pConfig) {
     if (pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
