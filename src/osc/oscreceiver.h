@@ -47,6 +47,7 @@ class OscReceiver : public QObject {
     UserSettingsPointer m_pConfig;
     QThread* m_pThread = nullptr;
     QMutex m_mutex;
+    QReadWriteLock m_configLock;
 
   signals:
     void oscMessageReceived(OscResult oscIn);

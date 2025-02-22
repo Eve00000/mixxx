@@ -1918,6 +1918,8 @@ if(MSVC)
     target_compile_definitions(
       mixxx-lib
       PUBLIC
+        # Eve: to prevent multiple instances of winsock(2) being loaded
+        WIN32_LEAN_AND_MEAN
         _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
         _CRT_SECURE_NO_WARNINGS
     )
@@ -2011,6 +2013,8 @@ if(WIN32)
   # _WIN32_WINNT_WIN7 = 0x0601
   target_compile_definitions(mixxx-lib PUBLIC WINVER=0x0601)
   target_compile_definitions(mixxx-lib PUBLIC _WIN32_WINNT=0x0601)
+  # Eve: to prevent multiple instances of winsock(2) being loaded
+  target_compile_definitions(mixxx-lib PUBLIC WIN32_LEAN_AND_MEAN)
   if(MSVC)
     target_compile_definitions(mixxx-lib PUBLIC _USE_MATH_DEFINES)
   endif()
@@ -2109,7 +2113,7 @@ if(QT6)
   # According to https://doc.qt.io/qt-6/qt-finalize-target.html it is importand for
   # builds with Qt < 3.21
   # Eve: to prevent multiple instances of winsock(2) being loaded
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
+  ### add_definitions(-DWIN32_LEAN_AND_MEAN)
   qt_add_executable(mixxx WIN32 src/main.cpp MANUAL_FINALIZATION)
 else()
   find_package(Qt5 COMPONENTS Core) # For Qt Core cmake functions
@@ -2390,7 +2394,7 @@ endif()
 # Tests
 #
 # Eve: to prevent multiple instances of winsock(2) being loaded
-add_definitions(-DWIN32_LEAN_AND_MEAN)
+### add_definitions(-DWIN32_LEAN_AND_MEAN)
 add_executable(
   mixxx-test
   src/test/analyserwaveformtest.cpp
@@ -2621,7 +2625,8 @@ add_custom_target(
 
 # Windows-only resource file
 if(WIN32)
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
+  # EVE
+  ###add_definitions(-DWIN32_LEAN_AND_MEAN)
   string(TIMESTAMP MIXXX_YEAR "%Y")
 
   set(

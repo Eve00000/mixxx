@@ -159,17 +159,19 @@ void OscReceiver::doGetP(OscResult& oscIn) {
         auto proxy = std::make_unique<PollingControlProxy>(oscIn.oscGroup, oscIn.oscKey);
         // for future use when prefix /cop is introduced in osc-messages
         // oscIn.oscGroup = QString("%1%2").arg("/cop", oscIn.oscGroup);
-        // oscFunctionsSendPtrType(m_pConfig,
-        //        oscIn.oscGroup,
-        //        oscIn.oscKey,
-        //        DefOscBodyType::FLOATBODY,
-        //        "",
-        //        0,
-        //        0,
-        //        static_cast<float>(proxy->get()));
+        oscFunctionsSendPtrType(m_pConfig,
+                oscIn.oscGroup,
+                oscIn.oscKey,
+                DefOscBodyType::FLOATBODY,
+                // DefOscBodyType::DOUBLEBODY,
+                "",
+                0,
+                0,
+                static_cast<float>(proxy->getParameter()));
+        // proxy->getParameter());
         if (sDebug) {
             qDebug() << "[OSC] [OSCREVEIVER] -> Msg Snd: Group, Key: Value:" << oscIn.oscGroup
-                     << "," << oscIn.oscKey << ":" << proxy->get();
+                     << "," << oscIn.oscKey << ":" << proxy->getParameter();
         }
     }
 }
@@ -181,18 +183,20 @@ void OscReceiver::doGetV(OscResult& oscIn) {
                  << " oscIn.oscKey " << oscIn.oscKey;
     }
     if (ControlObject::exists(ConfigKey(oscIn.oscGroup, oscIn.oscKey))) {
+        auto proxy = std::make_unique<PollingControlProxy>(oscIn.oscGroup, oscIn.oscKey);
         // for future use when prefix /cop is introduced in osc-messages
         // oscIn.oscGroup = QString("%1%2").arg("/cov", oscIn.oscGroup);
-        // oscFunctionsSendPtrType(m_pConfig,
-        //        oscIn.oscGroup,
-        //        oscIn.oscKey,
-        //        DefOscBodyType::FLOATBODY,
-        //        "",
-        //        0,
-        //        0,
-        //        static_cast<float>(ControlObject::getControl(
-        //                oscIn.oscGroup, oscIn.oscKey)
-        //                        ->get()));
+        oscFunctionsSendPtrType(m_pConfig,
+                oscIn.oscGroup,
+                oscIn.oscKey,
+                DefOscBodyType::FLOATBODY,
+                "",
+                0,
+                0,
+                static_cast<float>(proxy->get()));
+        // static_cast<float>(ControlObject::getControl(
+        //         oscIn.oscGroup, oscIn.oscKey)
+        //                 ->get()));
         if (sDebug) {
             qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get Group, Key: Value:" << oscIn.oscGroup
                      << "," << oscIn.oscKey << ":" << oscIn.oscValue;
@@ -200,35 +204,112 @@ void OscReceiver::doGetV(OscResult& oscIn) {
     }
 }
 
-// OSC wants info from Mixxx -> TrackArtist & TrackTitle
 void OscReceiver::doGetT(OscResult& oscIn) {
     if (sDebug) {
         qDebug() << "[OSC] [OSCREVEIVER] -> doGetT triggered oscIn.oscGroup" << oscIn.oscGroup
                  << " oscIn.oscKey " << oscIn.oscKey;
     }
+
     QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
     if (sDebug) {
         qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get Group, TrackInfo: " << oscIn.oscGroup
                  << "," << oscIn.oscKey;
     }
-    // if (!m_pConfig->getValue(ConfigKey("[OSC]", searchOscKey)) {
-    const QString& sendOscValue = m_pConfig->getValue(ConfigKey("[OSC]", searchOscKey));
-    // for future use when prefix /cop is introduced in osc-messages
-    // oscIn.oscGroup = QString("%1%2").arg("/cot", oscIn.oscGroup);
-    // oscFunctionsSendPtrType(m_pConfig,
-    //       oscIn.oscGroup,
-    //       oscIn.oscKey,
-    //       DefOscBodyType::STRINGBODY,
-    //       escapeStringToJsonUnicode(sendOscValue),
-    //       0,
-    //       0,
-    //       0);
-    //}
+
+    // Lock the mutex to protect access to m_pConfig
+    QMutexLocker<QMutex> locker(&m_mutex);
+
+    // Read the value from m_pConfig
+    const QString sendOscValue = m_pConfig->getValue(ConfigKey("[OSC]", searchOscKey));
+
+    // Send the OSC message using the stored value
+    oscFunctionsSendPtrType(m_pConfig,
+            oscIn.oscGroup,
+            oscIn.oscKey,
+            DefOscBodyType::STRINGBODY,
+            escapeStringToJsonUnicode(sendOscValue),
+            0,
+            0,
+            0);
+
     if (sDebug) {
         qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get TrackInfo, Key: Value:" << oscIn.oscGroup
                  << "," << oscIn.oscKey << ":" << sendOscValue;
     }
 }
+
+// test readlocjer
+// void OscReceiver::doGetT(OscResult& oscIn) {
+//    if (sDebug) {
+//        qDebug() << "[OSC] [OSCREVEIVER] -> doGetT triggered oscIn.oscGroup"
+//        << oscIn.oscGroup
+//                 << " oscIn.oscKey " << oscIn.oscKey;
+//    }
+//    QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
+//    if (sDebug) {
+//        qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get Group, TrackInfo: "
+//        << oscIn.oscGroup
+//                 << "," << oscIn.oscKey;
+//    }
+//    // Lock the read-write lock for reading
+//    QReadLocker locker(&m_configLock);
+//
+//    // Read the value from m_pConfig
+//    const QString sendOscValue = m_pConfig->getValue(ConfigKey("[OSC]",
+//    searchOscKey));
+//
+//    // Unlock the read-write lock immediately after reading
+//    locker.unlock();
+//
+//    // Send the OSC message using the stored value
+//    oscFunctionsSendPtrType(m_pConfig,
+//            oscIn.oscGroup,
+//            oscIn.oscKey,
+//            DefOscBodyType::STRINGBODY,
+//            escapeStringToJsonUnicode(sendOscValue),
+//            0,
+//            0,
+//            0);
+//
+//    if (sDebug) {
+//        qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get TrackInfo, Key:
+//        Value:" << oscIn.oscGroup
+//                 << "," << oscIn.oscKey << ":" << sendOscValue;
+//    }
+//}
+
+// void OscReceiver::doGetT(OscResult& oscIn) {
+//     if (sDebug) {
+//         qDebug() << "[OSC] [OSCREVEIVER] -> doGetT triggered oscIn.oscGroup"
+//         << oscIn.oscGroup
+//                  << " oscIn.oscKey " << oscIn.oscKey;
+//     }
+//     QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
+//     if (sDebug) {
+//         qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get Group, TrackInfo: "
+//         << oscIn.oscGroup
+//                  << "," << oscIn.oscKey;
+//     }
+//     // if (!m_pConfig->getValue(ConfigKey("[OSC]", searchOscKey)) {
+//     const QString& sendOscValue = m_pConfig->getValue(ConfigKey("[OSC]",
+//     searchOscKey));
+//     // for future use when prefix /cop is introduced in osc-messages
+//     // oscIn.oscGroup = QString("%1%2").arg("/cot", oscIn.oscGroup);
+//      oscFunctionsSendPtrType(m_pConfig,
+//            oscIn.oscGroup,
+//            oscIn.oscKey,
+//            DefOscBodyType::STRINGBODY,
+//            escapeStringToJsonUnicode(sendOscValue),
+//            0,
+//            0,
+//            0);
+//     //}
+//     if (sDebug) {
+//         qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Get TrackInfo, Key:
+//         Value:" << oscIn.oscGroup
+//                  << "," << oscIn.oscKey << ":" << sendOscValue;
+//     }
+// }
 
 // Input from OSC -> Changes in Mixxx
 void OscReceiver::doSet(OscResult& oscIn, float value) {
@@ -239,14 +320,14 @@ void OscReceiver::doSet(OscResult& oscIn, float value) {
     if (ControlObject::exists(ConfigKey(oscIn.oscGroup, oscIn.oscKey))) {
         auto proxy = std::make_unique<PollingControlProxy>(oscIn.oscGroup, oscIn.oscKey);
         proxy->set(value);
-        // oscFunctionsSendPtrType(m_pConfig,
-        //         oscIn.oscGroup,
-        //         oscIn.oscKey,
-        //         DefOscBodyType::FLOATBODY,
-        //         "",
-        //         0,
-        //         0,
-        //         value);
+        oscFunctionsSendPtrType(m_pConfig,
+                oscIn.oscGroup,
+                oscIn.oscKey,
+                DefOscBodyType::FLOATBODY,
+                "",
+                0,
+                0,
+                value);
         if (sDebug) {
             qDebug() << "[OSC] [OSCREVEIVER] -> Msg Rcvd: Group, Key: Value:" << oscIn.oscGroup
                      << "," << oscIn.oscKey << ":" << value;
@@ -277,63 +358,95 @@ void OscReceiver::sendOscSyncTriggers() {
                  << checkStamp;
     }
     if (checkStamp % interval == 0) {
-        // oscFunctionsSendPtrType(m_pConfig,
-        //         "[Osc]",
-        //         "OscSync",
-        //         DefOscBodyType::FLOATBODY,
-        //         "",
-        //         0,
-        //         0,
-        //         1);
+        oscFunctionsSendPtrType(m_pConfig,
+                "[Osc]",
+                "OscSync",
+                DefOscBodyType::FLOATBODY,
+                "",
+                0,
+                0,
+                1);
         if (sDebug) {
             qDebug() << "[OSC] [OSCREVEIVER] -> Mixxx OSC SENT SendSyncTrigger";
         }
     }
 }
 
+// liblo without own thread
 // int OscReceiver::startOscReceiver(int oscPortin, UserSettingsPointer m_pConfig) {
 int OscReceiver::startOscReceiver(int oscPortin) {
     std::string portStr = std::to_string(oscPortin);
-    lo_server_thread st = lo_server_thread_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
-    lo_server s = lo_server_thread_get_server(st);
-    lo_server_thread_add_method(st, "/quit", "", quit_handler, NULL);
-    lo_server_thread_add_method(st, NULL, NULL, messageCallback, s);
-    lo_server_thread_start(st);
-    // lo_address a = 0;
-    // a = lo_address_new_with_proto(LO_UDP, "192.168.0.125", "9000");
-    // if (!a) {
-    //     qDebug() << "EVE -> LIBLO -> Error creating destination address.\n";
-    //     exit(1);
-    // }
-    // qDebug() << "EVE -> LIBLO -> Sending message to " << a;
-    // int r = lo_send_from(a, s, LO_TT_IMMEDIATE, "/test", "ifs", 1, 2.0f, "3");
-    // if (r < 0)
-    //     qDebug() << "EVE -> LIBLO -> Error sending initial message.\n";
-    qDebug() << "[OSC] Receiver started and awaiting messages...";
 
-    while (!m_stopFlag) {
-        QThread::msleep(100); // Sleep for a short period
+    // Create a new OSC server (not a server thread)
+    lo_server server = lo_server_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
+    if (!server) {
+        qWarning() << "[OSC] [OSCREVEIVER] -> Failed to create OSC server.";
+        return -1;
     }
-
-    // while (true) {
-    //     // mutexlocker added for safe adding flag
-    //     QMutexLocker locker(&m_mutex);
-    //     if (m_stopFlag) {
-    //         break; // If the stop flag is set, exit the loop
-    //     }
-
-    //    // Sleep for a short period before checking the flag again
-    //    QThread::msleep(100);
-    //}
-
+    // Add methods to the server
+    lo_server_add_method(server, "/quit", "", quit_handler, nullptr);
+    lo_server_add_method(server,
+            nullptr,
+            nullptr,
+            messageCallback,
+            this); // Pass `this` as user_data
+    qDebug() << "[OSC] Receiver started and awaiting messages...";
+    // Main loop to process OSC messages
+    while (!m_stopFlag) {
+        // Process OSC messages (non-blocking)
+        int timeout_ms = 100; // Wait for 100ms for incoming messages
+        lo_server_recv_noblock(server, timeout_ms);
+    }
     // Stop the server when done
-    lo_server_thread_stop(st);
-    lo_server_thread_free(st);
+    lo_server_free(server);
 
     qDebug() << "[OSC] [OSCREVEIVER] -> Receiver stopped";
-
-    return 0;
 }
+
+// liblo in own thread
+// int OscReceiver::startOscReceiver(int oscPortin, UserSettingsPointer m_pConfig) {
+// int OscReceiver::startOscReceiver(int oscPortin) {
+//    std::string portStr = std::to_string(oscPortin);
+//    lo_server_thread st = lo_server_thread_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
+//    lo_server s = lo_server_thread_get_server(st);
+//    lo_server_thread_add_method(st, "/quit", "", quit_handler, NULL);
+//    lo_server_thread_add_method(st, NULL, NULL, messageCallback, s);
+//    lo_server_thread_start(st);
+//    // lo_address a = 0;
+//    // a = lo_address_new_with_proto(LO_UDP, "192.168.0.125", "9000");
+//    // if (!a) {
+//    //     qDebug() << "EVE -> LIBLO -> Error creating destination address.\n";
+//    //     exit(1);
+//    // }
+//    // qDebug() << "EVE -> LIBLO -> Sending message to " << a;
+//    // int r = lo_send_from(a, s, LO_TT_IMMEDIATE, "/test", "ifs", 1, 2.0f, "3");
+//    // if (r < 0)
+//    //     qDebug() << "EVE -> LIBLO -> Error sending initial message.\n";
+//    qDebug() << "[OSC] Receiver started and awaiting messages...";
+//
+//    while (!m_stopFlag) {
+//        QThread::msleep(100); // Sleep for a short period
+//    }
+//
+//    // while (true) {
+//    //     // mutexlocker added for safe adding flag
+//    //     QMutexLocker locker(&m_mutex);
+//    //     if (m_stopFlag) {
+//    //         break; // If the stop flag is set, exit the loop
+//    //     }
+//
+//    //    // Sleep for a short period before checking the flag again
+//    //    QThread::msleep(100);
+//    //}
+//
+//    // Stop the server when done
+//    lo_server_thread_stop(st);
+//    lo_server_thread_free(st);
+//
+//    qDebug() << "[OSC] [OSCREVEIVER] -> Receiver stopped";
+//
+//    return 0;
+//}
 
 void OscReceiver::oscReceiverMain(UserSettingsPointer pConfig) {
     if (pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
