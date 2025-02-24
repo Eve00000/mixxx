@@ -4,7 +4,7 @@
 # later version. See the LICENSE file for details.
 
 #[=======================================================================[.rst:
-Findliblo
+FindLiblo
 --------
 
 Finds the liblo library.

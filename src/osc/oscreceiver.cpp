@@ -109,13 +109,16 @@ static int messageCallback(const char* path,
         qDebug() << "[OSC] [OSCRECEIVER] -> Received OSC message:"
                  << oscIn.oscAddress << "Value:" << oscIn.oscValue;
     }
+
     // oscIn.oscAddress.replace("/", "").replace("(", "[").replace(")", "]");
     if (sDebug) {
         // qDebug() << "[OSC] [OSCRECEIVER] -> Before translation " << oscIn.oscAddressURL;
     }
+
     if (s_oscSendSyncTriggers) {
         worker->sendOscSyncTriggers();
     }
+
     worker->determineOscAction(oscIn);
     return 0;
 }
@@ -137,6 +140,7 @@ void OscReceiver::determineOscAction(OscResult& oscIn) {
         // qDebug() << "[OSC] [OSCRECEIVER] -> oscGetT " << oscGetT;
         // qDebug() << "[OSC] [OSCRECEIVER] -> oscSet " << oscSet;
     }
+
     // int posDel = oscIn.oscAddress.indexOf("@", 0, Qt::CaseInsensitive);
     int posDel = oscIn.oscAddress.indexOf(",", 0, Qt::CaseInsensitive);
     if (posDel > 0) {
