@@ -56,14 +56,12 @@ const QString kAppGroup = QStringLiteral("[App]");
 // EveOSC
 extern std::atomic<bool> s_oscEnabled;
 void sendTrackInfoToOscClients(
-        // UserSettingsPointer pConfig,
         const QString& oscGroup,
         const QString& trackArtist,
         const QString& trackTitle,
         float track_loaded,
         float duration,
         float playposition);
-// void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup);
 void sendNoTrackLoadedToOscClients(const QString& oscGroup);
 // EveOSC
 
@@ -594,7 +592,6 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackLoaded->forceSet(1);
 
     //  EveOSC begin
-    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
     if (s_oscEnabled.load()) {
         sendTrackInfoToOscClients(
                 getGroup(),
@@ -604,16 +601,6 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
                 (float)pTrack->getDuration(),
                 0);
     }
-    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-    //     sendTrackInfoToOscClients(
-    //         m_pConfig,
-    //             getGroup(),
-    //             pTrack->getArtist(),
-    //             pTrack->getTitle(),
-    //             1,
-    //             (float)pTrack->getDuration(),
-    //             0);
-    // }
     //  EveOSC end
 
     // Reset slip mode
@@ -686,9 +673,6 @@ void EngineBuffer::ejectTrack() {
     m_pTrackLoaded->forceSet(0);
 
     //  EveOSC begin
-    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-    //    sendNoTrackLoadedToOscClients(getGroup());
-    //}
     if (s_oscEnabled.load()) {
         sendNoTrackLoadedToOscClients(getGroup());
     }

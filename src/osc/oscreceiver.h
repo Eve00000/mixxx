@@ -32,7 +32,6 @@ class OscReceiver : public QObject {
     explicit OscReceiver(UserSettingsPointer pConfig, QObject* parent = nullptr);
     ~OscReceiver() override;
 
-    // void startOscReceiver(int oscPortin);
     int startOscReceiver(int oscPortin);
     void stop();
     void oscReceiverMain(UserSettingsPointer pConfig);
@@ -44,7 +43,6 @@ class OscReceiver : public QObject {
     void sendOscSyncTriggers();
     void checkResponsiveness();
     void loadOscConfiguration(UserSettingsPointer pConfig);
-    int m_lastCheckStamp;
 
   private:
     bool m_stopFlag = false;

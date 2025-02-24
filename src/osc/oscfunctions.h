@@ -48,54 +48,11 @@ QString escapeStringToJsonUnicode(const QString& input) {
 }
 
 // Function to send OSC message with liblo
-// void sendOscMessage(const char* receiverIp, int port, const QString&
-// oscMessageHeader, const char* bodyType, const QString& oscMessageBodyData) {
 void sendOscMessage(const char* receiverIp,
         int port,
         const QString& oscMessageHeader,
         const char* bodyType,
         QVariant oscMessageBodyData) {
-    //    if (receiverIp) {
-    //        // lo_address address = lo_address_new_with_proto(LO_UDP,
-    //        receiverIp, "9000"); lo_address address =
-    //        lo_address_new_with_proto(LO_UDP, receiverIp,
-    //        std::to_string(port).c_str());
-    //
-    //        if (!address) {
-    //            qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC
-    //            address."; return;
-    //        }
-    //
-    //        // Create a new OSC message
-    //        lo_message msg = lo_message_new();
-    //        int result = -1;
-    //        result = lo_send(address, oscMessageHeader.toLocal8Bit().data(),
-    //        bodyType, oscMessageBodyData.toString().toLocal8Bit().data()); if
-    //        (result == -1) {
-    //            qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC
-    //            message.";
-    //        } else {
-    //            //if (sDebug) {
-    //                qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
-    //                Receiver (%1:%2) : <%3 : %4>")
-    //                                    .arg(receiverIp)
-    //                                    .arg(port)
-    //                                    .arg(oscMessageHeader)
-    //                                    .arg(bodyType)
-    //                                .arg(oscMessageBodyData.toString());
-    //            //}
-    //        }
-    //        lo_message_free(msg);
-    ////        if (sDebug) {
-    //            qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
-    //            Receiver (%1:%2) : <%3 : %4>")
-    //                                .arg(receiverIp)
-    //                                .arg(port)
-    //                                .arg(oscMessageHeader)
-    //                                .arg(bodyType)
-    //                            .arg(oscMessageBodyData.toString());
-    //        //        }
-    //    }
 }
 
 void oscFunctionsSendPtrType(
@@ -107,42 +64,6 @@ void oscFunctionsSendPtrType(
         int oscMessageBodyInt,
         double oscMessageBodyDouble,
         float oscMessageBodyFloat) {
-    // Lock the shared mutex to protect access to configuration values
-    // QMutexLocker locker(&s_configMutex);
-
-    // Read configuration values only once during the first call
-    // if (!s_configLoaded1stTimeFromFile.load()) {
-    //    if (!pConfig) {
-    //        qWarning() << "[OSC] [OSCFUNCTIONS] -> pConfig is nullptr! Aborting OSC send.";
-    //        return;
-    //    }
-
-    //    // Read all necessary configuration values
-    //    s_oscEnabled = pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"));
-    //    s_ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
-
-    //    // List of receiver configurations
-    //    const QList<std::pair<QString, QString>> receivers = {
-    //            {"[OSC]", "OscReceiver1"},
-    //            {"[OSC]", "OscReceiver2"},
-    //            {"[OSC]", "OscReceiver3"},
-    //            {"[OSC]", "OscReceiver4"},
-    //            {"[OSC]", "OscReceiver5"}};
-
-    //    // Store receiver configurations
-    //    for (const auto& receiver : receivers) {
-    //        bool active = pConfig->getValue<bool>(
-    //                ConfigKey(receiver.first, receiver.second + "Active"));
-    //        QString ip = pConfig->getValue(ConfigKey(receiver.first, receiver.second + "Ip"));
-    //        s_receiverConfigs.append({active, ip});
-    //    }
-
-    //    // Mark configuration as initialized
-    //    s_configLoaded1stTimeFromFile.store(true);
-    //}
-
-    // Unlock the mutex after reading configuration values
-    //    locker.unlock();
 
     // Proceed with sending OSC messages using the stored values
     QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
@@ -216,140 +137,8 @@ void oscFunctionsSendPtrType(
     }
 }
 
-// original but sometimes problem on reading config
-// void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
-//        const QString& oscGroup,
-//        const QString& oscKey,
-//        enum DefOscBodyType oscBodyType,
-//        const QString& oscMessageBodyQString,
-//        int oscMessageBodyInt,
-//        double oscMessageBodyDouble,
-//        float oscMessageBodyFloat) {
-//    QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
-//    oscMessageHeader.replace("[", "");
-//    oscMessageHeader.replace("]", "");
-//    qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
-//    if (!pConfig) {
-//        qWarning() << "[OSC] [OSCFUNCTIONS] -> pConfig is nullptr! Aborting OSC send.";
-//        return;
-//    }
-//    // lo_address address = lo_address_new_with_proto(LO_UDP, receiverIp,
-//    // std::to_string(port).c_str()); if (!address) {
-//    //     qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC
-//    //     address."; return;
-//    // }
-//
-//
-//    if (pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-//        // List of similar parts of receiver
-//        const QList<std::pair<QString, QString>> receivers = {
-//                {"[OSC]", "OscReceiver1"},
-//                {"[OSC]", "OscReceiver2"},
-//                {"[OSC]", "OscReceiver3"},
-//                {"[OSC]", "OscReceiver4"},
-//                {"[OSC]", "OscReceiver5"}};
-//
-//        // Send to active receivers
-//        for (const auto& receiver : receivers) {
-//            if (pConfig->getValue<bool>(ConfigKey(receiver.first, receiver.second + "Active"))) {
-//                QByteArray receiverIpBa =
-//                        pConfig
-//                                ->getValue(ConfigKey(
-//                                        receiver.first, receiver.second + "Ip"))
-//                                .toLocal8Bit();
-//                int ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
-//                // Send the message to the receiver
-//                //                sendOscMessage(receiverIpBa.data(),
-//                //                ckOscPortOutInt, oscMessageHeader,
-//                //                oscStatusTxtType, oscStatusTxtBody);
-//
-//                /*if (!address) {
-//                    qWarning() << "[OSC] [OSCFUNCTIONS] -> Unable to create OSC address.";
-//                    return;
-//                }*/
-//
-//                // Create a new OSC message
-//                lo_address address = lo_address_new_with_proto(LO_UDP,
-//                        receiverIpBa.data(),
-//                        std::to_string(ckOscPortOutInt).c_str());
-//                lo_message msg = lo_message_new();
-//                int result = -1;
-//                QString oscStatusTxtBody;
-//                // QVariant oscStatusTxtBody;
-//                // const char* oscStatusTxtType;
-//                // Prepare the message body
-//                switch (oscBodyType) {
-//                case DefOscBodyType::STRINGBODY:
-//                    // oscStatusTxtType = "s";
-//                    oscStatusTxtBody = oscMessageBodyQString;
-//                    // oscStatusTxtBody = oscMessageBodyQString;
-//                    result = lo_send(address,
-//                            oscMessageHeader.toLocal8Bit().data(),
-//                            "s",
-//                            oscMessageBodyQString.toLocal8Bit().data());
-//                    break;
-//                case DefOscBodyType::INTBODY:
-//                    // oscStatusTxtType = "i";
-//                    oscStatusTxtBody = QString::number(oscMessageBodyInt);
-//                    // oscStatusTxtBody = oscMessageBodyInt;
-//                    result = lo_send(address,
-//                            oscMessageHeader.toLocal8Bit().data(),
-//                            "i",
-//                            oscMessageBodyInt);
-//                    break;
-//                case DefOscBodyType::DOUBLEBODY:
-//                    // oscStatusTxtType = "d";
-//                    oscStatusTxtBody = QString::number(oscMessageBodyDouble);
-//                    // oscStatusTxtBody = oscMessageBodyDouble;
-//                    result = lo_send(address,
-//                            oscMessageHeader.toLocal8Bit().data(),
-//                            "d",
-//                            oscMessageBodyDouble);
-//                    break;
-//                case DefOscBodyType::FLOATBODY:
-//                    // oscStatusTxtType = "f";
-//                    oscStatusTxtBody = QString::number(oscMessageBodyFloat);
-//                    // oscStatusTxtBody = oscMessageBodyFloat;
-//                    result = lo_send(address,
-//                            oscMessageHeader.toLocal8Bit().data(),
-//                            "f",
-//                            oscMessageBodyFloat);
-//                    break;
-//                }
-//                if (result == -1) {
-//                    qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
-//                } else {
-//                    // if (sDebug) {
-//                    qDebug()
-//                            << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
-//                                       "Receiver (%1:%2) : <%3 : %4>")
-//                                       .arg(receiverIpBa.data())
-//                                       .arg(ckOscPortOutInt)
-//                                       .arg(oscMessageHeader)
-//                                       //.arg(oscBodyType.toString())
-//                                       .arg(oscStatusTxtBody);
-//                    //}
-//                }
-//                lo_message_free(msg);
-//                //        if (sDebug) {
-//                // qDebug() << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to
-//                // Receiver (%1:%2) : <%3 : %4>")
-//                //                    .arg(receiverIp)
-//                //                    .arg(port)
-//                //                    .arg(oscMessageHeader)
-//                //                    .arg(bodyType)
-//                //                    .arg(oscMessageBodyData.toString());
-//                //        }
-//            }
-//        }
-//    } else {
-//        // if (sDebug) {
-//        qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC NOT Enabled";
-//        //}
-//    }
-//}
-
 // function to reload the config OSC settinfs -> maybe call if they changed
+// not used at the moment
 void reloadOscConfiguration(UserSettingsPointer pConfig) {
     QMutexLocker locker(&s_configMutex);
 
@@ -383,28 +172,6 @@ void reloadOscConfiguration(UserSettingsPointer pConfig) {
     qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC configuration reloaded.";
 }
 
-// void storeTrackInfo(const QString& oscGroup, const QString& trackArtist,
-// const QString& trackTitle) {
-//     // QMutexLocker locker(&g_oscTrackTableMutex); // Lock mutex for thread
-//     safety QWriteLocker locker(&g_oscTrackTableLock);  // Write lock
-//
-//     for (int i = 0; i < kMaxOscTracks; ++i) {
-//         if (std::get<0>(g_oscTrackTable[i]).isEmpty()) { // Find empty slot
-//             g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist,
-//             trackTitle); qDebug() << "[OSC] -> Stored Track Info: " <<
-//             oscGroup << trackArtist << trackTitle;
-//
-//             qDebug() << "[OSC] -> Track Table: ";
-//             for (const auto& entry : g_oscTrackTable) {
-//                 qDebug() << "[OSC] -> Track Table: " << std::get<0>(entry) <<
-//                 " - " << std::get<1>(entry) << " - " << std::get<2>(entry);
-//             }
-//             return;
-//         }
-//     }
-//     qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
-// }
-
 void storeTrackInfo(const QString& oscGroup,
         const QString& trackArtist,
         const QString& trackTitle) {
@@ -415,7 +182,8 @@ void storeTrackInfo(const QString& oscGroup,
         if (std::get<0>(entry) == oscGroup) {
             std::get<1>(entry) = trackArtist;
             std::get<2>(entry) = trackTitle;
-            qDebug() << "[OSC] -> Updated Track Info: " << oscGroup << trackArtist << trackTitle;
+            qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
+                     << oscGroup << trackArtist << trackTitle;
             return; // Exit function after updating
         }
     }
@@ -424,7 +192,8 @@ void storeTrackInfo(const QString& oscGroup,
     for (int i = 0; i < kMaxOscTracks; ++i) {
         if (std::get<0>(g_oscTrackTable[i]).isEmpty()) { // Find empty slot
             g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist, trackTitle);
-            qDebug() << "[OSC] -> Stored New Track Info: " << oscGroup << trackArtist << trackTitle;
+            qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
+                     << oscGroup << trackArtist << trackTitle;
             return;
         }
     }
@@ -447,10 +216,8 @@ QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
     return "Unknown"; // Default value if not found
 }
 
-// void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup) {
 void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "TrackArtist",
             DefOscBodyType::STRINGBODY,
@@ -459,7 +226,6 @@ void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "TrackTitle",
             DefOscBodyType::STRINGBODY,
@@ -468,7 +234,6 @@ void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "duration",
             DefOscBodyType::FLOATBODY,
@@ -477,7 +242,6 @@ void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "track_loaded",
             DefOscBodyType::FLOATBODY,
@@ -486,7 +250,6 @@ void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "playposition",
             DefOscBodyType::FLOATBODY,
@@ -504,7 +267,6 @@ void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
     storeTrackInfo(oscGroup, trackArtist, trackTitle);
 }
 
-// void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
 void sendTrackInfoToOscClients(
         const QString& oscGroup,
         const QString& trackArtist,
@@ -513,7 +275,6 @@ void sendTrackInfoToOscClients(
         float duration,
         float playposition) {
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "TrackArtist",
             DefOscBodyType::STRINGBODY,
@@ -522,7 +283,6 @@ void sendTrackInfoToOscClients(
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "TrackTitle",
             DefOscBodyType::STRINGBODY,
@@ -531,7 +291,6 @@ void sendTrackInfoToOscClients(
             0,
             0);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "track_loaded",
             DefOscBodyType::FLOATBODY,
@@ -540,7 +299,6 @@ void sendTrackInfoToOscClients(
             0,
             track_loaded);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "duration",
             DefOscBodyType::FLOATBODY,
@@ -549,7 +307,6 @@ void sendTrackInfoToOscClients(
             0,
             duration);
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "playposition",
             DefOscBodyType::FLOATBODY,
@@ -565,11 +322,9 @@ void sendTrackInfoToOscClients(
 }
 
 void oscChangedPlayState(
-        // UserSettingsPointer pConfig,
         const QString& oscGroup,
         float playstate) {
     oscFunctionsSendPtrType(
-            // pConfig,
             oscGroup,
             "play",
             DefOscBodyType::FLOATBODY,
