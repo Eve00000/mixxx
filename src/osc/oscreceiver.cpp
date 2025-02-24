@@ -132,10 +132,10 @@ void OscReceiver::determineOscAction(OscResult& oscIn) {
     if (sDebug) {
         qDebug() << "[OSC] [OSCRECEIVER] -> Before translation " << oscIn.oscAddressURL;
         qDebug() << "[OSC] [OSCRECEIVER] -> After translation " << oscIn.oscAddress;
-        qDebug() << "[OSC] [OSCRECEIVER] -> oscGetP " << oscGetP;
-        qDebug() << "[OSC] [OSCRECEIVER] -> oscGetV " << oscGetV;
-        qDebug() << "[OSC] [OSCRECEIVER] -> oscGetT " << oscGetT;
-        qDebug() << "[OSC] [OSCRECEIVER] -> oscSet " << oscSet;
+        // qDebug() << "[OSC] [OSCRECEIVER] -> oscGetP " << oscGetP;
+        // qDebug() << "[OSC] [OSCRECEIVER] -> oscGetV " << oscGetV;
+        // qDebug() << "[OSC] [OSCRECEIVER] -> oscGetT " << oscGetT;
+        // qDebug() << "[OSC] [OSCRECEIVER] -> oscSet " << oscSet;
     }
     // int posDel = oscIn.oscAddress.indexOf("@", 0, Qt::CaseInsensitive);
     int posDel = oscIn.oscAddress.indexOf(",", 0, Qt::CaseInsensitive);
