@@ -51,18 +51,20 @@ constexpr double kLinearScalerElipsis =
 constexpr int kPlaypositionUpdateRate = 15; // updates per second
 
 const QString kAppGroup = QStringLiteral("[App]");
-
 } // anonymous namespace
 
 // EveOSC
-void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
+extern std::atomic<bool> s_oscEnabled;
+void sendTrackInfoToOscClients(
+        // UserSettingsPointer pConfig,
         const QString& oscGroup,
         const QString& trackArtist,
         const QString& trackTitle,
         float track_loaded,
         float duration,
         float playposition);
-void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup);
+// void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup);
+void sendNoTrackLoadedToOscClients(const QString& oscGroup);
 // EveOSC
 
 EngineBuffer::EngineBuffer(const QString& group,
@@ -592,8 +594,9 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackLoaded->forceSet(1);
 
     //  EveOSC begin
-    if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-        sendTrackInfoToOscClients(m_pConfig,
+    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    if (s_oscEnabled.load()) {
+        sendTrackInfoToOscClients(
                 getGroup(),
                 pTrack->getArtist(),
                 pTrack->getTitle(),
@@ -601,7 +604,17 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
                 (float)pTrack->getDuration(),
                 0);
     }
-    // EveOSC end
+    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    //     sendTrackInfoToOscClients(
+    //         m_pConfig,
+    //             getGroup(),
+    //             pTrack->getArtist(),
+    //             pTrack->getTitle(),
+    //             1,
+    //             (float)pTrack->getDuration(),
+    //             0);
+    // }
+    //  EveOSC end
 
     // Reset slip mode
     m_pSlipButton->set(0);
@@ -673,8 +686,11 @@ void EngineBuffer::ejectTrack() {
     m_pTrackLoaded->forceSet(0);
 
     //  EveOSC begin
-    if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
-        sendNoTrackLoadedToOscClients(m_pConfig, getGroup());
+    // if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    //    sendNoTrackLoadedToOscClients(getGroup());
+    //}
+    if (s_oscEnabled.load()) {
+        sendNoTrackLoadedToOscClients(getGroup());
     }
     //  EveOSC end
 

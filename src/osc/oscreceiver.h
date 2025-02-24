@@ -42,6 +42,9 @@ class OscReceiver : public QObject {
     void doGetT(OscResult& oscIn);
     void doSet(OscResult& oscIn, float value);
     void sendOscSyncTriggers();
+    void checkResponsiveness();
+    void loadOscConfiguration(UserSettingsPointer pConfig);
+    int m_lastCheckStamp;
 
   private:
     bool m_stopFlag = false;
@@ -49,6 +52,12 @@ class OscReceiver : public QObject {
     QThread* m_pThread = nullptr;
     QMutex m_mutex;
     QReadWriteLock m_configLock;
+
+    //    std::atomic<bool> m_stopFlag;
+    QDateTime m_lastResponseTime;
+    int m_oscPortIn;
+
+    void restartOscReceiver(int oscPortin);
 
   signals:
     void oscMessageReceived(OscResult oscIn);
