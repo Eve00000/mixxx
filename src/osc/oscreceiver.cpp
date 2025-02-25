@@ -19,7 +19,7 @@
 std::atomic<bool> s_oscEnabled(false);
 int s_ckOscPortOutInt = 0;
 QList<std::pair<bool, QString>> s_receiverConfigs;
-static std::atomic<bool> s_configLoaded1stTimeFromFile(false);
+std::atomic<bool> s_configLoaded1stTimeFromFile(false);
 static bool s_oscSendSyncTriggers(false);
 static int s_oscSendSyncTriggersInterval;
 static int s_lastCheckStamp;

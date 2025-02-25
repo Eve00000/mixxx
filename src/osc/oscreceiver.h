@@ -2,6 +2,7 @@
 
 #include <lo/lo.h>
 
+#include <QDateTime>
 #include <QThread>
 #include <memory>
 
