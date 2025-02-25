@@ -4,7 +4,7 @@
 # later version. See the LICENSE file for details.
 
 #[=======================================================================[.rst:
-FindLiblo
+Findliblo
 --------
 
 Finds the liblo library.
@@ -52,7 +52,7 @@ find_path(
   liblo_INCLUDE_DIR
   NAMES lo/lo.h
   HINTS ${PC_liblo_INCLUDE_DIRS}
-  DOC "liblo include directory"
+  DOC "Lblo include directory"
 )
 mark_as_advanced(liblo_INCLUDE_DIR)
 
@@ -60,7 +60,7 @@ find_library(
   liblo_LIBRARY
   NAMES lo
   HINTS ${PC_liblo_LIBRARY_DIRS}
-  DOC "liblo library"
+  DOC "Lblo library"
 )
 mark_as_advanced(liblo_LIBRARY)
 
