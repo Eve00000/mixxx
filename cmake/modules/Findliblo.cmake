@@ -52,7 +52,7 @@ find_path(
   liblo_INCLUDE_DIR
   NAMES lo/lo.h
   HINTS ${PC_liblo_INCLUDE_DIRS}
-  DOC "Lblo include directory"
+  DOC "liblo include directory"
 )
 mark_as_advanced(liblo_INCLUDE_DIR)
 
@@ -60,7 +60,7 @@ find_library(
   liblo_LIBRARY
   NAMES lo
   HINTS ${PC_liblo_LIBRARY_DIRS}
-  DOC "Lblo library"
+  DOC "liblo library"
 )
 mark_as_advanced(liblo_LIBRARY)
 
