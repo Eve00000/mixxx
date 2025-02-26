@@ -395,6 +395,9 @@ void DlgPrefLibrary::slotUpdate() {
     lineEdit_grouped_crates_var_mask->setToolTip(
             tr("Enter the mask you want to use between the groupname(s) and "
                "the cratename.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
     checkBox_grouped_playlists_enable->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "GroupedPlaylistsEnabled"), true));
     checkBox_grouped_playlists_replace->setChecked(m_pConfig->getValue(
