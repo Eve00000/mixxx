@@ -1294,6 +1294,9 @@ add_library(
   src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
   src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
   src/library/trackset/crate/groupedcratesfeature.cpp
+  src/library/trackset/playlist/basegroupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplayliststablemodel.cpp
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
@@ -3512,6 +3515,7 @@ if(Qt_IS_STATIC)
     target_link_libraries(
       mixxx-lib
       PRIVATE Qt${QT_VERSION_MAJOR}::QWindowsIntegrationPlugin
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
     )
     if(QT_VERSION VERSION_LESS 6.7)
       target_link_libraries(
@@ -3754,25 +3758,14 @@ else()
           COMPONENT
           applocal
       )
-      if(QT_VERSION VERSION_LESS 6.7)
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      else()
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QModernWindowsStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      endif()
+      #install(
+      #IMPORTED_RUNTIME_ARTIFACTS
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
+      #DESTINATION
+      #"${MIXXX_INSTALL_DATADIR}/styles"
+      #COMPONENT
+      #applocal
+      #)
     endif()
     if(APPLE)
       install(

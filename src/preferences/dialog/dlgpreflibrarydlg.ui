@@ -633,6 +633,149 @@
        </widget>
      </item>
    <item>
+    <widget class="QGroupBox" name="groupBox_GroupedPlaylists">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>140</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Grouped Playlists</string>
+     </property>
+     <widget class="QCheckBox" name="checkBox_grouped_playlists_enable">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>300</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Enable Grouped Playlists</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_grouped_playlists_fixed_length">
+      <property name="geometry">
+       <rect>
+        <x>50</x>
+        <y>60</y>
+        <width>400</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Fixed length: 1 level of grouping: Group = #Characters</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_grouped_playlists_var_mask">
+      <property name="geometry">
+       <rect>
+        <x>50</x>
+        <y>90</y>
+        <width>400</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Variable length, multilevel: grouping: Groups are delimited with a mask: </string>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="spinBox_grouped_playlists_fixed_length">
+      <property name="geometry">
+       <rect>
+        <x>460</x>
+        <y>60</y>
+        <width>40</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="maximum">
+       <number>20</number>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="lineEdit_grouped_playlists_var_mask">
+      <property name="geometry">
+       <rect>
+        <x>460</x>
+        <y>90</y>
+        <width>100</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_grouped_playlists_restart_remark">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>400</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Every change in this section requires a restart of Mixxx to get processed</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_grouped_playlists_replace">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>110</y>
+        <width>350</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Use Grouped Playlists instead of Playlists</string>
+      </property>
+     </widget>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBox_external_libraries">
      <property name="title">
       <string>External Libraries</string>
