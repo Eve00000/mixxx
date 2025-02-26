@@ -1293,6 +1293,7 @@ add_library(
   src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
   src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
   src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
+  src/library/trackset/crate/groupedcratesfeature.cpp
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp

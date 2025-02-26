@@ -32,6 +32,9 @@
 #include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
 #include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
+// Eve
+#include "library/trackset/crate/groupedcratesfeature.h"
+// Eve
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
 #include "moc_library.cpp"
@@ -77,6 +80,7 @@ Library::Library(
           m_pCrateFeature(nullptr),
           m_pSearchCrateFeature(nullptr),
           m_pGroupedSearchCratesFeature(nullptr),
+          m_pGroupedCratesFeature(nullptr),
           m_pAnalysisFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
 
@@ -107,8 +111,19 @@ Library::Library(
     m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPlaylistFeature);
 
-    m_pCrateFeature = new CrateFeature(this, m_pConfig);
-    addFeature(m_pCrateFeature);
+    // m_pCrateFeature = new CrateFeature(this, m_pConfig);
+    // addFeature(m_pCrateFeature);
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"), false))) {
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"));
+
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"));
+    } else {
+        m_pCrateFeature = new CrateFeature(this, m_pConfig);
+        addFeature(m_pCrateFeature);
+    }
 
 #ifdef __ENGINEPRIME__
     connect(m_pCrateFeature,
@@ -122,13 +137,16 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
+        m_pGroupedCratesFeature = new GroupedCratesFeature(this, m_pConfig);
+        addFeature(m_pGroupedCratesFeature);
+    }
 
     // EVE -> SMARTIES
     if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
             (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), false))) {
         qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesEnabled "
                  << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"));
-
         qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
                  << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
     } else {
@@ -192,6 +210,7 @@ Library::Library(
                 &AnalysisFeature::analyzeTracks);
     }
     // EVE -> SMARTIES
+
     connect(this,
             &Library::analyzeTracks,
             m_pAnalysisFeature,

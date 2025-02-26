@@ -47,6 +47,7 @@ class CueInfo {
             const std::optional<int>& stem3vol,
             const std::optional<int>& stem4vol,
             CueFlags flags = CueFlag::None);
+
     CueType getType() const;
     void setType(CueType type);
 
@@ -60,15 +61,6 @@ class CueInfo {
 
     std::optional<int> getHotCueIndex() const;
     void setHotCueIndex(int hotCueIndex);
-
-    std::optional<int> getStem1vol() const;
-    std::optional<int> getStem2vol() const;
-    std::optional<int> getStem3vol() const;
-    std::optional<int> getStem4vol() const;
-    void setStem1vol(int stem1vol);
-    void setStem2vol(int stem2vol);
-    void setStem3vol(int stem3vol);
-    void setStem4vol(int stem4vol);
 
     QString getLabel() const;
     void setLabel(

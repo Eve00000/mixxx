@@ -1243,14 +1243,11 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
             // EveCue-Loop
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
                 // playing by Play button
-
                 switch (pCue->getType()) {
                 case mixxx::CueType::HotCue:
-
                     hotcueGoto(pControl, value);
                     break;
                 case mixxx::CueType::Loop:
-
                     if (m_pCurrentSavedLoopControl != pControl) {
                         setCurrentSavedLoopControlAndActivate(pControl);
                     } else {
@@ -2854,7 +2851,6 @@ void HotcueControl::setCue(const CuePointer& pCue) {
     setEndPosition(pos.endPosition);
     // qDebug() << "HotcueControl::setCue";
     setColor(pCue->getColor());
-    //    setStemvol(int stemvol);
     setStatus((pCue->getType() == mixxx::CueType::Invalid)
                     ? HotcueControl::Status::Empty
                     : HotcueControl::Status::Set);

@@ -61,11 +61,7 @@ Cue::Cue(
           m_startPosition(position),
           m_iHotCue(hotCue),
           m_label(label),
-          m_color(color),
-          m_stem1vol(stem1vol),
-          m_stem2vol(stem2vol),
-          m_stem3vol(stem3vol),
-          m_stem4vol(stem4vol) {
+          m_color(color) {
     DEBUG_ASSERT(m_dbId.isValid());
     if (length != 0) {
         if (position.isValid()) {
@@ -92,11 +88,7 @@ Cue::Cue(
                           sampleRate)),
           m_iHotCue(cueInfo.getHotCueIndex().value_or(kNoHotCue)),
           m_label(cueInfo.getLabel()),
-          m_color(cueInfo.getColor().value_or(mixxx::PredefinedColorPalettes::kDefaultCueColor)),
-          m_stem1vol(cueInfo.getStem1vol().value_or(kNoHotCue)),
-          m_stem2vol(cueInfo.getStem2vol().value_or(kNoHotCue)),
-          m_stem3vol(cueInfo.getStem3vol().value_or(kNoHotCue)),
-          m_stem4vol(cueInfo.getStem4vol().value_or(kNoHotCue)) {
+          m_color(cueInfo.getColor().value_or(mixxx::PredefinedColorPalettes::kDefaultCueColor)) {
     DEBUG_ASSERT(!m_dbId.isValid());
 }
 
@@ -116,11 +108,7 @@ Cue::Cue(
           m_startPosition(startPosition),
           m_endPosition(endPosition),
           m_iHotCue(hotCueIndex),
-          m_color(color),
-          m_stem1vol(stem1vol),
-          m_stem2vol(stem2vol),
-          m_stem3vol(stem3vol),
-          m_stem4vol(stem4vol) {
+          m_color(color) {
     DEBUG_ASSERT(m_iHotCue == kNoHotCue || m_iHotCue >= mixxx::kFirstHotCueIndex);
     DEBUG_ASSERT(m_startPosition.isValid() || m_endPosition.isValid());
     DEBUG_ASSERT(!m_dbId.isValid());

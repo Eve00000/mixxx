@@ -26,6 +26,7 @@ class CrateFeature;
 class SearchCrateFeature;
 class GroupedSearchCratesFeature;
 // EVE
+class GroupedCratesFeature;
 class LibraryControl;
 class LibraryFeature;
 class LibraryTableModel;
@@ -208,6 +209,7 @@ class Library: public QObject {
     CrateFeature* m_pCrateFeature;
     SearchCrateFeature* m_pSearchCrateFeature;
     GroupedSearchCratesFeature* m_pGroupedSearchCratesFeature;
+    GroupedCratesFeature* m_pGroupedCratesFeature;
     AnalysisFeature* m_pAnalysisFeature;
     BrowseFeature* m_pBrowseFeature;
     QFont m_trackTableFont;
