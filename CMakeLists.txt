@@ -1595,6 +1595,7 @@ add_library(
   src/widget/weffectparameternamebase.cpp
   src/widget/weffectpushbutton.cpp
   src/widget/weffectselector.cpp
+  src/widget/wfastsearch.cpp
   src/widget/wfindonwebmenu.cpp
   src/widget/whotcuebutton.cpp
   src/widget/wimagestore.cpp
