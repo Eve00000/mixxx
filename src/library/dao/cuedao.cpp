@@ -75,7 +75,8 @@ CuePointer cueFromRow(const QSqlRecord& row) {
 } // namespace
 
 QList<CuePointer> CueDAO::getCuesForTrack(TrackId trackId) const {
-    //qDebug() << "CueDAO::getCuesForTrack" << QThread::currentThread() << m_database.connectionName();
+    // qDebug() << "CueDAO::getCuesForTrack" << QThread::currentThread() <<
+    // m_database.connectionName();
     QList<CuePointer> cues;
 
     FwdSqlQuery query(
@@ -133,13 +134,13 @@ bool CueDAO::deleteCuesForTracks(const QList<TrackId>& trackIds) const {
     qDebug() << "CueDAO::deleteCuesForTracks" << QThread::currentThread() << m_database.connectionName();
 
     QStringList idList;
-    for (const auto& trackId: trackIds) {
+    for (const auto& trackId : trackIds) {
         idList << trackId.toString();
     }
 
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral("DELETE FROM " CUE_TABLE " WHERE track_id in (%1)")
-                  .arg(idList.join(",")));
+                          .arg(idList.join(",")));
     if (query.exec()) {
         return true;
     } else {
@@ -149,7 +150,7 @@ bool CueDAO::deleteCuesForTracks(const QList<TrackId>& trackIds) const {
 }
 
 bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
-    //qDebug() << "CueDAO::saveCue" << QThread::currentThread() << m_database.connectionName();
+    // qDebug() << "CueDAO::saveCue" << QThread::currentThread() << m_database.connectionName();
     VERIFY_OR_DEBUG_ASSERT(cue) {
         return false;
     }
@@ -159,14 +160,14 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
     if (cue->getId().isValid()) {
         // Update cue
         query.prepare(QStringLiteral("UPDATE " CUE_TABLE " SET "
-                        "track_id=:track_id,"
-                        "type=:type,"
-                        "position=:position,"
-                        "length=:length,"
-                        "hotcue=:hotcue,"
-                        "label=:label,"
-                        "color=:color"
-                        " WHERE id=:id"));
+                                     "track_id=:track_id,"
+                                     "type=:type,"
+                                     "position=:position,"
+                                     "length=:length,"
+                                     "hotcue=:hotcue,"
+                                     "label=:label,"
+                                     "color=:color"
+                                     " WHERE id=:id"));
         query.bindValue(":id", cue->getId().toVariant());
     } else {
         // New cue

@@ -147,10 +147,9 @@ void WCueMenuPopup::slotUpdate() {
             positionText = mixxx::Duration::formatTime(startPositionSeconds, mixxx::Duration::Precision::CENTISECONDS);
             if (pos.endPosition.isValid() && m_pCue->getType() != mixxx::CueType::HotCue) {
                 double endPositionSeconds = pos.endPosition.value() / m_pTrack->getSampleRate();
-                positionText = QString("%1 - %2").arg(
-                    positionText,
-                    mixxx::Duration::formatTime(endPositionSeconds, mixxx::Duration::Precision::CENTISECONDS)
-                );
+                positionText = QString("%1 - %2").arg(positionText,
+                        mixxx::Duration::formatTime(endPositionSeconds,
+                                mixxx::Duration::Precision::CENTISECONDS));
             }
         }
         m_pCuePosition->setText(positionText);

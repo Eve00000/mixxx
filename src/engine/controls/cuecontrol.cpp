@@ -108,8 +108,10 @@ CueControl::CueControl(const QString& group,
     m_pTrackSamples = ControlObject::getControl(ConfigKey(group, "track_samples"));
 
     m_pQuantizeEnabled = ControlObject::getControl(ConfigKey(group, "quantize"));
-    connect(m_pQuantizeEnabled, &ControlObject::valueChanged,
-            this, &CueControl::quantizeChanged,
+    connect(m_pQuantizeEnabled,
+            &ControlObject::valueChanged,
+            this,
+            &CueControl::quantizeChanged,
             Qt::DirectConnection);
 
     m_pClosestBeat = ControlObject::getControl(ConfigKey(group, "beat_closest"));
@@ -355,8 +357,10 @@ void CueControl::connectControls() {
 
     // Hotcue controls
     for (const auto& pControl : std::as_const(m_hotcueControls)) {
-        connect(pControl, &HotcueControl::hotcuePositionChanged,
-                this, &CueControl::hotcuePositionChanged,
+        connect(pControl,
+                &HotcueControl::hotcuePositionChanged,
+                this,
+                &CueControl::hotcuePositionChanged,
                 Qt::DirectConnection);
         connect(pControl,
                 &HotcueControl::hotcueEndPositionChanged,
@@ -638,8 +642,8 @@ void CueControl::seekOnLoad(mixxx::audio::FramePos seekOnLoadPosition) {
 }
 
 void CueControl::cueUpdated() {
-    //auto lock = lockMutex(&m_mutex);
-    // We should get a trackCuesUpdated call anyway, so do nothing.
+    // auto lock = lockMutex(&m_mutex);
+    //  We should get a trackCuesUpdated call anyway, so do nothing.
 }
 
 void CueControl::loadCuesFromTrack() {
@@ -870,7 +874,7 @@ mixxx::RgbColor CueControl::colorFromConfig(const ConfigKey& configKey) {
 };
 
 void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode mode) {
-    //qDebug() << "CueControl::hotcueSet" << value;
+    // qDebug() << "CueControl::hotcueSet" << value;
 
     if (value <= 0) {
         return;
@@ -1139,7 +1143,7 @@ void CueControl::hotcueCueLoop(HotcueControl* pControl, double value) {
 }
 
 void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSetMode mode) {
-    //qDebug() << "CueControl::hotcueActivate" << value;
+    // qDebug() << "CueControl::hotcueActivate" << value;
 
     CuePointer pCue = pControl->getCue();
     if (value > 0) {
@@ -1148,11 +1152,14 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                 pCue->getType() != mixxx::CueType::Invalid) {
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
                 // playing by Play button
+
                 switch (pCue->getType()) {
                 case mixxx::CueType::HotCue:
+
                     hotcueGoto(pControl, value);
                     break;
                 case mixxx::CueType::Loop:
+
                     if (m_pCurrentSavedLoopControl != pControl) {
                         setCurrentSavedLoopControlAndActivate(pControl);
                     } else {
@@ -1626,7 +1633,7 @@ void CueControl::cueDefault(double v) {
 
 void CueControl::pause(double v) {
     auto lock = lockMutex(&m_trackMutex);
-    //qDebug() << "CueControl::pause()" << v;
+    // qDebug() << "CueControl::pause()" << v;
     if (v > 0.0) {
         m_pPlay->set(0.0);
     }
@@ -1634,7 +1641,7 @@ void CueControl::pause(double v) {
 
 void CueControl::playStutter(double v) {
     auto lock = lockMutex(&m_trackMutex);
-    //qDebug() << "playStutter" << v;
+    // qDebug() << "playStutter" << v;
     if (v > 0.0) {
         if (m_pPlay->toBool()) {
             if (m_currentlyPreviewingIndex != Cue::kNoHotCue) {
@@ -2062,8 +2069,8 @@ void CueControl::outroEndActivate(double value) {
 // This is also called from the engine thread. No locking allowed.
 bool CueControl::updateIndicatorsAndModifyPlay(
         bool newPlay, bool oldPlay, bool playPossible) {
-    //qDebug() << "updateIndicatorsAndModifyPlay" << newPlay << playPossible
-    //        << m_iCurrentlyPreviewingHotcues << m_bPreviewing;
+    // qDebug() << "updateIndicatorsAndModifyPlay" << newPlay << playPossible
+    //         << m_iCurrentlyPreviewingHotcues << m_bPreviewing;
     CueMode cueMode = static_cast<CueMode>(static_cast<int>(m_pCueMode->get()));
     if ((cueMode == CueMode::Denon || cueMode == CueMode::Numark) &&
             newPlay && !oldPlay && playPossible &&

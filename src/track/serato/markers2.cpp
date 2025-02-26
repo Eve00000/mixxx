@@ -455,7 +455,7 @@ bool SeratoMarkers2::parseCommon(
     return true;
 }
 
-//static
+// static
 bool SeratoMarkers2::parseBase64Encoded(
         SeratoMarkers2* seratoMarkers2,
         const QByteArray& base64EncodedData) {
@@ -480,7 +480,7 @@ bool SeratoMarkers2::parseBase64Encoded(
     return true;
 }
 
-//static
+// static
 bool SeratoMarkers2::parseFLAC(
         SeratoMarkers2* seratoMarkers2,
         const QByteArray& base64EncodedData) {
