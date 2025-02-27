@@ -924,7 +924,7 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     // EveCue-Loop
     PollingControlProxy proxyStem(getGroup(), "stem_count", ControlFlag::AllowMissingOrInvalid);
     if (proxyStem.get() > 1) {
-        qDebug() << "[CUECONTROL] -> stem -> proxyStem > 1";
+        // qDebug() << "[CUECONTROL] -> stem -> proxyStem > 1";
         const QString groupBaseName = getGroup().remove("[").remove("]");
         const QString stemGroups[] = {
                 QString("[%1_Stem1]").arg(groupBaseName),
@@ -932,8 +932,6 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                 QString("[%1_Stem3]").arg(groupBaseName),
                 QString("[%1_Stem4]").arg(groupBaseName),
         };
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups: " << stemGroups[0];
-
         // get the mute multiplier
         auto getMuteMultiplier = [](const QString& group) -> int {
             PollingControlProxy proxyMute(group, "mute", ControlFlag::AllowMissingOrInvalid);
@@ -951,27 +949,6 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
         pass2CueCreationStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
         pass2CueCreationStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
         pass2CueCreationStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 1 [0] "
-                 << ControlObject::get(ConfigKey(stemGroups[0], "volume"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 1 [0] "
-                 << ControlObject::get(ConfigKey(stemGroups[0], "mute"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 1 [0] " << pass2CueCreationStem1Vol;
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 2 [1] "
-                 << ControlObject::get(ConfigKey(stemGroups[1], "volume"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 2 [1] "
-                 << ControlObject::get(ConfigKey(stemGroups[1], "mute"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 2 [1] " << pass2CueCreationStem2Vol;
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 3 [2] "
-                 << ControlObject::get(ConfigKey(stemGroups[2], "volume"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 3 [2] "
-                 << ControlObject::get(ConfigKey(stemGroups[2], "mute"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 3 [2] " << pass2CueCreationStem3Vol;
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 4 [3] "
-                 << ControlObject::get(ConfigKey(stemGroups[3], "volume"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 4 [3] "
-                 << ControlObject::get(ConfigKey(stemGroups[3], "mute"));
-        qDebug() << "[CUECONTROL] -> stem -> stemGroups set: 4 [3] " << pass2CueCreationStem4Vol;
-
     } else {
         qDebug() << "[CUECONTROL] -> stem -> proxyStem = 1";
         pass2CueCreationStem1Vol = 1.0;
@@ -1239,62 +1216,11 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                             ControlFlag::AllowMissingOrInvalid);
                     proxyVolume.set(std::abs(volume));
                 };
-                //                auto setMuteAndVolume = [](const QString&
-                //                group, double volume) {
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "mute"))) {
-                //                        auto proxyMute =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "mute"); proxyMute->set(volume < 0 ? 1
-                //                        : 0);
-                //                    }
-                //                    if (ControlObject::exists(ConfigKey(group,
-                //                    "volume"))) {
-                //                        auto proxyVol =
-                //                        std::make_unique<PollingControlProxy>(group,
-                //                        "volume");
-                //                        proxyVol->set(std::abs(volume));
-                //                    }
-                //                };
 
                 setMuteAndVolume(stemGroups[0], pCue->getStem1vol());
-                qDebug() << "[CUECONTROL] -> stem -> stemGroups: " << stemGroups[0];
                 setMuteAndVolume(stemGroups[1], pCue->getStem2vol());
                 setMuteAndVolume(stemGroups[2], pCue->getStem3vol());
                 setMuteAndVolume(stemGroups[3], pCue->getStem4vol());
-
-                // qDebug() << "[CUECONTROL] -> stem -> stemGroups activate: 1
-                // [0] " << ControlObject::get(ConfigKey(stemGroups[0],
-                // "volume")); qDebug() << "[CUECONTROL] -> stem -> stemGroups
-                // activate: 1 [0] " <<
-                // ControlObject::get(ConfigKey(stemGroups[0], "mute"));
-                qDebug()
-                        << "[CUECONTROL] -> stem -> stemGroups activate: 1 [0] "
-                        << pCue->getStem1vol();
-                // qDebug() << "[CUECONTROL] -> stem -> stemGroups activate: 2
-                // [1] " << ControlObject::get(ConfigKey(stemGroups[1],
-                // "volume")); qDebug() << "[CUECONTROL] -> stem -> stemGroups
-                // activate: 2 [1] " <<
-                // ControlObject::get(ConfigKey(stemGroups[1], "mute"));
-                qDebug()
-                        << "[CUECONTROL] -> stem -> stemGroups activate: 2 [1] "
-                        << pCue->getStem2vol();
-                // qDebug() << "[CUECONTROL] -> stem -> stemGroups activate: 3
-                // [2] " << ControlObject::get(ConfigKey(stemGroups[2],
-                // "volume")); qDebug() << "[CUECONTROL] -> stem -> stemGroups
-                // activate: 3 [2] " <<
-                // ControlObject::get(ConfigKey(stemGroups[2], "mute"));
-                qDebug()
-                        << "[CUECONTROL] -> stem -> stemGroups activate: 3 [2] "
-                        << pCue->getStem3vol();
-                // qDebug() << "[CUECONTROL] -> stem -> stemGroups activate: 4
-                // [3] " << ControlObject::get(ConfigKey(stemGroups[3],
-                // "volume")); qDebug() << "[CUECONTROL] -> stem -> stemGroups
-                // activate: 4 [3] " <<
-                // ControlObject::get(ConfigKey(stemGroups[3], "mute"));
-                qDebug()
-                        << "[CUECONTROL] -> stem -> stemGroups activate: 4 [3] "
-                        << pCue->getStem4vol();
             }
             // EveCue-Loop
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
