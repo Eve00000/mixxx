@@ -104,6 +104,38 @@ void CueInfo::setHotCueIndex(int hotCueIndex) {
     m_hotCueIndex = hotCueIndex;
 }
 
+std::optional<int> CueInfo::getStem1vol() const {
+    return m_stem1vol;
+}
+
+std::optional<int> CueInfo::getStem2vol() const {
+    return m_stem2vol;
+}
+
+std::optional<int> CueInfo::getStem3vol() const {
+    return m_stem3vol;
+}
+
+std::optional<int> CueInfo::getStem4vol() const {
+    return m_stem4vol;
+}
+
+void CueInfo::setStem1vol(int stem1vol) {
+    m_stem1vol = stem1vol;
+}
+
+void CueInfo::setStem2vol(int stem2vol) {
+    m_stem2vol = stem2vol;
+}
+
+void CueInfo::setStem3vol(int stem3vol) {
+    m_stem3vol = stem3vol;
+}
+
+void CueInfo::setStem4vol(int stem4vol) {
+    m_stem4vol = stem4vol;
+}
+
 QString CueInfo::getLabel() const {
     return m_label;
 }
@@ -128,7 +160,11 @@ bool operator==(
             lhs.getEndPositionMillis() == rhs.getEndPositionMillis() &&
             lhs.getHotCueIndex() == rhs.getHotCueIndex() &&
             lhs.getLabel() == rhs.getLabel() &&
-            lhs.getColor() == rhs.getColor();
+            lhs.getColor() == rhs.getColor() &&
+            lhs.getStem1vol() == rhs.getStem1vol() &&
+            lhs.getStem2vol() == rhs.getStem2vol() &&
+            lhs.getStem3vol() == rhs.getStem3vol() &&
+            lhs.getStem4vol() == rhs.getStem4vol();
 }
 
 QDebug operator<<(QDebug debug, const CueType& cueType) {
@@ -173,6 +209,10 @@ QDebug operator<<(QDebug debug, const CueInfo& cueInfo) {
             << ", index=" << cueInfo.getHotCueIndex()
             << ", label=" << cueInfo.getLabel()
             << ", color=" << cueInfo.getColor()
+            << ", stem1vol=" << cueInfo.getStem1vol()
+            << ", stem2vol=" << cueInfo.getStem2vol()
+            << ", stem3vol=" << cueInfo.getStem3vol()
+            << ", stem4vol=" << cueInfo.getStem4vol()
             << ", flags=" << cueInfo.flags()
             << "]";
     return debug;

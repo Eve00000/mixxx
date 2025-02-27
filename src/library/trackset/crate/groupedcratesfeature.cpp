@@ -188,7 +188,7 @@ void GroupedCratesFeature::connectTrackCollection() {
 }
 
 QVariant GroupedCratesFeature::title() {
-    return tr("GroupedCrates");
+    return tr("Crates (Grouped)");
 }
 
 QString GroupedCratesFeature::formatRootViewHtml() const {
