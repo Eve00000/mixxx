@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "analyzer/analyzerscheduledtrack.h"
+// #include "control/controlobject.h"
+// #include "control/controlproxy.h"
 #include "library/export/trackexportwizard.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
@@ -353,23 +355,23 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     return true;
 }
 
-void CrateFeature::slotShowInPreparationWindow() {
-    CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
-    if (sDebug) {
-        qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
-    }
-
-    if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
-        auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
-        proxy->set(1);
-    }
-
-    emit saveModelState();
-    m_crateTableModel.selectCrate(crateId);
-    emit showTrackModelInPreparationWindow(&m_crateTableModel);
-    emit enableCoverArtDisplay(true);
-    emit featureSelect(this, m_lastClickedIndex);
-}
+// void CrateFeature::slotShowInPreparationWindow() {
+//     CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
+//     if (sDebug) {
+//         qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
+//     }
+//
+//     if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
+//         auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
+//         proxy->set(1);
+//     }
+//
+//     emit saveModelState();
+//     m_crateTableModel.selectCrate(crateId);
+//     emit showTrackModelInPreparationWindow(&m_crateTableModel);
+//     emit enableCoverArtDisplay(true);
+//     emit featureSelect(this, m_lastClickedIndex);
+// }
 
 bool CrateFeature::readLastRightClickedCrate(Crate* pCrate) const {
     CrateId crateId(crateIdFromIndex(m_lastRightClickedIndex));
