@@ -3024,11 +3024,11 @@ target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
 
 #eve osc
 # liblo
-find_package(liblo REQUIRED)
-#target_include_directories(mixxx-lib SYSTEM PUBLIC "${liblo_INCLUDE_DIR}")
-#target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
-#target_link_libraries(mixxx-lib PRIVATE liblo::liblo liblo::liblo_static)
-target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+# find_package(liblo REQUIRED)
+# target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+# liblo
+find_package(lo REQUIRED)
+target_link_libraries(mixxx-lib PRIVATE lo::lo)
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
