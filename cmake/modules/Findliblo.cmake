@@ -50,7 +50,7 @@ endif()
 
 find_path(
   liblo_INCLUDE_DIR
-  NAMES lo.h
+  NAMES lo/lo.h
   HINTS ${PC_liblo_INCLUDE_DIRS}
   ENV CPATH
   ENV CMAKE_INCLUDE_PATH
