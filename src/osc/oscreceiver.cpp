@@ -59,6 +59,7 @@ static int quit_handler(const char* path,
         void* user_data) {
     Q_UNUSED(path);
     Q_UNUSED(types);
+    Q_UNUSED(argc);
     Q_UNUSED(argv);
     Q_UNUSED(data);
     Q_UNUSED(user_data);
