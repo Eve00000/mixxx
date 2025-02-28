@@ -3024,11 +3024,21 @@ target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
 
 #eve osc
 # liblo
-# find_package(liblo REQUIRED)
-# target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+find_package(liblo REQUIRED)
+#target_include_directories(liblo SYSTEM PUBLIC "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/lo")
+#include_directories("D:/mixxx-git/mixxx/buildenv/mixxx-deps-2.6-x64-windows-cce5c19/installed/x64-windows/include")
+#link_directories("D:/mixxx-git/mixxx/buildenv/mixxx-deps-2.6-x64-windows-cce5c19/installed/x64-windows/lib")
+include_directories(
+  "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/lib/lo"
+)
+link_directories("${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+#add_subdirectory(lib/lo)
+#target_include_directories(liblo SYSTEM PUBLIC lib/lo)
+# target_include_directories(liblo SYSTEM PUBLIC lib/lo)
+target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 # liblo
-find_package(lo REQUIRED)
-target_link_libraries(mixxx-lib PRIVATE lo::lo)
+#find_package(lo REQUIRED)
+#target_link_libraries(mixxx-lib PRIVATE lo::lo)
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
