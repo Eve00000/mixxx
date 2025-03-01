@@ -18,6 +18,17 @@ constexpr int IP_MTU_SIZE = 1536;
 #include "osc/osc/OscPacketListener.h"
 #include "osc/osc/OscReceivedElements.h"
 
+static QMutex s_configMutex;
+QReadWriteLock g_oscTrackTableLock;
+extern std::atomic<bool> s_oscEnabled;
+extern int s_ckOscPortOutInt;
+extern QList<std::pair<bool, QString>> s_receiverConfigs;
+extern std::atomic<bool> s_configLoaded1stTimeFromFile;
+
+constexpr int kMaxOscTracks = 70;
+inline std::array<std::tuple<QString, QString, QString>, kMaxOscTracks> g_oscTrackTable;
+inline QMutex g_oscTrackTableMutex;
+
 enum class DefOscBodyType {
     STRINGBODY,
     INTBODY,
@@ -55,7 +66,7 @@ void sendOscMessage(const char* receiverIp,
     }
 }
 
-void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
+void oscFunctionsSendPtrType(
         const QString& oscGroup,
         const QString& oscKey,
         enum DefOscBodyType oscBodyType,
@@ -73,7 +84,7 @@ void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
     QByteArray oscMessageHeaderBa = oscMessageHeader.toLocal8Bit();
     const char* oscMessageHeaderChar = oscMessageHeaderBa.data();
 
-    if (pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+    if (s_oscEnabled.load()) {
         char buffer[IP_MTU_SIZE];
         osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
         QString oscStatusTxtBody;
@@ -102,27 +113,11 @@ void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
         }
         p << osc::EndBundle;
 
-        // Retrieve output port
-        int ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
-
-        // List of similar parts of receiver
-        const QList<std::pair<QString, QString>> receivers = {
-                {"[OSC]", "OscReceiver1"},
-                {"[OSC]", "OscReceiver2"},
-                {"[OSC]", "OscReceiver3"},
-                {"[OSC]", "OscReceiver4"},
-                {"[OSC]", "OscReceiver5"}};
-
-        // Send to active receivers
-        for (const auto& receiver : receivers) {
-            if (pConfig->getValue<bool>(ConfigKey(receiver.first, receiver.second + "Active"))) {
-                QByteArray receiverIpBa =
-                        pConfig
-                                ->getValue(ConfigKey(
-                                        receiver.first, receiver.second + "Ip"))
-                                .toLocal8Bit();
+        for (const auto& receiver : std::as_const(s_receiverConfigs)) {
+            if (receiver.first) {
+                QByteArray receiverIpBa = receiver.second.toLocal8Bit();
                 sendOscMessage(receiverIpBa.data(),
-                        ckOscPortOutInt,
+                        s_ckOscPortOutInt,
                         p,
                         oscMessageHeader,
                         oscStatusTxtBody);
@@ -133,8 +128,52 @@ void oscFunctionsSendPtrType(UserSettingsPointer pConfig,
     }
 }
 
-void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& oscGroup) {
-    oscFunctionsSendPtrType(pConfig,
+void storeTrackInfo(const QString& oscGroup,
+        const QString& trackArtist,
+        const QString& trackTitle) {
+    QMutexLocker locker(&g_oscTrackTableMutex);
+
+    // No existing oscGroup entry? -> update
+    for (auto& entry : g_oscTrackTable) {
+        if (std::get<0>(entry) == oscGroup) {
+            std::get<1>(entry) = trackArtist;
+            std::get<2>(entry) = trackTitle;
+            qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
+                     << oscGroup << trackArtist << trackTitle;
+            return;
+        }
+    }
+
+    // No existing entry? -> New entry
+    for (int i = 0; i < kMaxOscTracks; ++i) {
+        if (std::get<0>(g_oscTrackTable[i]).isEmpty()) {
+            g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist, trackTitle);
+            qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
+                     << oscGroup << trackArtist << trackTitle;
+            return;
+        }
+    }
+
+    qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
+}
+
+QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
+    QReadLocker locker(&g_oscTrackTableLock);
+    for (const auto& entry : g_oscTrackTable) {
+        if (std::get<0>(entry) == oscGroup) {
+            if (oscKey == "TrackArtist") {
+                return std::get<1>(entry);
+            } else if (oscKey == "TrackTitle") {
+                return std::get<2>(entry);
+            }
+        }
+    }
+    return "Unknown";
+}
+
+void sendNoTrackLoadedToOscClients(
+        const QString& oscGroup) {
+    oscFunctionsSendPtrType(
             oscGroup,
             "TrackArtist",
             DefOscBodyType::STRINGBODY,
@@ -142,7 +181,7 @@ void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& o
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "TrackTitle",
             DefOscBodyType::STRINGBODY,
@@ -150,7 +189,7 @@ void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& o
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "duration",
             DefOscBodyType::FLOATBODY,
@@ -158,7 +197,7 @@ void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& o
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "track_loaded",
             DefOscBodyType::FLOATBODY,
@@ -166,7 +205,7 @@ void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& o
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "playposition",
             DefOscBodyType::FLOATBODY,
@@ -174,21 +213,24 @@ void sendNoTrackLoadedToOscClients(UserSettingsPointer pConfig, const QString& o
             0,
             0,
             0);
-    QString oscKeyArtist = QString(oscGroup + "TrackArtist");
-    QString oscKeyValueNoTrackLoaded = QString("no track loaded");
-    pConfig->set(ConfigKey("[OSC]", oscKeyArtist), oscKeyValueNoTrackLoaded);
-    QString oscKeyTitle = QString(oscGroup + "TrackTitle");
-    pConfig->set(ConfigKey("[OSC]", oscKeyTitle), oscKeyValueNoTrackLoaded);
+    // QString oscKeyArtist = QString(oscGroup + "TrackArtist");
+    // QString oscKeyValueNoTrackLoaded = QString("no track loaded");
+    // pConfig->set(ConfigKey("[OSC]", oscKeyArtist), oscKeyValueNoTrackLoaded);
+    // QString oscKeyTitle = QString(oscGroup + "TrackTitle");
+    // pConfig->set(ConfigKey("[OSC]", oscKeyTitle), oscKeyValueNoTrackLoaded);
+    const QString& trackArtist = "no track loaded";
+    const QString& trackTitle = "no track loaded";
+    storeTrackInfo(oscGroup, trackArtist, trackTitle);
 }
 
-void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
+void sendTrackInfoToOscClients(
         const QString& oscGroup,
         const QString& trackArtist,
         const QString& trackTitle,
         float track_loaded,
         float duration,
         float playposition) {
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "TrackArtist",
             DefOscBodyType::STRINGBODY,
@@ -196,7 +238,7 @@ void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "TrackTitle",
             DefOscBodyType::STRINGBODY,
@@ -204,7 +246,7 @@ void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
             0,
             0,
             0);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "track_loaded",
             DefOscBodyType::FLOATBODY,
@@ -212,7 +254,7 @@ void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
             0,
             0,
             track_loaded);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "duration",
             DefOscBodyType::FLOATBODY,
@@ -220,7 +262,7 @@ void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
             0,
             0,
             duration);
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "playposition",
             DefOscBodyType::FLOATBODY,
@@ -228,16 +270,17 @@ void sendTrackInfoToOscClients(UserSettingsPointer pConfig,
             0,
             0,
             playposition);
-    QString oscKeyArtist = QString(oscGroup + "TrackArtist");
-    pConfig->set(ConfigKey("[OSC]", oscKeyArtist), trackArtist);
-    QString oscKeyTitle = QString(oscGroup + "TrackTitle");
-    pConfig->set(ConfigKey("[OSC]", oscKeyTitle), trackTitle);
+    // QString oscKeyArtist = QString(oscGroup + "TrackArtist");
+    // pConfig->set(ConfigKey("[OSC]", oscKeyArtist), trackArtist);
+    // QString oscKeyTitle = QString(oscGroup + "TrackTitle");
+    // pConfig->set(ConfigKey("[OSC]", oscKeyTitle), trackTitle);
+    storeTrackInfo(oscGroup, trackArtist, trackTitle);
 }
 
-void oscChangedPlayState(UserSettingsPointer pConfig,
+void oscChangedPlayState(
         const QString& oscGroup,
         float playstate) {
-    oscFunctionsSendPtrType(pConfig,
+    oscFunctionsSendPtrType(
             oscGroup,
             "play",
             DefOscBodyType::FLOATBODY,
