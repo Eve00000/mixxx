@@ -1071,12 +1071,12 @@ void GroupedSearchCratesFeature::slotSearchCrateTableChanged(SearchCrateId searc
                  << searchCrateId
                  << " is NOT VALID ";
         if (isChildIndexSelectedInSidebar(m_lastClickedIndex)) {
-            SearchCrateId selectedCrate = m_searchCrateTableModel.selectedSearchCrate();
-            if (!selectedCrate.isValid()) {
+            SearchCrateId selectedSearchCrate = m_searchCrateTableModel.selectedSearchCrate();
+            if (!selectedSearchCrate.isValid()) {
                 qCritical() << "[GROUPEDSEARCHCRATESFEATURE] -> ERROR: "
                                "selectedSearchCrate() returned INVALID ID!";
             }
-            if (!activateSearchCrate(selectedCrate)) {
+            if (!activateSearchCrate(selectedSearchCrate)) {
                 if (m_prevSiblingSearchCrate.isValid()) {
                     qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> Activating previous sibling crate:"
                              << m_prevSiblingSearchCrate;

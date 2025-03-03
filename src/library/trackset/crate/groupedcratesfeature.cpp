@@ -318,30 +318,33 @@ void GroupedCratesFeature::oldactivateChild(const QModelIndex& index) {
 }
 
 bool GroupedCratesFeature::activateCrate(CrateId crateId) {
-    qDebug() << "GroupedCratesFeature::activateCrate()" << crateId;
-    qDebug() << "EVE EVE EVE EVE EVE GroupedCratesFeature::activateCrate()" << crateId;
+    if (sDebug) {
+        qDebug() << "[GROUPEDCRATESFEATURE] [ACTIVATE CRATE] -> "
+                    "searchCrateId "
+                 << crateId;
+    }
     VERIFY_OR_DEBUG_ASSERT(crateId.isValid()) {
         return false;
     }
-    if (!m_pTrackCollection->crates().readCrateSummaryById(crateId)) {
-        // this may happen if called by slotCrateTableChanged()
-        // and the crate has just been deleted
-        return false;
-    }
-    QModelIndex index = indexFromCrateId(crateId);
-    VERIFY_OR_DEBUG_ASSERT(index.isValid()) {
-        return false;
-    }
-    m_lastClickedIndex = index;
-    m_lastRightClickedIndex = QModelIndex();
-    m_prevSiblingCrate = CrateId();
+    // if (!m_pTrackCollection->crates().readCrateSummaryById(crateId)) {
+    //     // this may happen if called by slotCrateTableChanged()
+    //     // and the crate has just been deleted
+    //     return false;
+    // }
+    // QModelIndex index = indexFromCrateId(crateId);
+    // VERIFY_OR_DEBUG_ASSERT(index.isValid()) {
+    //     return false;
+    // }
+    // m_lastClickedIndex = index;
+    // m_lastRightClickedIndex = QModelIndex();
+    // m_prevSiblingCrate = CrateId();
     emit saveModelState();
     m_crateTableModel.selectCrate(crateId);
     emit showTrackModel(&m_crateTableModel);
     emit enableCoverArtDisplay(true);
-    // Update selection
-    emit featureSelect(this, m_lastClickedIndex);
-    return true;
+    //// Update selection
+    // emit featureSelect(this, m_lastClickedIndex);
+    // return true;
 }
 
 bool GroupedCratesFeature::readLastRightClickedCrate(Crate* pCrate) const {
@@ -889,22 +892,58 @@ void GroupedCratesFeature::storePrevSiblingCrateId(CrateId crateId) {
 }
 
 void GroupedCratesFeature::slotCrateTableChanged(CrateId crateId) {
-    Q_UNUSED(crateId);
-    //    QList<QVariantMap> groupedCrates = m_crateTableModel.getGroupedCrates();
-    if (isChildIndexSelectedInSidebar(m_lastClickedIndex)) {
-        // If the previously selected crate was loaded to the tracks table and
-        // selected in the sidebar try to activate that or a sibling
-        rebuildChildModel();
-        if (!activateCrate(m_crateTableModel.selectedCrate())) {
-            // probably last clicked crate was deleted, try to
-            // select the stored sibling
-            if (m_prevSiblingCrate.isValid()) {
-                activateCrate(m_prevSiblingCrate);
-            }
-        }
+    // Q_UNUSED(crateId);
+    ////    QList<QVariantMap> groupedCrates = m_crateTableModel.getGroupedCrates();
+    // if (isChildIndexSelectedInSidebar(m_lastClickedIndex)) {
+    //     // If the previously selected crate was loaded to the tracks table and
+    //     // selected in the sidebar try to activate that or a sibling
+    //     rebuildChildModel();
+    //     if (!activateCrate(m_crateTableModel.selectedCrate())) {
+    //         // probably last clicked crate was deleted, try to
+    //         // select the stored sibling
+    //         if (m_prevSiblingCrate.isValid()) {
+    //             activateCrate(m_prevSiblingCrate);
+    //         }
+    //     }
+    // } else {
+    //     // No valid selection to restore
+    //     rebuildChildModel();
+    // }
+    if (crateId.isValid()) {
+        qDebug() << "[GROUPEDCRATESFEATURE] -> slotCrateTableChanged -> crateId"
+                 << crateId
+                 << " is VALID ";
+        rebuildChildModel(crateId);
+
+        //        // Recall the last clicked or right-clicked smatries
+        //        activateSearchCrate(searchCrateId);
     } else {
-        // No valid selection to restore
-        rebuildChildModel();
+        qDebug() << "[GROUPEDCRATESFEATURE] -> slotCrateTableChanged -> crateId"
+                 << crateId
+                 << " is NOT VALID ";
+        if (isChildIndexSelectedInSidebar(m_lastClickedIndex)) {
+            CrateId selectedCrate = m_crateTableModel.selectedCrate();
+            if (!selectedCrate.isValid()) {
+                qCritical() << "[GROUPEDCRATESFEATURE] -> ERROR: "
+                               "selectedCrate() returned INVALID ID!";
+            }
+            if (!activateCrate(selectedCrate)) {
+                if (m_prevSiblingCrate.isValid()) {
+                    qDebug() << "[GROUPEDCRATESFEATURE] -> Activating previous sibling crate:"
+                             << m_prevSiblingCrate;
+
+                    // Recall the last clicked or right-clicked smatries
+                    activateCrate(m_prevSiblingCrate);
+                } else {
+                    qWarning() << "[GROUPEDCRATESFEATURE] -> No valid "
+                                  "previous sibling crate found.";
+                }
+            }
+        } else {
+            qDebug() << "[GROUPEDCRATESFEATURE] -> Rebuilding child "
+                        "model with no specific crateId";
+            rebuildChildModel();
+        }
     }
 }
 
