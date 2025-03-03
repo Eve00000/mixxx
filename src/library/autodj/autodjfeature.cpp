@@ -346,7 +346,8 @@ void AutoDJFeature::slotAddCrateToAutoDj(CrateId crateId) {
 }
 
 void AutoDJFeature::slotRemoveCrateFromAutoDj() {
-    CrateId crateId(m_pRemoveCrateFromAutoDjAction->data().value<CrateId>());
+    // CrateId crateId(m_pRemoveCrateFromAutoDjAction->data().value<CrateId>());
+    CrateId crateId(m_pRemoveCrateFromAutoDjAction->data());
     removeCrateFromAutoDj(crateId);
 }
 
