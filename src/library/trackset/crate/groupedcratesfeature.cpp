@@ -344,7 +344,7 @@ bool GroupedCratesFeature::activateCrate(CrateId crateId) {
     emit enableCoverArtDisplay(true);
     //// Update selection
     // emit featureSelect(this, m_lastClickedIndex);
-    // return true;
+    return true;
 }
 
 bool GroupedCratesFeature::readLastRightClickedCrate(Crate* pCrate) const {
