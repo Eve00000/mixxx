@@ -273,6 +273,7 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_traktor->setChecked(true);
     checkBox_show_rekordbox->setChecked(true);
 
+    checkBox_preparationlists_addallloadedtracks->setChecked(false);
     checkBox_grouped_searchcrates_enable->setChecked(false);
     checkBox_grouped_searchcrates_replace->setChecked(false);
     checkBox_grouped_crates_enable->setChecked(false);
@@ -348,6 +349,8 @@ void DlgPrefLibrary::slotUpdate() {
         break;
     }
 
+    checkBox_preparationlists_addallloadedtracks->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true));
     checkBox_grouped_searchcrates_enable->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true));
     checkBox_grouped_searchcrates_replace->setChecked(m_pConfig->getValue(
@@ -667,6 +670,9 @@ void DlgPrefLibrary::slotApply() {
         m_pConfig->set(ConfigKey("[Library]", "RowHeight"),
                 ConfigValue(rowHeight));
     }
+
+    m_pConfig->set(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"),
+            ConfigValue((int)checkBox_preparationlists_addallloadedtracks->isChecked()));
 
     m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesEnabled"),
             ConfigValue((int)checkBox_grouped_searchcrates_enable->isChecked()));

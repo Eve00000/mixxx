@@ -1385,7 +1385,8 @@ void GroupedCratesFeature::activateChild(const QModelIndex& index) {
     }
 
     CrateId crateId(crateIdFromIndex(index));
-
+    qDebug() << "[GROUPEDCRATESFEATURE] -> activateChild() -> Group activated "
+                "-> Next error is OK = Group activated";
     if (crateId.toString() == "-1") {
         // Group activated
         if (sDebug) {

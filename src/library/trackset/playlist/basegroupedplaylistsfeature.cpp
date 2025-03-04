@@ -1355,7 +1355,8 @@ void BaseGroupedPlaylistsFeature::activateChild(const QModelIndex& index) {
     m_lastClickedIndex = index;
     m_lastRightClickedIndex = index;
     int playlistId(playlistIdFromIndex(index));
-
+    qDebug() << "[BaseGroupedPlaylistsFeature] -> activateChild() -> Group "
+                "activated -> Next error is OK = Group activated";
     if (playlistId == -1) {
         // Group activated
         if (sDebug) {

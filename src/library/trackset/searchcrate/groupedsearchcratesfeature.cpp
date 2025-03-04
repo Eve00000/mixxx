@@ -30,7 +30,7 @@
 namespace {
 
 constexpr int kInvalidSearchCrateId = -1;
-const bool sDebug = true;
+const bool sDebug = false;
 
 QString formatLabel(
         const SearchCrateSummary& searchCrateSummary) {
@@ -1540,7 +1540,8 @@ void GroupedSearchCratesFeature::activateChild(const QModelIndex& index) {
     }
 
     SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
-
+    // qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> activateChild() -> Group
+    // activated -> Next error is OK = Group activated";
     if (searchCrateId.toString() == "-1") {
         // Group activated
         if (sDebug) {

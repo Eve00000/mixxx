@@ -8,6 +8,7 @@
 #include "control/controlproxy.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
+#include "library/parser.h"
 #include "library/playlisttablemodel.h"
 #include "library/queryutil.h"
 #include "library/trackcollection.h"
@@ -15,6 +16,7 @@
 #include "library/treeitem.h"
 #include "mixer/playerinfo.h"
 #include "moc_preparationfeature.cpp"
+#include "sources/soundsourceproxy.h"
 #include "track/track.h"
 #include "util/make_const_iterator.h"
 #include "widget/wlibrary.h"
@@ -165,6 +167,37 @@ void PreparationFeature::slotDeletePlaylist() {
     }
 }
 
+bool PreparationFeature::dropAcceptChild(
+        const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource) {
+    qDebug() << "[PREPARATIONFEATURE] -> dropAcceptChild triggered";
+    int playlistId = playlistIdFromIndex(index);
+    VERIFY_OR_DEBUG_ASSERT(playlistId >= 0) {
+        return false;
+    }
+    // If a track is dropped onto a playlist's name, but the track isn't in the
+    // library, then add the track to the library before adding it to the
+    // playlist.
+    // pSource != nullptr it is a drop from inside Mixxx and indicates all
+    // tracks already in the DB
+    QList<TrackId> trackIds = m_pLibrary->trackCollectionManager()
+                                      ->resolveTrackIdsFromUrls(urls, !pSource);
+    if (trackIds.isEmpty()) {
+        return false;
+    }
+
+    // Return whether appendTracksToPlaylist succeeded.
+    return m_playlistDao.appendTracksToPlaylist(trackIds, playlistId);
+}
+
+bool PreparationFeature::dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) {
+    int playlistId = playlistIdFromIndex(index);
+    bool locked = m_playlistDao.isPlaylistLocked(playlistId);
+
+    bool formatSupported = SoundSourceProxy::isUrlSupported(url) ||
+            Parser::isPlaylistFilenameSupported(url.toLocalFile());
+    return !locked && formatSupported;
+}
+
 void PreparationFeature::onRightClick(const QPoint& globalPos) {
     Q_UNUSED(globalPos);
     m_lastRightClickedIndex = QModelIndex();
@@ -238,6 +271,7 @@ QModelIndex PreparationFeature::constructChildModel(int selectedId) {
             "  Playlists.id AS id, "
             "  Playlists.name AS name, "
             "  Playlists.date_created AS date_created, "
+            "  Playlists.hidden AS hidden, "
             "  LOWER(Playlists.name) AS sort_name, "
             "  max(PlaylistTracks.position) AS count,"
             "  SUM(library.duration) AS durationSeconds "
@@ -246,9 +280,12 @@ QModelIndex PreparationFeature::constructChildModel(int selectedId) {
             "  ON PlaylistTracks.playlist_id = Playlists.id "
             "LEFT JOIN library "
             "  ON PlaylistTracks.track_id = library.id "
-            "  WHERE Playlists.hidden = %2 "
+            //"  WHERE Playlists.hidden = %2 "
+            "  WHERE ( IFNULL(Playlists.hidden, 0) = %2 OR "
+            "  IFNULL(Playlists.hidden, 0) = %3) "
             "  GROUP BY Playlists.id")
                                   .arg(m_countsDurationTableName,
+                                          QString::number(PlaylistDAO::PLHT_SET_LOG),
                                           QString::number(PlaylistDAO::PLHT_SET_PREPARATION));
     ;
     queryString.append(
@@ -273,6 +310,7 @@ QModelIndex PreparationFeature::constructChildModel(int selectedId) {
     int createdColumn = record.indexOf("date_created");
     int countColumn = record.indexOf("count");
     int durationColumn = record.indexOf("durationSeconds");
+    int hiddenTypeColumn = record.indexOf("hidden");
 
     // Nice to have: restore previous expanded/collapsed state of YEAR items
     clearChildModel();
@@ -301,40 +339,46 @@ QModelIndex PreparationFeature::constructChildModel(int selectedId) {
                 playlistTableModel
                         .data(playlistTableModel.index(row, durationColumn))
                         .toInt();
+        int hiddenType =
+                playlistTableModel
+                        .data(playlistTableModel.index(row, hiddenTypeColumn))
+                        .toInt();
         QString label = createPlaylistLabel(name, count, duration);
 
         // Create the TreeItem whose parent is the invisible root item.
         // Show only [kNumToplevelHistoryEntries] recent playlists at the top level
         // before grouping them by year.
-        if (row >= kNumToplevelHistoryEntries) {
-            // group by year
-            int yearCreated = dateCreated.date().year();
+        if (hiddenType == PlaylistDAO::PLHT_SET_PREPARATION) {
+            if (row >= kNumToplevelHistoryEntries) {
+                // group by year
+                int yearCreated = dateCreated.date().year();
 
-            auto i = groups.find(yearCreated);
-            TreeItem* pGroupItem;
-            if (i != groups.end() && i.key() == yearCreated) {
-                // get YEAR item the playlist will sorted into
-                pGroupItem = i.value();
+                auto i = groups.find(yearCreated);
+                TreeItem* pGroupItem;
+                if (i != groups.end() && i.key() == yearCreated) {
+                    // get YEAR item the playlist will sorted into
+                    pGroupItem = i.value();
+                } else {
+                    // create YEAR item the playlist will sorted into
+                    // store id of empty placeholder playlist
+                    auto pNewGroupItem = std::make_unique<TreeItem>(
+                            QString::number(yearCreated), m_yearNodeId);
+                    pGroupItem = pNewGroupItem.get();
+                    groups.insert(yearCreated, pGroupItem);
+                    itemList.push_back(std::move(pNewGroupItem));
+                }
+
+                TreeItem* pItem = pGroupItem->appendChild(label, id);
+                pItem->setBold(m_playlistIdsOfSelectedTrack.contains(id));
+                decorateChild(pItem, id);
             } else {
-                // create YEAR item the playlist will sorted into
-                // store id of empty placeholder playlist
-                auto pNewGroupItem = std::make_unique<TreeItem>(
-                        QString::number(yearCreated), m_yearNodeId);
-                pGroupItem = pNewGroupItem.get();
-                groups.insert(yearCreated, pGroupItem);
-                itemList.push_back(std::move(pNewGroupItem));
+                // add most recent top-level playlist
+                auto pItem = std::make_unique<TreeItem>(label, id);
+                pItem->setBold(m_playlistIdsOfSelectedTrack.contains(id));
+                decorateChild(pItem.get(), id);
+
+                itemList.push_back(std::move(pItem));
             }
-
-            TreeItem* pItem = pGroupItem->appendChild(label, id);
-            pItem->setBold(m_playlistIdsOfSelectedTrack.contains(id));
-            decorateChild(pItem, id);
-        } else {
-            // add most recent top-level playlist
-            auto pItem = std::make_unique<TreeItem>(label, id);
-            pItem->setBold(m_playlistIdsOfSelectedTrack.contains(id));
-            decorateChild(pItem.get(), id);
-
-            itemList.push_back(std::move(pItem));
         }
     }
 
@@ -360,7 +404,7 @@ void PreparationFeature::slotGetNewPlaylist() {
         qDebug() << "slotGetNewPlaylist() successfully triggered !";
     }
 
-    // create a new playlist for today
+    // create a new preparationList for today
     QString preparation_name_format;
     QString preparation_name;
 
@@ -615,34 +659,37 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
         qDebug() << "PreparationFeature: Loaded Track ID received: " << newLoadedTrackId;
     }
 
-    if (m_pPlaylistTableModel->getPlaylist() == m_currentPlaylistId) {
-        if (sDebug) {
-            qDebug() << "PreparationFeature: Loaded Preparation PlayListId "
-                        "m_pPlaylistTableModel->getPlaylist() "
-                     << m_pPlaylistTableModel->getPlaylist();
-            qDebug() << "PreparationFeature: Loaded Preparation PlayListId " << m_currentPlaylistId;
-        }
-        // View needs a refresh
-
-        bool hasActiveView = false;
-        if (m_pLibraryWidget) {
-            WTrackTableView* view = dynamic_cast<WTrackTableView*>(
-                    m_pLibraryWidget->getActiveView());
-            if (view != nullptr) {
-                hasActiveView = true;
-                const QList<TrackId> trackIds = view->getSelectedTrackIds();
-                m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
-                view->setSelectedTracks(trackIds);
+    if (m_pConfig->getValue(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true)) {
+        if (m_pPlaylistTableModel->getPlaylist() == m_currentPlaylistId) {
+            if (sDebug) {
+                qDebug() << "PreparationFeature: Loaded Preparation PlayListId "
+                            "m_pPlaylistTableModel->getPlaylist() "
+                         << m_pPlaylistTableModel->getPlaylist();
+                qDebug() << "PreparationFeature: Loaded Preparation PlayListId "
+                         << m_currentPlaylistId;
             }
-        }
+            // View needs a refresh
 
-        if (!hasActiveView) {
-            m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+            bool hasActiveView = false;
+            if (m_pLibraryWidget) {
+                WTrackTableView* view = dynamic_cast<WTrackTableView*>(
+                        m_pLibraryWidget->getActiveView());
+                if (view != nullptr) {
+                    hasActiveView = true;
+                    const QList<TrackId> trackIds = view->getSelectedTrackIds();
+                    m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+                    view->setSelectedTracks(trackIds);
+                }
+            }
+
+            if (!hasActiveView) {
+                m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+            }
+        } else {
+            // TODO(XXX): Care whether the append succeeded.
+            m_playlistDao.appendTrackToPlaylist(
+                    newLoadedTrackId, m_currentPlaylistId);
         }
-    } else {
-        // TODO(XXX): Care whether the append succeeded.
-        m_playlistDao.appendTrackToPlaylist(
-                newLoadedTrackId, m_currentPlaylistId);
     }
 }
 

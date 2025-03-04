@@ -818,27 +818,34 @@ void WTrackTableView::mouseMoveEvent(QMouseEvent* pEvent) {
         QList<QString> locations;
         const QModelIndexList indices = getSelectedRows();
         if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] -> DragDrop indices " << indices;
-            qDebug() << "[WTRACKTABLEVIEW] -> DragDrop getSelectedRows() " << getSelectedRows();
+            qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                        "DragDrop indices "
+                     << indices;
+            qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                        "DragDrop getSelectedRows() "
+                     << getSelectedRows();
         }
 
         for (const QModelIndex& index : indices) {
             if (!index.isValid()) {
                 if (sDebug) {
-                    qDebug() << "[WTRACKTABLEVIEW] -> DragDrop index is NOT valid ";
+                    qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag "
+                                "-> DragDrop index is NOT valid ";
                 }
                 continue;
             }
 
             locations.append(pTrackModel->getTrackLocation(index));
             if (sDebug) {
-                qDebug() << "[WTRACKTABLEVIEW] -> DragDrop "
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> DragDrop "
                             "pTrackModel->getTrackLocation(index) "
                          << pTrackModel->getTrackLocation(index);
             }
         }
         if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] -> DragDrop locations " << locations;
+            qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                        "DragDrop locations "
+                     << locations;
         }
 
         // EVE
@@ -846,24 +853,31 @@ void WTrackTableView::mouseMoveEvent(QMouseEvent* pEvent) {
 
         if (qobject_cast<WLibraryPreparationWindow*>(parent())) {
             // WLibraryPreparationWindow
-            DragAndDropHelper::dragTrackLocations(locations, this, "librarypreparationwindow");
             if (sDebug) {
-                qDebug() << "[WTRACKTABLEVIEW] -> DragDrop librarypreparationwindow ";
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                            "DragDrop librarypreparationwindow ";
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                            "DragDrop locations "
+                         << locations;
             }
+            DragAndDropHelper::dragTrackLocations(locations, this, "librarypreparationwindow");
         } else if (qobject_cast<WLibrary*>(parent())) {
             // WLibrary
+            if (sDebug) {
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> DragDrop wlibrary ";
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                            "DragDrop locations "
+                         << locations;
+            }
             DragAndDropHelper::dragTrackLocations(locations, this, "library");
-            if (sDebug) {
-                qDebug() << "[WTRACKTABLEVIEW] -> DragDrop wlibrary ";
-            }
         } else {
-            DragAndDropHelper::dragTrackLocations(locations, this, "Auto DJ");
             if (sDebug) {
-                qDebug() << "[WTRACKTABLEVIEW] ->  DragDrop else autodj ";
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> DragDrop else autodj ";
+                qDebug() << "[WTRACKTABLEVIEW] -> mouseMoveInitiatesDrag -> "
+                            "DragDrop locations "
+                         << locations;
             }
-        }
-        if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] ->  DragDrop locations " << locations;
+            DragAndDropHelper::dragTrackLocations(locations, this, "Auto DJ");
         }
     }
 }
@@ -932,11 +946,11 @@ void WTrackTableView::dragEnterEvent(QDragEnterEvent * event) {
 void WTrackTableView::dragMoveEvent(QDragMoveEvent * event) {
     auto* pTrackModel = getTrackModel();
     if (sDebug) {
-        qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> pTrackModel" << pTrackModel;
+        qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> pTrackModel" << pTrackModel;
     }
     if (!pTrackModel) {
         if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> pTrackModel ------ "
+            qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> pTrackModel ------ "
                         "NO pTrackModel->>> STOP ";
         }
         return;
@@ -944,41 +958,41 @@ void WTrackTableView::dragMoveEvent(QDragMoveEvent * event) {
     // Needed to allow auto-scrolling
     WLibraryTableView::dragMoveEvent(event);
     if (sDebug) {
-        qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> WLibraryTableView::dragMoveEvent(event)"
+        qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> WLibraryTableView::dragMoveEvent(event)"
                  << event;
         // qDebug() << "dragMoveEvent" << event->mimeData()->formats();
     }
     if (pTrackModel && event->mimeData()->hasUrls()) {
         if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> pTrackModel && "
+            qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> pTrackModel && "
                         "event->mimeData()->hasUrls()"
                      << pTrackModel << " & " << event->mimeData()->hasUrls();
-            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> OK GO";
+            qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> OK GO";
         }
         if (event->source() == this) {
             // if (pTrackModel->hasCapabilities(TrackModel::Capability::Reorder)) {
             if (pTrackModel->hasCapabilities(TrackModel::Capability::ReceiveDrops)) {
                 if (sDebug) {
-                    qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> IF 1";
+                    qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> IF 1";
                 }
                 event->acceptProposedAction();
             } else {
                 if (sDebug) {
-                    qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> ELSE 2";
+                    qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> ELSE 2";
                 }
                 // event->ignore();
                 event->acceptProposedAction();
             }
         } else {
             if (sDebug) {
-                qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> ELSE 3";
+                qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> ELSE 3";
             }
             event->acceptProposedAction();
         }
     } else {
         if (sDebug) {
-            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> NOOOOOOOOOOOOOOOOOOOOOOOOOOO GO";
-            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> ELSE 4";
+            qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> NOOOOOOOOOOOOOOOOOOOOOOOOOOO GO";
+            qDebug() << "[WTRACKTABLEVIEW] -> DRAGMOVEEVENT -> ELSE 4";
         }
         event->ignore();
     }
@@ -1008,6 +1022,9 @@ void WTrackTableView::dropEvent(QDropEvent * event) {
     }
 
     if (!event->mimeData()->hasUrls() || pTrackModel->isLocked()) {
+        if (sDebug) {
+            qDebug() << "[WTRACKTABLEVIEW] -> DROPEVENT -> mimedata no Urls -> ignore";
+        }
         event->ignore();
         return;
     }
@@ -1116,7 +1133,7 @@ void WTrackTableView::dropEvent(QDropEvent * event) {
 QModelIndexList WTrackTableView::getSelectedRows() const {
     if (sDebug) {
         qDebug() << "[WTRACKTABLEVIEW] -> getSelectedRows() ";
-        qDebug() << "[WTRACKTABLEVIEW] ->  getTrackModel() " << getTrackModel();
+        qDebug() << "[WTRACKTABLEVIEW] -> getSelectedRows() -> getTrackModel() " << getTrackModel();
     }
     if (getTrackModel() == nullptr) {
         return {};
@@ -1124,14 +1141,14 @@ QModelIndexList WTrackTableView::getSelectedRows() const {
 
     QItemSelectionModel* pSelectionModel = selectionModel();
     if (sDebug) {
-        qDebug() << "[WTRACKTABLEVIEW] -> pSelectionModel " << pSelectionModel;
+        qDebug() << "[WTRACKTABLEVIEW] -> getSelectedRows() -> pSelectionModel " << pSelectionModel;
     }
     VERIFY_OR_DEBUG_ASSERT(pSelectionModel != nullptr) {
-        qWarning() << "[WTRACKTABLEVIEW] -> No selection model available";
+        qWarning() << "[WTRACKTABLEVIEW] -> getSelectedRows() -> No selection model available";
         return {};
     }
     if (sDebug) {
-        qDebug() << "[WTRACKTABLEVIEW] -> pSelectionModel->selectedRows() "
+        qDebug() << "[WTRACKTABLEVIEW] -> getSelectedRows() -> pSelectionModel -> selectedRows() "
                  << pSelectionModel->selectedRows();
     }
     return pSelectionModel->selectedRows();
