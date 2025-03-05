@@ -360,7 +360,7 @@ void PreparationFeature::slotGetNewPlaylist() {
         qDebug() << "slotGetNewPlaylist() successfully triggered !";
     }
 
-    // create a new playlist for today
+    // create a new preparationList for today
     QString preparation_name_format;
     QString preparation_name;
 
