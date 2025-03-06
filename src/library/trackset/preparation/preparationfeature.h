@@ -22,7 +22,7 @@ class PreparationFeature : public BasePlaylistFeature {
             KeyboardEventFilter* pkeyboard) override;
     void activatePlaylist(int playlistId) override;
     bool dropAcceptChild(
-            const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource);
+            const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource) override;
     bool dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) override;
 
   public slots:
