@@ -1,17 +1,23 @@
 #include "library/basetracktablemodel.h"
 
+#include <QBuffer>
 #include <QGuiApplication>
+#include <QMimeData>
 #include <QScreen>
+#include <QtGlobal>
 
 #include "library/coverartcache.h"
 #include "library/dao/trackschema.h"
 #include "library/starrating.h"
 #include "library/tabledelegates/bpmdelegate.h"
+#include "library/tabledelegates/checkboxdelegate.h"
 #include "library/tabledelegates/colordelegate.h"
 #include "library/tabledelegates/coverartdelegate.h"
+#include "library/tabledelegates/defaultdelegate.h"
+#include "library/tabledelegates/keydelegate.h"
 #include "library/tabledelegates/locationdelegate.h"
 #include "library/tabledelegates/multilineeditdelegate.h"
-#include "library/tabledelegates/playcountdelegate.h"
+#include "library/tabledelegates/overviewdelegate.h"
 #include "library/tabledelegates/previewbuttondelegate.h"
 #include "library/tabledelegates/stardelegate.h"
 #include "library/trackcollection.h"
@@ -19,9 +25,12 @@
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
 #include "moc_basetracktablemodel.cpp"
+#include "track/keyutils.h"
 #include "track/track.h"
 #include "util/assert.h"
 #include "util/clipboard.h"
+#include "util/color/colorpalette.h"
+#include "util/color/predefinedcolorpalettes.h"
 #include "util/datetime.h"
 #include "util/db/sqlite.h"
 #include "util/logger.h"
@@ -64,6 +73,7 @@ const QStringList kDefaultTableColumns = {
         LIBRARYTABLE_TITLE,
         LIBRARYTABLE_TRACKNUMBER,
         LIBRARYTABLE_YEAR,
+        LIBRARYTABLE_WAVESUMMARYHEX,
 };
 
 inline QSqlDatabase cloneDatabase(
@@ -99,9 +109,12 @@ QSqlDatabase cloneDatabase(
 constexpr int BaseTrackTableModel::kBpmColumnPrecisionDefault;
 constexpr int BaseTrackTableModel::kBpmColumnPrecisionMinimum;
 constexpr int BaseTrackTableModel::kBpmColumnPrecisionMaximum;
+constexpr bool BaseTrackTableModel::kKeyColorsEnabledDefault;
 
 int BaseTrackTableModel::s_bpmColumnPrecision =
         kBpmColumnPrecisionDefault;
+bool BaseTrackTableModel::s_keyColorsEnabled = kKeyColorsEnabledDefault;
+std::optional<ColorPalette> BaseTrackTableModel::s_keyColorPalette;
 
 // static
 void BaseTrackTableModel::setBpmColumnPrecision(int precision) {
@@ -114,6 +127,16 @@ void BaseTrackTableModel::setBpmColumnPrecision(int precision) {
     s_bpmColumnPrecision = precision;
 }
 
+// static
+void BaseTrackTableModel::setKeyColorsEnabled(bool keyColorsEnabled) {
+    s_keyColorsEnabled = keyColorsEnabled;
+}
+
+// static
+void BaseTrackTableModel::setKeyColorPalette(const ColorPalette& palette) {
+    s_keyColorPalette = palette;
+}
+
 bool BaseTrackTableModel::s_bApplyPlayedTrackColor =
         kApplyPlayedTrackColorDefault;
 
@@ -121,7 +144,7 @@ void BaseTrackTableModel::setApplyPlayedTrackColor(bool apply) {
     s_bApplyPlayedTrackColor = apply;
 }
 
-//static
+// static
 QStringList BaseTrackTableModel::defaultTableColumns() {
     return kDefaultTableColumns;
 }
@@ -236,6 +259,9 @@ void BaseTrackTableModel::initHeaderProperties() {
             ColumnCache::COLUMN_TRACKLOCATIONSTABLE_LOCATION,
             tr("Location"),
             defaultColumnWidth() * 6);
+    setHeaderProperties(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX,
+            tr("Overview"),
+            defaultColumnWidth() * 8);
     setHeaderProperties(
             ColumnCache::COLUMN_LIBRARYTABLE_PREVIEW,
             tr("Preview"),
@@ -482,7 +508,7 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
     } else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_BPM)) {
         return new BPMDelegate(pTableView);
     } else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_TIMESPLAYED)) {
-        return new PlayCountDelegate(pTableView);
+        return new CheckboxDelegate(pTableView, QStringLiteral("LibraryPlayedCheckbox"));
     } else if (PlayerManager::numPreviewDecks() > 0 &&
             index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_PREVIEW)) {
         return new PreviewButtonDelegate(pTableView, index);
@@ -497,7 +523,7 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
                 new CoverArtDelegate(pTableView);
         // WLibraryTableView -> CoverArtDelegate
         connect(pTableView,
-                &WLibraryTableView::onlyCachedCoverArt,
+                &WLibraryTableView::onlyCachedCoversAndOverviews,
                 pCoverArtDelegate,
                 &CoverArtDelegate::slotInhibitLazyLoading);
         // CoverArtDelegate -> BaseTrackTableModel
@@ -506,8 +532,21 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
                 this,
                 &BaseTrackTableModel::slotRefreshCoverRows);
         return pCoverArtDelegate;
+    } else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_KEY)) {
+        return new KeyDelegate(pTableView);
+    } else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX)) {
+        auto* pOverviewDelegate = new OverviewDelegate(pTableView);
+        connect(pOverviewDelegate,
+                &OverviewDelegate::overviewRowsChanged,
+                this,
+                &BaseTrackTableModel::slotRefreshOverviewRows);
+        connect(pTableView,
+                &WLibraryTableView::onlyCachedCoversAndOverviews,
+                pOverviewDelegate,
+                &OverviewDelegate::slotInhibitLazyLoading);
+        return pOverviewDelegate;
     }
-    return nullptr;
+    return new DefaultDelegate(pTableView);
 }
 
 QVariant BaseTrackTableModel::data(
@@ -555,6 +594,8 @@ QVariant BaseTrackTableModel::data(
             if (!playedRaw.isNull() &&
                     playedRaw.canConvert<bool>() &&
                     playedRaw.toBool()) {
+                // TODO Maybe adjust color for bright track colors?
+                // Here or in DefaultDelegate
                 return QVariant::fromValue(m_trackPlayedColor);
             }
         }
@@ -576,23 +617,12 @@ QVariant BaseTrackTableModel::data(
             role != Qt::CheckStateRole &&
             role != Qt::ToolTipRole &&
             role != kDataExportRole &&
-            role != Qt::TextAlignmentRole) {
+            role != Qt::TextAlignmentRole &&
+            role != Qt::DecorationRole) {
         return QVariant();
     }
 
     return roleValue(index, rawValue(index), role);
-}
-
-QVariant BaseTrackTableModel::rawValue(
-        const QModelIndex& index) const {
-    VERIFY_OR_DEBUG_ASSERT(index.isValid()) {
-        return QVariant();
-    }
-    const auto field = mapColumn(index.column());
-    if (field == ColumnCache::COLUMN_LIBRARYTABLE_INVALID) {
-        return QVariant();
-    }
-    return rawSiblingValue(index, field);
 }
 
 QVariant BaseTrackTableModel::rawSiblingValue(
@@ -604,17 +634,13 @@ QVariant BaseTrackTableModel::rawSiblingValue(
     VERIFY_OR_DEBUG_ASSERT(siblingField != ColumnCache::COLUMN_LIBRARYTABLE_INVALID) {
         return QVariant();
     }
-    const auto siblingColumn = fieldIndex(siblingField);
+    const int siblingColumn = fieldIndex(siblingField);
     if (siblingColumn < 0) {
         // Unsupported or unknown column/field
         // FIXME: This should never happen but it does. But why??
         return QVariant();
     }
-    VERIFY_OR_DEBUG_ASSERT(siblingColumn != index.column()) {
-        // Prevent infinite recursion
-        return QVariant();
-    }
-    const auto siblingIndex = index.sibling(index.row(), siblingColumn);
+    const QModelIndex siblingIndex = index.sibling(index.row(), siblingColumn);
     return rawValue(siblingIndex);
 }
 
@@ -707,7 +733,7 @@ QVariant BaseTrackTableModel::roleValue(
         int role) const {
     const auto field = mapColumn(index.column());
     if (field == ColumnCache::COLUMN_LIBRARYTABLE_INVALID) {
-        return std::move(rawValue);
+        return rawValue;
     }
     switch (role) {
     case Qt::ToolTipRole:
@@ -721,7 +747,7 @@ QVariant BaseTrackTableModel::roleValue(
             return QVariant();
         case ColumnCache::COLUMN_LIBRARYTABLE_RATING:
         case ColumnCache::COLUMN_LIBRARYTABLE_TIMESPLAYED:
-            return std::move(rawValue);
+            return rawValue;
         default:
             // Same value as for Qt::DisplayRole (see below)
             break;
@@ -799,7 +825,7 @@ QVariant BaseTrackTableModel::roleValue(
                 return dt;
             }
             if (field == ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED) {
-                // Timstamp column in history feature:
+                // Timestamp column in history feature:
                 // Use localized date/time format without text: "5/20/98 03:40 AM"
                 return mixxx::displayLocalDateTime(dt);
             }
@@ -867,7 +893,7 @@ QVariant BaseTrackTableModel::roleValue(
             }
             if (rawValue.canConvert<mixxx::audio::Bitrate>()) {
                 // return value as is
-                return std::move(rawValue);
+                return rawValue;
             } else {
                 VERIFY_OR_DEBUG_ASSERT(rawValue.canConvert<int>()) {
                     return QVariant();
@@ -879,41 +905,19 @@ QVariant BaseTrackTableModel::roleValue(
                 }
                 if (mixxx::audio::Bitrate(bitrateValue).isValid()) {
                     // return value as is
-                    return std::move(rawValue);
+                    return rawValue;
                 } else {
                     // clear invalid values
                     return QVariant();
                 }
             }
         }
-        case ColumnCache::COLUMN_LIBRARYTABLE_KEY: {
-            // If we know the semantic key via the LIBRARYTABLE_KEY_ID
-            // column (as opposed to the string representation of the key
-            // currently stored in the DB) then lookup the key and render it
-            // using the user's selected notation.
-            const QVariant keyCodeValue = rawSiblingValue(
-                    index,
-                    ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID);
-            if (keyCodeValue.isNull()) {
-                // Otherwise, just use the column value as is
-                return std::move(rawValue);
-            }
-            // Convert or clear invalid values
-            VERIFY_OR_DEBUG_ASSERT(keyCodeValue.canConvert<int>()) {
-                return QVariant();
-            }
-            bool ok;
-            const auto keyCode = keyCodeValue.toInt(&ok);
-            VERIFY_OR_DEBUG_ASSERT(ok) {
-                return QVariant();
-            }
-            const auto key = KeyUtils::keyFromNumericValue(keyCode);
-            if (key == mixxx::track::io::key::INVALID) {
-                return QVariant();
-            }
-            // Render the key with the user-provided notation
-            return KeyUtils::keyToString(key);
-        }
+        case ColumnCache::COLUMN_LIBRARYTABLE_KEY:
+            // The Key value is determined by either the KEY_ID or KEY column
+            return KeyUtils::keyFromKeyTextAndIdFields(
+                    rawValue,
+                    rawSiblingValue(
+                            index, ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID));
         case ColumnCache::COLUMN_LIBRARYTABLE_REPLAYGAIN: {
             if (rawValue.isNull()) {
                 return QVariant();
@@ -1011,20 +1015,55 @@ QVariant BaseTrackTableModel::roleValue(
         switch (field) {
         case ColumnCache::COLUMN_LIBRARYTABLE_BPM:
         case ColumnCache::COLUMN_LIBRARYTABLE_DURATION:
-        case ColumnCache::COLUMN_LIBRARYTABLE_BITRATE: {
+        case ColumnCache::COLUMN_LIBRARYTABLE_BITRATE:
+        case ColumnCache::COLUMN_LIBRARYTABLE_TRACKNUMBER: {
             // We need to cast to int due to a bug similar to
             // https://bugreports.qt.io/browse/QTBUG-67582
             return static_cast<int>(Qt::AlignVCenter | Qt::AlignRight);
+        }
+        case ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED:
+        case ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED:
+        case ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT: {
+            return static_cast<int>(Qt::AlignVCenter | Qt::AlignHCenter);
         }
         default:
             return QVariant(); // default AlignLeft for all other columns
         }
     }
+    case Qt::DecorationRole: {
+        switch (field) {
+        case ColumnCache::COLUMN_LIBRARYTABLE_KEY: {
+            // return color of key
+            if (!s_keyColorsEnabled) {
+                return QVariant();
+            }
+            const QVariant keyCodeValue = rawSiblingValue(
+                    index,
+                    ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID);
+            if (keyCodeValue.isNull()) {
+                return QVariant();
+            }
+            bool ok;
+            const auto keyCode = keyCodeValue.toInt(&ok);
+            VERIFY_OR_DEBUG_ASSERT(ok) {
+                return QVariant();
+            }
+            const auto key = KeyUtils::keyFromNumericValue(keyCode);
+            if (key == mixxx::track::io::key::INVALID || !s_keyColorPalette.has_value()) {
+                return QVariant();
+            }
+            return QVariant::fromValue(KeyUtils::keyToColor(key, s_keyColorPalette.value()));
+        }
+        default:
+            return QVariant();
+        }
+        break;
+    }
     default:
         DEBUG_ASSERT(!"unexpected role");
         break;
     }
-    return std::move(rawValue);
+    return rawValue;
 }
 
 bool BaseTrackTableModel::isBpmLocked(
@@ -1070,7 +1109,8 @@ Qt::ItemFlags BaseTrackTableModel::readWriteFlags(
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_FILETYPE) ||
             column == fieldIndex(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_LOCATION) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_REPLAYGAIN) ||
-            column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_SAMPLERATE)) {
+            column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_SAMPLERATE) ||
+            column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX)) {
         return readOnlyFlags(index);
     }
 
@@ -1091,6 +1131,12 @@ Qt::ItemFlags BaseTrackTableModel::readWriteFlags(
         // Cells are editable by default
         itemFlags |= Qt::ItemIsEditable;
     }
+#ifdef Q_OS_IOS
+    // Make items non-editable on iOS by default, since tapping any track will
+    // otherwise trigger the on-screen keyboard (even if they cannot actually
+    // be edited).
+    itemFlags &= ~Qt::ItemIsEditable;
+#endif
     return itemFlags;
 }
 
@@ -1160,6 +1206,17 @@ void BaseTrackTableModel::slotRefreshCoverRows(
         return;
     }
     const int column = fieldIndex(LIBRARYTABLE_COVERART);
+    VERIFY_OR_DEBUG_ASSERT(column >= 0) {
+        return;
+    }
+    emitDataChangedForMultipleRowsInColumn(rows, column);
+}
+
+void BaseTrackTableModel::slotRefreshOverviewRows(const QList<int>& rows) {
+    if (rows.isEmpty()) {
+        return;
+    }
+    const int column = fieldIndex(LIBRARYTABLE_WAVESUMMARYHEX);
     VERIFY_OR_DEBUG_ASSERT(column >= 0) {
         return;
     }

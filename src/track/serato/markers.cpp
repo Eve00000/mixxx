@@ -329,7 +329,7 @@ bool SeratoMarkers::parse(
     }
 
     switch (fileType) {
-    case taglib::FileType::MP3:
+    case taglib::FileType::MPEG:
     case taglib::FileType::AIFF:
         return parseID3(seratoMarkers, data);
     case taglib::FileType::MP4:
@@ -546,7 +546,7 @@ bool SeratoMarkers::parseMP4(
 
 QByteArray SeratoMarkers::dump(taglib::FileType fileType) const {
     switch (fileType) {
-    case taglib::FileType::MP3:
+    case taglib::FileType::MPEG:
     case taglib::FileType::AIFF:
         return dumpID3();
     case taglib::FileType::MP4:
@@ -635,7 +635,7 @@ QByteArray SeratoMarkers::dumpMP4() const {
 }
 
 QList<CueInfo> SeratoMarkers::getCues() const {
-    qDebug() << "Reading cues from 'Serato Markers_' tag data...";
+    // qDebug() << "Reading cues from 'Serato Markers_' tag data...";
 
     QList<CueInfo> cueInfos;
     int cueIndex = 0;

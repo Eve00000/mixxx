@@ -4,6 +4,7 @@
 #include <QtDebug>
 
 #include "library/autodj/autodjprocessor.h"
+#include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "moc_playlistdao.cpp"
 #include "util/db/dbconnection.h"
@@ -142,7 +143,7 @@ QList<TrackId> PlaylistDAO::getTrackIds(const int playlistId) const {
         return trackIds;
     }
 
-    const int trackIdColumn = query.record().indexOf("track_id");
+    const int trackIdColumn = query.record().indexOf(PLAYLISTTRACKSTABLE_TRACKID);
     while (query.next()) {
         trackIds.append(TrackId(query.value(trackIdColumn)));
     }
@@ -643,8 +644,9 @@ void PlaylistDAO::removeTracksFromPlaylist(int playlistId, const QList<int>& pos
 void PlaylistDAO::removeTracksFromPlaylistInner(int playlistId, int position) {
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral(
-            "SELECT track_id FROM PlaylistTracks "
-            "WHERE playlist_id=:id AND position=:position"));
+            "SELECT %1 FROM PlaylistTracks "
+            "WHERE playlist_id=:id AND position=:position")
+                    .arg(PLAYLISTTRACKSTABLE_TRACKID));
     query.bindValue(":id", playlistId);
     query.bindValue(":position", position);
 
@@ -658,7 +660,7 @@ void PlaylistDAO::removeTracksFromPlaylistInner(int playlistId, int position) {
                  << position << "in playlist:" << playlistId;
         return;
     }
-    TrackId trackId(query.value(query.record().indexOf("track_id")));
+    TrackId trackId(query.value(query.record().indexOf(PLAYLISTTRACKSTABLE_TRACKID)));
 
     // Delete the track from the playlist.
     query.prepare(QStringLiteral(
@@ -800,6 +802,7 @@ int PlaylistDAO::insertTracksIntoPlaylist(const QList<TrackId>& trackIds,
         emit trackAdded(playlistId, trackId, insertPositon++);
     }
     emit tracksAdded(QSet<int>{playlistId});
+    emit playlistContentChanged(QSet<int>{playlistId});
     return numTracksAdded;
 }
 
@@ -970,8 +973,8 @@ void PlaylistDAO::removeTracksFromPlaylists(const QList<TrackId>& trackIds, bool
                 ++it) {
             if (it.key() == trackId) {
                 const auto playlistId = it.value();
-                // keep tracks in history playlists
-                if (getHiddenType(playlistId) == PlaylistDAO::PLHT_SET_LOG) {
+                // keep hidden tracks in history playlists, remove purged tracks
+                if (!purged && getHiddenType(playlistId) == PlaylistDAO::PLHT_SET_LOG) {
                     continue;
                 }
                 removeTracksFromPlaylistByIdInner(playlistId, trackId);
@@ -980,6 +983,9 @@ void PlaylistDAO::removeTracksFromPlaylists(const QList<TrackId>& trackIds, bool
         }
     }
     transaction.commit();
+
+    // We may now have empty history playlists. Remove them.
+    deleteAllUnlockedPlaylistsWithFewerTracks(PlaylistDAO::PLHT_SET_LOG, 1);
 
     // update the sidebar
     emit playlistContentChanged(playlistIds);

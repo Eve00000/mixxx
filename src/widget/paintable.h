@@ -1,9 +1,10 @@
 #pragma once
 
 #include <QImage>
-#include <QScopedPointer>
 #include <QRectF>
+#include <QScopedPointer>
 #include <QString>
+#include <memory>
 
 #include "skin/legacy/imgsource.h"
 #include "skin/legacy/pixmapsource.h"
@@ -38,7 +39,6 @@ class Paintable {
         return m_drawMode;
     }
 
-    void draw(int x, int y, QPainter* pPainter);
     void draw(const QRectF& targetRect, QPainter* pPainter);
     void draw(const QRectF& targetRect, QPainter* pPainter,
               const QRectF& sourceRect);
@@ -48,14 +48,14 @@ class Paintable {
 
     static DrawMode DrawModeFromString(const QString& str);
     static QString DrawModeToString(DrawMode mode);
-    static QString getAltFileName(const QString& fileName);
 
   private:
     void drawInternal(const QRectF& targetRect, QPainter* pPainter,
                       const QRectF& sourceRect);
+    void mayCorrectColors();
 
     std::unique_ptr<QPixmap> m_pPixmap;
     std::unique_ptr<QSvgRenderer> m_pSvg;
     DrawMode m_drawMode;
-    PixmapSource m_source;
+    QRectF m_lastSourceRect;
 };
