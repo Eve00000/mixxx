@@ -74,6 +74,22 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotCueModeCombobox);
 
+    // create nowplayingfile checkbox
+    CreateNowPlayingFileCheckBox->setChecked(m_pConfig->getValue(
+            ConfigKey("[Controls]", "CreateNowPlayingFile"), true));			
+	connect(CreateNowPlayingFileCheckBox,
+            &QCheckBox::stateChanged,
+            this,
+            &DlgPrefDeck::slotToggleCreateNowPlayingFile);	
+		
+    // create statusfiles checkbox
+    CreateStatusFilesCheckBox->setChecked(m_pConfig->getValue(
+            ConfigKey("[Controls]", "CreateStatusFiles"), true));			
+	connect(CreateStatusFilesCheckBox,
+            &QCheckBox::stateChanged,
+            this,
+            &DlgPrefDeck::slotToggleCreateStatusFiles);		
+                
     // Track time display configuration
     connect(m_pControlTrackTimeDisplay.get(),
             &ControlObject::valueChanged,
@@ -764,6 +780,9 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(ConfigKey("[Controls]", "RateTempRight"), m_dRateTempFine);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermLeft"), m_dRatePermCoarse);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermRight"), m_dRatePermFine);
+
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateStatusFiles"), false));	
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), false));				
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -850,4 +869,16 @@ int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
     qWarning() << "No default cue behavior found for value" << userData
                << "returning default";
     return 0;
+}
+
+void DlgPrefDeck::slotToggleCreateStatusFiles(int buttonState) {
+    bool enable = buttonState == Qt::Checked;
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"),
+            enable);
+}		
+
+void DlgPrefDeck::slotToggleCreateNowPlayingFile(int buttonState) {
+    bool enable = buttonState == Qt::Checked;
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"),
+            enable);			
 }
