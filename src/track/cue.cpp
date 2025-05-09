@@ -36,7 +36,7 @@ inline mixxx::audio::FramePos positionMillisToFrames(
 }
 } // namespace
 
-//static
+// static
 void CuePointer::deleteLater(Cue* pCue) {
     if (pCue) {
         pCue->deleteLater();
@@ -50,7 +50,11 @@ Cue::Cue(
         mixxx::audio::FrameDiff_t length,
         int hotCue,
         const QString& label,
-        mixxx::RgbColor color)
+        mixxx::RgbColor color,
+        double stem1vol,
+        double stem2vol,
+        double stem3vol,
+        double stem4vol)
         : m_bDirty(false), // clear flag after loading from database
           m_dbId(id),
           m_type(type),
@@ -94,7 +98,11 @@ Cue::Cue(
         int hotCueIndex,
         mixxx::audio::FramePos startPosition,
         mixxx::audio::FramePos endPosition,
-        mixxx::RgbColor color)
+        mixxx::RgbColor color,
+        double stem1vol,
+        double stem2vol,
+        double stem3vol,
+        double stem4vol)
         : m_bDirty(true), // not yet in database, needs to be saved
           m_type(type),
           m_startPosition(startPosition),
@@ -235,6 +243,82 @@ void Cue::setHotCue(int n) {
 int Cue::getHotCue() const {
     const auto lock = lockMutex(&m_mutex);
     return m_iHotCue;
+}
+
+double Cue::getStem1vol() const {
+    const auto lock = lockMutex(&m_mutex);
+    return m_stem1vol;
+}
+
+double Cue::getStem2vol() const {
+    const auto lock = lockMutex(&m_mutex);
+    return m_stem2vol;
+}
+
+double Cue::getStem3vol() const {
+    const auto lock = lockMutex(&m_mutex);
+    return m_stem3vol;
+}
+
+double Cue::getStem4vol() const {
+    const auto lock = lockMutex(&m_mutex);
+    return m_stem4vol;
+}
+
+void Cue::setStem1vol(double stem1vol) {
+    auto lock = lockMutex(&m_mutex);
+    if (m_stem1vol == stem1vol) {
+        return;
+    }
+    //    if (stem1vol < -100 || stem1vol > 100) {
+    //        return;
+    //    }
+    m_stem1vol = stem1vol;
+    m_bDirty = true;
+    lock.unlock();
+    emit updated();
+}
+
+void Cue::setStem2vol(double stem2vol) {
+    auto lock = lockMutex(&m_mutex);
+    if (m_stem2vol == stem2vol) {
+        return;
+    }
+    //    if (stem2vol < -100 || stem2vol > 100) {
+    //        return;
+    //    }
+    m_stem2vol = stem2vol;
+    m_bDirty = true;
+    lock.unlock();
+    emit updated();
+}
+
+void Cue::setStem3vol(double stem3vol) {
+    auto lock = lockMutex(&m_mutex);
+    if (m_stem3vol == stem3vol) {
+        return;
+    }
+    //    if (stem3vol < -100 || stem1vo3 > 100) {
+    //        return;
+    //    }
+    m_stem3vol = stem3vol;
+    m_bDirty = true;
+    lock.unlock();
+    emit updated();
+}
+
+void Cue::setStem4vol(double stem4vol) {
+    auto lock = lockMutex(&m_mutex);
+    if (m_stem4vol == stem4vol) {
+        return;
+    }
+    //    if (stem4vol < -100 || stem4vol > 100) {
+    //        return;
+    //    }
+    m_stem4vol = stem4vol;
+    m_bDirty = true;
+    lock.unlock();
+    emit updated();
 }
 
 QString Cue::getLabel() const {

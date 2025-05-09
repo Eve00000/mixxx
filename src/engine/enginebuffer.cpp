@@ -54,6 +54,17 @@ const QString kAppGroup = QStringLiteral("[App]");
 
 } // anonymous namespace
 
+// EveOSC
+void OscTrackLoadedInGroup(UserSettingsPointer m_pConfig,
+        const QString& OscGroup,
+        const QString& TrackArtist,
+        const QString& TrackTitle,
+        float track_loaded,
+        float duration,
+        float playposition);
+void OscNoTrackLoadedInGroup(UserSettingsPointer m_pConfig, const QString& OscGroup);
+// EveOSC
+
 EngineBuffer::EngineBuffer(const QString& group,
         UserSettingsPointer pConfig,
         EngineChannel* pChannel,
@@ -172,6 +183,94 @@ EngineBuffer::EngineBuffer(const QString& group,
 
     m_pTrackSamples = new ControlObject(ConfigKey(m_group, "track_samples"));
     m_pTrackSampleRate = new ControlObject(ConfigKey(m_group, "track_samplerate"));
+
+    // EVE
+    m_pTrackType = new ControlObject(ConfigKey(m_group, "track_type"));
+    m_pTrackTypeLength = new ControlObject(ConfigKey(m_group, "track_type_length"));
+    m_pTrackArtistLength = new ControlObject(ConfigKey(m_group, "track_artist_length"));
+    m_pTrackArtist_1 = new ControlObject(ConfigKey(m_group, "track_artist_1"));
+    m_pTrackArtist_2 = new ControlObject(ConfigKey(m_group, "track_artist_2"));
+    m_pTrackArtist_3 = new ControlObject(ConfigKey(m_group, "track_artist_3"));
+    m_pTrackArtist_4 = new ControlObject(ConfigKey(m_group, "track_artist_4"));
+    m_pTrackArtist_5 = new ControlObject(ConfigKey(m_group, "track_artist_5"));
+    //    m_pTrackArtist_6 = new ControlObject(ConfigKey(m_group, "track_artist_6"));
+    //    m_pTrackArtist_7 = new ControlObject(ConfigKey(m_group, "track_artist_7"));
+    //    m_pTrackArtist_8 = new ControlObject(ConfigKey(m_group, "track_artist_8"));
+    //    m_pTrackArtist_9 = new ControlObject(ConfigKey(m_group, "track_artist_9"));
+    //    m_pTrackArtist_10 = new ControlObject(ConfigKey(m_group, "track_artist_10"));
+    //    m_pTrackArtist_11 = new ControlObject(ConfigKey(m_group, "track_artist_11"));
+    //    m_pTrackArtist_12 = new ControlObject(ConfigKey(m_group, "track_artist_12"));
+    //    m_pTrackArtist_13 = new ControlObject(ConfigKey(m_group, "track_artist_13"));
+    //    m_pTrackArtist_14 = new ControlObject(ConfigKey(m_group, "track_artist_14"));
+    //    m_pTrackArtist_15 = new ControlObject(ConfigKey(m_group, "track_artist_15"));
+    //    m_pTrackArtist_16 = new ControlObject(ConfigKey(m_group, "track_artist_16"));
+    //    m_pTrackArtist_17 = new ControlObject(ConfigKey(m_group, "track_artist_17"));
+    //    m_pTrackArtist_18 = new ControlObject(ConfigKey(m_group, "track_artist_18"));
+    //    m_pTrackArtist_19 = new ControlObject(ConfigKey(m_group, "track_artist_19"));
+    //    m_pTrackArtist_20 = new ControlObject(ConfigKey(m_group, "track_artist_20"));
+    //    m_pTrackArtist_21 = new ControlObject(ConfigKey(m_group, "track_artist_21"));
+    //    m_pTrackArtist_22 = new ControlObject(ConfigKey(m_group, "track_artist_22"));
+    //    m_pTrackArtist_23 = new ControlObject(ConfigKey(m_group, "track_artist_23"));
+    //    m_pTrackArtist_24 = new ControlObject(ConfigKey(m_group, "track_artist_24"));
+    //    m_pTrackArtist_25 = new ControlObject(ConfigKey(m_group, "track_artist_25"));
+    //    m_pTrackArtist_26 = new ControlObject(ConfigKey(m_group, "track_artist_26"));
+    //    m_pTrackArtist_27 = new ControlObject(ConfigKey(m_group, "track_artist_27"));
+    //    m_pTrackArtist_28 = new ControlObject(ConfigKey(m_group, "track_artist_28"));
+    //    m_pTrackArtist_29 = new ControlObject(ConfigKey(m_group, "track_artist_29"));
+    //    m_pTrackArtist_30 = new ControlObject(ConfigKey(m_group, "track_artist_30"));
+    //    m_pTrackArtist_31 = new ControlObject(ConfigKey(m_group, "track_artist_31"));
+    //    m_pTrackArtist_32 = new ControlObject(ConfigKey(m_group, "track_artist_32"));
+    //    m_pTrackArtist_33 = new ControlObject(ConfigKey(m_group, "track_artist_33"));
+    //    m_pTrackArtist_34 = new ControlObject(ConfigKey(m_group, "track_artist_34"));
+    //    m_pTrackArtist_35 = new ControlObject(ConfigKey(m_group, "track_artist_35"));
+    //    m_pTrackArtist_36 = new ControlObject(ConfigKey(m_group, "track_artist_36"));
+    //    m_pTrackArtist_37 = new ControlObject(ConfigKey(m_group, "track_artist_37"));
+    //    m_pTrackArtist_38 = new ControlObject(ConfigKey(m_group, "track_artist_38"));
+    //    m_pTrackArtist_39 = new ControlObject(ConfigKey(m_group, "track_artist_39"));
+    //    m_pTrackArtist_40 = new ControlObject(ConfigKey(m_group, "track_artist_40"));
+
+    m_pTrackTitleLength = new ControlObject(ConfigKey(m_group, "track_title_length"));
+    m_pTrackTitle_1 = new ControlObject(ConfigKey(m_group, "track_title_1"));
+    m_pTrackTitle_2 = new ControlObject(ConfigKey(m_group, "track_title_2"));
+    m_pTrackTitle_3 = new ControlObject(ConfigKey(m_group, "track_title_3"));
+    m_pTrackTitle_4 = new ControlObject(ConfigKey(m_group, "track_title_4"));
+    m_pTrackTitle_5 = new ControlObject(ConfigKey(m_group, "track_title_5"));
+    //    m_pTrackTitle_6 = new ControlObject(ConfigKey(m_group, "track_title_6"));
+    //    m_pTrackTitle_7 = new ControlObject(ConfigKey(m_group, "track_title_7"));
+    //    m_pTrackTitle_8 = new ControlObject(ConfigKey(m_group, "track_title_8"));
+    //    m_pTrackTitle_9 = new ControlObject(ConfigKey(m_group, "track_title_9"));
+    //    m_pTrackTitle_10 = new ControlObject(ConfigKey(m_group, "track_title_10"));
+    //    m_pTrackTitle_11 = new ControlObject(ConfigKey(m_group, "track_title_11"));
+    //    m_pTrackTitle_12 = new ControlObject(ConfigKey(m_group, "track_title_12"));
+    //    m_pTrackTitle_13 = new ControlObject(ConfigKey(m_group, "track_title_13"));
+    //    m_pTrackTitle_14 = new ControlObject(ConfigKey(m_group, "track_title_14"));
+    //    m_pTrackTitle_15 = new ControlObject(ConfigKey(m_group, "track_title_15"));
+    //    m_pTrackTitle_16 = new ControlObject(ConfigKey(m_group, "track_title_16"));
+    //    m_pTrackTitle_17 = new ControlObject(ConfigKey(m_group, "track_title_17"));
+    //    m_pTrackTitle_18 = new ControlObject(ConfigKey(m_group, "track_title_18"));
+    //    m_pTrackTitle_19 = new ControlObject(ConfigKey(m_group, "track_title_19"));
+    //    m_pTrackTitle_20 = new ControlObject(ConfigKey(m_group, "track_title_20"));
+    //    m_pTrackTitle_21 = new ControlObject(ConfigKey(m_group, "track_title_21"));
+    //    m_pTrackTitle_22 = new ControlObject(ConfigKey(m_group, "track_title_22"));
+    //    m_pTrackTitle_23 = new ControlObject(ConfigKey(m_group, "track_title_23"));
+    //    m_pTrackTitle_24 = new ControlObject(ConfigKey(m_group, "track_title_24"));
+    //    m_pTrackTitle_25 = new ControlObject(ConfigKey(m_group, "track_title_25"));
+    //    m_pTrackTitle_26 = new ControlObject(ConfigKey(m_group, "track_title_26"));
+    //    m_pTrackTitle_27 = new ControlObject(ConfigKey(m_group, "track_title_27"));
+    //    m_pTrackTitle_28 = new ControlObject(ConfigKey(m_group, "track_title_28"));
+    //    m_pTrackTitle_29 = new ControlObject(ConfigKey(m_group, "track_title_29"));
+    //    m_pTrackTitle_30 = new ControlObject(ConfigKey(m_group, "track_title_30"));
+    //    m_pTrackTitle_31 = new ControlObject(ConfigKey(m_group, "track_title_31"));
+    //    m_pTrackTitle_32 = new ControlObject(ConfigKey(m_group, "track_title_32"));
+    //    m_pTrackTitle_33 = new ControlObject(ConfigKey(m_group, "track_title_33"));
+    //    m_pTrackTitle_34 = new ControlObject(ConfigKey(m_group, "track_title_34"));
+    //    m_pTrackTitle_35 = new ControlObject(ConfigKey(m_group, "track_title_35"));
+    //    m_pTrackTitle_36 = new ControlObject(ConfigKey(m_group, "track_title_36"));
+    //    m_pTrackTitle_37 = new ControlObject(ConfigKey(m_group, "track_title_37"));
+    //    m_pTrackTitle_38 = new ControlObject(ConfigKey(m_group, "track_title_38"));
+    //    m_pTrackTitle_39 = new ControlObject(ConfigKey(m_group, "track_title_39"));
+    //    m_pTrackTitle_40 = new ControlObject(ConfigKey(m_group, "track_title_40"));
+    // EVE
 
     m_pKeylock = new ControlPushButton(ConfigKey(m_group, "keylock"), true);
     m_pKeylock->setButtonMode(mixxx::control::ButtonMode::Toggle);
@@ -311,6 +410,94 @@ EngineBuffer::~EngineBuffer() {
     delete m_pTrackLoaded;
     delete m_pTrackSamples;
     delete m_pTrackSampleRate;
+
+    // EVE
+    delete m_pTrackType;
+    delete m_pTrackTypeLength;
+    delete m_pTrackArtistLength;
+    delete m_pTrackArtist_1;
+    delete m_pTrackArtist_2;
+    delete m_pTrackArtist_3;
+    delete m_pTrackArtist_4;
+    delete m_pTrackArtist_5;
+    //    delete m_pTrackArtist_6;
+    //    delete m_pTrackArtist_7;
+    //    delete m_pTrackArtist_8;
+    //    delete m_pTrackArtist_9;
+    //    delete m_pTrackArtist_10;
+    //    delete m_pTrackArtist_11;
+    //    delete m_pTrackArtist_12;
+    //    delete m_pTrackArtist_13;
+    //    delete m_pTrackArtist_14;
+    //    delete m_pTrackArtist_15;
+    //    delete m_pTrackArtist_16;
+    //    delete m_pTrackArtist_17;
+    //    delete m_pTrackArtist_18;
+    //    delete m_pTrackArtist_19;
+    //    delete m_pTrackArtist_20;
+    //    delete m_pTrackArtist_21;
+    //    delete m_pTrackArtist_22;
+    //    delete m_pTrackArtist_23;
+    //    delete m_pTrackArtist_24;
+    //    delete m_pTrackArtist_25;
+    //    delete m_pTrackArtist_26;
+    //    delete m_pTrackArtist_27;
+    //    delete m_pTrackArtist_28;
+    //    delete m_pTrackArtist_29;
+    //    delete m_pTrackArtist_30;
+    //    delete m_pTrackArtist_31;
+    //    delete m_pTrackArtist_32;
+    //    delete m_pTrackArtist_33;
+    //    delete m_pTrackArtist_34;
+    //    delete m_pTrackArtist_35;
+    //    delete m_pTrackArtist_36;
+    //    delete m_pTrackArtist_37;
+    //    delete m_pTrackArtist_38;
+    //    delete m_pTrackArtist_39;
+    //    delete m_pTrackArtist_40;
+
+    delete m_pTrackTitleLength;
+    delete m_pTrackTitle_1;
+    delete m_pTrackTitle_2;
+    delete m_pTrackTitle_3;
+    delete m_pTrackTitle_4;
+    delete m_pTrackTitle_5;
+    //    delete m_pTrackTitle_6;
+    //    delete m_pTrackTitle_7;
+    //    delete m_pTrackTitle_8;
+    //    delete m_pTrackTitle_9;
+    //    delete m_pTrackTitle_10;
+    //    delete m_pTrackTitle_11;
+    //    delete m_pTrackTitle_12;
+    //    delete m_pTrackTitle_13;
+    //    delete m_pTrackTitle_14;
+    //    delete m_pTrackTitle_15;
+    //    delete m_pTrackTitle_16;
+    //    delete m_pTrackTitle_17;
+    //    delete m_pTrackTitle_18;
+    //    delete m_pTrackTitle_19;
+    //    delete m_pTrackTitle_20;
+    //    delete m_pTrackTitle_21;
+    //    delete m_pTrackTitle_22;
+    //    delete m_pTrackTitle_23;
+    //    delete m_pTrackTitle_24;
+    //    delete m_pTrackTitle_25;
+    //    delete m_pTrackTitle_26;
+    //    delete m_pTrackTitle_27;
+    //    delete m_pTrackTitle_28;
+    //    delete m_pTrackTitle_29;
+    //    delete m_pTrackTitle_30;
+    //    delete m_pTrackTitle_31;
+    //    delete m_pTrackTitle_32;
+    //    delete m_pTrackTitle_33;
+    //    delete m_pTrackTitle_34;
+    //    delete m_pTrackTitle_35;
+    //    delete m_pTrackTitle_36;
+    //    delete m_pTrackTitle_37;
+    //    delete m_pTrackTitle_38;
+    //    delete m_pTrackTitle_39;
+    //    delete m_pTrackTitle_40;
+    // EVE
 
     delete m_pScaleLinear;
     delete m_pScaleST;
@@ -528,6 +715,93 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
                     pTrack->getSampleRate() * pTrack->getDuration()));
 }
 
+// Helper function to convert characters and store them in an array
+void convertStringToCharArray(const QString& input, int* outputArray, int maxLength) {
+    qDebug() << "EVE convertStringToCharArray ";
+    int length = qMin(input.length(), maxLength);
+    for (int i = 0; i < length; ++i) {
+        char currentChar = input.at(i).toLatin1();
+        outputArray[i] = (currentChar < 0) ? currentChar + 300 : currentChar;
+    }
+}
+
+// Helper function to calculate track part value from the character array
+double calculateTrackPart(const int* charArray, int offset) {
+    qDebug() << "EVE Calculatetrackpart ";
+    return (1.0 * charArray[offset] * 1000000000000) +
+            (1.0 * charArray[offset + 1] * 1000000000) +
+            (1.0 * charArray[offset + 2] * 1000000) +
+            (1.0 * charArray[offset + 3] * 1000) +
+            (1.0 * charArray[offset + 4] * 1);
+}
+
+// Set the track control values based on character parts
+void setTrackPartValues(const int* charArray,
+        std::unique_ptr<ControlObject>& trackPart1,
+        std::unique_ptr<ControlObject>& trackPart2,
+        std::unique_ptr<ControlObject>& trackPart3,
+        std::unique_ptr<ControlObject>& trackPart4,
+        std::unique_ptr<ControlObject>& trackPart5) {
+    trackPart1->set(calculateTrackPart(charArray, 0));
+    trackPart2->set(calculateTrackPart(charArray, 5));
+    trackPart3->set(calculateTrackPart(charArray, 10));
+    trackPart4->set(calculateTrackPart(charArray, 15));
+    trackPart5->set(calculateTrackPart(charArray, 20));
+}
+
+// Function to handle string length and trimming
+QString handleStringLength(const QString& input,
+        int maxLength,
+        std::unique_ptr<ControlObject>& lengthControl) {
+    qDebug() << "EVE handleStringLength ";
+    QString result = input.left(maxLength);
+    lengthControl->set(input.length());
+    return result;
+}
+
+// Refactored function that manages track and artist information processing
+void processTrackInfo(std::unique_ptr<ControlObject>& trackTypeControl,
+        std::unique_ptr<ControlObject>& trackTypeLengthControl,
+        std::unique_ptr<ControlObject>& trackTitleLengthControl,
+        std::unique_ptr<ControlObject>& trackArtistLengthControl,
+        std::unique_ptr<ControlObject>& trackTitle1,
+        std::unique_ptr<ControlObject>& trackTitle2,
+        std::unique_ptr<ControlObject>& trackTitle3,
+        std::unique_ptr<ControlObject>& trackTitle4,
+        std::unique_ptr<ControlObject>& trackTitle5,
+        std::unique_ptr<ControlObject>& trackArtist1,
+        std::unique_ptr<ControlObject>& trackArtist2,
+        std::unique_ptr<ControlObject>& trackArtist3,
+        std::unique_ptr<ControlObject>& trackArtist4,
+        std::unique_ptr<ControlObject>& trackArtist5,
+        const QString& trackType,
+        const QString& trackTitle,
+        const QString& trackArtist) {
+    // Process Type
+    qDebug() << "EVE processTrackInfo ";
+    QString processedType = handleStringLength(trackType, 5, trackTypeLengthControl);
+    int charType[5] = {0};
+    convertStringToCharArray(processedType, charType, 5);
+    trackTypeControl->set(calculateTrackPart(charType, 0));
+
+    // Process Title
+    QString processedTitle = handleStringLength(trackTitle, 25, trackTitleLengthControl);
+    int charTitle[200] = {0};
+    convertStringToCharArray(processedTitle, charTitle, 25);
+    setTrackPartValues(charTitle, trackTitle1, trackTitle2, trackTitle3, trackTitle4, trackTitle5);
+
+    // Process Artist
+    QString processedArtist = handleStringLength(trackArtist, 25, trackArtistLengthControl);
+    int charArtist[200] = {0};
+    convertStringToCharArray(processedArtist, charArtist, 25);
+    setTrackPartValues(charArtist,
+            trackArtist1,
+            trackArtist2,
+            trackArtist3,
+            trackArtist4,
+            trackArtist5);
+}
+
 // WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
@@ -562,6 +836,577 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
     m_pTrackSampleRate->set(trackSampleRate.toDouble());
     m_pTrackLoaded->forceSet(1);
+
+    //  EveOSC begin
+    if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+        OscTrackLoadedInGroup(m_pConfig,
+                getGroup(),
+                pTrack->getArtist().toLatin1(),
+                pTrack->getTitle().toLatin1(),
+                (float)1,
+                (float)pTrack->getDuration(),
+                (float)0);
+    }
+    // EveOSC end
+
+    // Eve start
+    qDebug() << "EVE START: ";
+
+    QString trackType = pTrack->getType();
+    QString trackTitle = pTrack->getTitle();
+    QString trackArtist = pTrack->getArtist();
+
+    auto trackTypeControl = std::make_unique<ControlObject>(ConfigKey("group", "track_type"));
+    auto trackTypeLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_type_length"));
+    auto trackTitleLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_title_length"));
+    auto trackArtistLengthControl = std::make_unique<ControlObject>(
+            ConfigKey("group", "track_artist_length"));
+
+    auto trackTitle1 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_1"));
+    auto trackTitle2 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_2"));
+    auto trackTitle3 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_3"));
+    auto trackTitle4 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_4"));
+    auto trackTitle5 = std::make_unique<ControlObject>(ConfigKey("group", "track_title_5"));
+
+    auto trackArtist1 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_1"));
+    auto trackArtist2 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_2"));
+    auto trackArtist3 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_3"));
+    auto trackArtist4 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_4"));
+    auto trackArtist5 = std::make_unique<ControlObject>(ConfigKey("group", "track_artist_5"));
+
+    processTrackInfo(trackTypeControl,
+            trackTypeLengthControl,
+            trackTitleLengthControl,
+            trackArtistLengthControl,
+            trackTitle1,
+            trackTitle2,
+            trackTitle3,
+            trackTitle4,
+            trackTitle5,
+            trackArtist1,
+            trackArtist2,
+            trackArtist3,
+            trackArtist4,
+            trackArtist5,
+            trackType,
+            trackTitle,
+            trackArtist);
+
+    qDebug() << "EVE END: ";
+    qDebug() << "trackTypeControl: " << &trackTypeControl;
+    qDebug() << "trackTypeLengthControl: " << &trackTypeLengthControl;
+    qDebug() << "trackTitleLengthControl: " << &trackTitleLengthControl;
+    qDebug() << "trackArtistLengthControl: " << &trackArtistLengthControl;
+    //    qDebug() << "trackTitle1: " << std::format("{}", std::numbers::&trackTitle1<double>);
+    // qDebug() << "trackTitle1: " << &trackTitle1.toInt();
+    // fmt::print("{}", M_PI);
+    PollingControlProxy proxyTitle1("group", "track_title_1");
+
+    // ControlObject>(ConfigKey("group", "track_title_1")
+    qDebug() << "trackTitle1: proxt " << proxyTitle1.get();
+    qDebug() << "trackTitle1: " << &trackTitle1;
+    qDebug() << "trackTitle2: " << &trackTitle2;
+    qDebug() << "trackTitle3: " << &trackTitle3;
+    qDebug() << "trackTitle4: " << &trackTitle4;
+    qDebug() << "trackTitle5: " << &trackTitle5;
+    qDebug() << "trackArtist1: " << &trackArtist1;
+    qDebug() << "trackArtist2: " << &trackArtist2;
+    qDebug() << "trackArtist3: " << &trackArtist3;
+    qDebug() << "trackArtist4: " << &trackArtist4;
+    qDebug() << "trackArtist5: " << &trackArtist5;
+
+    // Type
+    ////QString TrackInfoType = pTrack->getType();
+    ////QString TrackInfoTypeTest = TrackInfoType;
+    ////int TrackInfoTypeTestLength = TrackInfoTypeTest.length();
+    ////if (TrackInfoTypeTestLength > 5) {
+    ////        TrackInfoType = TrackInfoTypeTest.mid(0, 5);
+    ////};
+    ////m_pTrackTypeLength->set(TrackInfoTypeTestLength);
+
+    ////int CharType[5];
+    ////for (int i = 1; i <= 5; i++) {
+    ////        CharType[i - 1] = 0;
+    ////}
+
+    ////for (int i = 1; i <= TrackInfoType.length(); i++) {
+    ////        if ((TrackInfoType.at(i - 1).toLatin1()) < 0) {
+    ////CharType[i - 1] = ((TrackInfoType.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharType[i - 1] = (TrackInfoType.at(i - 1).toLatin1());
+    ////        };
+    ////}
+
+    ////double TrackTypePart = 0.0;
+    ////TrackTypePart = (1.0 * CharType[0] * 1000000000000) +
+    ////(1.0 * CharType[1] * 1000000000) + (1.0 * CharType[2] * 1000000) +
+    ////(1.0 * CharType[3] * 1000) + (1.0 * CharType[4] * 1);
+    ////m_pTrackType->set(TrackTypePart);
+
+    // Title
+    ////QString TrackInfoTitle = pTrack->getTitle();
+    ////QString TrackInfoTitleTest = TrackInfoTitle;
+    ////int TrackInfoTitleTestLength = TrackInfoTitleTest.length();
+    ////if (TrackInfoTitleTestLength > 200) {
+    ////TrackInfoTitle = TrackInfoTitleTest.mid(0, 200);
+    ////};
+    ////m_pTrackTitleLength->set(TrackInfoTitleTestLength);
+
+    ////int CharTitle[200];
+    ////for (int i = 1; i <= 200; i++) {
+    ////CharTitle[i - 1] = 0;
+    ////}
+
+    //    for (int i = 1; i <= TrackInfoTitle.length(); i++) {
+    ////for (int i = 1; i <= 25; i++) {
+    ////        if ((TrackInfoTitle.at(i - 1).toLatin1()) < 0) {
+    ////CharTitle[i - 1] = ((TrackInfoTitle.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharTitle[i - 1] = (TrackInfoTitle.at(i - 1).toLatin1());
+    ////        };
+    ////}
+
+    // Artist
+    ////QString TrackInfoArtist = pTrack->getArtist();
+    ////QString TrackInfoArtistTest = TrackInfoArtist;
+    ////int TrackInfoArtistTestLength = TrackInfoArtistTest.length();
+    ////if (TrackInfoArtistTestLength > 200) {
+    ////        TrackInfoArtist = TrackInfoArtist.mid(0, 200);
+    ////};
+    ////m_pTrackArtistLength->set(TrackInfoArtistTestLength);
+
+    ////int CharArtist[200];
+    ////for (int i = 1; i <= 200; i++) {
+    ////        CharArtist[i - 1] = 0;
+    ////}
+
+    //    for (int i = 1; i <= TrackInfoArtist.length(); i++) {
+    ////for (int i = 1; i <= 25; i++) {
+    ////        if ((TrackInfoArtist.at(i - 1).toLatin1()) < 0) {
+    ////CharArtist[i - 1] = ((TrackInfoArtist.at(i - 1).toLatin1()) + 300);
+    ////        } else {
+    ////CharArtist[i - 1] = (TrackInfoArtist.at(i - 1).toLatin1());
+    ////        };
+    ////}
+
+    ////double TrackTitlePart_1 = 0.0;
+    ////double TrackTitlePart_2 = 0.0;
+    ////double TrackTitlePart_3 = 0.0;
+    ////    double TrackTitlePart_4 = 0.0;
+    ////    double TrackTitlePart_5 = 0.0;
+    //    double TrackTitlePart_6 = 0.0;
+    //    double TrackTitlePart_7 = 0.0;
+    //    double TrackTitlePart_8 = 0.0;
+    //    double TrackTitlePart_9 = 0.0;
+    //    double TrackTitlePart_10 = 0.0;
+    //    double TrackTitlePart_11 = 0.0;
+    //    double TrackTitlePart_12 = 0.0;
+    //    double TrackTitlePart_13 = 0.0;
+    //    double TrackTitlePart_14 = 0.0;
+    //    double TrackTitlePart_15 = 0.0;
+    //    double TrackTitlePart_16 = 0.0;
+    //    double TrackTitlePart_17 = 0.0;
+    //    double TrackTitlePart_18 = 0.0;
+    //    double TrackTitlePart_19 = 0.0;
+    //    double TrackTitlePart_20 = 0.0;
+    //    double TrackTitlePart_21 = 0.0;
+    //    double TrackTitlePart_22 = 0.0;
+    //    double TrackTitlePart_23 = 0.0;
+    //    double TrackTitlePart_24 = 0.0;
+    //    double TrackTitlePart_25 = 0.0;
+    //    double TrackTitlePart_26 = 0.0;
+    //    double TrackTitlePart_27 = 0.0;
+    //    double TrackTitlePart_28 = 0.0;
+    //    double TrackTitlePart_29 = 0.0;
+    //    double TrackTitlePart_30 = 0.0;
+    //    double TrackTitlePart_31 = 0.0;
+    //    double TrackTitlePart_32 = 0.0;
+    //    double TrackTitlePart_33 = 0.0;
+    //    double TrackTitlePart_34 = 0.0;
+    //    double TrackTitlePart_35 = 0.0;
+    //    double TrackTitlePart_36 = 0.0;
+    //    double TrackTitlePart_37 = 0.0;
+    //    double TrackTitlePart_38 = 0.0;
+    //    double TrackTitlePart_39 = 0.0;
+    //    double TrackTitlePart_40 = 0.0;
+
+    ////TrackTitlePart_1 = (1.0 * CharTitle[0] * 1000000000000) +
+    ////(1.0 * CharTitle[1] * 1000000000) + (1.0 * CharTitle[2] * 1000000) +
+    ////(1.0 * CharTitle[3] * 1000) + (1.0 * CharTitle[4] * 1);
+    ////TrackTitlePart_2 = (1.0 * CharTitle[5] * 1000000000000) +
+    ////(1.0 * CharTitle[6] * 1000000000) + (1.0 * CharTitle[7] * 1000000) +
+    ////(1.0 * CharTitle[8] * 1000) + (1.0 * CharTitle[9] * 1);
+    ////TrackTitlePart_3 = (1.0 * CharTitle[10] * 1000000000000) +
+    ////(1.0 * CharTitle[11] * 1000000000) +
+    ////(1.0 * CharTitle[12] * 1000000) + (1.0 * CharTitle[13] * 1000) +
+    ////    (1.0 * CharTitle[14] * 1);
+    ////TrackTitlePart_4 = (1.0 * CharTitle[15] * 1000000000000) +
+    ////(1.0 * CharTitle[16] * 1000000000) +
+    ////(1.0 * CharTitle[17] * 1000000) + (1.0 * CharTitle[18] * 1000) +
+    ////    (1.0 * CharTitle[19] * 1);
+    ////TrackTitlePart_5 = (1.0 * CharTitle[20] * 1000000000000) +
+    ////(1.0 * CharTitle[21] * 1000000000) +
+    ////    (1.0 * CharTitle[22] * 1000000) + (1.0 * CharTitle[23] * 1000) +
+    ////(1.0 * CharTitle[24] * 1);
+    //    TrackTitlePart_6 = (1.0 * CharTitle[25] * 1000000000000) + (1.0 *
+    //    CharTitle[26] * 1000000000) + (1.0 * CharTitle[27] * 1000000) + (1.0 *
+    //    CharTitle[28] * 1000) + (1.0 * CharTitle[29] * 1); TrackTitlePart_7 =
+    //    (1.0 * CharTitle[30] * 1000000000000) + (1.0 * CharTitle[31] *
+    //    1000000000) + (1.0 * CharTitle[32] * 1000000) + (1.0 * CharTitle[33] *
+    //    1000) + (1.0 * CharTitle[34] * 1); TrackTitlePart_8 = (1.0 *
+    //    CharTitle[35] * 1000000000000) + (1.0 * CharTitle[36] * 1000000000) +
+    //    (1.0 * CharTitle[37] * 1000000) + (1.0 * CharTitle[38] * 1000) + (1.0
+    //    * CharTitle[39] * 1); TrackTitlePart_9 = (1.0 * CharTitle[40] *
+    //    1000000000000) + (1.0 * CharTitle[41] * 1000000000) + (1.0 *
+    //    CharTitle[42] * 1000000) + (1.0 * CharTitle[43] * 1000) + (1.0 *
+    //    CharTitle[44] * 1); TrackTitlePart_10 = (1.0 * CharTitle[45] *
+    //    1000000000000) + (1.0 * CharTitle[46] * 1000000000) + (1.0 *
+    //    CharTitle[47] * 1000000) + (1.0 * CharTitle[48] * 1000) + (1.0 *
+    //    CharTitle[49] * 1); TrackTitlePart_11 = (1.0 * CharTitle[50] *
+    //    1000000000000) + (1.0 * CharTitle[51] * 1000000000) + (1.0 *
+    //    CharTitle[52] * 1000000) + (1.0 * CharTitle[53] * 1000) + (1.0 *
+    //    CharTitle[54] * 1); TrackTitlePart_12 = (1.0 * CharTitle[55] *
+    //    1000000000000) + (1.0 * CharTitle[56] * 1000000000) + (1.0 *
+    //    CharTitle[57] * 1000000) + (1.0 * CharTitle[58] * 1000) + (1.0 *
+    //    CharTitle[59] * 1); TrackTitlePart_13 = (1.0 * CharTitle[60] *
+    //    1000000000000) + (1.0 * CharTitle[61] * 1000000000) + (1.0 *
+    //    CharTitle[62] * 1000000) + (1.0 * CharTitle[63] * 1000) + (1.0 *
+    //    CharTitle[64] * 1); TrackTitlePart_14 = (1.0 * CharTitle[65] *
+    //    1000000000000) + (1.0 * CharTitle[66] * 1000000000) + (1.0 *
+    //    CharTitle[67] * 1000000) + (1.0 * CharTitle[68] * 1000) + (1.0 *
+    //    CharTitle[69] * 1); TrackTitlePart_15 = (1.0 * CharTitle[70] *
+    //    1000000000000) + (1.0 * CharTitle[71] * 1000000000) + (1.0 *
+    //    CharTitle[72] * 1000000) + (1.0 * CharTitle[73] * 1000) + (1.0 *
+    //    CharTitle[74] * 1); TrackTitlePart_16 = (1.0 * CharTitle[75] *
+    //    1000000000000) + (1.0 * CharTitle[76] * 1000000000) + (1.0 *
+    //    CharTitle[77] * 1000000) + (1.0 * CharTitle[78] * 1000) + (1.0 *
+    //    CharTitle[79] * 1); TrackTitlePart_17 = (1.0 * CharTitle[80] *
+    //    1000000000000) + (1.0 * CharTitle[81] * 1000000000) + (1.0 *
+    //    CharTitle[82] * 1000000) + (1.0 * CharTitle[83] * 1000) + (1.0 *
+    //    CharTitle[84] * 1); TrackTitlePart_18 = (1.0 * CharTitle[85] *
+    //    1000000000000) + (1.0 * CharTitle[86] * 1000000000) + (1.0 *
+    //    CharTitle[87] * 1000000) + (1.0 * CharTitle[88] * 1000) + (1.0 *
+    //    CharTitle[89] * 1); TrackTitlePart_19 = (1.0 * CharTitle[90] *
+    //    1000000000000) + (1.0 * CharTitle[91] * 1000000000) + (1.0 *
+    //    CharTitle[92] * 1000000) + (1.0 * CharTitle[93] * 1000) + (1.0 *
+    //    CharTitle[94] * 1); TrackTitlePart_20 = (1.0 * CharTitle[95] *
+    //    1000000000000) + (1.0 * CharTitle[36] * 1000000000) + (1.0 *
+    //    CharTitle[97] * 1000000) + (1.0 * CharTitle[98] * 1000) + (1.0 *
+    //    CharTitle[99] * 1); TrackTitlePart_21 = (1.0 * CharTitle[100] *
+    //    1000000000000) + (1.0 * CharTitle[101] * 1000000000) + (1.0 *
+    //    CharTitle[102] * 1000000) + (1.0 * CharTitle[103] * 1000) + (1.0 *
+    //    CharTitle[104] * 1); TrackTitlePart_22 = (1.0 * CharTitle[105] *
+    //    1000000000000) + (1.0 * CharTitle[106] * 1000000000) + (1.0 *
+    //    CharTitle[107] * 1000000) + (1.0 * CharTitle[108] * 1000) + (1.0 *
+    //    CharTitle[109] * 1); TrackTitlePart_23 = (1.0 * CharTitle[110] *
+    //    1000000000000) + (1.0 * CharTitle[111] * 1000000000) + (1.0 *
+    //    CharTitle[112] * 1000000) + (1.0 * CharTitle[113] * 1000) + (1.0 *
+    //    CharTitle[114] * 1); TrackTitlePart_24 = (1.0 * CharTitle[115] *
+    //    1000000000000) + (1.0 * CharTitle[116] * 1000000000) + (1.0 *
+    //    CharTitle[117] * 1000000) + (1.0 * CharTitle[118] * 1000) + (1.0 *
+    //    CharTitle[119] * 1); TrackTitlePart_25 = (1.0 * CharTitle[120] *
+    //    1000000000000) + (1.0 * CharTitle[121] * 1000000000) + (1.0 *
+    //    CharTitle[122] * 1000000) + (1.0 * CharTitle[123] * 1000) + (1.0 *
+    //    CharTitle[124] * 1); TrackTitlePart_26 = (1.0 * CharTitle[125] *
+    //    1000000000000) + (1.0 * CharTitle[126] * 1000000000) + (1.0 *
+    //    CharTitle[127] * 1000000) + (1.0 * CharTitle[128] * 1000) + (1.0 *
+    //    CharTitle[129] * 1); TrackTitlePart_27 = (1.0 * CharTitle[130] *
+    //    1000000000000) + (1.0 * CharTitle[131] * 1000000000) + (1.0 *
+    //    CharTitle[132] * 1000000) + (1.0 * CharTitle[133] * 1000) + (1.0 *
+    //    CharTitle[134] * 1); TrackTitlePart_28 = (1.0 * CharTitle[135] *
+    //    1000000000000) + (1.0 * CharTitle[136] * 1000000000) + (1.0 *
+    //    CharTitle[137] * 1000000) + (1.0 * CharTitle[138] * 1000) + (1.0 *
+    //    CharTitle[139] * 1); TrackTitlePart_29 = (1.0 * CharTitle[140] *
+    //    1000000000000) + (1.0 * CharTitle[141] * 1000000000) + (1.0 *
+    //    CharTitle[142] * 1000000) + (1.0 * CharTitle[143] * 1000) + (1.0 *
+    //    CharTitle[144] * 1); TrackTitlePart_30 = (1.0 * CharTitle[145] *
+    //    1000000000000) + (1.0 * CharTitle[146] * 1000000000) + (1.0 *
+    //    CharTitle[147] * 1000000) + (1.0 * CharTitle[148] * 1000) + (1.0 *
+    //    CharTitle[149] * 1); TrackTitlePart_31 = (1.0 * CharTitle[150] *
+    //    1000000000000) + (1.0 * CharTitle[151] * 1000000000) + (1.0 *
+    //    CharTitle[152] * 1000000) + (1.0 * CharTitle[153] * 1000) + (1.0 *
+    //    CharTitle[154] * 1); TrackTitlePart_32 = (1.0 * CharTitle[155] *
+    //    1000000000000) + (1.0 * CharTitle[156] * 1000000000) + (1.0 *
+    //    CharTitle[157] * 1000000) + (1.0 * CharTitle[158] * 1000) + (1.0 *
+    //    CharTitle[159] * 1); TrackTitlePart_33 = (1.0 * CharTitle[160] *
+    //    1000000000000) + (1.0 * CharTitle[161] * 1000000000) + (1.0 *
+    //    CharTitle[162] * 1000000) + (1.0 * CharTitle[163] * 1000) + (1.0 *
+    //    CharTitle[164] * 1); TrackTitlePart_34 = (1.0 * CharTitle[165] *
+    //    1000000000000) + (1.0 * CharTitle[166] * 1000000000) + (1.0 *
+    //    CharTitle[167] * 1000000) + (1.0 * CharTitle[168] * 1000) + (1.0 *
+    //    CharTitle[169] * 1); TrackTitlePart_35 = (1.0 * CharTitle[170] *
+    //    1000000000000) + (1.0 * CharTitle[171] * 1000000000) + (1.0 *
+    //    CharTitle[172] * 1000000) + (1.0 * CharTitle[173] * 1000) + (1.0 *
+    //    CharTitle[174] * 1); TrackTitlePart_36 = (1.0 * CharTitle[175] *
+    //    1000000000000) + (1.0 * CharTitle[176] * 1000000000) + (1.0 *
+    //    CharTitle[177] * 1000000) + (1.0 * CharTitle[178] * 1000) + (1.0 *
+    //    CharTitle[179] * 1); TrackTitlePart_37 = (1.0 * CharTitle[180] *
+    //    1000000000000) + (1.0 * CharTitle[181] * 1000000000) + (1.0 *
+    //    CharTitle[182] * 1000000) + (1.0 * CharTitle[183] * 1000) + (1.0 *
+    //    CharTitle[184] * 1); TrackTitlePart_38 = (1.0 * CharTitle[185] *
+    //    1000000000000) + (1.0 * CharTitle[186] * 1000000000) + (1.0 *
+    //    CharTitle[187] * 1000000) + (1.0 * CharTitle[188] * 1000) + (1.0 *
+    //    CharTitle[189] * 1); TrackTitlePart_39 = (1.0 * CharTitle[190] *
+    //    1000000000000) + (1.0 * CharTitle[191] * 1000000000) + (1.0 *
+    //    CharTitle[192] * 1000000) + (1.0 * CharTitle[193] * 1000) + (1.0 *
+    //    CharTitle[194] * 1); TrackTitlePart_40 = (1.0 * CharTitle[195] *
+    //    1000000000000) + (1.0 * CharTitle[136] * 1000000000) + (1.0 *
+    //    CharTitle[197] * 1000000) + (1.0 * CharTitle[198] * 1000) + (1.0 *
+    //    CharTitle[199] * 1);
+
+    ////m_pTrackTitle_1->set(TrackTitlePart_1);
+    ////m_pTrackTitle_2->set(TrackTitlePart_2);
+    ////m_pTrackTitle_3->set(TrackTitlePart_3);
+    ////m_pTrackTitle_4->set(TrackTitlePart_4);
+    ////m_pTrackTitle_5->set(TrackTitlePart_5);
+    //    m_pTrackTitle_6->set(TrackTitlePart_6);
+    //    m_pTrackTitle_7->set(TrackTitlePart_7);
+    //    m_pTrackTitle_8->set(TrackTitlePart_8);
+    //    m_pTrackTitle_9->set(TrackTitlePart_9);
+    //    m_pTrackTitle_10->set(TrackTitlePart_10);
+    //    m_pTrackTitle_11->set(TrackTitlePart_11);
+    //    m_pTrackTitle_12->set(TrackTitlePart_12);
+    //    m_pTrackTitle_13->set(TrackTitlePart_13);
+    //    m_pTrackTitle_14->set(TrackTitlePart_14);
+    //    m_pTrackTitle_15->set(TrackTitlePart_15);
+    //    m_pTrackTitle_16->set(TrackTitlePart_16);
+    //    m_pTrackTitle_17->set(TrackTitlePart_17);
+    //    m_pTrackTitle_18->set(TrackTitlePart_18);
+    //    m_pTrackTitle_19->set(TrackTitlePart_19);
+    //    m_pTrackTitle_20->set(TrackTitlePart_20);
+    //    m_pTrackTitle_21->set(TrackTitlePart_21);
+    //    m_pTrackTitle_22->set(TrackTitlePart_22);
+    //    m_pTrackTitle_23->set(TrackTitlePart_23);
+    //    m_pTrackTitle_24->set(TrackTitlePart_24);
+    //    m_pTrackTitle_25->set(TrackTitlePart_25);
+    //    m_pTrackTitle_26->set(TrackTitlePart_26);
+    //    m_pTrackTitle_27->set(TrackTitlePart_27);
+    //    m_pTrackTitle_28->set(TrackTitlePart_28);
+    //    m_pTrackTitle_29->set(TrackTitlePart_29);
+    //    m_pTrackTitle_30->set(TrackTitlePart_30);
+    //    m_pTrackTitle_31->set(TrackTitlePart_31);
+    //    m_pTrackTitle_32->set(TrackTitlePart_32);
+    //    m_pTrackTitle_33->set(TrackTitlePart_33);
+    //    m_pTrackTitle_34->set(TrackTitlePart_34);
+    //    m_pTrackTitle_35->set(TrackTitlePart_35);
+    //    m_pTrackTitle_36->set(TrackTitlePart_36);
+    //    m_pTrackTitle_37->set(TrackTitlePart_37);
+    //    m_pTrackTitle_38->set(TrackTitlePart_38);
+    //    m_pTrackTitle_39->set(TrackTitlePart_39);
+    //    m_pTrackTitle_40->set(TrackTitlePart_40);
+
+    ////double TrackArtistPart_1 = 0.0;
+    ////double TrackArtistPart_2 = 0.0;
+    ////double TrackArtistPart_3 = 0.0;
+    ////double TrackArtistPart_4 = 0.0;
+    ////double TrackArtistPart_5 = 0.0;
+    //    double TrackArtistPart_6 = 0.0;
+    //    double TrackArtistPart_7 = 0.0;
+    //    double TrackArtistPart_8 = 0.0;
+    //    double TrackArtistPart_9 = 0.0;
+    //    double TrackArtistPart_10 = 0.0;
+    //    double TrackArtistPart_11 = 0.0;
+    //    double TrackArtistPart_12 = 0.0;
+    //    double TrackArtistPart_13 = 0.0;
+    //    double TrackArtistPart_14 = 0.0;
+    //    double TrackArtistPart_15 = 0.0;
+    //    double TrackArtistPart_16 = 0.0;
+    //    double TrackArtistPart_17 = 0.0;
+    //    double TrackArtistPart_18 = 0.0;
+    //    double TrackArtistPart_19 = 0.0;
+    //    double TrackArtistPart_20 = 0.0;
+    //    double TrackArtistPart_21 = 0.0;
+    //    double TrackArtistPart_22 = 0.0;
+    //    double TrackArtistPart_23 = 0.0;
+    //    double TrackArtistPart_24 = 0.0;
+    //    double TrackArtistPart_25 = 0.0;
+    //    double TrackArtistPart_26 = 0.0;
+    //    double TrackArtistPart_27 = 0.0;
+    //    double TrackArtistPart_28 = 0.0;
+    //    double TrackArtistPart_29 = 0.0;
+    //    double TrackArtistPart_30 = 0.0;
+    //    double TrackArtistPart_31 = 0.0;
+    //    double TrackArtistPart_32 = 0.0;
+    //    double TrackArtistPart_33 = 0.0;
+    //    double TrackArtistPart_34 = 0.0;
+    //    double TrackArtistPart_35 = 0.0;
+    //    double TrackArtistPart_36 = 0.0;
+    //    double TrackArtistPart_37 = 0.0;
+    //    double TrackArtistPart_38 = 0.0;
+    //    double TrackArtistPart_39 = 0.0;
+    //    double TrackArtistPart_40 = 0.0;
+
+    ////TrackArtistPart_1 = (1.0 * CharArtist[0] * 1000000000000) +
+    ////(1.0 * CharArtist[1] * 1000000000) +
+    ////(1.0 * CharArtist[2] * 1000000) + (1.0 * CharArtist[3] * 1000) +
+    ////(1.0 * CharArtist[4] * 1);
+    ////TrackArtistPart_2 = (1.0 * CharArtist[5] * 1000000000000) +
+    ////(1.0 * CharArtist[6] * 1000000000) +
+    ////(1.0 * CharArtist[7] * 1000000) + (1.0 * CharArtist[8] * 1000) +
+    ////(1.0 * CharArtist[9] * 1);
+    ////TrackArtistPart_3 = (1.0 * CharArtist[10] * 1000000000000) +
+    ////(1.0 * CharArtist[11] * 1000000000) +
+    ////(1.0 * CharArtist[12] * 1000000) + (1.0 * CharArtist[13] * 1000) +
+    ////(1.0 * CharArtist[14] * 1);
+    ////TrackArtistPart_4 = (1.0 * CharArtist[15] * 1000000000000) +
+    ////(1.0 * CharArtist[16] * 1000000000) +
+    ////(1.0 * CharArtist[17] * 1000000) + (1.0 * CharArtist[18] * 1000) +
+    ////(1.0 * CharArtist[19] * 1);
+    ////TrackArtistPart_5 = (1.0 * CharArtist[20] * 1000000000000) +
+    ////(1.0 * CharArtist[21] * 1000000000) +
+    ////(1.0 * CharArtist[22] * 1000000) + (1.0 * CharArtist[23] * 1000) +
+    ////(1.0 * CharArtist[24] * 1);
+    //    TrackArtistPart_6 = (1.0 * CharArtist[25] * 1000000000000) + (1.0 *
+    //    CharArtist[26] * 1000000000) + (1.0 * CharArtist[27] * 1000000) + (1.0
+    //    * CharArtist[28] * 1000) + (1.0 * CharArtist[29] * 1);
+    //    TrackArtistPart_7 = (1.0 * CharArtist[30] * 1000000000000) + (1.0 *
+    //    CharArtist[31] * 1000000000) + (1.0 * CharArtist[32] * 1000000) + (1.0
+    //    * CharArtist[33] * 1000) + (1.0 * CharArtist[34] * 1);
+    //    TrackArtistPart_8 = (1.0 * CharArtist[35] * 1000000000000) + (1.0 *
+    //    CharArtist[36] * 1000000000) + (1.0 * CharArtist[37] * 1000000) + (1.0
+    //    * CharArtist[38] * 1000) + (1.0 * CharArtist[39] * 1);
+    //    TrackArtistPart_9 = (1.0 * CharArtist[40] * 1000000000000) + (1.0 *
+    //    CharArtist[41] * 1000000000) + (1.0 * CharArtist[42] * 1000000) + (1.0
+    //    * CharArtist[43] * 1000) + (1.0 * CharArtist[44] * 1);
+    //    TrackArtistPart_10 = (1.0 * CharArtist[45] * 1000000000000) + (1.0 *
+    //    CharArtist[46] * 1000000000) + (1.0 * CharArtist[47] * 1000000) + (1.0
+    //    * CharArtist[48] * 1000) + (1.0 * CharArtist[49] * 1);
+    //    TrackArtistPart_11 = (1.0 * CharArtist[50] * 1000000000000) + (1.0 *
+    //    CharArtist[51] * 1000000000) + (1.0 * CharArtist[52] * 1000000) + (1.0
+    //    * CharArtist[53] * 1000) + (1.0 * CharArtist[54] * 1);
+    //    TrackArtistPart_12 = (1.0 * CharArtist[55] * 1000000000000) + (1.0 *
+    //    CharArtist[56] * 1000000000) + (1.0 * CharArtist[57] * 1000000) + (1.0
+    //    * CharArtist[58] * 1000) + (1.0 * CharArtist[59] * 1);
+    //    TrackArtistPart_13 = (1.0 * CharArtist[60] * 1000000000000) + (1.0 *
+    //    CharArtist[61] * 1000000000) + (1.0 * CharArtist[62] * 1000000) + (1.0
+    //    * CharArtist[63] * 1000) + (1.0 * CharArtist[64] * 1);
+    //    TrackArtistPart_14 = (1.0 * CharArtist[65] * 1000000000000) + (1.0 *
+    //    CharArtist[66] * 1000000000) + (1.0 * CharArtist[67] * 1000000) + (1.0
+    //    * CharArtist[68] * 1000) + (1.0 * CharArtist[69] * 1);
+    //    TrackArtistPart_15 = (1.0 * CharArtist[70] * 1000000000000) + (1.0 *
+    //    CharArtist[71] * 1000000000) + (1.0 * CharArtist[72] * 1000000) + (1.0
+    //    * CharArtist[73] * 1000) + (1.0 * CharArtist[74] * 1);
+    //    TrackArtistPart_16 = (1.0 * CharArtist[75] * 1000000000000) + (1.0 *
+    //    CharArtist[76] * 1000000000) + (1.0 * CharArtist[77] * 1000000) + (1.0
+    //    * CharArtist[78] * 1000) + (1.0 * CharArtist[79] * 1);
+    //    TrackArtistPart_17 = (1.0 * CharArtist[80] * 1000000000000) + (1.0 *
+    //    CharArtist[81] * 1000000000) + (1.0 * CharArtist[82] * 1000000) + (1.0
+    //    * CharArtist[83] * 1000) + (1.0 * CharArtist[84] * 1);
+    //    TrackArtistPart_18 = (1.0 * CharArtist[85] * 1000000000000) + (1.0 *
+    //    CharArtist[86] * 1000000000) + (1.0 * CharArtist[87] * 1000000) + (1.0
+    //    * CharArtist[88] * 1000) + (1.0 * CharArtist[89] * 1);
+    //    TrackArtistPart_19 = (1.0 * CharArtist[90] * 1000000000000) + (1.0 *
+    //    CharArtist[91] * 1000000000) + (1.0 * CharArtist[92] * 1000000) + (1.0
+    //    * CharArtist[93] * 1000) + (1.0 * CharArtist[94] * 1);
+    //    TrackArtistPart_20 = (1.0 * CharArtist[95] * 1000000000000) + (1.0 *
+    //    CharArtist[36] * 1000000000) + (1.0 * CharArtist[97] * 1000000) + (1.0
+    //    * CharArtist[98] * 1000) + (1.0 * CharArtist[99] * 1);
+    //    TrackArtistPart_21 = (1.0 * CharArtist[100] * 1000000000000) + (1.0 *
+    //    CharArtist[101] * 1000000000) + (1.0 * CharArtist[102] * 1000000) +
+    //    (1.0 * CharArtist[103] * 1000) + (1.0 * CharArtist[104] * 1);
+    //    TrackArtistPart_22 = (1.0 * CharArtist[105] * 1000000000000) + (1.0 *
+    //    CharArtist[106] * 1000000000) + (1.0 * CharArtist[107] * 1000000) +
+    //    (1.0 * CharArtist[108] * 1000) + (1.0 * CharArtist[109] * 1);
+    //    TrackArtistPart_23 = (1.0 * CharArtist[110] * 1000000000000) + (1.0 *
+    //    CharArtist[111] * 1000000000) + (1.0 * CharArtist[112] * 1000000) +
+    //    (1.0 * CharArtist[113] * 1000) + (1.0 * CharArtist[114] * 1);
+    //    TrackArtistPart_24 = (1.0 * CharArtist[115] * 1000000000000) + (1.0 *
+    //    CharArtist[116] * 1000000000) + (1.0 * CharArtist[117] * 1000000) +
+    //    (1.0 * CharArtist[118] * 1000) + (1.0 * CharArtist[119] * 1);
+    //    TrackArtistPart_25 = (1.0 * CharArtist[120] * 1000000000000) + (1.0 *
+    //    CharArtist[121] * 1000000000) + (1.0 * CharArtist[122] * 1000000) +
+    //    (1.0 * CharArtist[123] * 1000) + (1.0 * CharArtist[124] * 1);
+    //    TrackArtistPart_26 = (1.0 * CharArtist[125] * 1000000000000) + (1.0 *
+    //    CharArtist[126] * 1000000000) + (1.0 * CharArtist[127] * 1000000) +
+    //    (1.0 * CharArtist[128] * 1000) + (1.0 * CharArtist[129] * 1);
+    //    TrackArtistPart_27 = (1.0 * CharArtist[130] * 1000000000000) + (1.0 *
+    //    CharArtist[131] * 1000000000) + (1.0 * CharArtist[132] * 1000000) +
+    //    (1.0 * CharArtist[133] * 1000) + (1.0 * CharArtist[134] * 1);
+    //    TrackArtistPart_28 = (1.0 * CharArtist[135] * 1000000000000) + (1.0 *
+    //    CharArtist[136] * 1000000000) + (1.0 * CharArtist[137] * 1000000) +
+    //    (1.0 * CharArtist[138] * 1000) + (1.0 * CharArtist[139] * 1);
+    //    TrackArtistPart_29 = (1.0 * CharArtist[140] * 1000000000000) + (1.0 *
+    //    CharArtist[141] * 1000000000) + (1.0 * CharArtist[142] * 1000000) +
+    //    (1.0 * CharArtist[143] * 1000) + (1.0 * CharArtist[144] * 1);
+    //    TrackArtistPart_30 = (1.0 * CharArtist[145] * 1000000000000) + (1.0 *
+    //    CharArtist[146] * 1000000000) + (1.0 * CharArtist[147] * 1000000) +
+    //    (1.0 * CharArtist[148] * 1000) + (1.0 * CharArtist[149] * 1);
+    //    TrackArtistPart_31 = (1.0 * CharArtist[150] * 1000000000000) + (1.0 *
+    //    CharArtist[151] * 1000000000) + (1.0 * CharArtist[152] * 1000000) +
+    //    (1.0 * CharArtist[153] * 1000) + (1.0 * CharArtist[154] * 1);
+    //    TrackArtistPart_32 = (1.0 * CharArtist[155] * 1000000000000) + (1.0 *
+    //    CharArtist[156] * 1000000000) + (1.0 * CharArtist[157] * 1000000) +
+    //    (1.0 * CharArtist[158] * 1000) + (1.0 * CharArtist[159] * 1);
+    //    TrackArtistPart_33 = (1.0 * CharArtist[160] * 1000000000000) + (1.0 *
+    //    CharArtist[161] * 1000000000) + (1.0 * CharArtist[162] * 1000000) +
+    //    (1.0 * CharArtist[163] * 1000) + (1.0 * CharArtist[164] * 1);
+    //    TrackArtistPart_34 = (1.0 * CharArtist[165] * 1000000000000) + (1.0 *
+    //    CharArtist[166] * 1000000000) + (1.0 * CharArtist[167] * 1000000) +
+    //    (1.0 * CharArtist[168] * 1000) + (1.0 * CharArtist[169] * 1);
+    //    TrackArtistPart_35 = (1.0 * CharArtist[170] * 1000000000000) + (1.0 *
+    //    CharArtist[171] * 1000000000) + (1.0 * CharArtist[172] * 1000000) +
+    //    (1.0 * CharArtist[173] * 1000) + (1.0 * CharArtist[174] * 1);
+    //    TrackArtistPart_36 = (1.0 * CharArtist[175] * 1000000000000) + (1.0 *
+    //    CharArtist[176] * 1000000000) + (1.0 * CharArtist[177] * 1000000) +
+    //    (1.0 * CharArtist[178] * 1000) + (1.0 * CharArtist[179] * 1);
+    //    TrackArtistPart_37 = (1.0 * CharArtist[180] * 1000000000000) + (1.0 *
+    //    CharArtist[181] * 1000000000) + (1.0 * CharArtist[182] * 1000000) +
+    //    (1.0 * CharArtist[183] * 1000) + (1.0 * CharArtist[184] * 1);
+    //    TrackArtistPart_38 = (1.0 * CharArtist[185] * 1000000000000) + (1.0 *
+    //    CharArtist[186] * 1000000000) + (1.0 * CharArtist[187] * 1000000) +
+    //    (1.0 * CharArtist[188] * 1000) + (1.0 * CharArtist[189] * 1);
+    //    TrackArtistPart_39 = (1.0 * CharArtist[190] * 1000000000000) + (1.0 *
+    //    CharArtist[191] * 1000000000) + (1.0 * CharArtist[192] * 1000000) +
+    //    (1.0 * CharArtist[193] * 1000) + (1.0 * CharArtist[194] * 1);
+    //    TrackArtistPart_40 = (1.0 * CharArtist[195] * 1000000000000) + (1.0 *
+    //    CharArtist[136] * 1000000000) + (1.0 * CharArtist[197] * 1000000) +
+    //    (1.0 * CharArtist[198] * 1000) + (1.0 * CharArtist[199] * 1);
+
+    ////m_pTrackArtist_1->set(TrackArtistPart_1);
+    ////m_pTrackArtist_2->set(TrackArtistPart_2);
+    ////m_pTrackArtist_3->set(TrackArtistPart_3);
+    ////m_pTrackArtist_4->set(TrackArtistPart_4);
+    ////m_pTrackArtist_5->set(TrackArtistPart_5);
+
+    //    m_pTrackArtist_6->set(TrackArtistPart_6);
+    //    m_pTrackArtist_7->set(TrackArtistPart_7);
+    //    m_pTrackArtist_8->set(TrackArtistPart_8);
+    //    m_pTrackArtist_9->set(TrackArtistPart_9);
+    //    m_pTrackArtist_10->set(TrackArtistPart_10);
+    //    m_pTrackArtist_11->set(TrackArtistPart_11);
+    //    m_pTrackArtist_12->set(TrackArtistPart_12);
+    //    m_pTrackArtist_13->set(TrackArtistPart_13);
+    //    m_pTrackArtist_14->set(TrackArtistPart_14);
+    //    m_pTrackArtist_15->set(TrackArtistPart_15);
+    //    m_pTrackArtist_16->set(TrackArtistPart_16);
+    //    m_pTrackArtist_17->set(TrackArtistPart_17);
+    //    m_pTrackArtist_18->set(TrackArtistPart_18);
+    //    m_pTrackArtist_19->set(TrackArtistPart_19);
+    //    m_pTrackArtist_20->set(TrackArtistPart_20);
+    //    m_pTrackArtist_21->set(TrackArtistPart_21);
+    //    m_pTrackArtist_22->set(TrackArtistPart_22);
+    //    m_pTrackArtist_23->set(TrackArtistPart_23);
+    //    m_pTrackArtist_24->set(TrackArtistPart_24);
+    //    m_pTrackArtist_25->set(TrackArtistPart_25);
+    //    m_pTrackArtist_26->set(TrackArtistPart_26);
+    //    m_pTrackArtist_27->set(TrackArtistPart_27);
+    //    m_pTrackArtist_28->set(TrackArtistPart_28);
+    //    m_pTrackArtist_29->set(TrackArtistPart_29);
+    //    m_pTrackArtist_30->set(TrackArtistPart_30);
+    //    m_pTrackArtist_31->set(TrackArtistPart_31);
+    //    m_pTrackArtist_32->set(TrackArtistPart_32);
+    //    m_pTrackArtist_33->set(TrackArtistPart_33);
+    //    m_pTrackArtist_34->set(TrackArtistPart_34);
+    //    m_pTrackArtist_35->set(TrackArtistPart_35);
+    //    m_pTrackArtist_36->set(TrackArtistPart_36);
+    //    m_pTrackArtist_37->set(TrackArtistPart_37);
+    //    m_pTrackArtist_38->set(TrackArtistPart_38);
+    //    m_pTrackArtist_39->set(TrackArtistPart_39);
+    //    m_pTrackArtist_40->set(TrackArtistPart_40);
+
+    // Eve end
 
     // Reset slip mode
     m_pSlipButton->set(0);
@@ -631,6 +1476,99 @@ void EngineBuffer::ejectTrack() {
     setTrackEndPosition(mixxx::audio::kInvalidFramePos);
     m_pTrackSampleRate->set(0);
     m_pTrackLoaded->forceSet(0);
+
+    //  EveOSC begin
+    if (m_pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+        OscNoTrackLoadedInGroup(m_pConfig, getGroup());
+    }
+    //  EveOSC end
+
+    m_pTrackType->set(0);
+    m_pTrackTypeLength->set(0);
+    m_pTrackArtistLength->set(0);
+    m_pTrackArtist_1->set(0);
+    m_pTrackArtist_2->set(0);
+    m_pTrackArtist_3->set(0);
+    m_pTrackArtist_4->set(0);
+    m_pTrackArtist_5->set(0);
+
+    //    m_pTrackArtist_6->set(0);
+    //    m_pTrackArtist_7->set(0);
+    //    m_pTrackArtist_8->set(0);
+    //    m_pTrackArtist_9->set(0);
+    //    m_pTrackArtist_10->set(0);
+    //    m_pTrackArtist_11->set(0);
+    //    m_pTrackArtist_12->set(0);
+    //    m_pTrackArtist_13->set(0);
+    //    m_pTrackArtist_14->set(0);
+    //    m_pTrackArtist_15->set(0);
+    //    m_pTrackArtist_16->set(0);
+    //    m_pTrackArtist_17->set(0);
+    //    m_pTrackArtist_18->set(0);
+    //    m_pTrackArtist_19->set(0);
+    //    m_pTrackArtist_20->set(0);
+    //    m_pTrackArtist_21->set(0);
+    //    m_pTrackArtist_22->set(0);
+    //    m_pTrackArtist_23->set(0);
+    //    m_pTrackArtist_24->set(0);
+    //    m_pTrackArtist_25->set(0);
+    //    m_pTrackArtist_26->set(0);
+    //    m_pTrackArtist_27->set(0);
+    //    m_pTrackArtist_28->set(0);
+    //    m_pTrackArtist_29->set(0);
+    //    m_pTrackArtist_30->set(0);
+    //    m_pTrackArtist_31->set(0);
+    //    m_pTrackArtist_32->set(0);
+    //    m_pTrackArtist_33->set(0);
+    //    m_pTrackArtist_34->set(0);
+    //    m_pTrackArtist_35->set(0);
+    //    m_pTrackArtist_36->set(0);
+    //    m_pTrackArtist_37->set(0);
+    //    m_pTrackArtist_38->set(0);
+    //    m_pTrackArtist_39->set(0);
+    //    m_pTrackArtist_40->set(0);
+
+    m_pTrackTitleLength->set(0);
+    m_pTrackTitle_1->set(0);
+    m_pTrackTitle_2->set(0);
+    m_pTrackTitle_3->set(0);
+    m_pTrackTitle_4->set(0);
+    m_pTrackTitle_5->set(0);
+    //    m_pTrackTitle_6->set(0);
+    //    m_pTrackTitle_7->set(0);
+    //    m_pTrackTitle_8->set(0);
+    //    m_pTrackTitle_9->set(0);
+    //    m_pTrackTitle_10->set(0);
+    //    m_pTrackTitle_11->set(0);
+    //    m_pTrackTitle_12->set(0);
+    //    m_pTrackTitle_13->set(0);
+    //    m_pTrackTitle_14->set(0);
+    //    m_pTrackTitle_15->set(0);
+    //    m_pTrackTitle_16->set(0);
+    //    m_pTrackTitle_17->set(0);
+    //    m_pTrackTitle_18->set(0);
+    //    m_pTrackTitle_19->set(0);
+    //    m_pTrackTitle_20->set(0);
+    //    m_pTrackTitle_21->set(0);
+    //    m_pTrackTitle_22->set(0);
+    //    m_pTrackTitle_23->set(0);
+    //    m_pTrackTitle_24->set(0);
+    //    m_pTrackTitle_25->set(0);
+    //    m_pTrackTitle_26->set(0);
+    //    m_pTrackTitle_27->set(0);
+    //    m_pTrackTitle_28->set(0);
+    //    m_pTrackTitle_29->set(0);
+    //    m_pTrackTitle_30->set(0);
+    //    m_pTrackTitle_31->set(0);
+    //    m_pTrackTitle_32->set(0);
+    //    m_pTrackTitle_33->set(0);
+    //    m_pTrackTitle_34->set(0);
+    //    m_pTrackTitle_35->set(0);
+    //    m_pTrackTitle_36->set(0);
+    //    m_pTrackTitle_37->set(0);
+    //    m_pTrackTitle_38->set(0);
+    //    m_pTrackTitle_39->set(0);
+    //    m_pTrackTitle_40->set(0);
 
     m_playButton->set(0.0);
     m_playposSlider->set(0);

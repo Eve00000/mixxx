@@ -43,7 +43,6 @@ class CueInfo {
             QString label,
             const RgbColor::optional_t& color,
             CueFlags flags = CueFlag::None);
-
     CueType getType() const;
     void setType(CueType type);
 

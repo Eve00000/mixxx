@@ -147,15 +147,20 @@ void WCueMenuPopup::slotUpdate() {
             positionText = mixxx::Duration::formatTime(startPositionSeconds, mixxx::Duration::Precision::CENTISECONDS);
             if (pos.endPosition.isValid() && m_pCue->getType() != mixxx::CueType::HotCue) {
                 double endPositionSeconds = pos.endPosition.value() / m_pTrack->getSampleRate();
-                positionText = QString("%1 - %2").arg(
-                    positionText,
-                    mixxx::Duration::formatTime(endPositionSeconds, mixxx::Duration::Precision::CENTISECONDS)
-                );
+                positionText = QString("%1 - %2").arg(positionText,
+                        mixxx::Duration::formatTime(endPositionSeconds,
+                                mixxx::Duration::Precision::CENTISECONDS));
             }
         }
         m_pCuePosition->setText(positionText);
 
         m_pEditLabel->setText(m_pCue->getLabel());
+        // Eve
+        m_pEditStem1vol->setText(QString("%1").arg(round(m_pCue->getStem1vol() * 100)));
+        m_pEditStem2vol->setText(QString("%1").arg(round(m_pCue->getStem2vol() * 100)));
+        m_pEditStem3vol->setText(QString("%1").arg(round(m_pCue->getStem3vol() * 100)));
+        m_pEditStem4vol->setText(QString("%1").arg(round(m_pCue->getStem4vol() * 100)));
+        // Eve
         m_pColorPicker->setSelectedColor(m_pCue->getColor());
         m_pSavedLoopCue->setChecked(m_pCue->getType() == mixxx::CueType::Loop);
     } else {
@@ -174,6 +179,36 @@ void WCueMenuPopup::slotEditLabel() {
     }
     m_pCue->setLabel(m_pEditLabel->text());
 }
+
+// Eve
+void WCueMenuPopup::slotEditStem1vol() {
+    VERIFY_OR_DEBUG_ASSERT(m_pCue != nullptr) {
+        return;
+    }
+    m_pCue->setStem1vol((m_pEditStem1vol->text()).toDouble() / 100);
+}
+
+void WCueMenuPopup::slotEditStem2vol() {
+    VERIFY_OR_DEBUG_ASSERT(m_pCue != nullptr) {
+        return;
+    }
+    m_pCue->setStem2vol((m_pEditStem2vol->text()).toDouble() / 100);
+}
+
+void WCueMenuPopup::slotEditStem3vol() {
+    VERIFY_OR_DEBUG_ASSERT(m_pCue != nullptr) {
+        return;
+    }
+    m_pCue->setStem3vol((m_pEditStem3vol->text()).toDouble() / 100);
+}
+
+void WCueMenuPopup::slotEditStem4vol() {
+    VERIFY_OR_DEBUG_ASSERT(m_pCue != nullptr) {
+        return;
+    }
+    m_pCue->setStem4vol((m_pEditStem4vol->text()).toDouble() / 100);
+}
+// Eve
 
 void WCueMenuPopup::slotChangeCueColor(mixxx::RgbColor::optional_t color) {
     VERIFY_OR_DEBUG_ASSERT(m_pCue != nullptr) {
