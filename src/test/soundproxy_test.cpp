@@ -7,6 +7,7 @@
 #include "sources/soundsourceproxy.h"
 #include "test/mixxxtest.h"
 #include "test/soundsourceproviderregistration.h"
+#include "track/taglib/trackmetadata_file.h"
 #include "track/track.h"
 #include "track/trackmetadata.h"
 #include "util/samplebuffer.h"
@@ -49,8 +50,13 @@ class SoundSourceProxyTest : public MixxxTest, SoundSourceProviderRegistration {
                 // was not correctly handled. The actual FFmpeg version
                 // that fixed this bug is unknown.
                 << "-itunes-12.3.0-aac.m4a"
+#ifndef __WINDOWS__
+                // These tests always fail on Windows11/Windows Server 2022,
+                // due to a bug in the MediaFoundation AAC decoder shipped with Windows.
+                // See https://bugs.mixxx.org/issues/11094
                 << "-itunes-12.7.0-aac.m4a"
                 << "-ffmpeg-aac.m4a"
+#endif
 #if defined(__FFMPEG__) || defined(__COREAUDIO__)
                 << "-itunes-12.7.0-alac.m4a"
 #endif
@@ -1110,5 +1116,17 @@ TEST_F(SoundSourceProxyTest, freeModeGarbage) {
                 providerRegistration.getProvider());
         ASSERT_TRUE(pContReadSource != nullptr);
         break;
+    }
+}
+
+TEST_F(SoundSourceProxyTest, taglibStringToEnumFileType) {
+    const QStringList fileTypes = SoundSourceProxy::getSupportedFileTypes();
+    for (const auto& fileType : fileTypes) {
+        qDebug() << fileType;
+        if (fileType != "okt" &&     // Oktalyzer
+                fileType != "stm") { // "Scream Tracker";
+            ASSERT_NE(mixxx::taglib::stringToEnumFileType(fileType),
+                    mixxx::taglib::FileType::Unknown);
+        }
     }
 }

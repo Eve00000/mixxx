@@ -110,6 +110,13 @@ BpmControl::BpmControl(const QString& group,
             this,
             &BpmControl::slotTranslateBeatsLater,
             Qt::DirectConnection);
+    m_pTranslateBeatsHalf = std::make_unique<ControlPushButton>(
+            ConfigKey(group, "beats_translate_half"), false);
+    connect(m_pTranslateBeatsHalf.get(),
+            &ControlObject::valueChanged,
+            this,
+            &BpmControl::slotTranslateBeatsHalf,
+            Qt::DirectConnection);
     m_pTranslateBeatsMove = std::make_unique<ControlEncoder>(
             ConfigKey(group, "beats_translate_move"), false);
     connect(m_pTranslateBeatsMove.get(),
@@ -241,7 +248,7 @@ BpmControl::BpmControl(const QString& group,
 
     m_pBpmLock = std::make_unique<ControlPushButton>(
             ConfigKey(group, "bpmlock"), false);
-    m_pBpmLock->setButtonMode(ControlPushButton::TOGGLE);
+    m_pBpmLock->setButtonMode(mixxx::control::ButtonMode::Toggle);
     m_pBpmLock->connectValueChangeRequest(
             this,
             &BpmControl::slotToggleBpmLock,
@@ -254,6 +261,10 @@ BpmControl::BpmControl(const QString& group,
             this,
             &BpmControl::slotBeatsUndoAdjustment,
             Qt::DirectConnection);
+
+    m_pBeatsUndoPossible = std::make_unique<ControlObject>(
+            ConfigKey(group, "beats_undo_possible"));
+    m_pBeatsUndoPossible->setReadOnly();
 }
 
 mixxx::Bpm BpmControl::getBpm() const {
@@ -311,6 +322,26 @@ void BpmControl::slotTranslateBeatsLater(double v) {
     slotTranslateBeatsMove(1);
 }
 
+// slotTranslateBeatsHalf works only with constant BPM tracks
+void BpmControl::slotTranslateBeatsHalf(double v) {
+    if (v <= 0) {
+        return;
+    }
+    const TrackPointer pTrack = getEngineBuffer()->getLoadedTrack();
+    if (!pTrack) {
+        return;
+    }
+    const mixxx::BeatsPointer pBeats = pTrack->getBeats();
+    if (!pBeats) {
+        return;
+    }
+    const auto translatedBeats = pBeats->tryTranslateBeats(0.5);
+    if (!translatedBeats) {
+        return;
+    }
+    pTrack->trySetBeats(*translatedBeats);
+}
+
 void BpmControl::slotTranslateBeatsMove(double v) {
     v = std::round(v);
     if (v == 0) {
@@ -342,6 +373,7 @@ void BpmControl::slotBeatsUndoAdjustment(double v) {
         return;
     }
     pTrack->undoBeatsChange();
+    m_pBeatsUndoPossible->forceSet(pTrack->canUndoBeatsChange());
 }
 
 void BpmControl::slotBpmTap(double v) {
@@ -1101,7 +1133,7 @@ void BpmControl::slotUpdateRateSlider(double value) {
         kLogger.trace() << getGroup() << "BpmControl::slotUpdateRateSlider"
                         << value;
     }
-    // Adjust rate slider position response to a change in rate range or m_pEngineBpm
+    // Adjust rate slider position in response to a change in rate range or m_pEngineBpm
 
     double localBpm = m_pLocalBpm->get();
     if (localBpm == 0.0) {
@@ -1132,10 +1164,18 @@ void BpmControl::trackBeatsUpdated(mixxx::BeatsPointer pBeats) {
     m_pBeats = pBeats;
     updateLocalBpm();
     resetSyncAdjustment();
+    TrackPointer pTrack = getEngineBuffer()->getLoadedTrack();
+    m_pBeatsUndoPossible->forceSet(pTrack ? pTrack->canUndoBeatsChange() : 0);
 }
 
 void BpmControl::trackBpmLockChanged(bool locked) {
     m_pBpmLock->setAndConfirm(locked);
+    if (locked) {
+        m_pBeatsUndoPossible->forceSet(0);
+    } else {
+        TrackPointer pTrack = getEngineBuffer()->getLoadedTrack();
+        m_pBeatsUndoPossible->forceSet(pTrack ? pTrack->canUndoBeatsChange() : 0);
+    }
 }
 
 void BpmControl::notifySeek(mixxx::audio::FramePos position) {
@@ -1261,7 +1301,7 @@ void BpmControl::resetSyncAdjustment() {
     m_resetSyncAdjustment = true;
 }
 
-void BpmControl::collectFeatures(GroupFeatureState* pGroupFeatures) const {
+void BpmControl::collectFeatures(GroupFeatureState* pGroupFeatures, double speed) const {
     // Without a beatgrid we don't know any beat details.
     FrameInfo info = frameInfo();
     if (!info.sampleRate.isValid() || !m_pBeats) {
@@ -1282,16 +1322,11 @@ void BpmControl::collectFeatures(GroupFeatureState* pGroupFeatures) const {
                 nextBeatPosition,
                 &beatLengthFrames,
                 &beatFraction)) {
-        const double framesPerSecond = info.sampleRate * m_pRateRatio->get();
-        if (framesPerSecond != 0.0) {
-            pGroupFeatures->beat_length_sec = beatLengthFrames / framesPerSecond;
-            pGroupFeatures->has_beat_length_sec = true;
-        } else {
-            pGroupFeatures->has_beat_length_sec = false;
+        const double rateRatio = m_pRateRatio->get();
+        if (rateRatio != 0.0) {
+            pGroupFeatures->beat_length = {beatLengthFrames / rateRatio, speed / rateRatio};
         }
-
-        pGroupFeatures->has_beat_fraction = true;
-        pGroupFeatures->beat_fraction = beatFraction;
+        pGroupFeatures->beat_fraction_buffer_end = beatFraction;
     }
 }
 

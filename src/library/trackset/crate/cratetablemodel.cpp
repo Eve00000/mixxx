@@ -133,7 +133,9 @@ TrackModel::Capabilities CrateTableModel::getCapabilities() const {
             Capability::ResetPlayed |
             Capability::Hide |
             Capability::RemoveFromDisk |
-            Capability::Analyze;
+            Capability::Analyze |
+            Capability::Properties |
+            Capability::Sorting;
 
     if (m_selectedCrate.isValid()) {
         Crate crate;

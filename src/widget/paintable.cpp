@@ -51,110 +51,93 @@ QString Paintable::DrawModeToString(DrawMode mode) {
 }
 
 Paintable::Paintable(const PixmapSource& source, DrawMode mode, double scaleFactor)
-        : m_drawMode(mode),
-          m_source(source) {
+        : m_drawMode(mode) {
     if (!source.isSVG()) {
-            auto pPixmap = WPixmapStore::getPixmapNoCache(source.getPath(), scaleFactor);
-            if (!pPixmap) {
-                qWarning() << "Failed to load pixmap from path:" << source.getPath();
-                return;
-            }
-            m_pPixmap = std::move(pPixmap);
+        auto pPixmap = WPixmapStore::getPixmapNoCache(source.getPath(), scaleFactor);
+        if (!pPixmap) {
+            qWarning() << "Failed to load pixmap from path:" << source.getPath();
+            return;
+        }
+        m_pPixmap = std::move(pPixmap);
     } else {
+        if (source.getPath().isEmpty()) {
+            return;
+        }
         auto pSvg = std::make_unique<QSvgRenderer>();
-        if (!source.getPath().isEmpty()) {
-                if (!pSvg->load(source.getPath())) {
-                    // The above line already logs a warning
-                    return;
-                }
-        } else {
-                return;
+        if (!pSvg->load(source.getPath())) {
+            return;
         }
-        m_pSvg.reset(pSvg.release());
-#ifdef __APPLE__
-        // Apple does Retina scaling behind the scenes, so we also pass a
-        // DrawMode::Fixed image. On the other targets, it is better to
-        // cache the pixmap. We do not do this for Tile and color schemas.
-        // which can result in a correct but possibly blurry picture at a
-        // Retina display. This can be fixed when switching to QT5
-        if (mode == DrawMode::Tile || WPixmapStore::willCorrectColors()) {
-#else
-        if (mode == DrawMode::Tile || mode == DrawMode::Fixed ||
-                WPixmapStore::willCorrectColors()) {
-#endif
-            // The SVG renderer doesn't directly support tiling, so we render
-            // it to a pixmap which will then get tiled.
-            QImage copy_buffer(m_pSvg->defaultSize() * scaleFactor, QImage::Format_ARGB32);
-            copy_buffer.fill(0x00000000);  // Transparent black.
-            QPainter painter(&copy_buffer);
-            m_pSvg->render(&painter);
-            WPixmapStore::correctImageColors(&copy_buffer);
-
-            m_pPixmap.reset(new QPixmap(copy_buffer.size()));
-            m_pPixmap->convertFromImage(copy_buffer);
-        }
+        m_pSvg = std::move(pSvg);
     }
 }
 
 bool Paintable::isNull() const {
-    return m_source.isEmpty();
+    return !(m_pPixmap || m_pSvg);
 }
 
 QSize Paintable::size() const {
+    if (m_pSvg) {
+        return m_pSvg->defaultSize();
+    }
     if (m_pPixmap) {
         return m_pPixmap->size();
-    } else if (m_pSvg) {
-        return m_pSvg->defaultSize();
     }
     return QSize();
 }
 
 int Paintable::width() const {
-    if (m_pPixmap) {
-        return m_pPixmap->width();
-    } else if (m_pSvg) {
+    if (m_pSvg) {
         QSize size = m_pSvg->defaultSize();
         return size.width();
+    }
+    if (m_pPixmap) {
+        return m_pPixmap->width();
     }
     return 0;
 }
 
 int Paintable::height() const {
-    if (m_pPixmap) {
-        return m_pPixmap->height();
-    } else if (m_pSvg) {
+    if (m_pSvg) {
         QSize size = m_pSvg->defaultSize();
         return size.height();
+    }
+    if (m_pPixmap) {
+        return m_pPixmap->height();
     }
     return 0;
 }
 
 QRectF Paintable::rect() const {
+    if (m_pSvg) {
+        return QRectF(QPointF(0, 0), m_pSvg->defaultSize());
+    }
     if (m_pPixmap) {
         return m_pPixmap->rect();
-    } else if (m_pSvg) {
-        return QRectF(QPointF(0, 0), m_pSvg->defaultSize());
     }
     return QRectF();
 }
 
 QImage Paintable::toImage() const {
-    // Note: m_pPixmap is a QScopedPointer<QPixmap> and not a QPixmap.
-    // This confusion let to the wrong assumption that we could simple
-    //   return m_pPixmap->toImage();
-    // relying on QPixmap returning QImage() when it was null.
-    return !m_pPixmap ? QImage() : m_pPixmap->toImage();
+    if (m_pPixmap) {
+        return m_pPixmap->toImage();
+    }
+
+    if (m_pSvg) {
+        QImage image(m_pSvg->defaultSize(), QImage::Format_ARGB32_Premultiplied);
+        // The constructor doesn't initialize the image with data,
+        // so we need to fill it before we can draw on it.
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        m_pSvg->render(&painter);
+        return image;
+    }
+
+    return QImage();
 }
 
 void Paintable::draw(const QRectF& targetRect, QPainter* pPainter) {
     // The sourceRect is implicitly the entire Paintable.
     draw(targetRect, pPainter, rect());
-}
-
-void Paintable::draw(int x, int y, QPainter* pPainter) {
-    QRectF sourceRect(rect());
-    QRectF targetRect(QPointF(x, y), sourceRect.size());
-    draw(targetRect, pPainter, sourceRect);
 }
 
 void Paintable::draw(const QRectF& targetRect, QPainter* pPainter,
@@ -246,54 +229,77 @@ void Paintable::drawCentered(const QRectF& targetRect, QPainter* pPainter,
 
 void Paintable::drawInternal(const QRectF& targetRect, QPainter* pPainter,
                              const QRectF& sourceRect) {
-    // qDebug() << "Paintable::drawInternal" << DrawModeToString(m_draw_mode)
+    // qDebug() << "Paintable::drawInternal" << DrawModeToString(m_drawMode)
     //          << targetRect << sourceRect;
+    if (m_pSvg) {
+        if (m_drawMode == DrawMode::Tile) {
+            if (!m_pPixmap) {
+                // qDebug() << "Paintable cache miss";
+                qreal devicePixelRatio = pPainter->device()->devicePixelRatio();
+                m_pPixmap = std::make_unique<QPixmap>(m_pSvg->defaultSize() * devicePixelRatio);
+                m_pPixmap->setDevicePixelRatio(devicePixelRatio);
+                m_pPixmap->fill(Qt::transparent);
+                { // QPainter Scope
+                    auto pixmapPainter = QPainter(m_pPixmap.get());
+                    m_pSvg->render(&pixmapPainter);
+                }
+                mayCorrectColors();
+            }
+            // The SVG renderer doesn't directly support tiling, so we render
+            // it to a pixmap which will then get tiled.
+            pPainter->drawTiledPixmap(targetRect, *m_pPixmap);
+        } else {
+            if (!m_pPixmap ||
+                    m_pPixmap->size() != targetRect.size().toSize() ||
+                    m_lastSourceRect != sourceRect) {
+                // qDebug() << "Paintable cache miss";
+                qreal devicePixelRatio = pPainter->device()->devicePixelRatio();
+                m_pPixmap = std::make_unique<QPixmap>(
+                        targetRect.size().toSize() * devicePixelRatio);
+                m_pPixmap->setDevicePixelRatio(devicePixelRatio);
+                m_pPixmap->fill(Qt::transparent);
+                { // QPainter Scope
+                    auto pixmapPainter = QPainter(m_pPixmap.get());
+                    QRectF deviceSourceRect = QRectF(
+                            sourceRect.x() * devicePixelRatio,
+                            sourceRect.y() * devicePixelRatio,
+                            sourceRect.width() * devicePixelRatio,
+                            sourceRect.height() * devicePixelRatio);
+                    m_pSvg->setViewBox(deviceSourceRect);
+                    m_pSvg->render(&pixmapPainter);
+                }
+                mayCorrectColors();
+                m_lastSourceRect = sourceRect;
+            }
+            pPainter->drawPixmap(targetRect.topLeft(), *m_pPixmap);
+        }
+        return;
+    }
     if (m_pPixmap) {
+        // Note: Qt rounds the target rect to device pixels internally
+        // using  roundInDeviceCoordinates()
         if (m_drawMode == DrawMode::Tile) {
-            // TODO(rryan): Using a source rectangle doesn't make much sense
-            // with tiling. Ignore the source rect and tile our natural size
-            // across the target rect. What's the right general behavior here?
-            // NOTE(rryan): We round our target/source rectangles to the nearest
-            // pixel for raster images.
-            pPainter->drawTiledPixmap(targetRect.toRect(), *m_pPixmap, QPoint(0,0));
+            pPainter->drawTiledPixmap(targetRect, *m_pPixmap);
         } else {
-            // NOTE(rryan): We round our target/source rectangles to the nearest
-            // pixel for raster images.
-            pPainter->drawPixmap(targetRect.toRect(), *m_pPixmap,
-                                 sourceRect.toRect());
+            if (static_cast<QRectF>(m_pPixmap->rect()) == sourceRect &&
+                    sourceRect.size() == targetRect.size()) {
+                // Copy the whole pixmap without scaling
+                pPainter->drawPixmap(targetRect.topLeft(), *m_pPixmap);
+            } else {
+                // qDebug() << "Drawing QPixmap scaled or chopped";
+                // With scaling or chopping
+                pPainter->drawPixmap(targetRect, *m_pPixmap, sourceRect);
+            }
         }
-    } else if (m_pSvg) {
-        if (m_drawMode == DrawMode::Tile) {
-            qWarning() << "Tiled SVG should have been rendered to pixmap!";
-        } else {
-            // NOTE(rryan): QSvgRenderer render does not clip for us -- it
-            // applies a world transformation using viewBox and renders the
-            // entire SVG to the painter. We save/restore the QPainter in case
-            // there is an existing clip region (I don't know of any Mixxx code
-            // that uses one but we may in the future).
-            PainterScope PainterScope(pPainter);
-            pPainter->setClipping(true);
-            pPainter->setClipRect(targetRect);
-            m_pSvg->setViewBox(sourceRect);
-            m_pSvg->render(pPainter, targetRect);
-        }
+        return;
     }
 }
 
-// static
-QString Paintable::getAltFileName(const QString& fileName) {
-    // Detect if the alternate image file exists and, if it does,
-    // return its path instead
-    QStringList temp = fileName.split('.');
-    if (temp.length() != 2) {
-        return fileName;
-    }
 
-    QString newFileName = temp[0] + QLatin1String("@2x.") + temp[1];
-    QFile file(newFileName);
-    if (QFileInfo(file).exists()) {
-        return newFileName;
-    } else {
-        return fileName;
+void Paintable::mayCorrectColors() {
+    if (WPixmapStore::willCorrectColors()) {
+        QImage image = m_pPixmap->toImage();
+        WPixmapStore::correctImageColors(&image);
+        m_pPixmap->convertFromImage(image);
     }
 }

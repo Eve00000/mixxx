@@ -1,6 +1,7 @@
 #include "library/trackset/playlistfeature.h"
 
 #include <QMenu>
+#include <QSqlTableModel>
 #include <QtDebug>
 
 #include "library/library.h"
@@ -307,8 +308,7 @@ void PlaylistFeature::slotPlaylistTableChanged(int playlistId) {
         // Else (root item was selected or for some reason no index could be created)
         // there's nothing to do: either no child was selected earlier, or the root
         // was selected and will remain selected after the child model was rebuilt.
-        activateChild(newIndex);
-        emit featureSelect(this, newIndex);
+        selectAndActivate(newIndex);
     }
 }
 
@@ -320,6 +320,9 @@ void PlaylistFeature::slotPlaylistContentOrLockChanged(const QSet<int>& playlist
             idsToBeUpdated.insert(playlistId);
         }
     }
+    // Update the playlists set to allow toggling bold correctly after
+    // tracks have been dropped on sidebar items
+    m_playlistDao.getPlaylistsTrackIsIn(m_selectedTrackId, &m_playlistIdsOfSelectedTrack);
     updateChildModel(idsToBeUpdated);
 }
 

@@ -12,18 +12,21 @@
 #include "test/mixxxtest.h"
 
 using ::testing::_;
+using namespace std::chrono_literals;
 
 class ControllerRenderingEngineTest : public MixxxTest {
   public:
     void SetUp() override {
         mixxx::Time::setTestMode(true);
-        mixxx::Time::setTestElapsedTime(mixxx::Duration::fromMillis(10));
-        SETUP_LOG_CAPTURE();
+        mixxx::Time::addTestTime(10ms);
     }
 
     QList<QImage::Format> supportedPixelFormat() const {
         return LegacyControllerMappingFileHandler::kSupportedPixelFormat.values();
     }
+
+  private:
+    LogCaptureGuard m_logCaptureGuard;
 };
 
 class MockRenderingEngine : public ControllerRenderingEngine {
@@ -33,7 +36,8 @@ class MockRenderingEngine : public ControllerRenderingEngine {
 };
 
 TEST_F(ControllerRenderingEngineTest, createValidRendererWithSupportedTypes) {
-    for (auto pixelFormat : supportedPixelFormat()) {
+    const auto& supportedPixelFormats = supportedPixelFormat();
+    for (const auto& pixelFormat : supportedPixelFormats) {
         MockRenderingEngine screenTest(LegacyControllerMapping::ScreenInfo{
                 "",                                                    // identifier
                 QSize(0, 0),                                           // size
