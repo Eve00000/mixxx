@@ -64,7 +64,6 @@ void oscFunctionsSendPtrType(
         int oscMessageBodyInt,
         double oscMessageBodyDouble,
         float oscMessageBodyFloat) {
-
     // Proceed with sending OSC messages using the stored values
     QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
     oscMessageHeader.replace("[", "");
@@ -120,12 +119,6 @@ void oscFunctionsSendPtrType(
                     qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
                 } else {
                     qDebug()
-                            //<< QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
-                            //           "Receiver (%1:%2) : <%3 : %4>")
-                            //           .arg(receiverIpBa.data())
-                            //           .arg(s_ckOscPortOutInt)
-                            //           .arg(oscMessageHeader)
-                            //           .arg(oscStatusTxtBody);
                             << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
                                        "Receiver (%1:%2) : <%3 : %4>")
                                        .arg(receiverIpBa.data(),

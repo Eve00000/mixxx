@@ -1,7 +1,8 @@
 #include "oscreceiver.h"
 
-#include <QThread>
 #include <stdio.h>
+
+#include <QThread>
 #include <iostream>
 
 #ifndef WIN32
