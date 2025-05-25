@@ -257,6 +257,18 @@ LibraryControl::LibraryControl(Library* pLibrary)
                 &LibraryControl::refocusPrevLibraryWidget);
     }
 
+    // Control to "edit" the currently selected item/field in focused widget (context dependent)
+    m_pEditItem = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "EditItem"));
+#ifdef MIXXX_USE_QML
+    if (!CmdlineArgs::Instance().isQml())
+#endif
+    {
+        connect(m_pEditItem.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotEditItem);
+    }
+
     // Control to "goto" the currently selected item in focused widget (context dependent)
     m_pGoToItem = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "GoToItem"));
 #ifdef MIXXX_USE_QML
@@ -944,15 +956,11 @@ FocusWidget LibraryControl::getFocusedWidget() {
     }
 }
 
-void LibraryControl::setLibraryFocus(FocusWidget newFocusWidget) {
-    if (!QApplication::focusWindow()) {
-        qInfo() << "No Mixxx window, popup or menu has focus."
-                << "Don't attempt to focus a specific widget.";
-        return;
-    }
-
-    // ignore no-op
-    if (newFocusWidget == m_focusedWidget) {
+void LibraryControl::setLibraryFocus(FocusWidget newFocusWidget, Qt::FocusReason focusReason) {
+    // The search box wants to do special handling when the Ctrl+f is used
+    // while it is already focused. Non-shortcut cases should still be a
+    // no-op when a control is already focused.
+    if (newFocusWidget == m_focusedWidget && focusReason != Qt::ShortcutFocusReason) {
         return;
     }
 
@@ -961,13 +969,13 @@ void LibraryControl::setLibraryFocus(FocusWidget newFocusWidget) {
         VERIFY_OR_DEBUG_ASSERT(m_pSearchbox) {
             return;
         }
-        m_pSearchbox->setFocus();
+        m_pSearchbox->setFocus(focusReason);
         return;
     case FocusWidget::Sidebar:
         VERIFY_OR_DEBUG_ASSERT(m_pSidebarWidget) {
             return;
         }
-        m_pSidebarWidget->setFocus();
+        m_pSidebarWidget->setFocus(focusReason);
         return;
     case FocusWidget::TracksTable:
         VERIFY_OR_DEBUG_ASSERT(m_pLibraryWidget) {
@@ -1043,6 +1051,29 @@ void LibraryControl::slotSelectPrevSidebarItem(double v) {
 void LibraryControl::slotToggleSelectedSidebarItem(double v) {
     if (m_pSidebarWidget && v > 0) {
         m_pSidebarWidget->toggleSelectedItem();
+    }
+}
+
+void LibraryControl::slotEditItem(double v) {
+    if (v <= 0) {
+        return;
+    }
+
+    switch (m_focusedWidget) {
+    case FocusWidget::Sidebar: {
+        m_pSidebarWidget->renameSelectedItem();
+        break;
+    }
+    case FocusWidget::TracksTable: {
+        WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+        if (pTrackTableView) {
+            pTrackTableView->editSelectedItem();
+        }
+        break;
+    }
+    default: {
+        break;
+    }
     }
 }
 

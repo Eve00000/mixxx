@@ -14,8 +14,6 @@
 #include "util/compatibility/qmutex.h"
 #include "util/parented_ptr.h"
 
-#define NUM_HOT_CUES 37
-
 class ControlObject;
 class ControlPushButton;
 class ControlIndicator;
@@ -91,6 +89,7 @@ class HotcueControl : public QObject {
     mixxx::audio::FramePos getEndPosition() const;
     void setEndPosition(mixxx::audio::FramePos endPosition);
 
+    mixxx::CueType getType() const;
     void setType(mixxx::CueType type);
 
     void setStatus(HotcueControl::Status status);
@@ -240,6 +239,9 @@ class CueControl : public EngineControl {
 
     void passthroughChanged(double v);
 
+    void setHotcueIndicesSortedByPosition(double v);
+    void setHotcueIndicesSortedByPositionCompress(double v);
+
     void cueSet(double v);
     void cueClear(double v);
     void cueGoto(double v);
@@ -307,7 +309,6 @@ class CueControl : public EngineControl {
     bool m_bypassCueSetByPlay;
     ControlValueAtomic<mixxx::audio::FramePos> m_usedSeekOnLoadPosition;
 
-    const int m_iNumHotCues;
     QList<HotcueControl*> m_hotcueControls;
 
     ControlObject* m_pTrackSamples;
@@ -361,6 +362,9 @@ class CueControl : public EngineControl {
     std::unique_ptr<ControlPushButton> m_pHotcueFocusColorPrev;
 
     parented_ptr<ControlProxy> m_pPassthrough;
+
+    std::unique_ptr<ControlPushButton> m_pSortHotcuesByPos;
+    std::unique_ptr<ControlPushButton> m_pSortHotcuesByPosCompress;
 
     QAtomicPointer<HotcueControl> m_pCurrentSavedLoopControl;
 

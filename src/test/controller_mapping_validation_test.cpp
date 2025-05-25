@@ -7,6 +7,7 @@
 
 #include "controllers/defs_controllers.h"
 #include "controllers/scripting/legacy/controllerscriptenginelegacy.h"
+#include "track/track.h"
 #ifdef MIXXX_USE_QML
 #include "effects/effectsmanager.h"
 #include "engine/channelhandle.h"
@@ -199,7 +200,7 @@ bool LegacyControllerMappingValidationTest::testLoadMapping(const MappingInfo& m
 
     FakeController controller;
     controller.setMapping(pMapping);
-    bool result = controller.applyMapping("./res");
+    bool result = controller.applyMapping(getTestDir().filePath(QStringLiteral("../../res")));
     controller.stopEngine();
     return result;
 }

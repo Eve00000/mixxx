@@ -19,6 +19,7 @@ class LaunchImage;
 class VisualsManager;
 class WMainMenuBar;
 class OscReceiver;
+struct LibraryScanResultSummary;
 
 namespace mixxx {
 
@@ -65,7 +66,9 @@ class MixxxMainWindow : public QMainWindow {
     void slotOptionsPreferences();
     /// show the about dialog
     void slotHelpAbout();
-    // show keywheel
+    /// show popup with library scan results
+    void slotLibraryScanSummaryDlg(const LibraryScanResultSummary& result);
+    /// show keywheel
     void slotShowKeywheel(bool toggle);
     /// toggle full screen mode
     void slotViewFullScreen(bool toggle);
@@ -143,6 +146,7 @@ class MixxxMainWindow : public QMainWindow {
 #ifdef __LINUX__
     const bool m_supportsGlobalMenuBar;
 #endif
+    bool m_inRebootMixxxView;
 
     DlgDeveloperTools* m_pDeveloperToolsDlg;
 
