@@ -3191,7 +3191,37 @@ endif()
 #find_package(liblo REQUIRED)
 #target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 
-if(UNIX)
+if(WIN32)
+  message(STATUS "Windows, installinf liblo from vcpkg")
+  find_package(liblo REQUIRED)
+  target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+elseif(APPLE)
+  message(STATUS "Detected macOS, now checking CPU")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+    message(
+      STATUS
+      "macOS ARM64 (Apple Silicon) detected, installing liblo with homebrew"
+    )
+    set(
+      ENV{PKG_CONFIG_PATH}
+      "/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$ENV{PKG_CONFIG_PATH}"
+    )
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+    message(
+      STATUS
+      "macOS Intel detected, installing liblo from installed package"
+    )
+    set(
+      ENV{PKG_CONFIG_PATH}
+      "/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$ENV{PKG_CONFIG_PATH}"
+    )
+  else()
+    message(
+      WARNING
+      "Unknown macOS CPU: ${CMAKE_SYSTEM_PROCESSOR} cannot install liblo"
+    )
+  endif()
+
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(LIBLO REQUIRED liblo)
 
@@ -3203,10 +3233,27 @@ if(UNIX)
       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
   )
 
+  message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
+  message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
+
   target_link_libraries(mixxx-lib PRIVATE liblo)
-else()
-  find_package(liblo REQUIRED)
-  target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+elseif(UNIX)
+  message(STATUS "Linux, installing liblo from installed package")
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBLO REQUIRED liblo)
+
+  add_library(liblo UNKNOWN IMPORTED)
+  set_target_properties(
+    liblo
+    PROPERTIES
+      IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
+  )
+
+  message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
+  message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
+
+  target_link_libraries(mixxx-lib PRIVATE liblo)
 endif()
 
 # Kaitai for reading Rekordbox libraries
