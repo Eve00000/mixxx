@@ -8,6 +8,7 @@
 #include "track/track_decl.h"
 #include "track/trackid.h"
 #include "util/parented_ptr.h"
+#include "waveform/overviewtype.h"
 #include "waveform/renderers/waveformmarkrange.h"
 #include "waveform/renderers/waveformmarkset.h"
 #include "waveform/renderers/waveformsignalcolors.h"
@@ -31,13 +32,6 @@ class WOverview : public WWidget, public TrackDropTarget {
 
     void setup(const QDomNode& node, const SkinContext& context);
     virtual void initWithTrack(TrackPointer pTrack);
-
-    enum class Type {
-        Filtered,
-        HSV,
-        RGB,
-    };
-    Q_ENUM(Type);
 
   public slots:
     void onConnectedControlChanged(double dParameter, double dValue) override;
@@ -124,6 +118,15 @@ class WOverview : public WWidget, public TrackDropTarget {
         return m_orientation == Qt::Horizontal ? height() : width();
     }
 
+    inline bool isPosInAllowedPosDragZone(const QPoint pos) {
+        const QRect dragZone = rect().marginsAdded(QMargins(
+                m_dragMarginH,
+                m_dragMarginV,
+                m_dragMarginH,
+                m_dragMarginV));
+        return dragZone.contains(pos);
+    }
+
     ConstWaveformPointer getWaveform() const {
         return m_pWaveform;
     }
@@ -143,7 +146,7 @@ class WOverview : public WWidget, public TrackDropTarget {
     const QString m_group;
     UserSettingsPointer m_pConfig;
 
-    Type m_type;
+    mixxx::OverviewType m_type;
     int m_actualCompletion;
     bool m_pixmapDone;
     float m_waveformPeak;
@@ -164,6 +167,8 @@ class WOverview : public WWidget, public TrackDropTarget {
     int m_iPlayPos;
     bool m_bTimeRulerActive;
     Qt::Orientation m_orientation;
+    int m_dragMarginH;
+    int m_dragMarginV;
     int m_iLabelFontSize;
 
     // Coefficient for linear value <-> position  transposition
@@ -191,6 +196,7 @@ class WOverview : public WWidget, public TrackDropTarget {
     parented_ptr<ControlProxy> m_pPassthroughControl;
     parented_ptr<ControlProxy> m_pTypeControl;
     parented_ptr<ControlProxy> m_pMinuteMarkersControl;
+    parented_ptr<ControlProxy> m_pReplayGain;
 
     QPointF m_timeRulerPos;
     WaveformMarkLabel m_timeRulerPositionLabel;
@@ -215,5 +221,4 @@ class WOverview : public WWidget, public TrackDropTarget {
     std::vector<WaveformMarkRange> m_markRanges;
     WaveformMarkLabel m_cuePositionLabel;
     WaveformMarkLabel m_cueTimeDistanceLabel;
-
 };

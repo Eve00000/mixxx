@@ -38,6 +38,7 @@
 #include "widget/wbeatspinbox.h"
 #include "widget/wcombobox.h"
 #include "widget/wcoverart.h"
+#include "widget/wcuebutton.h"
 #include "widget/wdisplay.h"
 #include "widget/weffectbuttonparametername.h"
 #include "widget/weffectchain.h"
@@ -63,6 +64,7 @@
 #include "widget/wnumberrate.h"
 #include "widget/woverview.h"
 #include "widget/wpixmapstore.h"
+#include "widget/wplaybutton.h"
 #include "widget/wpushbutton.h"
 #include "widget/wraterange.h"
 #include "widget/wrecordingduration.h"
@@ -536,6 +538,10 @@ QList<QWidget*> LegacySkinParser::parseNode(const QDomElement& node) {
         result = wrapWidget(parseStandardWidget<WSliderComposed>(node));
     } else if (nodeName == "PushButton") {
         result = wrapWidget(parseStandardWidget<WPushButton>(node));
+    } else if (nodeName == "PlayButton") {
+        result = wrapWidget(parsePlayButton(node));
+    } else if (nodeName == "CueButton") {
+        result = wrapWidget(parseCueButton(node));
     } else if (nodeName == "EffectPushButton") {
         result = wrapWidget(parseEffectPushButton(node));
     } else if (nodeName == "HotcueButton") {
@@ -1049,6 +1055,13 @@ QWidget* LegacySkinParser::parseOverview(const QDomElement& node) {
             &PlayerManager::slotLoadLocationToPlayerMaybePlay);
     connect(overviewWidget, &WOverview::cloneDeck,
             m_pPlayerManager, &PlayerManager::slotCloneDeck);
+    // This signal stems from AnalysisFeature, and the overview can now
+    // render the analysis progress like when listening to Playermanager's
+    // analysis progress signal when loading a track.
+    connect(m_pLibrary,
+            &Library::onTrackAnalyzerProgress,
+            overviewWidget,
+            &WOverview::onTrackAnalyzerProgress);
 
     commonWidgetSetup(node, overviewWidget);
     overviewWidget->setup(node, *m_pContext);
@@ -1525,6 +1538,19 @@ QWidget* LegacySkinParser::parseSearchBox(const QDomElement& node) {
     commonWidgetSetup(node, pLineEditSearch, false);
     pLineEditSearch->setup(node, *m_pContext);
 
+    // Translate shortcuts to native text
+    QString searchInCurrentViewShortcut =
+            localizeShortcutKeys(m_pKeyboard->getKeyboardConfig()->getValue(
+                    ConfigKey("[KeyboardShortcuts]",
+                            "LibraryMenu_SearchInCurrentView"),
+                    "Ctrl+f"));
+    QString searchInAllTracksShortcut =
+            localizeShortcutKeys(m_pKeyboard->getKeyboardConfig()->getValue(
+                    ConfigKey("[KeyboardShortcuts]",
+                            "LibraryMenu_SearchInAllTracks"),
+                    "Ctrl+Shift+F"));
+    pLineEditSearch->setupToolTip(searchInCurrentViewShortcut, searchInAllTracksShortcut);
+
     m_pLibrary->bindSearchboxWidget(pLineEditSearch);
 
     return pLineEditSearch;
@@ -1917,7 +1943,7 @@ QString LegacySkinParser::getSharedGroupString(const QString& channelStr) {
 
 QWidget* LegacySkinParser::parseHotcueButton(const QDomElement& element) {
     QString group = lookupNodeGroup(element);
-    WHotcueButton* pWidget = new WHotcueButton(group, m_pParent);
+    WHotcueButton* pWidget = new WHotcueButton(m_pParent, group);
     commonWidgetSetup(element, pWidget);
     pWidget->setup(element, *m_pContext);
     pWidget->installEventFilter(m_pKeyboard);
@@ -1938,6 +1964,30 @@ QWidget* LegacySkinParser::parseHotcueButton(const QDomElement& element) {
             controlFromConfigKey(pWidget->getClearConfigKey(), false),
             ControlParameterWidgetConnection::EmitOption::EMIT_ON_PRESS_AND_RELEASE);
 
+    pWidget->Init();
+    return pWidget;
+}
+
+QWidget* LegacySkinParser::parsePlayButton(const QDomElement& element) {
+    QString group = lookupNodeGroup(element);
+    WPlayButton* pWidget = new WPlayButton(m_pParent, group);
+    commonWidgetSetup(element, pWidget);
+    pWidget->setup(element, *m_pContext);
+    pWidget->installEventFilter(m_pKeyboard);
+    pWidget->installEventFilter(
+            m_pControllerManager->getControllerLearningEventFilter());
+    pWidget->Init();
+    return pWidget;
+}
+
+QWidget* LegacySkinParser::parseCueButton(const QDomElement& element) {
+    QString group = lookupNodeGroup(element);
+    WCueButton* pWidget = new WCueButton(m_pParent, group);
+    commonWidgetSetup(element, pWidget);
+    pWidget->setup(element, *m_pContext);
+    pWidget->installEventFilter(m_pKeyboard);
+    pWidget->installEventFilter(
+            m_pControllerManager->getControllerLearningEventFilter());
     pWidget->Init();
     return pWidget;
 }
@@ -2587,9 +2637,6 @@ void LegacySkinParser::addShortcutToToolTip(WBaseWidget* pWidget,
 
     QString tooltip;
 
-    // translate shortcut to native text
-    QString nativeShortcut = QKeySequence(shortcut, QKeySequence::PortableText).toString(QKeySequence::NativeText);
-
     tooltip += "\n";
     tooltip += tr("Shortcut");
     if (!cmd.isEmpty()) {
@@ -2597,8 +2644,14 @@ void LegacySkinParser::addShortcutToToolTip(WBaseWidget* pWidget,
         tooltip += cmd;
     }
     tooltip += ": ";
-    tooltip += nativeShortcut;
+    tooltip += localizeShortcutKeys(shortcut);
     pWidget->appendBaseTooltip(tooltip);
+}
+
+QString LegacySkinParser::localizeShortcutKeys(const QString& shortcut) {
+    // Translate shortcut to native text
+    return QKeySequence(shortcut, QKeySequence::PortableText)
+            .toString(QKeySequence::NativeText);
 }
 
 QString LegacySkinParser::parseLaunchImageStyle(const QDomNode& skinDoc) {

@@ -1,5 +1,7 @@
 #include "widget/whotcuebutton.h"
 
+#include <widget/hotcuedrag.h>
+
 #include <QApplication>
 #include <QDrag>
 #include <QDragEnterEvent>
@@ -11,6 +13,7 @@
 #include "moc_whotcuebutton.cpp"
 #include "skin/legacy/skincontext.h"
 #include "track/track.h"
+#include "util/defs.h"
 #include "util/dnd.h"
 #include "util/valuetransformer.h"
 #include "widget/controlwidgetconnection.h"
@@ -18,10 +21,11 @@
 
 namespace {
 constexpr int kDefaultDimBrightThreshold = 127;
-const QString kDragDataType = QStringLiteral("hotcueDragInfo");
 } // anonymous namespace
 
-WHotcueButton::WHotcueButton(const QString& group, QWidget* pParent)
+using namespace mixxx::hotcuedrag;
+
+WHotcueButton::WHotcueButton(QWidget* pParent, const QString& group)
         : WPushButton(pParent),
           m_group(group),
           m_hotcue(Cue::kNoHotCue),
@@ -40,13 +44,15 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
 
     bool ok;
     int hotcue = context.selectInt(node, QStringLiteral("Hotcue"), &ok);
-    if (ok && hotcue > 0) {
+    if (ok && hotcue > 0 && hotcue <= kMaxNumberOfHotcues) {
         m_hotcue = hotcue - 1;
     } else {
+        // HotcueControls are created only for 0..kMaxNumberOfHotcues-1
         SKIN_WARNING(node,
                 context,
-                QStringLiteral("Hotcue index '%1' invalid")
-                        .arg(context.selectString(node, QStringLiteral("Hotcue"))));
+                QStringLiteral("Hotcue index '%1' invalid. Valid range is 1..%2")
+                        .arg(context.selectString(node, QStringLiteral("Hotcue")),
+                                kMaxNumberOfHotcues));
     }
 
     bool okay;
@@ -60,6 +66,7 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
     // For dnd/swapping hotcues we use the rendered widget pixmap as dnd cursor.
     // Unfortnately the margin that constraints the bg color is not considered,
     // so we shrink the rect by custom margins.
+    // TODO Turn this into a qproperty, set in qss
     okay = false;
     int dndMargin = context.selectInt(node, QStringLiteral("DndRectMargin"), &okay);
     if (okay && dndMargin > 0) {
@@ -152,6 +159,7 @@ void WHotcueButton::mousePressEvent(QMouseEvent* pEvent) {
     // starting the preview.
     if (!pEvent->modifiers().testFlag(Qt::ShiftModifier)) {
         WPushButton::mousePressEvent(pEvent);
+        DragAndDropHelper::mousePressed(pEvent);
     }
 }
 
@@ -185,13 +193,14 @@ void WHotcueButton::mouseMoveEvent(QMouseEvent* pEvent) {
         QDrag* pDrag = new QDrag(this);
         HotcueDragInfo dragData(id, m_hotcue);
         auto mimeData = std::make_unique<QMimeData>();
-        mimeData->setData(kDragDataType, dragData.toByteArray());
+        mimeData->setData(kDragMimeType, dragData.toByteArray());
         pDrag->setMimeData(mimeData.release());
 
         // Use the currently rendered button as dnd cursor
         // (incl. hover and pressed style).
-        // Note: for some reason, both grab() and render() render with sharp corners,
-        // ie. qss 'border-radius' is not applied to the drag image.
+        // Note: both grab() and render() use the pure rect(),
+        // i.e. these render with sharp corners and qss 'border-radius'
+        // is not visible in the drag image.
         const QPixmap currLook = grab(rect().marginsRemoved(m_dndRectMargins));
         pDrag->setDragCursor(currLook, Qt::MoveAction);
 
@@ -207,39 +216,26 @@ void WHotcueButton::mouseMoveEvent(QMouseEvent* pEvent) {
 }
 
 void WHotcueButton::dragEnterEvent(QDragEnterEvent* pEvent) {
-    TrackPointer pTrack = PlayerInfo::instance().getTrackInfo(m_group);
-    if (!pTrack) {
-        return;
-    }
-    QByteArray mimeDataBytes = pEvent->mimeData()->data(kDragDataType);
-    if (mimeDataBytes.isEmpty()) {
-        return;
-    }
-    HotcueDragInfo dragData = HotcueDragInfo::fromByteArray(mimeDataBytes);
-    if (dragData.isValid() &&
-            dragData.trackId == pTrack->getId()) {
+    if (isValidHotcueDragEvent(pEvent, m_group, QList<int>{kMainCueIndex})) {
         pEvent->acceptProposedAction();
+    } else {
+        pEvent->ignore();
     }
 }
 
 void WHotcueButton::dropEvent(QDropEvent* pEvent) {
-    if (pEvent->source() == this) {
-        pEvent->ignore();
-        return;
-    }
     TrackPointer pTrack = PlayerInfo::instance().getTrackInfo(m_group);
-    if (!pTrack) {
-        return;
-    }
-    QByteArray mimeDataBytes = pEvent->mimeData()->data(kDragDataType);
-    if (mimeDataBytes.isEmpty()) {
-        return;
-    }
-    HotcueDragInfo dragData = HotcueDragInfo::fromByteArray(mimeDataBytes);
-    if (dragData.isValid() &&
-            dragData.trackId == pTrack->getId() &&
-            dragData.hotcue != m_hotcue) {
+    HotcueDragInfo dragData = HotcueDragInfo();
+    if (pTrack &&
+            isValidHotcueDropEvent(
+                    pEvent,
+                    m_group,
+                    this,
+                    QList<int>{m_hotcue, kMainCueIndex},
+                    &dragData)) {
         pTrack->swapHotcues(dragData.hotcue, m_hotcue);
+    } else {
+        pEvent->ignore();
     }
 }
 
