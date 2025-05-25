@@ -72,7 +72,7 @@ void oscFunctionsSendPtrType(
     qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
 
     if (s_oscEnabled.load()) {
-        for (const auto& receiver : s_receiverConfigs) {
+        for (const auto& receiver : std::as_const(s_receiverConfigs)) {
             if (receiver.first) { // Check if the receiver is active
                 QByteArray receiverIpBa = receiver.second.toLocal8Bit();
 
@@ -120,12 +120,18 @@ void oscFunctionsSendPtrType(
                     qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
                 } else {
                     qDebug()
+                            //<< QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
+                            //           "Receiver (%1:%2) : <%3 : %4>")
+                            //           .arg(receiverIpBa.data())
+                            //           .arg(s_ckOscPortOutInt)
+                            //           .arg(oscMessageHeader)
+                            //           .arg(oscStatusTxtBody);
                             << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
                                        "Receiver (%1:%2) : <%3 : %4>")
-                                       .arg(receiverIpBa.data())
-                                       .arg(s_ckOscPortOutInt)
-                                       .arg(oscMessageHeader)
-                                       .arg(oscStatusTxtBody);
+                                       .arg(receiverIpBa.data(),
+                                               QString::number(s_ckOscPortOutInt),
+                                               oscMessageHeader,
+                                               oscStatusTxtBody);
                 }
 
                 lo_message_free(msg);

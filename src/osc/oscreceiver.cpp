@@ -231,7 +231,7 @@ void OscReceiver::doGetT(OscResult& oscIn) {
                  << " oscIn.oscKey " << oscIn.oscKey;
     }
 
-    QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
+    // QString searchOscKey = QString(oscIn.oscGroup + oscIn.oscKey);
     if (sDebug) {
         qDebug() << "[OSC] [OSCRECEIVER] -> Msg Rcvd: Get Group, TrackInfo: " << oscIn.oscGroup
                  << "," << oscIn.oscKey;
