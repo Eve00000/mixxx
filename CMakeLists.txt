@@ -3187,9 +3187,43 @@ endif()
 
 #eve osc
 # liblo
-find_package(liblo REQUIRED)
+# working on win:
+#find_package(liblo REQUIRED)
+#target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+
+# Define where liblo will be downloaded and built
+if(WIN32)
+  find_package(liblo REQUIRED)
+  target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+else()
+  ExternalProject_Add(
+    liblo_external
+    PREFIX ${CMAKE_BINARY_DIR}/liblo
+    GIT_REPOSITORY https://github.com/radarsat1/liblo.git
+    GIT_TAG master
+    CONFIGURE_COMMAND ./autogen.sh && ./configure --prefix=<INSTALL_DIR>
+    BUILD_COMMAND make
+    INSTALL_COMMAND make install
+    BUILD_IN_SOURCE 1
+  )
+
+  ExternalProject_Get_Property(liblo_external install_dir)
+
+  add_library(liblo STATIC IMPORTED GLOBAL)
+  add_dependencies(liblo liblo_external)
+
+  set_target_properties(
+    liblo
+    PROPERTIES
+      IMPORTED_LOCATION ${install_dir}/lib/liblo.a
+      INTERFACE_INCLUDE_DIRECTORIES ${install_dir}/include
+  )
+
+  target_link_libraries(mixxx-lib PRIVATE liblo)
+endif()
+
 #target_sources(mixxx-liblo PRIVATE lib/lo/lo.h)
-target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+#target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 #add_library(liblo STATIC lib/lo/lo.h)
 #add_library(liblo SYSTEM PUBLIC lib/lo/lo.h)
 #target_include_directories(liblo SYSTEM PUBLIC lib/liblo)
