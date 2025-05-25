@@ -3196,27 +3196,15 @@ if(WIN32)
   find_package(liblo REQUIRED)
   target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 else()
-  ExternalProject_Add(
-    liblo_external
-    PREFIX ${CMAKE_BINARY_DIR}/liblo
-    GIT_REPOSITORY https://github.com/radarsat1/liblo.git
-    GIT_TAG master
-    CONFIGURE_COMMAND ./autogen.sh && ./configure --prefix=<INSTALL_DIR>
-    BUILD_COMMAND make
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE 1
-  )
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBLO REQUIRED liblo)
 
-  ExternalProject_Get_Property(liblo_external install_dir)
-
-  add_library(liblo STATIC IMPORTED GLOBAL)
-  add_dependencies(liblo liblo_external)
-
+  add_library(liblo UNKNOWN IMPORTED)
   set_target_properties(
     liblo
     PROPERTIES
-      IMPORTED_LOCATION ${install_dir}/lib/liblo.a
-      INTERFACE_INCLUDE_DIRECTORIES ${install_dir}/include
+      IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
   )
 
   target_link_libraries(mixxx-lib PRIVATE liblo)
