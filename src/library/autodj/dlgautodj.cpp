@@ -5,6 +5,7 @@
 #include <QMessageBox>
 
 #include "controllers/keyboard/keyboardeventfilter.h"
+#include "library/autodj/ui_dlgautodj.h"
 #include "library/library.h"
 #include "library/playlisttablemodel.h"
 #include "moc_dlgautodj.cpp"
@@ -51,8 +52,9 @@ DlgAutoDJ::DlgAutoDJ(
                                                       WLibraryPreparationWindow*>(
                                                       parent)
                                                       ->getTrackTableBackgroundColorOpacity()
-                                            : 1.0),
-                  /*no sorting*/ false)),
+                                            : 1.0)
+                  // , /*no sorting*/ false
+                  )),
           m_bShowButtonText(qobject_cast<WLibrary*>(parent)
                           ? qobject_cast<WLibrary*>(parent)->getShowButtonText()
                           : (qobject_cast<WLibraryPreparationWindow*>(parent)
