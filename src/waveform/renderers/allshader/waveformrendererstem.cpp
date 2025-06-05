@@ -14,6 +14,17 @@
 #include "waveform/renderers/waveformwidgetrenderer.h"
 #include "waveform/waveform.h"
 
+namespace {
+#ifdef __SCENEGRAPH__
+// FIXME this is a workaround an issue with waveform only drawing partially in
+// SG. The workaround is to reduce the the number of vertices, by reducing the
+// precision of waveform strips.
+const float kPixelPerStrip = 2;
+#else
+const float kPixelPerStrip = 1;
+#endif
+} // namespace
+
 using namespace rendergraph;
 
 namespace allshader {
@@ -22,7 +33,8 @@ WaveformRendererStem::WaveformRendererStem(
         WaveformWidgetRenderer* waveformWidget,
         ::WaveformRendererAbstract::PositionSource type)
         : WaveformRendererSignalBase(waveformWidget),
-          m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip) {
+          m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip),
+          m_splitStemTracks(false) {
     initForRectangles<RGBAMaterial>(0);
     setUsePreprocess(true);
 }
@@ -31,6 +43,11 @@ void WaveformRendererStem::onSetup(const QDomNode&) {
 }
 
 bool WaveformRendererStem::init() {
+    m_pStemGain.clear();
+    m_pStemMute.clear();
+    if (m_waveformRenderer->getGroup().isEmpty()) {
+        return true;
+    }
     for (int stemIdx = 0; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
         QString stemGroup = EngineDeck::getGroupForStem(m_waveformRenderer->getGroup(), stemIdx);
         m_pStemGain.emplace_back(
@@ -91,8 +108,9 @@ bool WaveformRendererStem::preprocessInner() {
     const float devicePixelRatio = m_waveformRenderer->getDevicePixelRatio();
     const int length = static_cast<int>(m_waveformRenderer->getLength());
     const int pixelLength = static_cast<int>(m_waveformRenderer->getLength() * devicePixelRatio);
-    const float invDevicePixelRatio = 1.f / devicePixelRatio;
-    const float halfPixelSize = 0.5f / devicePixelRatio;
+    const int stripLength = static_cast<int>(static_cast<float>(pixelLength) / kPixelPerStrip);
+    const float invDevicePixelRatio = kPixelPerStrip / devicePixelRatio;
+    const float halfStripSize = kPixelPerStrip / 2.0f / devicePixelRatio;
 
     // See waveformrenderersimple.cpp for a detailed explanation of the frame and index calculation
     const int visualFramesSize = dataSize / 2;
@@ -103,15 +121,16 @@ bool WaveformRendererStem::preprocessInner() {
 
     // Represents the # of visual frames per horizontal pixel.
     const double visualIncrementPerPixel =
-            (lastVisualFrame - firstVisualFrame) / static_cast<double>(pixelLength);
+            (lastVisualFrame - firstVisualFrame) / static_cast<double>(stripLength);
 
     // Per-band gain from the EQ knobs.
     float allGain(1.0);
-    // applyCompensation = true, as we scale to match filtered.all
+    // applyCompensation = false, as we scale to match filtered.all
     getGains(&allGain, false, nullptr, nullptr, nullptr);
 
     const float breadth = static_cast<float>(m_waveformRenderer->getBreadth());
-    const float halfBreadth = breadth / 2.0f;
+    const float stemBreadth = m_splitStemTracks ? breadth / 4.0f : 0;
+    const float halfBreadth = (m_splitStemTracks ? stemBreadth : breadth) / 2.0f;
 
     const float heightFactor = allGain * halfBreadth / m_maxValue;
 
@@ -121,7 +140,8 @@ bool WaveformRendererStem::preprocessInner() {
 
     const int numVerticesPerLine = 6; // 2 triangles
 
-    const int reserved = numVerticesPerLine * (8 * pixelLength + 1);
+    const int reserved = numVerticesPerLine *
+            (mixxx::audio::ChannelCount::stem() * stripLength + 1);
 
     geometry().setDrawingMode(Geometry::DrawingMode::Triangles);
     geometry().allocate(reserved);
@@ -136,7 +156,7 @@ bool WaveformRendererStem::preprocessInner() {
 
     const double maxSamplingRange = visualIncrementPerPixel / 2.0;
 
-    for (int visualIdx = 0; visualIdx < pixelLength; ++visualIdx) {
+    for (int visualIdx = 0; visualIdx < stripLength; visualIdx++) {
         for (int stemIdx = 0; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
             // Stem is drawn twice with different opacity level, this allow to
             // see the maximum signal by transparency
@@ -172,19 +192,28 @@ bool WaveformRendererStem::preprocessInner() {
 
                 // Apply the gains
                 if (layerIdx) {
-                    max *= m_pStemMute[stemIdx]->toBool() ||
+                    bool isMuted = m_pStemMute.empty() ? false : m_pStemMute[stemIdx]->toBool();
+                    float volume = m_pStemGain.empty()
+                            ? 1.f
+                            : static_cast<float>(m_pStemGain[stemIdx]->get());
+                    max *= isMuted ||
                                     (selectedStems &&
                                             !(selectedStems & 1 << stemIdx))
                             ? 0.f
-                            : static_cast<float>(m_pStemGain[stemIdx]->get());
+                            : volume;
                 }
 
                 // Lines are thin rectangles
                 // shadow
-                vertexUpdater.addRectangle({fVisualIdx - halfPixelSize,
-                                                   halfBreadth - heightFactor * max},
-                        {fVisualIdx + halfPixelSize,
-                                m_isSlipRenderer ? halfBreadth : halfBreadth + heightFactor * max},
+                vertexUpdater.addRectangle(
+                        {fVisualIdx - halfStripSize,
+                                stemIdx * stemBreadth + halfBreadth -
+                                        heightFactor * max},
+                        {fVisualIdx + halfStripSize,
+                                m_isSlipRenderer
+                                        ? stemIdx * stemBreadth + halfBreadth
+                                        : stemIdx * stemBreadth + halfBreadth +
+                                                heightFactor * max},
                         {color_r, color_g, color_b, color_a});
             }
         }

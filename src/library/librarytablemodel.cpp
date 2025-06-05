@@ -69,7 +69,6 @@ bool LibraryTableModel::isColumnInternal(int column) {
     return column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ID) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_URL) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_CUEPOINT) ||
-            column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_SAMPLERATE) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_MIXXXDELETED) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_HEADERPARSED) ||
@@ -100,5 +99,6 @@ TrackModel::Capabilities LibraryTableModel::getCapabilities() const {
             Capability::ResetPlayed |
             Capability::RemoveFromDisk |
             Capability::Analyze |
-            Capability::Properties;
+            Capability::Properties |
+            Capability::Sorting;
 }

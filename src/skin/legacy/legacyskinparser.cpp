@@ -38,6 +38,7 @@
 #include "widget/wbeatspinbox.h"
 #include "widget/wcombobox.h"
 #include "widget/wcoverart.h"
+#include "widget/wcuebutton.h"
 #include "widget/wdisplay.h"
 #include "widget/weffectbuttonparametername.h"
 #include "widget/weffectchain.h"
@@ -538,6 +539,8 @@ QList<QWidget*> LegacySkinParser::parseNode(const QDomElement& node) {
         result = wrapWidget(parseStandardWidget<WPushButton>(node));
     } else if (nodeName == "PlayButton") {
         result = wrapWidget(parsePlayButton(node));
+    } else if (nodeName == "CueButton") {
+        result = wrapWidget(parseCueButton(node));
     } else if (nodeName == "EffectPushButton") {
         result = wrapWidget(parseEffectPushButton(node));
     } else if (nodeName == "HotcueButton") {
@@ -1534,6 +1537,19 @@ QWidget* LegacySkinParser::parseSearchBox(const QDomElement& node) {
     commonWidgetSetup(node, pLineEditSearch, false);
     pLineEditSearch->setup(node, *m_pContext);
 
+    // Translate shortcuts to native text
+    QString searchInCurrentViewShortcut =
+            localizeShortcutKeys(m_pKeyboard->getKeyboardConfig()->getValue(
+                    ConfigKey("[KeyboardShortcuts]",
+                            "LibraryMenu_SearchInCurrentView"),
+                    "Ctrl+f"));
+    QString searchInAllTracksShortcut =
+            localizeShortcutKeys(m_pKeyboard->getKeyboardConfig()->getValue(
+                    ConfigKey("[KeyboardShortcuts]",
+                            "LibraryMenu_SearchInAllTracks"),
+                    "Ctrl+Shift+F"));
+    pLineEditSearch->setupToolTip(searchInCurrentViewShortcut, searchInAllTracksShortcut);
+
     m_pLibrary->bindSearchboxWidget(pLineEditSearch);
 
     return pLineEditSearch;
@@ -2008,6 +2024,18 @@ QWidget* LegacySkinParser::parseHotcueButton(const QDomElement& element) {
 QWidget* LegacySkinParser::parsePlayButton(const QDomElement& element) {
     QString group = lookupNodeGroup(element);
     WPlayButton* pWidget = new WPlayButton(m_pParent, group);
+    commonWidgetSetup(element, pWidget);
+    pWidget->setup(element, *m_pContext);
+    pWidget->installEventFilter(m_pKeyboard);
+    pWidget->installEventFilter(
+            m_pControllerManager->getControllerLearningEventFilter());
+    pWidget->Init();
+    return pWidget;
+}
+
+QWidget* LegacySkinParser::parseCueButton(const QDomElement& element) {
+    QString group = lookupNodeGroup(element);
+    WCueButton* pWidget = new WCueButton(m_pParent, group);
     commonWidgetSetup(element, pWidget);
     pWidget->setup(element, *m_pContext);
     pWidget->installEventFilter(m_pKeyboard);
@@ -2665,9 +2693,6 @@ void LegacySkinParser::addShortcutToToolTip(WBaseWidget* pWidget,
 
     QString tooltip;
 
-    // translate shortcut to native text
-    QString nativeShortcut = QKeySequence(shortcut, QKeySequence::PortableText).toString(QKeySequence::NativeText);
-
     tooltip += "\n";
     tooltip += tr("Shortcut");
     if (!cmd.isEmpty()) {
@@ -2675,8 +2700,14 @@ void LegacySkinParser::addShortcutToToolTip(WBaseWidget* pWidget,
         tooltip += cmd;
     }
     tooltip += ": ";
-    tooltip += nativeShortcut;
+    tooltip += localizeShortcutKeys(shortcut);
     pWidget->appendBaseTooltip(tooltip);
+}
+
+QString LegacySkinParser::localizeShortcutKeys(const QString& shortcut) {
+    // Translate shortcut to native text
+    return QKeySequence(shortcut, QKeySequence::PortableText)
+            .toString(QKeySequence::NativeText);
 }
 
 QString LegacySkinParser::parseLaunchImageStyle(const QDomNode& skinDoc) {

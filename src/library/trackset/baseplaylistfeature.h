@@ -8,6 +8,7 @@
 #include "library/dao/playlistdao.h"
 #include "library/trackset/basetracksetfeature.h"
 #include "track/trackid.h"
+#include "util/parented_ptr.h"
 
 class ControlObject;
 class WLibrary;
@@ -108,20 +109,20 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     QPointer<WLibrary> m_pLibraryWidget;
     QPointer<WLibraryPreparationWindow> m_pLibraryPreparationWindowWidget;
 
-    QAction* m_pCreatePlaylistAction;
-    QAction* m_pDeletePlaylistAction;
-    QAction* m_pAddToAutoDJAction;
-    QAction* m_pAddToAutoDJTopAction;
-    QAction* m_pAddToAutoDJReplaceAction;
-    QAction* m_pRenamePlaylistAction;
-    QAction* m_pLockPlaylistAction;
-    QAction* m_pImportPlaylistAction;
-    QAction* m_pCreateImportPlaylistAction;
-    QAction* m_pExportPlaylistAction;
-    QAction* m_pExportTrackFilesAction;
-    QAction* m_pDuplicatePlaylistAction;
-    QAction* m_pAnalyzePlaylistAction;
-    QAction* m_pShowTrackModelInPreparationWindowAction;
+    parented_ptr<QAction> m_pCreatePlaylistAction;
+    parented_ptr<QAction> m_pDeletePlaylistAction;
+    parented_ptr<QAction> m_pAddToAutoDJAction;
+    parented_ptr<QAction> m_pAddToAutoDJTopAction;
+    parented_ptr<QAction> m_pAddToAutoDJReplaceAction;
+    parented_ptr<QAction> m_pRenamePlaylistAction;
+    parented_ptr<QAction> m_pLockPlaylistAction;
+    parented_ptr<QAction> m_pImportPlaylistAction;
+    parented_ptr<QAction> m_pCreateImportPlaylistAction;
+    parented_ptr<QAction> m_pExportPlaylistAction;
+    parented_ptr<QAction> m_pExportTrackFilesAction;
+    parented_ptr<QAction> m_pDuplicatePlaylistAction;
+    parented_ptr<QAction> m_pAnalyzePlaylistAction;
+    parented_ptr<QAction> m_pShowTrackModelInPreparationWindowAction;
 
     PlaylistTableModel* m_pPlaylistTableModel;
     QSet<int> m_playlistIdsOfSelectedTrack;

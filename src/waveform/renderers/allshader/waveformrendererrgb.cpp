@@ -3,6 +3,7 @@
 #include "rendergraph/material/rgbmaterial.h"
 #include "rendergraph/vertexupdaters/rgbvertexupdater.h"
 #include "track/track.h"
+#include "util/colorcomponents.h"
 #include "util/math.h"
 #include "waveform/renderers/waveformwidgetrenderer.h"
 #include "waveform/waveform.h"
@@ -66,7 +67,7 @@ bool WaveformRendererRGB::preprocessInner() {
 #ifdef __STEM__
     auto stemInfo = pTrack->getStemInfo();
     // If this track is a stem track, skip the rendering
-    if (!stemInfo.isEmpty() && waveform->hasStem()) {
+    if (!stemInfo.isEmpty() && waveform->hasStem() && !m_ignoreStem) {
         return false;
     }
 #endif
@@ -117,7 +118,7 @@ bool WaveformRendererRGB::preprocessInner() {
     const int numVerticesPerLine = 6; // 2 triangles
 
     const int reserved = numVerticesPerLine *
-            // Slip rendere only render a single channel, so the vertices count doesn't change
+            // Slip renderer only render a single channel, so the vertices count doesn't change
             ((splitLeftRight && !m_isSlipRenderer ? pixelLength * 2 : pixelLength) + 1);
 
     geometry().setDrawingMode(Geometry::DrawingMode::Triangles);

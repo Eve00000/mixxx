@@ -65,8 +65,9 @@ class LibraryControl : public QObject {
 
     void bindSidebarWidget(WLibrarySidebar* pLibrarySidebar);
     void bindSearchboxWidget(WSearchLineEdit* pSearchbox);
-    // Give the keyboard focus to one of the library widgets
-    void setLibraryFocus(FocusWidget newFocusWidget);
+    /// Give the keyboard focus to one of the library widgets
+    void setLibraryFocus(FocusWidget newFocusWidget,
+            Qt::FocusReason focusReason = Qt::OtherFocusReason);
     FocusWidget getFocusedWidget();
 
   signals:
