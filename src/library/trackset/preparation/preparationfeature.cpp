@@ -23,6 +23,8 @@
 #include "widget/wlibrarysidebar.h"
 #include "widget/wtracktableview.h"
 
+// come on ci, build the artifacts
+
 namespace {
 const bool sDebug = false;
 constexpr int kNumToplevelHistoryEntries = 5;
