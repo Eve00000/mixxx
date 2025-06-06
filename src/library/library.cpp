@@ -571,8 +571,7 @@ void Library::bindLibraryPreparationWindowWidget(
                     m_pConfig,
                     this,
                     m_pLibraryPreparationWindowWidget
-                            ->getTrackTableBackgroundColorOpacity(),
-                    true);
+                            ->getTrackTableBackgroundColorOpacity());
     pTrackTableView->installEventFilter(pKeyboard);
     connect(this,
             &Library::showTrackModelInPreparationWindow,
