@@ -910,6 +910,14 @@ void WSearchLineEdit::slotTextChanged(const QString& text) {
     m_saveTimer.start(kSaveTimeoutMillis);
 }
 
+void WSearchLineEdit::slotSetShortcutFocus() {
+    if (hasFocus()) {
+        lineEdit()->selectAll();
+    } else {
+        setFocus(Qt::ShortcutFocusReason);
+    }
+}
+
 void WSearchLineEdit::setFocus(Qt::FocusReason focusReason) {
     if (!hasFocus()) {
         // selectAll will be called by setFocus - but only if hasFocus
