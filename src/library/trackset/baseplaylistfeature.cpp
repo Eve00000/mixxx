@@ -73,9 +73,9 @@ BasePlaylistFeature::BasePlaylistFeature(
 }
 
 void BasePlaylistFeature::initActions() {
-    // m_pShowTrackModelInPreparationWindowAction = 
+    // m_pShowTrackModelInPreparationWindowAction =
     //        new QAction(tr("Show in Preparation Window"), this);
-    m_pShowTrackModelInPreparationWindowAction = 
+    m_pShowTrackModelInPreparationWindowAction =
             make_parented<QAction>(tr("Show in Preparation Window"), this);
     connect(m_pShowTrackModelInPreparationWindowAction,
             &QAction::triggered,

@@ -64,7 +64,7 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
 
   signals:
     void search(const QString& text);
-//    FocusWidget setLibraryFocus(FocusWidget newFocusWidget);
+    // FocusWidget setLibraryFocus(FocusWidget newFocusWidget);
     FocusWidget setLibraryFocus(FocusWidget newFocusWidget,
             Qt::FocusReason focusReason = Qt::OtherFocusReason);
     void newSearchCrate(const QString& text);
