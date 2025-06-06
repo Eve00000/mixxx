@@ -53,7 +53,8 @@ DlgAutoDJ::DlgAutoDJ(
                                                       parent)
                                                       ->getTrackTableBackgroundColorOpacity()
                                             : 1.0)
-                  // , /*no sorting*/ false
+                  // ,
+                  // /*no sorting*/ false
                   )),
           m_bShowButtonText(qobject_cast<WLibrary*>(parent)
                           ? qobject_cast<WLibrary*>(parent)->getShowButtonText()

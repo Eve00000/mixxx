@@ -497,11 +497,17 @@ void Library::bindLibraryWidget(
             this,
             &Library::slotLoadTrackToPlayer);
     m_pLibraryWidget->registerView(m_sTrackViewName, pTrackTableView);
-
+    // EVE check 20250606
+    //    connect(m_pLibraryWidget,
+    //            &WLibrary::setLibraryFocus,
+    //            m_pLibraryControl,
+    //            &LibraryControl::setLibraryFocus);
     connect(m_pLibraryWidget,
             &WLibrary::setLibraryFocus,
             m_pLibraryControl,
-            &LibraryControl::setLibraryFocus);
+            [this](FocusWidget focus) {
+                m_pLibraryControl->setLibraryFocus(focus, Qt::FocusReason::OtherFocusReason);
+            });
     connect(this,
             &Library::switchToView,
             m_pLibraryWidget,
@@ -593,11 +599,18 @@ void Library::bindLibraryPreparationWindowWidget(
             &Library::slotLoadTrackToPlayer);
     m_pLibraryPreparationWindowWidget->registerViewInPreparationWindow(
             m_sTrackViewName, pTrackTableView);
+    // EVE check 20250606
+    //  connect(m_pLibraryPreparationWindowWidget,
+    //            &WLibraryPreparationWindow::setLibraryFocus,
+    //            m_pLibraryControl,
+    //            &LibraryControl::setLibraryFocus);
 
     connect(m_pLibraryPreparationWindowWidget,
             &WLibraryPreparationWindow::setLibraryFocus,
             m_pLibraryControl,
-            &LibraryControl::setLibraryFocus);
+            [this](FocusWidget focus) {
+                m_pLibraryControl->setLibraryFocus(focus, Qt::FocusReason::OtherFocusReason);
+            });
     connect(this,
             &Library::switchToViewInPreparationWindow,
             m_pLibraryPreparationWindowWidget,
