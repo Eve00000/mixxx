@@ -8,8 +8,9 @@
 #include <vector>
 
 #include "analyzer/analyzerscheduledtrack.h"
-// #include "control/controlobject.h"
-// #include "control/controlproxy.h"
+#include "control/controlobject.h"
+#include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "library/export/trackexportwizard.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
@@ -66,13 +67,19 @@ CrateFeature::CrateFeature(Library* pLibrary,
 }
 
 void CrateFeature::initActions() {
+    m_pShowTrackModelInPreparationWindowAction =
+            make_parented<QAction>(tr("Show in Preparation Window"), this);
+    connect(m_pShowTrackModelInPreparationWindowAction,
+            &QAction::triggered,
+            this,
+            &CrateFeature::slotShowInPreparationWindow);
     m_pCreateCrateAction = make_parented<QAction>(tr("Create New Crate"), this);
     connect(m_pCreateCrateAction.get(),
             &QAction::triggered,
             this,
             &CrateFeature::slotCreateCrate);
-
     m_pRenameCrateAction = make_parented<QAction>(tr("Rename"), this);
+    m_pRenameCrateAction->setShortcut(kRenameSidebarItemShortcutKey);
     connect(m_pRenameCrateAction.get(),
             &QAction::triggered,
             this,
@@ -132,12 +139,12 @@ void CrateFeature::initActions() {
             this,
             &CrateFeature::slotExportTrackFiles);
 #ifdef __ENGINEPRIME__
-    m_pExportAllCratesAction = make_parented<QAction>(tr("Export to Engine DJ"), this);
+    m_pExportAllCratesAction = make_parented<QAction>(tr("Export to Engine Prime"), this);
     connect(m_pExportAllCratesAction.get(),
             &QAction::triggered,
             this,
             &CrateFeature::exportAllCrates);
-    m_pExportCrateAction = make_parented<QAction>(tr("Export to Engine DJ"), this);
+    m_pExportCrateAction = make_parented<QAction>(tr("Export to Engine Prime"), this);
     connect(m_pExportCrateAction.get(),
             &QAction::triggered,
             this,
@@ -208,9 +215,9 @@ QString CrateFeature::formatRootViewHtml() const {
     html.append(QStringLiteral("<p>%1</p>").arg(cratesSummary));
     html.append(QStringLiteral("<p>%1</p>").arg(cratesSummary2));
     html.append(QStringLiteral("<p>%1</p>").arg(cratesSummary3));
-    //Colorize links in lighter blue, instead of QT default dark blue.
-    //Links are still different from regular text, but readable on dark/light backgrounds.
-    //https://github.com/mixxxdj/mixxx/issues/9103
+    // Colorize links in lighter blue, instead of QT default dark blue.
+    // Links are still different from regular text, but readable on dark/light backgrounds.
+    // https://github.com/mixxxdj/mixxx/issues/9103
     html.append(
             QStringLiteral("<a style=\"color:#0496FF;\" href=\"create\">%1</a>")
                     .arg(createCrateLink));
@@ -359,23 +366,23 @@ bool CrateFeature::activateCrate(CrateId crateId) {
     return true;
 }
 
-// void CrateFeature::slotShowInPreparationWindow() {
-//     CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
-//     if (sDebug) {
-//         qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
-//     }
-//
-//     if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
-//         auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
-//         proxy->set(1);
-//     }
-//
-//     emit saveModelState();
-//     m_crateTableModel.selectCrate(crateId);
-//     emit showTrackModelInPreparationWindow(&m_crateTableModel);
-//     emit enableCoverArtDisplay(true);
-//     emit featureSelect(this, m_lastClickedIndex);
-// }
+void CrateFeature::slotShowInPreparationWindow() {
+    CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
+    if (sDebug) {
+        qDebug() << "   CrateFeature::slotShowInPreparationWindow()" << crateId;
+    }
+
+    if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
+        auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
+        proxy->set(1);
+    }
+
+    emit saveModelState();
+    m_crateTableModel.selectCrate(crateId);
+    emit showTrackModelInPreparationWindow(&m_crateTableModel);
+    emit enableCoverArtDisplay(true);
+    emit featureSelect(this, m_lastClickedIndex);
+}
 
 bool CrateFeature::readLastRightClickedCrate(Crate* pCrate) const {
     CrateId crateId(crateIdFromIndex(m_lastRightClickedIndex));
@@ -410,7 +417,7 @@ void CrateFeature::onRightClick(const QPoint& globalPos) {
 
 void CrateFeature::onRightClickChild(
         const QPoint& globalPos, const QModelIndex& index) {
-    //Save the model index so we can get it in the action slots...
+    // Save the model index so we can get it in the action slots...
     m_lastRightClickedIndex = index;
     CrateId crateId(crateIdFromIndex(index));
     if (!crateId.isValid()) {
@@ -430,6 +437,8 @@ void CrateFeature::onRightClickChild(
     m_pLockCrateAction->setText(crate.isLocked() ? tr("Unlock") : tr("Lock"));
 
     QMenu menu(m_pSidebarWidget);
+    menu.addAction(m_pShowTrackModelInPreparationWindowAction);
+    menu.addSeparator();
     menu.addAction(m_pCreateCrateAction.get());
     menu.addSeparator();
     menu.addAction(m_pRenameCrateAction.get());
@@ -490,7 +499,9 @@ void CrateFeature::slotDeleteCrate() {
                 QMessageBox::No);
         if (btn == QMessageBox::Yes) {
             if (m_pTrackCollection->deleteCrate(crateId)) {
-                qDebug() << "Deleted crate" << crate;
+                if (sDebug) {
+                    qDebug() << "Deleted crate" << crate;
+                }
                 return;
             }
         } else {
@@ -600,6 +611,7 @@ QModelIndex CrateFeature::rebuildChildModel(CrateId selectedCrateId) {
     if (sDebug) {
         qDebug() << "CrateFeature::rebuildChildModel()" << selectedCrateId;
     }
+
     m_lastRightClickedIndex = QModelIndex();
 
     TreeItem* pRootItem = m_pSidebarModel->getRootItem();
@@ -691,7 +703,9 @@ QModelIndex CrateFeature::indexFromCrateId(CrateId crateId) const {
 }
 
 void CrateFeature::slotImportPlaylist() {
-    //qDebug() << "slotImportPlaylist() row:" ; //<< m_lastRightClickedIndex.data();
+    if (sDebug) {
+        qDebug() << "slotImportPlaylist() row:"; //<< m_lastRightClickedIndex.data();
+    }
 
     QString playlistFile = getPlaylistFile();
     if (playlistFile.isEmpty()) {
@@ -699,9 +713,10 @@ void CrateFeature::slotImportPlaylist() {
     }
 
     // Update the import/export crate directory
-    QFileInfo fileDirectory(playlistFile);
+    QString fileDirectory(playlistFile);
+    fileDirectory.truncate(playlistFile.lastIndexOf("/"));
     m_pConfig->set(kConfigKeyLastImportExportCrateDirectoryKey,
-            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
+            ConfigValue(fileDirectory));
 
     CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
     Crate crate;
@@ -743,6 +758,7 @@ void CrateFeature::slotImportPlaylistFile(const QString& playlistFile, CrateId c
         std::unique_ptr<CrateTableModel> pCrateTableModel =
                 std::make_unique<CrateTableModel>(
                         this, m_pLibrary->trackCollectionManager(), m_pConfig);
+        // pCrateTableModel->selectCrate(crateId, "Library");
         pCrateTableModel->selectCrate(crateId);
         pCrateTableModel->select();
         pCrateTableModel->addTracks(QModelIndex(), locations);
@@ -757,9 +773,10 @@ void CrateFeature::slotCreateImportCrate() {
     }
 
     // Set last import directory
-    QFileInfo fileDirectory(playlistFiles.first());
+    QString fileDirectory(playlistFiles.first());
+    fileDirectory.truncate(playlistFiles.first().lastIndexOf("/"));
     m_pConfig->set(kConfigKeyLastImportExportCrateDirectoryKey,
-            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
+            ConfigValue(fileDirectory));
 
     CrateId lastCrateId;
 
@@ -770,7 +787,7 @@ void CrateFeature::slotCreateImportCrate() {
         Crate crate;
 
         // Get a valid name
-        const QString baseName = fileInfo.completeBaseName();
+        const QString baseName = fileInfo.baseName();
         for (int i = 0;; ++i) {
             auto name = baseName;
             if (i > 0) {
@@ -852,9 +869,10 @@ void CrateFeature::slotExportPlaylist() {
         return;
     }
     // Update the import/export crate directory
-    QFileInfo fileDirectory(fileLocation);
+    QString fileDirectory(fileLocation);
+    fileDirectory.truncate(fileLocation.lastIndexOf("/"));
     m_pConfig->set(kConfigKeyLastImportExportCrateDirectoryKey,
-            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
+            ConfigValue(fileDirectory));
 
     // The user has picked a new directory via a file dialog. This means the
     // system sandboxer (if we are sandboxed) has granted us permission to this
