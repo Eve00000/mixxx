@@ -19,6 +19,7 @@
 class KeyboardEventFilter;
 class Library;
 class WLibrary;
+class WLibraryPreparationWindow;
 class WLibrarySidebar;
 class QAbstractItemModel;
 
@@ -79,8 +80,15 @@ class LibraryFeature : public QObject {
         Q_UNUSED(index);
     }
     // Reimplement this to register custom views with the library widget.
-    virtual void bindLibraryWidget(WLibrary* /* libraryWidget */,
-                            KeyboardEventFilter* /* keyboard */) {}
+    virtual void bindLibraryWidget(
+            WLibrary* /* libraryWidget */,
+            KeyboardEventFilter* /* keyboard */) {
+    }
+
+    virtual void bindLibraryPreparationWindowWidget(
+            WLibraryPreparationWindow* /* library Widget */,
+            KeyboardEventFilter* /* keyboard */) {
+    }
     virtual void bindSidebarWidget(WLibrarySidebar* /* sidebar widget */) {}
     virtual TreeItemModel* sidebarModel() const = 0;
 
@@ -133,14 +141,22 @@ class LibraryFeature : public QObject {
     virtual void deleteItem(const QModelIndex& index) {
         Q_UNUSED(index);
     }
-    // Only implement this, if using incremental or lazy childmodels, see BrowseFeature.
-    // This method is executed whenever you **double** click child items
+    // EVE
+    // Called in SearchCrateEdit To be able to use the next/previous button
+    virtual void SetActiveSearchCrateToLastRightClicked(const QModelIndex& index) {
+        Q_UNUSED(index);
+    }
+
+    //  Only implement this, if using incremental or lazy childmodels, see BrowseFeature.
+    //  This method is executed whenever you **double** click child items
     virtual void onLazyChildExpandation(const QModelIndex& index) {
         Q_UNUSED(index);
     }
   signals:
     void showTrackModel(QAbstractItemModel* model, bool restoreState = true);
+    void showTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = true);
     void switchToView(const QString& view);
+    void switchToViewInPreparationWindow(const QString& view);
     void loadTrack(TrackPointer pTrack);
 #ifdef __STEM__
     void loadTrackToPlayer(TrackPointer pTrack,
@@ -159,6 +175,7 @@ class LibraryFeature : public QObject {
     void restoreSearch(const QString&);
     void disableSearch();
     void pasteFromSidebar();
+    void pasteFromSidebarInPreparationWindow();
     // emit this signal before you parse a large music collection, e.g., iTunes, Traktor.
     // The second arg indicates if the feature should be "selected" when loading starts
     void featureIsLoading(LibraryFeature*, bool selectFeature);

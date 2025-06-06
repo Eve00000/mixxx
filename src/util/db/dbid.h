@@ -125,7 +125,7 @@ private:
         if (ok && isValidValue(value)) {
             return value;
         }
-        qCritical() << "Invalid database identifier value:"
+        qCritical() << "[DBID] -> valueOf -> Invalid database identifier value:"
                     << variant;
         return kInvalidValue;
   }
