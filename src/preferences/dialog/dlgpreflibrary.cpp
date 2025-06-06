@@ -183,11 +183,12 @@ void DlgPrefLibrary::slotHide() {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.setWindowTitle(tr("Music Directory Added"));
-    msgBox.setText(tr("You added one or more music directories. The tracks in "
-                      "these directories won't be available until you rescan "
-                      "your library. Would you like to rescan now?"));
+    msgBox.setText(tr(
+            "You added one or more music directories. The tracks in "
+            "these directories won't be available until you rescan "
+            "your library. Would you like to rescan now?"));
     QPushButton* scanButton = msgBox.addButton(
-        tr("Scan"), QMessageBox::AcceptRole);
+            tr("Scan"), QMessageBox::AcceptRole);
     msgBox.addButton(QMessageBox::Cancel);
     msgBox.setDefaultButton(scanButton);
     msgBox.exec();
@@ -230,7 +231,7 @@ void DlgPrefLibrary::populateDirList() {
     dirList->setModel(&m_dirListModel);
     dirList->setCurrentIndex(m_dirListModel.index(0, 0));
     // reselect index if it still exists
-    for (int i=0 ; i<m_dirListModel.rowCount() ; ++i) {
+    for (int i = 0; i < m_dirListModel.rowCount(); ++i) {
         const QModelIndex index = m_dirListModel.index(i, 0);
         if (index.data().toString() == selected) {
             dirList->setCurrentIndex(index);
@@ -271,6 +272,14 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_itunes->setChecked(true);
     checkBox_show_traktor->setChecked(true);
     checkBox_show_rekordbox->setChecked(true);
+
+    checkBox_preparationlists_addallloadedtracks->setChecked(false);
+    checkBox_grouped_searchcrates_enable->setChecked(false);
+    checkBox_grouped_searchcrates_replace->setChecked(false);
+    checkBox_grouped_crates_enable->setChecked(false);
+    checkBox_grouped_crates_replace->setChecked(false);
+    checkBox_grouped_playlists_enable->setChecked(false);
+    checkBox_grouped_playlists_replace->setChecked(false);
 }
 
 void DlgPrefLibrary::slotUpdate() {
@@ -294,15 +303,15 @@ void DlgPrefLibrary::slotUpdate() {
             kUseRelativePathOnExportConfigKey, false));
 
     checkBox_show_rhythmbox->setChecked(m_pConfig->getValue(
-            ConfigKey("[Library]","ShowRhythmboxLibrary"), true));
+            ConfigKey("[Library]", "ShowRhythmboxLibrary"), true));
     checkBox_show_banshee->setChecked(m_pConfig->getValue(
-            ConfigKey("[Library]","ShowBansheeLibrary"), true));
+            ConfigKey("[Library]", "ShowBansheeLibrary"), true));
     checkBox_show_itunes->setChecked(m_pConfig->getValue(
-            ConfigKey("[Library]","ShowITunesLibrary"), true));
+            ConfigKey("[Library]", "ShowITunesLibrary"), true));
     checkBox_show_traktor->setChecked(m_pConfig->getValue(
-            ConfigKey("[Library]","ShowTraktorLibrary"), true));
+            ConfigKey("[Library]", "ShowTraktorLibrary"), true));
     checkBox_show_rekordbox->setChecked(m_pConfig->getValue(
-            ConfigKey("[Library]","ShowRekordboxLibrary"), true));
+            ConfigKey("[Library]", "ShowRekordboxLibrary"), true));
     checkBox_show_serato->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "ShowSeratoLibrary"), true));
 
@@ -340,6 +349,83 @@ void DlgPrefLibrary::slotUpdate() {
         break;
     }
 
+    checkBox_preparationlists_addallloadedtracks->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true));
+    checkBox_grouped_searchcrates_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true));
+    checkBox_grouped_searchcrates_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesReplace"), true));
+    int GroupedSearchCratesLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSearchCratesLength"));
+
+    if (GroupedSearchCratesLength == 0) {
+        radioButton_grouped_searchcrates_fixed_length->setChecked(true);
+    } else if (GroupedSearchCratesLength == 1) {
+        radioButton_grouped_searchcrates_var_mask->setChecked(true);
+    }
+    spinBox_grouped_searchcrates_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSearchCratesFixedLength")));
+    spinBox_grouped_searchcrates_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "SearchCratesNames representing the group"));
+    lineEdit_grouped_searchcrates_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesVarLengthMask")));
+    lineEdit_grouped_searchcrates_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the SarchCrateName.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
+    checkBox_grouped_crates_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesEnabled"), true));
+    checkBox_grouped_crates_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesReplace"), true));
+    int GroupedCratesLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedCratesLength"));
+
+    if (GroupedCratesLength == 0) {
+        radioButton_grouped_crates_fixed_length->setChecked(true);
+    } else if (GroupedCratesLength == 1) {
+        radioButton_grouped_crates_var_mask->setChecked(true);
+    }
+    spinBox_grouped_crates_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedCratesFixedLength")));
+    spinBox_grouped_crates_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "cratenames representing the group"));
+    lineEdit_grouped_crates_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesVarLengthMask")));
+    lineEdit_grouped_crates_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the cratename.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
+    checkBox_grouped_playlists_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedPlaylistsEnabled"), true));
+    checkBox_grouped_playlists_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedPlaylistsReplace"), true));
+    int GroupedPlaylistsLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedPlaylistsLength"));
+
+    if (GroupedPlaylistsLength == 0) {
+        radioButton_grouped_playlists_fixed_length->setChecked(true);
+    } else if (GroupedPlaylistsLength == 1) {
+        radioButton_grouped_playlists_var_mask->setChecked(true);
+    }
+    spinBox_grouped_playlists_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedPlaylistsFixedLength")));
+    spinBox_grouped_playlists_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "playlistnames representing the group"));
+    lineEdit_grouped_playlists_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedPlaylistsVarLengthMask")));
+    lineEdit_grouped_playlists_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the playlistname.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
     bool editMetadataSelectedClick = m_pConfig->getValue(
             kEditMetadataSelectedClickConfigKey,
             kEditMetadataSelectedClickDefault);
@@ -395,9 +481,9 @@ void DlgPrefLibrary::slotCancel() {
 }
 
 void DlgPrefLibrary::slotAddDir() {
-    QString fd = QFileDialog::getExistingDirectory(
-        this, tr("Choose a music directory"),
-        QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
+    QString fd = QFileDialog::getExistingDirectory(this,
+            tr("Choose a music directory"),
+            QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
     if (!fd.isEmpty()) {
         if (m_pLibrary->requestAddDir(fd)) {
             populateDirList();
@@ -415,29 +501,29 @@ void DlgPrefLibrary::slotRemoveDir() {
     removeMsgBox.setWindowTitle(tr("Confirm Directory Removal"));
 
     removeMsgBox.setText(tr(
-        "Mixxx will no longer watch this directory for new tracks. "
-        "What would you like to do with the tracks from this directory and "
-        "subdirectories?"
-        "<ul>"
-        "<li>Hide all tracks from this directory and subdirectories.</li>"
-        "<li>Delete all metadata for these tracks from Mixxx permanently.</li>"
-        "<li>Leave the tracks unchanged in your library.</li>"
-        "</ul>"
-        "Hiding tracks saves their metadata in case you re-add them in the "
-        "future."));
+            "Mixxx will no longer watch this directory for new tracks. "
+            "What would you like to do with the tracks from this directory and "
+            "subdirectories?"
+            "<ul>"
+            "<li>Hide all tracks from this directory and subdirectories.</li>"
+            "<li>Delete all metadata for these tracks from Mixxx permanently.</li>"
+            "<li>Leave the tracks unchanged in your library.</li>"
+            "</ul>"
+            "Hiding tracks saves their metadata in case you re-add them in the "
+            "future."));
     removeMsgBox.setInformativeText(tr(
-        "Metadata means all track details (artist, title, playcount, etc.) as "
-        "well as beatgrids, hotcues, and loops. This choice only affects the "
-        "Mixxx library. No files on disk will be changed or deleted."));
+            "Metadata means all track details (artist, title, playcount, etc.) as "
+            "well as beatgrids, hotcues, and loops. This choice only affects the "
+            "Mixxx library. No files on disk will be changed or deleted."));
 
     QPushButton* cancelButton =
             removeMsgBox.addButton(QMessageBox::Cancel);
     QPushButton* hideAllButton = removeMsgBox.addButton(
-        tr("Hide Tracks"), QMessageBox::AcceptRole);
+            tr("Hide Tracks"), QMessageBox::AcceptRole);
     QPushButton* deleteAllButton = removeMsgBox.addButton(
-        tr("Delete Track Metadata"), QMessageBox::AcceptRole);
+            tr("Delete Track Metadata"), QMessageBox::AcceptRole);
     QPushButton* leaveUnchangedButton = removeMsgBox.addButton(
-        tr("Leave Tracks Unchanged"), QMessageBox::AcceptRole);
+            tr("Leave Tracks Unchanged"), QMessageBox::AcceptRole);
     Q_UNUSED(leaveUnchangedButton); // Only used in DEBUG_ASSERT
     removeMsgBox.setDefaultButton(cancelButton);
     removeMsgBox.exec();
@@ -479,7 +565,7 @@ void DlgPrefLibrary::slotRelocateDir() {
     }
 
     QString fd = QFileDialog::getExistingDirectory(
-        this, tr("Relink music directory to new location"), startDir);
+            this, tr("Relink music directory to new location"), startDir);
 
     if (!fd.isEmpty() && m_pLibrary->requestRelocateDir(currentFd, fd)) {
         populateDirList();
@@ -530,16 +616,16 @@ void DlgPrefLibrary::slotApply() {
             ConfigValue(checkBox_enable_search_history_shortcuts->isChecked()));
     updateSearchLineEditHistoryOptions();
 
-    m_pConfig->set(ConfigKey("[Library]","ShowRhythmboxLibrary"),
-                ConfigValue((int)checkBox_show_rhythmbox->isChecked()));
-    m_pConfig->set(ConfigKey("[Library]","ShowBansheeLibrary"),
-                ConfigValue((int)checkBox_show_banshee->isChecked()));
-    m_pConfig->set(ConfigKey("[Library]","ShowITunesLibrary"),
-                ConfigValue((int)checkBox_show_itunes->isChecked()));
-    m_pConfig->set(ConfigKey("[Library]","ShowTraktorLibrary"),
-                ConfigValue((int)checkBox_show_traktor->isChecked()));
-    m_pConfig->set(ConfigKey("[Library]","ShowRekordboxLibrary"),
-                ConfigValue((int)checkBox_show_rekordbox->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "ShowRhythmboxLibrary"),
+            ConfigValue((int)checkBox_show_rhythmbox->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "ShowBansheeLibrary"),
+            ConfigValue((int)checkBox_show_banshee->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "ShowITunesLibrary"),
+            ConfigValue((int)checkBox_show_itunes->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "ShowTraktorLibrary"),
+            ConfigValue((int)checkBox_show_traktor->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "ShowRekordboxLibrary"),
+            ConfigValue((int)checkBox_show_rekordbox->isChecked()));
     m_pConfig->set(ConfigKey("[Library]", "ShowSeratoLibrary"),
             ConfigValue((int)checkBox_show_serato->isChecked()));
 
@@ -576,14 +662,66 @@ void DlgPrefLibrary::slotApply() {
     QFont font = m_pLibrary->getTrackTableFont();
     if (m_originalTrackTableFont != font) {
         m_pConfig->set(ConfigKey("[Library]", "Font"),
-                       ConfigValue(font.toString()));
+                ConfigValue(font.toString()));
     }
 
     int rowHeight = spinBox_row_height->value();
     if (m_iOriginalTrackTableRowHeight != rowHeight) {
-        m_pConfig->set(ConfigKey("[Library]","RowHeight"),
-                       ConfigValue(rowHeight));
+        m_pConfig->set(ConfigKey("[Library]", "RowHeight"),
+                ConfigValue(rowHeight));
     }
+
+    m_pConfig->set(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"),
+            ConfigValue((int)checkBox_preparationlists_addallloadedtracks->isChecked()));
+
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesEnabled"),
+            ConfigValue((int)checkBox_grouped_searchcrates_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesReplace"),
+            ConfigValue((int)checkBox_grouped_searchcrates_replace->isChecked()));
+
+    if (radioButton_grouped_searchcrates_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_searchcrates_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesFixedLength"),
+            ConfigValue(spinBox_grouped_searchcrates_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesVarLengthMask"),
+            ConfigValue(lineEdit_grouped_searchcrates_var_mask->text()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesEnabled"),
+            ConfigValue((int)checkBox_grouped_crates_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesReplace"),
+            ConfigValue((int)checkBox_grouped_crates_replace->isChecked()));
+
+    if (radioButton_grouped_crates_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedCratesLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_crates_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedCratesLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesFixedLength"),
+            ConfigValue(spinBox_grouped_crates_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesVarLengthMask"),
+            ConfigValue(lineEdit_grouped_crates_var_mask->text()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsEnabled"),
+            ConfigValue((int)checkBox_grouped_playlists_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsReplace"),
+            ConfigValue((int)checkBox_grouped_playlists_replace->isChecked()));
+
+    if (radioButton_grouped_playlists_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_playlists_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsFixedLength"),
+            ConfigValue(spinBox_grouped_playlists_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedPlaylistsVarLengthMask"),
+            ConfigValue(lineEdit_grouped_playlists_var_mask->text()));
 
     BaseTrackTableModel::setApplyPlayedTrackColor(
             checkbox_played_track_color->isChecked());
@@ -619,8 +757,10 @@ void DlgPrefLibrary::setLibraryFont(const QFont& font) {
 void DlgPrefLibrary::slotSelectFont() {
     // False if the user cancels font selection.
     bool ok = false;
-    QFont font = QFontDialog::getFont(&ok, m_pLibrary->getTrackTableFont(),
-                                      this, tr("Select Library Font"));
+    QFont font = QFontDialog::getFont(&ok,
+            m_pLibrary->getTrackTableFont(),
+            this,
+            tr("Select Library Font"));
     if (ok) {
         setLibraryFont(font);
     }

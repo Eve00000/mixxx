@@ -1309,7 +1309,22 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
+  #EVE
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/groupedsearchcratesfeature.cpp
+  src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
+  src/library/trackset/searchcrate/searchcratestorage.cpp
+  src/library/trackset/searchcrate/searchcratetablemodel.cpp
+  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
+  src/library/trackset/crate/groupedcratesfeature.cpp
+  src/library/trackset/playlist/basegroupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplayliststablemodel.cpp
   src/library/trackset/playlistfeature.cpp
+  src/library/trackset/preparation/preparationfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
   src/library/traktor/traktorfeature.cpp
@@ -1370,6 +1385,8 @@ add_library(
   src/preferences/dialog/dlgpreflibrarydlg.ui
   src/preferences/dialog/dlgprefmixer.cpp
   src/preferences/dialog/dlgprefmixerdlg.ui
+  src/preferences/dialog/dlgprefosc.cpp
+  src/preferences/dialog/dlgprefoscdlg.ui
   src/preferences/dialog/dlgprefrecord.cpp
   src/preferences/dialog/dlgprefrecorddlg.ui
   src/preferences/dialog/dlgprefreplaygain.cpp
@@ -1585,6 +1602,7 @@ add_library(
   src/widget/weffectparameternamebase.cpp
   src/widget/weffectpushbutton.cpp
   src/widget/weffectselector.cpp
+  src/widget/wfastsearch.cpp
   src/widget/wfindonwebmenu.cpp
   src/widget/whotcuebutton.cpp
   src/widget/wimagestore.cpp
@@ -1593,6 +1611,8 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarybasewindow.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
@@ -1671,6 +1691,7 @@ set(
   src/engine/channelhandle.h
   src/engine/engine.h
   src/errordialoghandler.h
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.h
   src/track/track.h
   src/track/track_decl.h
   src/track/trackid.h
@@ -2510,6 +2531,7 @@ if(BUILD_TESTING)
     src/test/coverartcache_test.cpp
     src/test/coverartutils_test.cpp
     src/test/cratestorage_test.cpp
+    src/test/searchcratestorage_test.cpp
     src/test/cue_test.cpp
     src/test/cuecontrol_test.cpp
     src/test/dbconnectionpool_test.cpp
@@ -3164,6 +3186,43 @@ target_include_directories(
 )
 target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
 
+if(WIN32)
+  set(IpSystemTypePath src/osc/ip/win32)
+  set(LIBS ${LIBS} Ws2_32 winmm)
+else()
+  set(IpSystemTypePath src/osc/ip/posix)
+endif()
+
+#eve osc
+add_library(
+  oscpack
+  src/osc/ip/IpEndpointName.cpp
+  src/osc/ip/IpEndpointName.h
+  src/osc/ip/NetworkingUtils.h
+  ${IpSystemTypePath}/NetworkingUtils.cpp
+  src/osc/ip/PacketListener.h
+  src/osc/ip/TimerListener.h
+  src/osc/ip/UdpSocket.h
+  ${IpSystemTypePath}/UdpSocket.cpp
+  src/osc/osc/MessageMappingOscPacketListener.h
+  src/osc/osc/OscException.h
+  src/osc/osc/OscHostEndianness.h
+  src/osc/osc/OscOutboundPacketStream.cpp
+  src/osc/osc/OscOutboundPacketStream.h
+  src/osc/osc/OscPacketListener.h
+  src/osc/osc/OscPrintReceivedElements.cpp
+  src/osc/osc/OscPrintReceivedElements.h
+  src/osc/osc/OscReceivedElements.cpp
+  src/osc/osc/OscReceivedElements.h
+  src/osc/osc/OscTypes.cpp
+  src/osc/osc/OscTypes.h
+)
+include_directories(${CMAKE_SOURCE_DIR})
+#target_link_libraries(mixxx oscpack ${LIBS})
+target_include_directories(mixxx-lib SYSTEM PRIVATE ip)
+target_include_directories(mixxx-lib SYSTEM PRIVATE osc)
+target_link_libraries(mixxx-lib PRIVATE oscpack)
+
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(rekordbox_metadata PRIVATE -Wno-switch)
@@ -3574,6 +3633,7 @@ if(Qt_IS_STATIC)
     target_link_libraries(
       mixxx-lib
       PRIVATE Qt${QT_VERSION_MAJOR}::QWindowsIntegrationPlugin
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
     )
     if(QT_VERSION VERSION_LESS 6.7)
       target_link_libraries(
@@ -3827,25 +3887,14 @@ else()
           COMPONENT
           applocal
       )
-      if(QT_VERSION VERSION_LESS 6.7)
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      else()
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QModernWindowsStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      endif()
+      #install(
+      #IMPORTED_RUNTIME_ARTIFACTS
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
+      #DESTINATION
+      #"${MIXXX_INSTALL_DATADIR}/styles"
+      #COMPONENT
+      #applocal
+      #)
     endif()
     if(APPLE)
       install(
