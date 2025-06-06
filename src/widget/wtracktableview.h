@@ -121,7 +121,7 @@ class WTrackTableView : public WLibraryTableView {
 
   public slots:
     void loadTrackModel(QAbstractItemModel* model, bool restoreState = false);
-    void loadTrackModelBase(QAbstractItemModel* model, bool setDnd, bool restoreState = false);
+    // void loadTrackModelBase(QAbstractItemModel* model, bool setDnd, bool restoreState = false);
     void loadTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = false);
     void slotMouseDoubleClicked(const QModelIndex &);
     void slotUnhide();
