@@ -533,10 +533,10 @@ void WTrackTableView::loadTrackModel(QAbstractItemModel* model, bool restoreStat
                     this,
                     &WTrackTableView::slotSortingChanged,
                     Qt::AutoConnection);
-            // connect(pHeader,
-            //         &WTrackTableViewHeader::shuffle,
-            //         this,
-            //         &WTrackTableView::slotRandomSorting);
+            connect(pHeader,
+                    &WTrackTableViewHeader::shuffle,
+                    this,
+                    &WTrackTableView::slotRandomSorting);
 
             Qt::SortOrder sortOrder;
             TrackModel::SortColumnId sortColumn =
@@ -702,10 +702,10 @@ void WTrackTableView::loadTrackModelInPreparationWindow(
                     this,
                     &WTrackTableView::slotSortingChanged,
                     Qt::AutoConnection);
-            // connect(pHeader,
-            //         &WTrackTableViewHeader::shuffle,
-            //         this,
-            //         &WTrackTableView::slotRandomSorting);
+            //       connect(pHeader,
+            //               &WTrackTableViewHeader::shuffle,
+            //               this,
+            //               &WTrackTableView::slotRandomSorting);
 
             Qt::SortOrder sortOrder;
             TrackModel::SortColumnId sortColumn =
