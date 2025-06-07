@@ -500,10 +500,9 @@ void BaseGroupedPlaylistsFeature::slotImportPlaylist() {
     }
 
     // Update the import/export playlist directory
-    QString fileDirectory(playlistFile);
-    fileDirectory.truncate(playlistFile.lastIndexOf("/"));
+    QFileInfo fileDirectory(playlistFile);
     m_pConfig->set(kConfigKeyLastImportExportPlaylistDirectory,
-            ConfigValue(fileDirectory));
+            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
 
     slotImportPlaylistFile(playlistFile, playlistId);
     slotPlaylistTableChanged(playlistId);
@@ -556,10 +555,9 @@ void BaseGroupedPlaylistsFeature::slotCreateImportPlaylist() {
     }
 
     // Set last import directory
-    QString fileDirectory(playlistFiles.first());
-    fileDirectory.truncate(playlistFiles.first().lastIndexOf("/"));
+    QFileInfo fileDirectory(playlistFiles.first());
     m_pConfig->set(kConfigKeyLastImportExportPlaylistDirectory,
-            ConfigValue(fileDirectory));
+            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
 
     int lastPlaylistId = kInvalidPlaylistId;
 
@@ -567,7 +565,7 @@ void BaseGroupedPlaylistsFeature::slotCreateImportPlaylist() {
     for (const QString& playlistFile : playlistFiles) {
         const QFileInfo fileInfo(playlistFile);
         // Get a valid name
-        const QString baseName = fileInfo.baseName();
+        const QString baseName = fileInfo.completeBaseName();
         QString name = baseName;
         // Check if there already is a playlist by that name. If yes, add
         // increasing suffix (1++) until we find an unused name.
@@ -626,10 +624,9 @@ void BaseGroupedPlaylistsFeature::slotExportPlaylist() {
     }
 
     // Update the import/export playlist directory
-    QString fileDirectory(fileLocation);
-    fileDirectory.truncate(fileLocation.lastIndexOf("/"));
+    QFileInfo fileDirectory(fileLocation);
     m_pConfig->set(kConfigKeyLastImportExportPlaylistDirectory,
-            ConfigValue(fileDirectory));
+            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
 
     // The user has picked a new directory via a file dialog. This means the
     // system sandboxer (if we are sandboxed) has granted us permission to this

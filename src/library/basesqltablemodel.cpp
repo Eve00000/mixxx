@@ -216,13 +216,14 @@ void BaseSqlTableModel::select() {
     //     return;
     // }
 
-    if (sDebug) {
-        qDebug() << this << "select()";
-    }
+    // if (sDebug) {
+    qDebug() << this << "select()";
+    //}
 
     PerformanceTimer time;
     time.start();
     if (m_tableName.startsWith("searchcrate")) {
+        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES]";
         // EVE drop view and rebuild it for Searchcrate
         //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Drop
         //        temp table " << m_tableName;

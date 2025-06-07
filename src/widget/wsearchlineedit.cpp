@@ -143,17 +143,19 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
             &QAbstractButton::clicked,
             this,
             &WSearchLineEdit::slot2SearchCrate);
-    QShortcut* setFocusShortcut = new QShortcut(QKeySequence(tr("Ctrl+F", "Search|Focus")), this);
     if (pConfig->getValue<bool>(ConfigKey("[Search]", "PopupSearch"))) {
+        QShortcut* setFocusShortcut =
+                new QShortcut(QKeySequence(tr("Ctrl+F", "Search|Focus")), this);
         connect(setFocusShortcut,
                 &QShortcut::activated,
                 this,
                 &WSearchLineEdit::slotShowFastSearchDialog);
-    } else {
-        connect(setFocusShortcut,
-                &QShortcut::activated,
-                this,
-                &WSearchLineEdit::slotSetShortcutFocus);
+        //    } else {
+        //        connect(setFocusShortcut,
+        //                &QShortcut::activated,
+        //                this,
+        //                //&WSearchLineEdit::setFocus);
+        //                &WSearchLineEdit::slotSetShortcutFocus);
     }
     // Set up a timer to search after a few hundred milliseconds timeout.  This
     // stops us from thrashing the database if you type really fast.

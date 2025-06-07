@@ -36,6 +36,10 @@ enum class DefOscBodyType {
     FLOATBODY
 };
 
+namespace {
+const bool oscFunctionsDebug = false;
+}
+
 // function to convert and carry special characters in TrackArtist & TrackTitle to ASCII
 QString escapeStringToJsonUnicode(const QString& input) {
     QString escaped;
@@ -59,10 +63,12 @@ void sendOscMessage(const char* receiverIp,
     if (receiverIp) {
         UdpTransmitSocket transmitSocket(IpEndpointName(receiverIp, port));
         transmitSocket.Send(p.Data(), p.Size());
-        qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
-                            .arg(receiverIp)
-                            .arg(port)
-                            .arg(header, statusTxtBody);
+        if (oscFunctionsDebug) {
+            qDebug() << QString("[OSC] -> Msg Send to Receiver (%1:%2) : <%3 : %4>")
+                                .arg(receiverIp)
+                                .arg(port)
+                                .arg(header, statusTxtBody);
+        }
     }
 }
 
@@ -124,7 +130,7 @@ void oscFunctionsSendPtrType(
             }
         }
     } else {
-        qDebug() << "OSC NOT Enabled";
+        qDebug() << "[OSC] -> OSC NOT Enabled";
     }
 }
 
@@ -138,8 +144,10 @@ void storeTrackInfo(const QString& oscGroup,
         if (std::get<0>(entry) == oscGroup) {
             std::get<1>(entry) = trackArtist;
             std::get<2>(entry) = trackTitle;
-            qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
-                     << oscGroup << trackArtist << trackTitle;
+            if (oscFunctionsDebug) {
+                qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
+                         << oscGroup << trackArtist << trackTitle;
+            }
             return;
         }
     }
@@ -148,13 +156,16 @@ void storeTrackInfo(const QString& oscGroup,
     for (int i = 0; i < kMaxOscTracks; ++i) {
         if (std::get<0>(g_oscTrackTable[i]).isEmpty()) {
             g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist, trackTitle);
-            qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
-                     << oscGroup << trackArtist << trackTitle;
+            if (oscFunctionsDebug) {
+                qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
+                         << oscGroup << trackArtist << trackTitle;
+            }
             return;
         }
     }
-
-    qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
+    if (oscFunctionsDebug) {
+        qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
+    }
 }
 
 QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
@@ -390,8 +401,10 @@ QString translatePath(const QString& inputPath) {
     }
 
     // Return the input path unchanged if no matches are found
-    qDebug() << "[OSC] OSCFUNCTIONS Original path:" << originalPath
-             << " Translated path:" << inputPath;
+    if (oscFunctionsDebug) {
+        qDebug() << "[OSC] OSCFUNCTIONS Original path:" << originalPath
+                 << " Translated path:" << inputPath;
+    }
     return inputPath;
 }
 #endif /* OSCFUNCTIONS_H */
