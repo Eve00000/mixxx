@@ -172,9 +172,14 @@ void WMainMenuBar::initialize() {
     QString searchHereTitle = tr("Search in Current View...");
     QString searchHereText = tr("Search for tracks in the current library view");
     auto* pSearchHere = new QAction(searchHereTitle, this);
-    pSearchHere->setShortcut(QKeySequence(m_pKbdConfig->getValue(
-            ConfigKey("[KeyboardShortcuts]", "LibraryMenu_SearchInCurrentView"),
-            tr("Ctrl+f"))));
+    if (m_pConfig->getValue<bool>(ConfigKey("[Search]", "PopupSearch"))) {
+        auto* pSearchHere = new QAction(searchHereTitle, this);
+        pSearchHere->setShortcut(QKeySequence(tr("Ctrl+f")));
+    } else {
+        pSearchHere->setShortcut(QKeySequence(m_pKbdConfig->getValue(
+                ConfigKey("[KeyboardShortcuts]", "LibraryMenu_SearchInCurrentView"),
+                tr("Ctrl+f"))));
+    }
     pSearchHere->setShortcutContext(Qt::ApplicationShortcut);
     pSearchHere->setStatusTip(searchHereText);
     pSearchHere->setWhatsThis(buildWhatsThis(searchHereTitle, searchHereText));

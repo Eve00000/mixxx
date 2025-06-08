@@ -13,7 +13,9 @@
 #include "library/trackset/searchcrate/searchcratesummary.h"
 #include "moc_searchcratefeaturehelper.cpp"
 
-const bool sDebug = false;
+// namespace {
+const bool searchcratefeaturehelperDebug = false;
+//} // namespace
 
 SearchCrateFeatureHelper::SearchCrateFeatureHelper(
         TrackCollection* pTrackCollection,
@@ -37,7 +39,7 @@ QString SearchCrateFeatureHelper::proposeNameForNewSearchCrate(
         }
     } while (m_pTrackCollection->searchCrates().readSearchCrateByName(proposedName));
     // Found an unused searchCrate name
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> proposedName" << proposedName;
     }
     // would be better with regex but ... :-)
@@ -58,7 +60,7 @@ QString SearchCrateFeatureHelper::proposeNameForNewSearchCrate(
             .replace(LIBRARYTABLE_PLAYED + ":", "")
             .replace(LIBRARYTABLE_RATING + ":", "")
             .replace("\"", "");
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> cleaned "
                     "proposedName"
                  << proposedName;
@@ -67,7 +69,7 @@ QString SearchCrateFeatureHelper::proposeNameForNewSearchCrate(
 }
 
 SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const QString& text) {
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH]";
     }
     SearchCrate newSearchCrate;
@@ -165,7 +167,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
         bool orCombiner = cleanedText.indexOf("|", 0) > 1;
         cleanedText.replace("|", "");
 
-        if (sDebug) {
+        if (searchcratefeaturehelperDebug) {
             qDebug() << "Cleaned Text:" << cleanedText;
         }
 
@@ -333,7 +335,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
                     break;
                 }
 
-                if (sDebug) {
+                if (searchcratefeaturehelperDebug) {
                     qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> "
                                 "Detected Term:"
                              << term << ", Value:" << value;
@@ -344,7 +346,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
 
         // what if no terms (field) were in the input ....
         if (!foundTerms) {
-            if (sDebug) {
+            if (searchcratefeaturehelperDebug) {
                 qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> No term "
                             "detected, setting noTermValue:"
                          << text.trimmed();
@@ -393,7 +395,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
     if (m_pTrackCollection->insertSearchCrate(newSearchCrate, &newSearchCrateId)) {
         DEBUG_ASSERT(newSearchCrateId.isValid());
         newSearchCrate.setId(newSearchCrateId);
-        if (sDebug) {
+        if (searchcratefeaturehelperDebug) {
             qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> Created new "
                         "searchCrate"
                      << newSearchCrate;
@@ -411,7 +413,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
                 tr("An unknown error occurred while creating searchCrate: ") +
                         newSearchCrate.getName());
     }
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> "
                     "newSearchCrateId "
                  << newSearchCrateId;
@@ -420,13 +422,13 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
 }
 
 SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromUI() {
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] ";
     }
     SearchCrate newSearchCrate;
     const QString proposedSearchCrateName =
             proposeNameForNewSearchCrate("New SearchCrate From Edit");
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> proposedName"
                  << proposedSearchCrateName;
     }
@@ -441,7 +443,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromUI() {
     if (m_pTrackCollection->insertSearchCrate(newSearchCrate, &newSearchCrateId)) {
         DEBUG_ASSERT(newSearchCrateId.isValid());
         newSearchCrate.setId(newSearchCrateId);
-        if (sDebug) {
+        if (searchcratefeaturehelperDebug) {
             qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] "
                         "Created new searchCrate"
                      << newSearchCrate;
@@ -451,7 +453,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromUI() {
         qWarning() << "Failed to create new searchCrate"
                    << "->" << newSearchCrate.getName();
     }
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] -> "
                     "newSearchCrateId "
                  << newSearchCrateId;
@@ -460,7 +462,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromUI() {
 }
 
 SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrate() {
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW EMPTY SEARCHCRATES] ";
     }
     const QString proposedSearchCrateName =
@@ -503,7 +505,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrate() {
     if (m_pTrackCollection->insertSearchCrate(newSearchCrate, &newSearchCrateId)) {
         DEBUG_ASSERT(newSearchCrateId.isValid());
         newSearchCrate.setId(newSearchCrateId);
-        if (sDebug) {
+        if (searchcratefeaturehelperDebug) {
             qDebug() << "Created new searchCrate" << newSearchCrate;
         }
     } else {
@@ -515,7 +517,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrate() {
                 tr("An unknown error occurred while creating searchCrate: ") +
                         newSearchCrate.getName());
     }
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [NEW EMPTY SEARCHCRATES] -> "
                     "newSearchCrateId "
                  << newSearchCrateId;
@@ -524,7 +526,7 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrate() {
 }
 
 SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& oldSearchCrate) {
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE SEARCHCRATES] -> START";
     }
     const QString& proposedSearchCrateName =
@@ -533,25 +535,25 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
                             .arg(oldSearchCrate.getName(), tr("copy", "//:")));
 
     const QString& newSearchInput = oldSearchCrate.getSearchInput();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old searchInput" << newSearchInput;
     }
     const QString& newSearchSql = oldSearchCrate.getSearchSql();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old searchSql" << newSearchSql;
     }
     const QString& newCondition1Field = oldSearchCrate.getCondition1Field();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition1Field"
                  << newCondition1Field;
     }
     const QString& newCondition2Field = oldSearchCrate.getCondition2Field();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition2Field"
                  << newCondition2Field;
     }
     const QString& newCondition3Field = oldSearchCrate.getCondition3Field();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition3Field"
                  << newCondition3Field;
     }
@@ -566,19 +568,19 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
     const QString& newCondition12Field = oldSearchCrate.getCondition12Field();
 
     const QString& newCondition1Operator = oldSearchCrate.getCondition1Operator();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition1Operator"
                  << newCondition1Operator;
     }
     const QString& newCondition2Operator = oldSearchCrate.getCondition2Operator();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition2Operator"
                  << newCondition2Operator;
     }
     const QString& newCondition3Operator = oldSearchCrate.getCondition3Operator();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition3Operator"
                  << newCondition3Operator;
@@ -594,17 +596,17 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
     const QString& newCondition12Operator = oldSearchCrate.getCondition12Operator();
 
     const QString& newCondition1Value = oldSearchCrate.getCondition1Value();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition1Value"
                  << newCondition1Value;
     }
     const QString& newCondition2Value = oldSearchCrate.getCondition2Value();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition2Value"
                  << newCondition2Value;
     }
     const QString& newCondition3Value = oldSearchCrate.getCondition3Value();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old Condition3Value"
                  << newCondition2Value;
     }
@@ -619,19 +621,19 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
     const QString& newCondition12Value = oldSearchCrate.getCondition12Value();
 
     const QString& newCondition1Combiner = oldSearchCrate.getCondition1Combiner();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition1Combiner"
                  << newCondition1Combiner;
     }
     const QString& newCondition2Combiner = oldSearchCrate.getCondition2Combiner();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition2Combiner"
                  << newCondition2Combiner;
     }
     const QString& newCondition3Combiner = oldSearchCrate.getCondition3Combiner();
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE] -> old "
                     "Condition3Combiner"
                  << newCondition3Combiner;
@@ -736,7 +738,7 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
         DEBUG_ASSERT(newSearchCrateId.isValid());
         newSearchCrate.setId(newSearchCrateId);
 
-        if (sDebug) {
+        if (searchcratefeaturehelperDebug) {
             qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE SEARCHCRATES] -> "
                         "Created new searchCrate"
                      << newSearchCrate;
@@ -754,7 +756,7 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
             }
         }
         if (m_pTrackCollection->addSearchCrateTracks(newSearchCrateId, trackIds)) {
-            if (sDebug) {
+            if (searchcratefeaturehelperDebug) {
                 qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE SEARCHCRATES] "
                             "Duplicated searchCrate -> "
                          << oldSearchCrate << "->" << newSearchCrate;
@@ -771,7 +773,7 @@ SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& 
                 tr("An unknown error occurred while creating searchCrate: ") +
                         newSearchCrate.getName());
     }
-    if (sDebug) {
+    if (searchcratefeaturehelperDebug) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE SEARCHCRATES] -> END "
                     "-> newSearchCrateId "
                  << newSearchCrateId;

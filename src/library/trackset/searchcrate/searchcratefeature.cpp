@@ -29,7 +29,7 @@
 
 namespace {
 // constexpr int kInvalidSearchCrateId = -1;
-const bool sDebug = false;
+const bool searchcratefeatureDebug = false;
 
 QString formatLabel(
         const SearchCrateSummary& searchCrateSummary) {
@@ -245,7 +245,7 @@ void SearchCrateFeature::activate() {
 }
 
 void SearchCrateFeature::activateChild(const QModelIndex& index) {
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [ACTIVATE CHILD] -> index " << index;
     }
     SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
@@ -262,7 +262,7 @@ void SearchCrateFeature::activateChild(const QModelIndex& index) {
 }
 
 bool SearchCrateFeature::activateSearchCrate(SearchCrateId searchCrateId) {
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [ACTIVATE SEARCHCRATES] -> "
                     "searchCrateId "
                  << searchCrateId;
@@ -415,7 +415,7 @@ void SearchCrateFeature::slotDeleteSearchCrate() {
                 QMessageBox::No);
         if (btn == QMessageBox::Yes) {
             if (m_pTrackCollection->deleteSearchCrate(searchCrateId)) {
-                if (sDebug) {
+                if (searchcratefeatureDebug) {
                     qDebug() << "[SEARCHCRATESFEATURE] [SLOT DELETE SEARCHCRATES] -> "
                                 "Deleted searchCrate"
                              << searchCrate;
@@ -436,7 +436,7 @@ void SearchCrateFeature::slotFindPreviousSearchCrate() {
         m_prevSiblingSearchCrate = SearchCrateId();
         storePrevSiblingSearchCrateId(searchCrateId);
     }
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT FIND PREVIOUS SEARCHCRATES] -> "
                     "Previous searchCrate ID "
                  << m_prevSiblingSearchCrate;
@@ -450,7 +450,7 @@ void SearchCrateFeature::slotFindNextSearchCrate() {
         m_nextSiblingSearchCrate = SearchCrateId();
         storeNextSiblingSearchCrateId(searchCrateId);
     }
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT FIND NEXT SEARCHCRATES] -> Next "
                     "searchCrate ID "
                  << m_nextSiblingSearchCrate;
@@ -498,14 +498,14 @@ void SearchCrateFeature::slotRenameSearchCrate() {
         }
 
         if (!m_pTrackCollection->updateSearchCrate(searchCrate)) {
-            if (sDebug) {
+            if (searchcratefeatureDebug) {
                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT RENAME SEARCHCRATES] -> "
                             "Failed to rename searchCrate"
                          << searchCrate;
             }
         }
     } else {
-        if (sDebug) {
+        if (searchcratefeatureDebug) {
             qDebug() << "[SEARCHCRATESFEATURE] [SLOT RENAME MARTIES] -> Failed to "
                         "rename selected searchCrate";
         }
@@ -519,7 +519,7 @@ void SearchCrateFeature::slotDuplicateSearchCrate() {
                 SearchCrateFeatureHelper(m_pTrackCollection, m_pConfig)
                         .duplicateSearchCrate(searchCrate);
         if (newSearchCrateId.isValid()) {
-            if (sDebug) {
+            if (searchcratefeatureDebug) {
                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT DUPLICATE SEARCHCRATES] -> "
                             "Duplicate searchCrate"
                          << searchCrate << ", new searchCrate:" << newSearchCrateId;
@@ -527,7 +527,7 @@ void SearchCrateFeature::slotDuplicateSearchCrate() {
             return;
         }
     }
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT DUPLICATE SEARCHCRATES] -> Failed to "
                     "duplicate selected searchCrate";
     }
@@ -538,7 +538,7 @@ void SearchCrateFeature::SetActiveSearchCrateToLastRightClicked(const QModelInde
 }
 
 void SearchCrateFeature::selectSearchCrateForEdit(SearchCrateId selectedSearchCrateId) {
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [REBUILD CHILD MODEL] -> "
                     "selectedSearchCrateId "
                  << selectedSearchCrateId;
@@ -549,13 +549,13 @@ void SearchCrateFeature::selectSearchCrateForEdit(SearchCrateId selectedSearchCr
 void SearchCrateFeature::slotEditSearchCrate() {
     QMutex mutex;
     mutex.lock();
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] "
                     "-> slotEditSearchCrate";
     }
     SearchCrate searchCrate;
     readLastRightClickedSearchCrate(&searchCrate);
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
                     "m_lastRightClickedIndex  = "
                  << m_lastRightClickedIndex;
@@ -564,7 +564,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
     searchCrateData.clear();
     m_searchCrateTableModel.selectSearchCrate2QVL(
             searchCrateIdFromIndex(m_lastRightClickedIndex), searchCrateData);
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
                     "SearchCrate data loaded into QVariantList:"
                  << searchCrateData;
@@ -572,7 +572,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
 
     QVariantList playlistsCratesData;
     m_searchCrateTableModel.selectPlaylistsCrates2QVL(playlistsCratesData);
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
                     "Playlists & Crates data loaded into QVariantList:"
                  << playlistsCratesData;
@@ -580,7 +580,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
 
     if (readLastRightClickedSearchCrate(&searchCrate)) {
         SearchCrateId searchCrateId = searchCrateIdFromIndex(m_lastRightClickedIndex);
-        if (sDebug) {
+        if (searchcratefeatureDebug) {
             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
                         "SlotEditSearchCrate -> searchCrateID = "
                      << searchCrateId;
@@ -588,7 +588,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
         // Pass this to provide the SearchCratesFeature instance
         dlgSearchCrateInfo infoDialog(this);
 
-        if (sDebug) {
+        if (searchcratefeatureDebug) {
             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
                         "[INIT DIALOG] -> INIT DIALOG ";
         }
@@ -599,7 +599,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 &dlgSearchCrateInfo::dataUpdated,
                 this,
                 [this, searchCrateId](const QVariantList& updatedData) mutable {
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[UPDATE] -> START Request UPDATE SearchCrate "
                                     "searchCrateId "
@@ -612,7 +612,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                     // bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
                     // SearchCrateId nextSearchCrateId(searchCrateData[58]);
                     // bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] extracted "
                                     "searchCrateId from searchCrateData: "
                                  << searchCrateId;
@@ -638,7 +638,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                         m_lastClickedIndex = indexFromSearchCrateId(searchCrateId);
                         m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
                         slotSearchCrateTableChanged(searchCrateId);
-                        if (sDebug) {
+                        if (searchcratefeatureDebug) {
                             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                         "[UPDATE] -> END UPDATE searchCrateId "
                                      << searchCrateId;
@@ -661,7 +661,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                     bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
                     SearchCrateId nextSearchCrateId(searchCrateData[58]);
                     bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[DELETE] -> START Request DELETE SearchCrate "
                                  << searchCrateId;
@@ -680,7 +680,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                  << currentSearchCrateIdEOF;
                     }
                     if (!searchCrateId.isValid()) {
-                        if (sDebug) {
+                        if (searchcratefeatureDebug) {
                             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
                                         "SEARCHCRATES] -> "
                                         "[DELETE] -> Invalid SearchCrateId. : "
@@ -695,7 +695,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                         nextSearchCrateId,
                                         searchCrateData);
                                 emit updateSearchCrateData(searchCrateData);
-                                if (sDebug) {
+                                if (searchcratefeatureDebug) {
                                     qDebug() << "[SEARCHCRATESFEATURE] [SLOT "
                                                 "EDIT SEARCHCRATES] -> "
                                                 "[DELETE] -> SearchCrate "
@@ -714,7 +714,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                         previousSearchCrateId,
                                         searchCrateData);
                                 emit updateSearchCrateData(searchCrateData);
-                                if (sDebug) {
+                                if (searchcratefeatureDebug) {
                                     qDebug() << "[SEARCHCRATESFEATURE] [SLOT "
                                                 "EDIT SEARCHCRATES] -> "
                                                 "[DELETE] -> SearchCrate "
@@ -740,7 +740,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 // [this, &searchCrateId]() {
                 [this, searchCrateId]() {
                     //            emit setBlockerOff("new");
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[NEW] "
                                     "-> START Request NEW SearchCrate searchCrateId "
@@ -750,14 +750,14 @@ void SearchCrateFeature::slotEditSearchCrate() {
                             SearchCrateFeatureHelper(m_pTrackCollection, m_pConfig)
                                     .createEmptySearchCrateFromUI();
                     if (!searchCrateId.isValid()) {
-                        if (sDebug) {
+                        if (searchcratefeatureDebug) {
                             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
                                         "SEARCHCRATES] -> "
                                         "[NEW] -> Creation failed.";
                         }
                         return;
                     } else {
-                        if (sDebug) {
+                        if (searchcratefeatureDebug) {
                             qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
                                         "SEARCHCRATES] -> "
                                         "[NEW] -> New searchCrate created. "
@@ -771,7 +771,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                             searchCrateId, searchCrateData);
                     slotSearchCrateTableChanged(searchCrateId);
                     m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[NEW] "
                                     "-> END SearchCrate created searchCrateId "
@@ -791,7 +791,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                     bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
                     SearchCrateId nextSearchCrateId(searchCrateData[58]);
                     bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[PREVIOUS] -> START Request PREVIOUS SearchCrate "
                                  << searchCrateId;
@@ -815,7 +815,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                     nextSearchCrateId,
                                     searchCrateData);
                             emit updateSearchCrateData(searchCrateData);
-                            if (sDebug) {
+                            if (searchcratefeatureDebug) {
                                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                             "[PREVIOUS] -> new active searchCrate: "
                                          << nextSearchCrateId;
@@ -832,7 +832,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                     previousSearchCrateId,
                                     searchCrateData);
                             emit updateSearchCrateData(searchCrateData);
-                            if (sDebug) {
+                            if (searchcratefeatureDebug) {
                                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                             "[PREVIOUS] -> new active searchCrate: "
                                          << previousSearchCrateId;
@@ -857,7 +857,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                     bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
                     SearchCrateId nextSearchCrateId(searchCrateData[58]);
                     bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
-                    if (sDebug) {
+                    if (searchcratefeatureDebug) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[NEXT] -> START Request NEXT SearchCrate "
                                  << searchCrateId;
@@ -881,7 +881,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                     previousSearchCrateId,
                                     searchCrateData);
                             emit updateSearchCrateData(searchCrateData);
-                            if (sDebug) {
+                            if (searchcratefeatureDebug) {
                                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                             "[NEXT] -> new active searchCrate: "
                                          << previousSearchCrateId;
@@ -898,7 +898,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                                     nextSearchCrateId,
                                     searchCrateData);
                             emit updateSearchCrateData(searchCrateData);
-                            if (sDebug) {
+                            if (searchcratefeatureDebug) {
                                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                             "[NEXT] -> new active searchCrate: "
                                          << nextSearchCrateId;
@@ -920,7 +920,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
             bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
             SearchCrateId nextSearchCrateId(searchCrateData[58]);
             bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
-            if (sDebug) {
+            if (searchcratefeatureDebug) {
                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                             "[NEXT] -> START Request NEXT SearchCrate "
                          << searchCrateId;
@@ -949,7 +949,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 m_lastClickedIndex = indexFromSearchCrateId(searchCrateId);
                 m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
                 slotSearchCrateTableChanged(searchCrateId);
-                if (sDebug) {
+                if (searchcratefeatureDebug) {
                     qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [CLOSE "
                                 "DIALOG] -> SearchCrate data saved from QVariantList "
                                 "to database for "
@@ -970,14 +970,14 @@ void SearchCrateFeature::slotToggleSearchCrateLock() {
     if (readLastRightClickedSearchCrate(&searchCrate)) {
         searchCrate.setLocked(!searchCrate.isLocked());
         if (!m_pTrackCollection->updateSearchCrate(searchCrate)) {
-            if (sDebug) {
+            if (searchcratefeatureDebug) {
                 qDebug() << "[SEARCHCRATESFEATURE] [SLOT TOGGLE LOCK] -> Failed to "
                             "toggle lock of searchCrate"
                          << searchCrate;
             }
         }
     } else {
-        if (sDebug) {
+        if (searchcratefeatureDebug) {
             qDebug() << "[SEARCHCRATESFEATURE] [SLOT TOGGLE LOCK] -> Failed to "
                         "toggle lock of selected searchCrate";
         }
@@ -985,7 +985,7 @@ void SearchCrateFeature::slotToggleSearchCrateLock() {
 }
 
 QModelIndex SearchCrateFeature::rebuildChildModel(SearchCrateId selectedSearchCrateId) {
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [REBUILDCHILDMODEL] -> "
                     "selectedSearchCrateId "
                  << selectedSearchCrateId;
@@ -1075,7 +1075,7 @@ QModelIndex SearchCrateFeature::indexFromSearchCrateId(SearchCrateId searchCrate
             return index;
         }
     }
-    if (sDebug) {
+    if (searchcratefeatureDebug) {
         qDebug() << "[SEARCHCRATESFEATURE] [INDEX FROM SEARCHCRATESID] -> Tree item "
                     "for searchCrate not found:"
                  << searchCrateId;
@@ -1167,7 +1167,7 @@ void SearchCrateFeature::htmlLinkClicked(const QUrl& link) {
     if (QString(link.path()) == "create") {
         slotCreateSearchCrate();
     } else {
-        if (sDebug) {
+        if (searchcratefeatureDebug) {
             qDebug() << "[SEARCHCRATESFEATURE] [HTML LINK CLICKED ] -> Unknown "
                         "searchCrate link clicked"
                      << link;

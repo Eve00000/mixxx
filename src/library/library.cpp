@@ -29,7 +29,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
-#include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
+// #include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
 #include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
@@ -76,7 +76,7 @@ Library::Library(
           m_pPlaylistFeature(nullptr),
           m_pCrateFeature(nullptr),
           m_pSearchCrateFeature(nullptr),
-          m_pGroupedSearchCratesFeature(nullptr),
+          //          m_pGroupedSearchCratesFeature(nullptr),
           m_pAnalysisFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
 
@@ -124,22 +124,28 @@ Library::Library(
 #endif
 
     // EVE -> SMARTIES
-    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
-            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), false))) {
-        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesEnabled "
-                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"));
+    //    if ((m_pConfig->getValue(ConfigKey("[Library]",
+    //    "GroupedSearchCratesEnabled"), true)) &&
+    //            (m_pConfig->getValue(ConfigKey("[Library]",
+    //            "GroupedSearchCratesReplace"), false))) {
+    //        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] ->
+    //        GroupedSearchCratesEnabled "
+    //                 << m_pConfig->getValue(ConfigKey("[Library]",
+    //                 "GroupedSearchCratesEnabled"));
+    //
+    //        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] ->
+    //        GroupedSearchCratesReplace "
+    //                 << m_pConfig->getValue(ConfigKey("[Library]",
+    //                 "GroupedSearchCratesReplace"));
+    //    } else {
+    m_pSearchCrateFeature = new SearchCrateFeature(this, m_pConfig);
+    addFeature(m_pSearchCrateFeature);
+    //    }
 
-        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
-                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
-    } else {
-        m_pSearchCrateFeature = new SearchCrateFeature(this, m_pConfig);
-        addFeature(m_pSearchCrateFeature);
-    }
-
-    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
-        m_pGroupedSearchCratesFeature = new GroupedSearchCratesFeature(this, m_pConfig);
-        addFeature(m_pGroupedSearchCratesFeature);
-    }
+    //    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
+    //        m_pGroupedSearchCratesFeature = new GroupedSearchCratesFeature(this, m_pConfig);
+    //        addFeature(m_pGroupedSearchCratesFeature);
+    //    }
     // EVE -> SMARTIES
 
     m_pBrowseFeature = new BrowseFeature(
@@ -172,25 +178,29 @@ Library::Library(
             m_pAnalysisFeature,
             &AnalysisFeature::analyzeTracks);
     // EVE -> SMARTIES
-    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
-            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), false))) {
-        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesEnabled "
-                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"));
+    //    if ((m_pConfig->getValue(ConfigKey("[Library]",
+    //    "GroupedSearchCratesEnabled"), true)) &&
+    //            (m_pConfig->getValue(ConfigKey("[Library]",
+    //            "GroupedSearchCratesReplace"), false))) {
+    //        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] ->
+    //        GroupedSearchCratesEnabled "
+    //                 << m_pConfig->getValue(ConfigKey("[Library]",
+    //                 "GroupedSearchCratesEnabled"));
 
-        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
-                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
-    } else {
-        connect(m_pSearchCrateFeature,
-                &SearchCrateFeature::analyzeTracks,
-                m_pAnalysisFeature,
-                &AnalysisFeature::analyzeTracks);
-    }
-    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
-        connect(m_pGroupedSearchCratesFeature,
-                &GroupedSearchCratesFeature::analyzeTracks,
-                m_pAnalysisFeature,
-                &AnalysisFeature::analyzeTracks);
-    }
+    //        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
+    //                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
+    //    } else {
+    connect(m_pSearchCrateFeature,
+            &SearchCrateFeature::analyzeTracks,
+            m_pAnalysisFeature,
+            &AnalysisFeature::analyzeTracks);
+    //    }
+    //    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
+    //        connect(m_pGroupedSearchCratesFeature,
+    //                &GroupedSearchCratesFeature::analyzeTracks,
+    //                m_pAnalysisFeature,
+    //                &AnalysisFeature::analyzeTracks);
+    //    }
     // EVE -> SMARTIES
     connect(this,
             &Library::analyzeTracks,
@@ -641,21 +651,25 @@ void Library::slotCreateCrate() {
 
 // EVE -> SMARTIES
 void Library::slotCreateSearchCrateFromSearch(const QString& text) {
-    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
-            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), true))) {
-        m_pGroupedSearchCratesFeature->slotCreateSearchCrateFromSearch(text);
-    } else {
-        m_pSearchCrateFeature->slotCreateSearchCrateFromSearch(text);
-    }
+    //    if ((m_pConfig->getValue(ConfigKey("[Library]",
+    //    "GroupedSearchCratesEnabled"), true)) &&
+    //            (m_pConfig->getValue(ConfigKey("[Library]",
+    //            "GroupedSearchCratesReplace"), true))) {
+    //        m_pGroupedSearchCratesFeature->slotCreateSearchCrateFromSearch(text);
+    //    } else {
+    m_pSearchCrateFeature->slotCreateSearchCrateFromSearch(text);
+    //    }
 }
 
 void Library::slotCreateSearchCrate() {
-    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
-            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), true))) {
-        m_pGroupedSearchCratesFeature->slotCreateSearchCrate();
-    } else {
-        m_pSearchCrateFeature->slotCreateSearchCrate();
-    }
+    //    if ((m_pConfig->getValue(ConfigKey("[Library]",
+    //    "GroupedSearchCratesEnabled"), true)) &&
+    //            (m_pConfig->getValue(ConfigKey("[Library]",
+    //            "GroupedSearchCratesReplace"), true))) {
+    //        m_pGroupedSearchCratesFeature->slotCreateSearchCrate();
+    //    } else {
+    m_pSearchCrateFeature->slotCreateSearchCrate();
+    //    }
 }
 
 void Library::onSkinLoadFinished() {

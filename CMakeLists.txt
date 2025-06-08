@@ -1309,19 +1309,18 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
-  #EVE
+  src/library/trackset/playlistfeature.cpp
+  src/library/trackset/setlogfeature.cpp
+  src/library/trackset/tracksettablemodel.cpp
+  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
+  # src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
   src/library/trackset/searchcrate/searchcratefeature.cpp
   src/library/trackset/searchcrate/groupedsearchcratesfeature.cpp
   src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
   src/library/trackset/searchcrate/searchcratestorage.cpp
   src/library/trackset/searchcrate/searchcratetablemodel.cpp
-  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
-  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
-  src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
-  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
-  src/library/trackset/playlistfeature.cpp
-  src/library/trackset/setlogfeature.cpp
-  src/library/trackset/tracksettablemodel.cpp
   src/library/traktor/traktorfeature.cpp
   src/library/treeitem.cpp
   src/library/treeitemmodel.cpp
@@ -1595,7 +1594,6 @@ add_library(
   src/widget/weffectparameternamebase.cpp
   src/widget/weffectpushbutton.cpp
   src/widget/weffectselector.cpp
-  src/widget/wfastsearch.cpp
   src/widget/wfindonwebmenu.cpp
   src/widget/whotcuebutton.cpp
   src/widget/wimagestore.cpp
@@ -1682,7 +1680,6 @@ set(
   src/engine/channelhandle.h
   src/engine/engine.h
   src/errordialoghandler.h
-  src/library/trackset/searchcrate/dlgsearchcrateinfo.h
   src/track/track.h
   src/track/track_decl.h
   src/track/trackid.h

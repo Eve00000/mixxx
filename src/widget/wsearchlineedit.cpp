@@ -149,11 +149,11 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
                 &QShortcut::activated,
                 this,
                 &WSearchLineEdit::slotShowFastSearchDialog);
-    } else {
-        connect(setFocusShortcut,
-                &QShortcut::activated,
-                this,
-                &WSearchLineEdit::slotSetShortcutFocus);
+        //} else {
+        //    connect(setFocusShortcut,
+        //            &QShortcut::activated,
+        //            this,
+        //            &WSearchLineEdit::slotSetShortcutFocus);
     }
     // Set up a timer to search after a few hundred milliseconds timeout.  This
     // stops us from thrashing the database if you type really fast.
