@@ -54,6 +54,19 @@ const QString kAppGroup = QStringLiteral("[App]");
 
 } // anonymous namespace
 
+// EveOSC
+extern std::atomic<bool> s_oscEnabled;
+void sendTrackInfoToOscClients(
+        const QString& oscGroup,
+        const QString& trackArtist,
+        const QString& trackTitle,
+        float track_loaded,
+        float duration,
+        float playposition);
+void sendNoTrackLoadedToOscClients(
+        const QString& oscGroup);
+// EveOSC
+
 EngineBuffer::EngineBuffer(const QString& group,
         UserSettingsPointer pConfig,
         EngineChannel* pChannel,
@@ -105,61 +118,78 @@ EngineBuffer::EngineBuffer(const QString& group,
     SampleUtil::clear(m_pCrossfadeBuffer, kMaxEngineFrames * mixxx::kMaxEngineChannelInputCount);
 
     m_pReader = new CachingReader(group, pConfig, maxSupportedChannel);
-    connect(m_pReader, &CachingReader::trackLoading,
-            this, &EngineBuffer::slotTrackLoading,
+    connect(m_pReader,
+            &CachingReader::trackLoading,
+            this,
+            &EngineBuffer::slotTrackLoading,
             Qt::DirectConnection);
-    connect(m_pReader, &CachingReader::trackLoaded,
-            this, &EngineBuffer::slotTrackLoaded,
+    connect(m_pReader,
+            &CachingReader::trackLoaded,
+            this,
+            &EngineBuffer::slotTrackLoaded,
             Qt::DirectConnection);
-    connect(m_pReader, &CachingReader::trackLoadFailed,
-            this, &EngineBuffer::slotTrackLoadFailed,
+    connect(m_pReader,
+            &CachingReader::trackLoadFailed,
+            this,
+            &EngineBuffer::slotTrackLoadFailed,
             Qt::DirectConnection);
 
     // Play button
     m_playButton = new ControlPushButton(ConfigKey(m_group, "play"));
     m_playButton->setButtonMode(mixxx::control::ButtonMode::Toggle);
     m_playButton->connectValueChangeRequest(
-            this, &EngineBuffer::slotControlPlayRequest,
-            Qt::DirectConnection);
+            this, &EngineBuffer::slotControlPlayRequest, Qt::DirectConnection);
 
-    //Play from Start Button (for sampler)
+    // Play from Start Button (for sampler)
     m_playStartButton = new ControlPushButton(ConfigKey(m_group, "start_play"));
-    connect(m_playStartButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlPlayFromStart,
+    connect(m_playStartButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlPlayFromStart,
             Qt::DirectConnection);
 
     // Jump to start and stop button
     m_stopStartButton = new ControlPushButton(ConfigKey(m_group, "start_stop"));
-    connect(m_stopStartButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlJumpToStartAndStop,
+    connect(m_stopStartButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlJumpToStartAndStop,
             Qt::DirectConnection);
 
-    //Stop playback (for sampler)
+    // Stop playback (for sampler)
     m_stopButton = new ControlPushButton(ConfigKey(m_group, "stop"));
-    connect(m_stopButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlStop,
+    connect(m_stopButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlStop,
             Qt::DirectConnection);
 
     // Start button
     m_startButton = new ControlPushButton(ConfigKey(m_group, "start"));
     m_startButton->setButtonMode(mixxx::control::ButtonMode::Trigger);
-    connect(m_startButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlStart,
+    connect(m_startButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlStart,
             Qt::DirectConnection);
 
     // End button
     m_endButton = new ControlPushButton(ConfigKey(m_group, "end"));
-    connect(m_endButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlEnd,
+    connect(m_endButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlEnd,
             Qt::DirectConnection);
 
     m_pSlipButton = new ControlPushButton(ConfigKey(m_group, "slip_enabled"));
     m_pSlipButton->setButtonMode(mixxx::control::ButtonMode::Toggle);
 
     m_playposSlider = new ControlLinPotmeter(
-        ConfigKey(m_group, "playposition"), 0.0, 1.0, 0, 0, true);
-    connect(m_playposSlider, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlSeek,
+            ConfigKey(m_group, "playposition"), 0.0, 1.0, 0, 0, true);
+    connect(m_playposSlider,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlSeek,
             Qt::DirectConnection);
 
     // Control used to communicate ratio playpos to GUI thread
@@ -172,6 +202,95 @@ EngineBuffer::EngineBuffer(const QString& group,
 
     m_pTrackSamples = new ControlObject(ConfigKey(m_group, "track_samples"));
     m_pTrackSampleRate = new ControlObject(ConfigKey(m_group, "track_samplerate"));
+
+    // EVE
+    m_pTrackType = new ControlObject(ConfigKey(m_group, "track_type"));
+    m_pTrackTypeLength = new ControlObject(ConfigKey(m_group, "track_type_length"));
+    m_pTrackArtistLength = new ControlObject(ConfigKey(m_group, "track_artist_length"));
+
+    m_pTrackArtist_1 = new ControlObject(ConfigKey(m_group, "track_artist_1"));
+    m_pTrackArtist_2 = new ControlObject(ConfigKey(m_group, "track_artist_2"));
+    m_pTrackArtist_3 = new ControlObject(ConfigKey(m_group, "track_artist_3"));
+    m_pTrackArtist_4 = new ControlObject(ConfigKey(m_group, "track_artist_4"));
+    m_pTrackArtist_5 = new ControlObject(ConfigKey(m_group, "track_artist_5"));
+    //    m_pTrackArtist_6 = new ControlObject(ConfigKey(m_group, "track_artist_6"));
+    //    m_pTrackArtist_7 = new ControlObject(ConfigKey(m_group, "track_artist_7"));
+    //    m_pTrackArtist_8 = new ControlObject(ConfigKey(m_group, "track_artist_8"));
+    //    m_pTrackArtist_9 = new ControlObject(ConfigKey(m_group, "track_artist_9"));
+    //    m_pTrackArtist_10 = new ControlObject(ConfigKey(m_group, "track_artist_10"));
+    //    m_pTrackArtist_11 = new ControlObject(ConfigKey(m_group, "track_artist_11"));
+    //    m_pTrackArtist_12 = new ControlObject(ConfigKey(m_group, "track_artist_12"));
+    //    m_pTrackArtist_13 = new ControlObject(ConfigKey(m_group, "track_artist_13"));
+    //    m_pTrackArtist_14 = new ControlObject(ConfigKey(m_group, "track_artist_14"));
+    //    m_pTrackArtist_15 = new ControlObject(ConfigKey(m_group, "track_artist_15"));
+    //    m_pTrackArtist_16 = new ControlObject(ConfigKey(m_group, "track_artist_16"));
+    //    m_pTrackArtist_17 = new ControlObject(ConfigKey(m_group, "track_artist_17"));
+    //    m_pTrackArtist_18 = new ControlObject(ConfigKey(m_group, "track_artist_18"));
+    //    m_pTrackArtist_19 = new ControlObject(ConfigKey(m_group, "track_artist_19"));
+    //    m_pTrackArtist_20 = new ControlObject(ConfigKey(m_group, "track_artist_20"));
+    //    m_pTrackArtist_21 = new ControlObject(ConfigKey(m_group, "track_artist_21"));
+    //    m_pTrackArtist_22 = new ControlObject(ConfigKey(m_group, "track_artist_22"));
+    //    m_pTrackArtist_23 = new ControlObject(ConfigKey(m_group, "track_artist_23"));
+    //    m_pTrackArtist_24 = new ControlObject(ConfigKey(m_group, "track_artist_24"));
+    //    m_pTrackArtist_25 = new ControlObject(ConfigKey(m_group, "track_artist_25"));
+    //    m_pTrackArtist_26 = new ControlObject(ConfigKey(m_group, "track_artist_26"));
+    //    m_pTrackArtist_27 = new ControlObject(ConfigKey(m_group, "track_artist_27"));
+    //    m_pTrackArtist_28 = new ControlObject(ConfigKey(m_group, "track_artist_28"));
+    //    m_pTrackArtist_29 = new ControlObject(ConfigKey(m_group, "track_artist_29"));
+    //    m_pTrackArtist_30 = new ControlObject(ConfigKey(m_group, "track_artist_30"));
+    //    m_pTrackArtist_31 = new ControlObject(ConfigKey(m_group, "track_artist_31"));
+    //    m_pTrackArtist_32 = new ControlObject(ConfigKey(m_group, "track_artist_32"));
+    //    m_pTrackArtist_33 = new ControlObject(ConfigKey(m_group, "track_artist_33"));
+    //    m_pTrackArtist_34 = new ControlObject(ConfigKey(m_group, "track_artist_34"));
+    //    m_pTrackArtist_35 = new ControlObject(ConfigKey(m_group, "track_artist_35"));
+    //    m_pTrackArtist_36 = new ControlObject(ConfigKey(m_group, "track_artist_36"));
+    //    m_pTrackArtist_37 = new ControlObject(ConfigKey(m_group, "track_artist_37"));
+    //    m_pTrackArtist_38 = new ControlObject(ConfigKey(m_group, "track_artist_38"));
+    //    m_pTrackArtist_39 = new ControlObject(ConfigKey(m_group, "track_artist_39"));
+    //    m_pTrackArtist_40 = new ControlObject(ConfigKey(m_group, "track_artist_40"));
+
+    m_pTrackTitleLength = new ControlObject(ConfigKey(m_group, "track_title_length"));
+    m_pTrackTitle_1 = new ControlObject(ConfigKey(m_group, "track_title_1"));
+    m_pTrackTitle_2 = new ControlObject(ConfigKey(m_group, "track_title_2"));
+    m_pTrackTitle_3 = new ControlObject(ConfigKey(m_group, "track_title_3"));
+    m_pTrackTitle_4 = new ControlObject(ConfigKey(m_group, "track_title_4"));
+    m_pTrackTitle_5 = new ControlObject(ConfigKey(m_group, "track_title_5"));
+    //    m_pTrackTitle_6 = new ControlObject(ConfigKey(m_group, "track_title_6"));
+    //    m_pTrackTitle_7 = new ControlObject(ConfigKey(m_group, "track_title_7"));
+    //    m_pTrackTitle_8 = new ControlObject(ConfigKey(m_group, "track_title_8"));
+    //    m_pTrackTitle_9 = new ControlObject(ConfigKey(m_group, "track_title_9"));
+    //    m_pTrackTitle_10 = new ControlObject(ConfigKey(m_group, "track_title_10"));
+    //    m_pTrackTitle_11 = new ControlObject(ConfigKey(m_group, "track_title_11"));
+    //    m_pTrackTitle_12 = new ControlObject(ConfigKey(m_group, "track_title_12"));
+    //    m_pTrackTitle_13 = new ControlObject(ConfigKey(m_group, "track_title_13"));
+    //    m_pTrackTitle_14 = new ControlObject(ConfigKey(m_group, "track_title_14"));
+    //    m_pTrackTitle_15 = new ControlObject(ConfigKey(m_group, "track_title_15"));
+    //    m_pTrackTitle_16 = new ControlObject(ConfigKey(m_group, "track_title_16"));
+    //    m_pTrackTitle_17 = new ControlObject(ConfigKey(m_group, "track_title_17"));
+    //    m_pTrackTitle_18 = new ControlObject(ConfigKey(m_group, "track_title_18"));
+    //    m_pTrackTitle_19 = new ControlObject(ConfigKey(m_group, "track_title_19"));
+    //    m_pTrackTitle_20 = new ControlObject(ConfigKey(m_group, "track_title_20"));
+    //    m_pTrackTitle_21 = new ControlObject(ConfigKey(m_group, "track_title_21"));
+    //    m_pTrackTitle_22 = new ControlObject(ConfigKey(m_group, "track_title_22"));
+    //    m_pTrackTitle_23 = new ControlObject(ConfigKey(m_group, "track_title_23"));
+    //    m_pTrackTitle_24 = new ControlObject(ConfigKey(m_group, "track_title_24"));
+    //    m_pTrackTitle_25 = new ControlObject(ConfigKey(m_group, "track_title_25"));
+    //    m_pTrackTitle_26 = new ControlObject(ConfigKey(m_group, "track_title_26"));
+    //    m_pTrackTitle_27 = new ControlObject(ConfigKey(m_group, "track_title_27"));
+    //    m_pTrackTitle_28 = new ControlObject(ConfigKey(m_group, "track_title_28"));
+    //    m_pTrackTitle_29 = new ControlObject(ConfigKey(m_group, "track_title_29"));
+    //    m_pTrackTitle_30 = new ControlObject(ConfigKey(m_group, "track_title_30"));
+    //    m_pTrackTitle_31 = new ControlObject(ConfigKey(m_group, "track_title_31"));
+    //    m_pTrackTitle_32 = new ControlObject(ConfigKey(m_group, "track_title_32"));
+    //    m_pTrackTitle_33 = new ControlObject(ConfigKey(m_group, "track_title_33"));
+    //    m_pTrackTitle_34 = new ControlObject(ConfigKey(m_group, "track_title_34"));
+    //    m_pTrackTitle_35 = new ControlObject(ConfigKey(m_group, "track_title_35"));
+    //    m_pTrackTitle_36 = new ControlObject(ConfigKey(m_group, "track_title_36"));
+    //    m_pTrackTitle_37 = new ControlObject(ConfigKey(m_group, "track_title_37"));
+    //    m_pTrackTitle_38 = new ControlObject(ConfigKey(m_group, "track_title_38"));
+    //    m_pTrackTitle_39 = new ControlObject(ConfigKey(m_group, "track_title_39"));
+    //    m_pTrackTitle_40 = new ControlObject(ConfigKey(m_group, "track_title_40"));
+    // EVE
 
     m_pKeylock = new ControlPushButton(ConfigKey(m_group, "keylock"), true);
     m_pKeylock->setButtonMode(mixxx::control::ButtonMode::Toggle);
@@ -251,7 +370,7 @@ EngineBuffer::EngineBuffer(const QString& group,
             Qt::DirectConnection);
 
     m_pReadAheadManager = new ReadAheadManager(m_pReader,
-                                               m_pLoopingControl);
+            m_pLoopingControl);
     m_pReadAheadManager->addRateControl(m_pRateControl);
 
     m_pKeylockEngine = new ControlProxy(kAppGroup, QStringLiteral("keylock_engine"), this);
@@ -271,8 +390,8 @@ EngineBuffer::EngineBuffer(const QString& group,
     m_bScalerChanged = true;
 
     m_pPassthroughEnabled = new ControlProxy(group, "passthrough", this);
-    m_pPassthroughEnabled->connectValueChanged(this, &EngineBuffer::slotPassthroughChanged,
-                                               Qt::DirectConnection);
+    m_pPassthroughEnabled->connectValueChanged(
+            this, &EngineBuffer::slotPassthroughChanged, Qt::DirectConnection);
 
 #ifdef __SCALER_DEBUG__
     df.setFileName("mixxx-debug.csv");
@@ -289,7 +408,7 @@ EngineBuffer::EngineBuffer(const QString& group,
 
 EngineBuffer::~EngineBuffer() {
 #ifdef __SCALER_DEBUG__
-    //close the writer
+    // close the writer
     df.close();
 #endif
     delete m_pReadAheadManager;
@@ -311,6 +430,94 @@ EngineBuffer::~EngineBuffer() {
     delete m_pTrackLoaded;
     delete m_pTrackSamples;
     delete m_pTrackSampleRate;
+
+    // EVE
+    delete m_pTrackType;
+    delete m_pTrackTypeLength;
+    delete m_pTrackArtistLength;
+    delete m_pTrackArtist_1;
+    delete m_pTrackArtist_2;
+    delete m_pTrackArtist_3;
+    delete m_pTrackArtist_4;
+    delete m_pTrackArtist_5;
+    //    delete m_pTrackArtist_6;
+    //    delete m_pTrackArtist_7;
+    //    delete m_pTrackArtist_8;
+    //    delete m_pTrackArtist_9;
+    //    delete m_pTrackArtist_10;
+    //    delete m_pTrackArtist_11;
+    //    delete m_pTrackArtist_12;
+    //    delete m_pTrackArtist_13;
+    //    delete m_pTrackArtist_14;
+    //    delete m_pTrackArtist_15;
+    //    delete m_pTrackArtist_16;
+    //    delete m_pTrackArtist_17;
+    //    delete m_pTrackArtist_18;
+    //    delete m_pTrackArtist_19;
+    //    delete m_pTrackArtist_20;
+    //    delete m_pTrackArtist_21;
+    //    delete m_pTrackArtist_22;
+    //    delete m_pTrackArtist_23;
+    //    delete m_pTrackArtist_24;
+    //    delete m_pTrackArtist_25;
+    //    delete m_pTrackArtist_26;
+    //    delete m_pTrackArtist_27;
+    //    delete m_pTrackArtist_28;
+    //    delete m_pTrackArtist_29;
+    //    delete m_pTrackArtist_30;
+    //    delete m_pTrackArtist_31;
+    //    delete m_pTrackArtist_32;
+    //    delete m_pTrackArtist_33;
+    //    delete m_pTrackArtist_34;
+    //    delete m_pTrackArtist_35;
+    //    delete m_pTrackArtist_36;
+    //    delete m_pTrackArtist_37;
+    //    delete m_pTrackArtist_38;
+    //    delete m_pTrackArtist_39;
+    //    delete m_pTrackArtist_40;
+
+    delete m_pTrackTitleLength;
+    delete m_pTrackTitle_1;
+    delete m_pTrackTitle_2;
+    delete m_pTrackTitle_3;
+    delete m_pTrackTitle_4;
+    delete m_pTrackTitle_5;
+    //    delete m_pTrackTitle_6;
+    //    delete m_pTrackTitle_7;
+    //    delete m_pTrackTitle_8;
+    //    delete m_pTrackTitle_9;
+    //    delete m_pTrackTitle_10;
+    //    delete m_pTrackTitle_11;
+    //    delete m_pTrackTitle_12;
+    //    delete m_pTrackTitle_13;
+    //    delete m_pTrackTitle_14;
+    //    delete m_pTrackTitle_15;
+    //    delete m_pTrackTitle_16;
+    //    delete m_pTrackTitle_17;
+    //    delete m_pTrackTitle_18;
+    //    delete m_pTrackTitle_19;
+    //    delete m_pTrackTitle_20;
+    //    delete m_pTrackTitle_21;
+    //    delete m_pTrackTitle_22;
+    //    delete m_pTrackTitle_23;
+    //    delete m_pTrackTitle_24;
+    //    delete m_pTrackTitle_25;
+    //    delete m_pTrackTitle_26;
+    //    delete m_pTrackTitle_27;
+    //    delete m_pTrackTitle_28;
+    //    delete m_pTrackTitle_29;
+    //    delete m_pTrackTitle_30;
+    //    delete m_pTrackTitle_31;
+    //    delete m_pTrackTitle_32;
+    //    delete m_pTrackTitle_33;
+    //    delete m_pTrackTitle_34;
+    //    delete m_pTrackTitle_35;
+    //    delete m_pTrackTitle_36;
+    //    delete m_pTrackTitle_37;
+    //    delete m_pTrackTitle_38;
+    //    delete m_pTrackTitle_39;
+    //    delete m_pTrackTitle_40;
+    // EVE
 
     delete m_pScaleLinear;
     delete m_pScaleST;
@@ -455,7 +662,7 @@ void EngineBuffer::readToCrossfadeBuffer(const std::size_t bufferSize) {
         // Restore the original position that was lost due to scaleBuffer() above
         m_pReadAheadManager->notifySeek(m_playPos.toSamplePos(m_channelCount));
         m_bCrossfadeReady = true;
-     }
+    }
 }
 
 // WARNING: This method is not thread safe and must not be called from outside
@@ -528,6 +735,32 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
                     pTrack->getSampleRate() * pTrack->getDuration()));
 }
 
+// Convert the latin1 values from the array to a double that combines the values
+// to a number of 15 digits input: int chararray, int offset
+double trackPartChar2CalculatedValue(const int* charArray, int offset) {
+    return (1.0 * charArray[offset] * 1000000000000) +
+            (1.0 * charArray[offset + 1] * 1000000000) +
+            (1.0 * charArray[offset + 2] * 1000000) +
+            (1.0 * charArray[offset + 3] * 1000) +
+            (1.0 * charArray[offset + 4] * 1);
+}
+
+// Convert the strings Type / Artist / Title to CharArray Latin1 values, add 300 to negative values
+// input: string string2convert, int chararray, int maximumlengte
+void convertArray2Latin1NoNegative(QString string2convert, int* charArray, int maximumLengte) {
+    if (string2convert.length() > maximumLengte) {
+        string2convert = string2convert.mid(0, maximumLengte);
+    };
+    int smallestLength = qMin(string2convert.length(), maximumLengte);
+    for (int i = 1; i <= smallestLength; i++) {
+        if ((string2convert.at(i - 1).toLatin1()) < 0) {
+            charArray[i - 1] = ((string2convert.at(i - 1).toLatin1()) + 300);
+        } else {
+            charArray[i - 1] = (string2convert.at(i - 1).toLatin1());
+        };
+    }
+}
+
 // WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
@@ -563,6 +796,50 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackSampleRate->set(trackSampleRate.toDouble());
     m_pTrackLoaded->forceSet(1);
 
+    // Eve start
+    // Type
+    QString TrackInfoType = pTrack->getType();
+    m_pTrackTypeLength->set(qMin(TrackInfoType.length(), 5));
+    int CharType[5] = {0};
+    convertArray2Latin1NoNegative(TrackInfoType, CharType, 5);
+    m_pTrackType->set(trackPartChar2CalculatedValue(CharType, 0));
+
+    // Title
+    QString TrackInfoTitle = pTrack->getTitle();
+    m_pTrackTitleLength->set(qMin(TrackInfoTitle.length(), 25));
+    int CharTitle[200] = {0};
+    convertArray2Latin1NoNegative(TrackInfoTitle, CharTitle, 25);
+
+    m_pTrackTitle_1->set(trackPartChar2CalculatedValue(CharTitle, 0));
+    m_pTrackTitle_2->set(trackPartChar2CalculatedValue(CharTitle, 5));
+    m_pTrackTitle_3->set(trackPartChar2CalculatedValue(CharTitle, 10));
+    m_pTrackTitle_4->set(trackPartChar2CalculatedValue(CharTitle, 15));
+    m_pTrackTitle_5->set(trackPartChar2CalculatedValue(CharTitle, 20));
+
+    // Artist
+    QString TrackInfoArtist = pTrack->getArtist();
+    m_pTrackArtistLength->set(qMin(TrackInfoArtist.length(), 25));
+    int CharArtist[200] = {0};
+    convertArray2Latin1NoNegative(TrackInfoArtist, CharArtist, 25);
+
+    m_pTrackArtist_1->set(trackPartChar2CalculatedValue(CharArtist, 0));
+    m_pTrackArtist_2->set(trackPartChar2CalculatedValue(CharArtist, 5));
+    m_pTrackArtist_3->set(trackPartChar2CalculatedValue(CharArtist, 10));
+    m_pTrackArtist_4->set(trackPartChar2CalculatedValue(CharArtist, 15));
+    m_pTrackArtist_5->set(trackPartChar2CalculatedValue(CharArtist, 20));
+
+    // Eve end
+    //  EveOSC begin
+    if (s_oscEnabled.load()) {
+        sendTrackInfoToOscClients(
+                getGroup(),
+                pTrack->getArtist(),
+                pTrack->getTitle(),
+                1,
+                (float)pTrack->getDuration(),
+                0);
+    }
+    // EveOSC end
     // Reset slip mode
     m_pSlipButton->set(0);
     m_bSlipEnabledProcessing = false;
@@ -631,6 +908,100 @@ void EngineBuffer::ejectTrack() {
     setTrackEndPosition(mixxx::audio::kInvalidFramePos);
     m_pTrackSampleRate->set(0);
     m_pTrackLoaded->forceSet(0);
+
+    m_pTrackType->set(0);
+    m_pTrackTypeLength->set(0);
+    m_pTrackArtistLength->set(0);
+
+    m_pTrackArtist_1->set(0);
+    m_pTrackArtist_2->set(0);
+    m_pTrackArtist_3->set(0);
+    m_pTrackArtist_4->set(0);
+    m_pTrackArtist_5->set(0);
+
+    //    m_pTrackArtist_6->set(0);
+    //    m_pTrackArtist_7->set(0);
+    //    m_pTrackArtist_8->set(0);
+    //    m_pTrackArtist_9->set(0);
+    //    m_pTrackArtist_10->set(0);
+    //    m_pTrackArtist_11->set(0);
+    //    m_pTrackArtist_12->set(0);
+    //    m_pTrackArtist_13->set(0);
+    //    m_pTrackArtist_14->set(0);
+    //    m_pTrackArtist_15->set(0);
+    //    m_pTrackArtist_16->set(0);
+    //    m_pTrackArtist_17->set(0);
+    //    m_pTrackArtist_18->set(0);
+    //    m_pTrackArtist_19->set(0);
+    //    m_pTrackArtist_20->set(0);
+    //    m_pTrackArtist_21->set(0);
+    //    m_pTrackArtist_22->set(0);
+    //    m_pTrackArtist_23->set(0);
+    //    m_pTrackArtist_24->set(0);
+    //    m_pTrackArtist_25->set(0);
+    //    m_pTrackArtist_26->set(0);
+    //    m_pTrackArtist_27->set(0);
+    //    m_pTrackArtist_28->set(0);
+    //    m_pTrackArtist_29->set(0);
+    //    m_pTrackArtist_30->set(0);
+    //    m_pTrackArtist_31->set(0);
+    //    m_pTrackArtist_32->set(0);
+    //    m_pTrackArtist_33->set(0);
+    //    m_pTrackArtist_34->set(0);
+    //    m_pTrackArtist_35->set(0);
+    //    m_pTrackArtist_36->set(0);
+    //    m_pTrackArtist_37->set(0);
+    //    m_pTrackArtist_38->set(0);
+    //    m_pTrackArtist_39->set(0);
+    //    m_pTrackArtist_40->set(0);
+
+    m_pTrackTitleLength->set(0);
+    m_pTrackTitle_1->set(0);
+    m_pTrackTitle_2->set(0);
+    m_pTrackTitle_3->set(0);
+    m_pTrackTitle_4->set(0);
+    m_pTrackTitle_5->set(0);
+    //    m_pTrackTitle_6->set(0);
+    //    m_pTrackTitle_7->set(0);
+    //    m_pTrackTitle_8->set(0);
+    //    m_pTrackTitle_9->set(0);
+    //    m_pTrackTitle_10->set(0);
+    //    m_pTrackTitle_11->set(0);
+    //    m_pTrackTitle_12->set(0);
+    //    m_pTrackTitle_13->set(0);
+    //    m_pTrackTitle_14->set(0);
+    //    m_pTrackTitle_15->set(0);
+    //    m_pTrackTitle_16->set(0);
+    //    m_pTrackTitle_17->set(0);
+    //    m_pTrackTitle_18->set(0);
+    //    m_pTrackTitle_19->set(0);
+    //    m_pTrackTitle_20->set(0);
+    //    m_pTrackTitle_21->set(0);
+    //    m_pTrackTitle_22->set(0);
+    //    m_pTrackTitle_23->set(0);
+    //    m_pTrackTitle_24->set(0);
+    //    m_pTrackTitle_25->set(0);
+    //    m_pTrackTitle_26->set(0);
+    //    m_pTrackTitle_27->set(0);
+    //    m_pTrackTitle_28->set(0);
+    //    m_pTrackTitle_29->set(0);
+    //    m_pTrackTitle_30->set(0);
+    //    m_pTrackTitle_31->set(0);
+    //    m_pTrackTitle_32->set(0);
+    //    m_pTrackTitle_33->set(0);
+    //    m_pTrackTitle_34->set(0);
+    //    m_pTrackTitle_35->set(0);
+    //    m_pTrackTitle_36->set(0);
+    //    m_pTrackTitle_37->set(0);
+    //    m_pTrackTitle_38->set(0);
+    //    m_pTrackTitle_39->set(0);
+    //    m_pTrackTitle_40->set(0);
+    //  EveOSC begin
+    if (s_oscEnabled.load()) {
+        sendNoTrackLoadedToOscClients(
+                getGroup());
+    }
+    //  EveOSC end
 
     m_playButton->set(0.0);
     m_playposSlider->set(0);
@@ -800,38 +1171,33 @@ void EngineBuffer::slotControlPlayRequest(double v) {
     m_playButton->setAndConfirm(verifiedPlay ? 1.0 : 0.0);
 }
 
-void EngineBuffer::slotControlStart(double v)
-{
+void EngineBuffer::slotControlStart(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
     }
 }
 
-void EngineBuffer::slotControlEnd(double v)
-{
+void EngineBuffer::slotControlEnd(double v) {
     if (v > 0.0) {
         doSeekFractional(1., SEEK_EXACT);
     }
 }
 
-void EngineBuffer::slotControlPlayFromStart(double v)
-{
+void EngineBuffer::slotControlPlayFromStart(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
         m_playButton->set(1);
     }
 }
 
-void EngineBuffer::slotControlJumpToStartAndStop(double v)
-{
+void EngineBuffer::slotControlJumpToStartAndStop(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
         m_playButton->set(0);
     }
 }
 
-void EngineBuffer::slotControlStop(double v)
-{
+void EngineBuffer::slotControlStop(double v) {
     if (v > 0.0) {
         m_playButton->set(0);
     }
@@ -1029,11 +1395,13 @@ void EngineBuffer::processTrackLocked(
         // The linear scaler supports ramping though zero.
         // This is used for scratching, but not for reverse
         // For the other, crossfade forward and backward samples
-        if ((m_speed_old * speed < 0) &&  // Direction has changed!
-                (m_pScale != m_pScaleVinyl || // only m_pScaleLinear supports going though 0
-                       m_reverse_old != is_reverse)) { // no pitch change when reversing
-            //XXX: Trying to force RAMAN to read from correct
-            //     playpos when rate changes direction - Albert
+        if ((m_speed_old * speed < 0) &&      // Direction has changed!
+                (m_pScale != m_pScaleVinyl || // only m_pScaleLinear supports
+                                              // going though 0
+                        m_reverse_old !=
+                                is_reverse)) { // no pitch change when reversing
+            // XXX: Trying to force RAMAN to read from correct
+            //      playpos when rate changes direction - Albert
             readToCrossfadeBuffer(bufferSize);
             // Clear the scaler information
             m_pScale->clear();
@@ -1334,35 +1702,35 @@ void EngineBuffer::processSeek(bool paused) {
     }
 
     switch (seekType) {
-        case SEEK_NONE:
+    case SEEK_NONE:
+        return;
+    case SEEK_PHASE:
+        // only adjust phase
+        position = m_playPos;
+        break;
+    case SEEK_STANDARD:
+        if (m_pQuantize->toBool()) {
+            seekType |= SEEK_PHASE;
+        }
+        // new position was already set above
+        break;
+    case SEEK_EXACT:
+    case SEEK_EXACT_PHASE:    // artificial state = SEEK_EXACT | SEEK_PHASE
+    case SEEK_STANDARD_PHASE: // artificial state = SEEK_STANDARD | SEEK_PHASE
+        // new position was already set above
+        break;
+    case SEEK_CLONE: {
+        // Cloning another channels position.
+        EngineChannel* pOtherChannel = m_pChannelToCloneFrom.fetchAndStoreRelaxed(nullptr);
+        VERIFY_OR_DEBUG_ASSERT(pOtherChannel) {
             return;
-        case SEEK_PHASE:
-            // only adjust phase
-            position = m_playPos;
-            break;
-        case SEEK_STANDARD:
-            if (m_pQuantize->toBool()) {
-                seekType |= SEEK_PHASE;
-            }
-            // new position was already set above
-            break;
-        case SEEK_EXACT:
-        case SEEK_EXACT_PHASE: // artificial state = SEEK_EXACT | SEEK_PHASE
-        case SEEK_STANDARD_PHASE: // artificial state = SEEK_STANDARD | SEEK_PHASE
-            // new position was already set above
-            break;
-        case SEEK_CLONE: {
-            // Cloning another channels position.
-            EngineChannel* pOtherChannel = m_pChannelToCloneFrom.fetchAndStoreRelaxed(nullptr);
-            VERIFY_OR_DEBUG_ASSERT(pOtherChannel) {
-                return;
-            }
-            position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
-        } break;
-        default:
-            DEBUG_ASSERT(!"Unhandled seek request type");
-            m_queuedSeek.setValue(kNoQueuedSeek);
-            return;
+        }
+        position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
+    } break;
+    default:
+        DEBUG_ASSERT(!"Unhandled seek request type");
+        m_queuedSeek.setValue(kNoQueuedSeek);
+        return;
     }
 
     VERIFY_OR_DEBUG_ASSERT(position.isValid()) {
@@ -1526,7 +1894,7 @@ void EngineBuffer::hintReader(const double dRate) {
     m_hintList.clear();
     m_pReadAheadManager->hintReader(dRate, &m_hintList, m_channelCount);
 
-    //if slipping, hint about virtual position so we're ready for it
+    // if slipping, hint about virtual position so we're ready for it
     if (m_bSlipEnabledProcessing) {
         Hint hint;
         hint.frame = static_cast<SINT>(m_slipPos.toLowerFrameBoundary().value());

@@ -20,6 +20,8 @@
 #include "util/duration.h"
 #include "util/performancetimer.h"
 #include "util/platform.h"
+// EVE
+#include "library/trackset/searchcrate/searchcrateschema.h"
 
 namespace {
 
@@ -214,21 +216,107 @@ void BaseSqlTableModel::select() {
     //     return;
     // }
 
-    if (sDebug) {
-        qDebug() << this << "select()";
-    }
+    // if (sDebug) {
+    qDebug() << this << "select()";
+    //}
 
     PerformanceTimer time;
     time.start();
+    if (m_tableName.startsWith("searchcrate")) {
+        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES]";
+        // EVE drop view and rebuild it for Searchcrate
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Drop
+        //        temp table " << m_tableName;
+        QString queryStringDropView = QString("DROP VIEW IF EXISTS %1 ").arg(m_tableName);
+        FwdSqlQuery(m_database, queryStringDropView).execPrepared();
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] REBUILD TEMP";
+        QStringList columns;
+        QString searchCrateId = m_tableName;
+        searchCrateId = searchCrateId.replace("searchcrate_", "");
+        columns << LIBRARYTABLE_ID
+                << "'' AS " + LIBRARYTABLE_PREVIEW
+                << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+
+        QString queryStringTempView =
+                QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                        "SELECT %2 FROM %3 "
+                        "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
+                        "AND %9=0")
+                        .arg(m_tableName,                             // 1
+                                columns.join(","),                    // 2
+                                LIBRARY_TABLE,                        // 3
+                                LIBRARYTABLE_ID,                      // 4
+                                SEARCHCRATETRACKSTABLE_TRACKID,       // 5
+                                SEARCHCRATETRACKSTABLE,               // 6
+                                SEARCHCRATETRACKSTABLE_SEARCHCRATEID, // 7
+                                searchCrateId,                        // 8
+                                LIBRARYTABLE_MIXXXDELETED);           // 9
+                                                                      //        qDebug()
+                                                                      //        <<
+                                                                      //        "[BASESQLTABLEMODEL]
+                                                                      //        [SELECT]
+                                                                      //        ->
+                                                                      //        [SMARTIES]
+                                                                      //        Rebuild
+                                                                      //        temp view
+                                                                      //        ->
+                                                                      //        queryStringTempView
+                                                                      //        " <<
+                                                                      //        queryStringTempView;
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    }
+
+    if (m_tableName.startsWith("groupedplaylists_")) {
+        // EVE drop view and rebuild it for Grouped Playlists
+        if (sDebug) {
+            qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [GroupedPlaylists]"
+                     << "Drop temp table "
+                     << m_tableName;
+        }
+        QString queryStringDropView = QString("DROP VIEW IF EXISTS %1 ").arg(m_tableName);
+        FwdSqlQuery(m_database, queryStringDropView).execPrepared();
+        if (sDebug) {
+            qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [GroupedPlaylists] REBUILD TEMP";
+        }
+        QStringList columns;
+        QString playlistId = m_tableName;
+        playlistId = playlistId.replace("groupedplaylists_", "");
+
+        columns << PLAYLISTTRACKSTABLE_TRACKID + " AS " + LIBRARYTABLE_ID
+                << PLAYLISTTRACKSTABLE_POSITION
+                << PLAYLISTTRACKSTABLE_DATETIMEADDED
+                << "'' AS " + LIBRARYTABLE_PREVIEW
+                << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+        FieldEscaper escaper(m_database);
+        QString queryStringTempView = QString(
+                "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                "SELECT %2 FROM PlaylistTracks "
+                "INNER JOIN library ON library.id = PlaylistTracks.track_id "
+                "WHERE PlaylistTracks.playlist_id = %3")
+                                              .arg(escaper.escapeString(m_tableName),
+                                                      columns.join(","),
+                                                      playlistId);
+        if (sDebug) {
+            qDebug() << "[BASESQLTABLEMODEL] [SELECT]"
+                     << "-> [GroupedPlaylists] Rebuild temp view "
+                     << "-> queryStringTempView "
+                     << queryStringTempView;
+        }
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    }
 
     // Prepare query for id and all columns not in m_trackSource
     QString queryString = QString("SELECT %1 FROM %2 %3")
                                   .arg(m_tableColumns.join(","), m_tableName, m_tableOrderBy);
 
-    if (sDebug) {
-        qDebug() << this << "select() executing:" << queryString;
-    }
+    //    qDebug() << "[BASESQLTABLEMODEL] [SELECT]
+    //    -------------BaseSqlTableModel - select() ---- queryString -------- "
+    //    << queryString;
 
+    if (sDebug) {
+        qDebug() << "[BASESQLTABLEMODEL] [SELECT] " << this
+                 << " select() executing : " << queryString;
+    }
     QSqlQuery query(m_database);
     // This causes a memory savings since QSqlCachedResult (what QtSQLite uses)
     // won't allocate a giant in-memory table that we won't use at all.
@@ -359,9 +447,10 @@ void BaseSqlTableModel::select() {
             std::move(trackPosToRows));
     // Both rowInfo and trackIdToRows (might) have been moved and
     // must not be used afterwards!
-
-    qDebug() << this << "select() returned" << m_rowInfo.size()
-             << "results in" << time.elapsed().debugMillisWithUnit();
+    if (sDebug) {
+        qDebug() << this << "select() returned" << m_rowInfo.size()
+                 << "results in" << time.elapsed().debugMillisWithUnit();
+    }
 }
 
 void BaseSqlTableModel::setTable(QString tableName,
@@ -419,12 +508,15 @@ const QString BaseSqlTableModel::currentSearch() const {
     return m_currentSearch;
 }
 
-void BaseSqlTableModel::setSearch(const QString& searchText, const QString& extraFilter) {
+void BaseSqlTableModel::setSearch(const QString& searchText,
+        const QString& extraFilter) {
     if (sDebug) {
         qDebug() << this << "setSearch" << searchText;
     }
-
+    //    qDebug() << "[BASETRACKTABLEMODEL] [SETSEARCH] -> searchText " << searchText;
+    //    qDebug() << "[BASETRACKTABLEMODEL] [SETSEARCH] -> extraFilter " << extraFilter;
     bool searchIsDifferent = m_currentSearch.isNull() || m_currentSearch != searchText;
+
     bool filterDisabled = (m_currentSearchFilter.isNull() && extraFilter.isNull());
     bool searchFilterIsDifferent = m_currentSearchFilter != extraFilter;
 
@@ -441,6 +533,9 @@ void BaseSqlTableModel::search(const QString& searchText, const QString& extraFi
     if (sDebug) {
         qDebug() << this << "search" << searchText;
     }
+    qDebug() << "[BASETRACKTABLEMODEL] [SEARCH] -> searchText " << searchText;
+    qDebug() << "[BASETRACKTABLEMODEL] [SEARCH] -> extraFilter " << extraFilter;
+
     setSearch(searchText, extraFilter);
     select();
 }
@@ -576,7 +671,9 @@ void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
             m_trackSourceOrderBy.append(first ? "ORDER BY " : ", ");
             m_trackSourceOrderBy.append(sort_field);
             m_trackSourceOrderBy.append((sc.m_order == Qt::AscendingOrder) ? " ASC" : " DESC");
-            //qDebug() << m_trackSourceOrderBy;
+            if (sDebug) {
+                // qDebug() << m_trackSourceOrderBy;
+            }
             first = false;
         }
     }
@@ -592,7 +689,9 @@ void BaseSqlTableModel::sort(int column, Qt::SortOrder order) {
 
 int BaseSqlTableModel::rowCount(const QModelIndex& parent) const {
     int count = parent.isValid() ? 0 : m_rowInfo.size();
-    //qDebug() << "rowCount()" << parent << count;
+    if (sDebug) {
+        // qDebug() << "rowCount()" << parent << count;
+    }
     return count;
 }
 
@@ -696,9 +795,11 @@ QVariant BaseSqlTableModel::rawValue(
         // the case that a track is not in the cache, we attempt to load it
         // on the fly. This will be a steep penalty to pay if there are tons
         // of these tracks in the table that are not cached.
-        qDebug() << __FILE__ << __LINE__
-                    << "Track" << trackId
-                    << "was not present in cache and had to be manually fetched.";
+        if (sDebug) {
+            qDebug() << __FILE__ << __LINE__
+                     << "Track" << trackId
+                     << "was not present in cache and had to be manually fetched.";
+        }
         m_trackSource->ensureCached(trackId);
     }
     return m_trackSource->data(trackId, trackSourceColumn);
@@ -862,7 +963,10 @@ void BaseSqlTableModel::tracksChanged(const QSet<TrackId>& trackIds) {
     for (const auto& trackId : trackIds) {
         const auto rows = getTrackRows(trackId);
         for (int row : rows) {
-            //qDebug() << "Row in this result set was updated. Signalling update. track:" << trackId << "row:" << row;
+            if (sDebug) {
+                // qDebug() << "Row in this result set was updated. Signalling
+                // update. track:" << trackId << "row:" << row;
+            }
             QModelIndex topLeft = index(row, 0);
             QModelIndex bottomRight = index(row, numColumns);
             emit dataChanged(topLeft, bottomRight);

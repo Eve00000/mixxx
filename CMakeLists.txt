@@ -111,6 +111,21 @@ function(fatal_error_missing_env)
   endif()
 endfunction()
 
+#eve 20250524
+#to prevent mocs from getting bit7z defines
+add_definitions(
+  -DBIT7Z_AUTO_FORMAT
+  -DBIT7Z_AUTO_PREFIX_LONG_PATHS
+  -DBIT7Z_PATH_SANITIZATION
+)
+
+#another possibility to prevent this is with
+#set(CMAKE_AUTOMOC_MOC_OPTIONS
+#    -DBIT7Z_AUTO_FORMAT
+#    -DBIT7Z_AUTO_PREFIX_LONG_PATHS
+#    -DBIT7Z_PATH_SANITIZATION
+#)
+
 if(UNIX AND NOT APPLE)
   execute_process(
     COMMAND uname -r
@@ -1309,7 +1324,22 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
+  #EVE
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/groupedsearchcratesfeature.cpp
+  src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
+  src/library/trackset/searchcrate/searchcratestorage.cpp
+  src/library/trackset/searchcrate/searchcratetablemodel.cpp
+  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
+  src/library/trackset/crate/groupedcratesfeature.cpp
+  src/library/trackset/playlist/basegroupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplayliststablemodel.cpp
   src/library/trackset/playlistfeature.cpp
+  src/library/trackset/preparation/preparationfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
   src/library/traktor/traktorfeature.cpp
@@ -1349,6 +1379,8 @@ add_library(
   src/preferences/colorpalettesettings.cpp
   src/preferences/configobject.cpp
   src/preferences/constants.cpp
+  src/preferences/backup/backupsettings.cpp
+  src/preferences/backup/backupworker.cpp
   src/preferences/dialog/dlgprefautodj.cpp
   src/preferences/dialog/dlgprefautodjdlg.ui
   src/preferences/dialog/dlgprefbeats.cpp
@@ -1370,6 +1402,8 @@ add_library(
   src/preferences/dialog/dlgpreflibrarydlg.ui
   src/preferences/dialog/dlgprefmixer.cpp
   src/preferences/dialog/dlgprefmixerdlg.ui
+  src/preferences/dialog/dlgprefosc.cpp
+  src/preferences/dialog/dlgprefoscdlg.ui
   src/preferences/dialog/dlgprefrecord.cpp
   src/preferences/dialog/dlgprefrecorddlg.ui
   src/preferences/dialog/dlgprefreplaygain.cpp
@@ -1585,6 +1619,7 @@ add_library(
   src/widget/weffectparameternamebase.cpp
   src/widget/weffectpushbutton.cpp
   src/widget/weffectselector.cpp
+  src/widget/wfastsearch.cpp
   src/widget/wfindonwebmenu.cpp
   src/widget/whotcuebutton.cpp
   src/widget/wimagestore.cpp
@@ -1593,6 +1628,8 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarybasewindow.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
@@ -1671,6 +1708,7 @@ set(
   src/engine/channelhandle.h
   src/engine/engine.h
   src/errordialoghandler.h
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.h
   src/track/track.h
   src/track/track_decl.h
   src/track/trackid.h
@@ -2510,6 +2548,7 @@ if(BUILD_TESTING)
     src/test/coverartcache_test.cpp
     src/test/coverartutils_test.cpp
     src/test/cratestorage_test.cpp
+    src/test/searchcratestorage_test.cpp
     src/test/cue_test.cpp
     src/test/cuecontrol_test.cpp
     src/test/dbconnectionpool_test.cpp
@@ -2787,6 +2826,100 @@ if(WIN32)
       "${CMAKE_CURRENT_BINARY_DIR}/src/gitinfo.h"
   )
   target_include_directories(mixxx PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
+# bit7z
+if(WIN32)
+  find_package(unofficial-bit7z CONFIG REQUIRED)
+  target_link_libraries(mixxx-lib PRIVATE unofficial::bit7z::bit7z64)
+  target_compile_definitions(
+    mixxx-lib
+    PRIVATE
+      BIT7Z_AUTO_FORMAT
+      BIT7Z_AUTO_PREFIX_LONG_PATHS
+      BIT7Z_PATH_SANITIZATION
+  )
+  message("bit7z package lines passed for windows")
+endif()
+
+if(UNIX)
+  include(FetchContent)
+
+  FetchContent_Declare(
+    CPM
+    GIT_REPOSITORY https://github.com/cpm-cmake/CPM.cmake.git
+    GIT_TAG origin/master
+  )
+  FetchContent_MakeAvailable(CPM)
+
+  cpmaddpackage("gh:rikyoz/bit7z@4.0.10")
+
+  target_link_libraries(mixxx-lib PRIVATE bit7z)
+  target_compile_definitions(
+    mixxx-lib
+    PRIVATE
+      BIT7Z_AUTO_FORMAT
+      BIT7Z_AUTO_PREFIX_LONG_PATHS
+      BIT7Z_PATH_SANITIZATION
+  )
+
+  target_link_libraries(mixxx-lib PRIVATE bit7z)
+  message("bit7z package lines passed for linux mac")
+endif()
+
+#7zip
+if(WIN32)
+  file(
+    GLOB SEVEN_ZIP_DLL
+    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/7zip.dll"
+  )
+  if(SEVEN_ZIP_DLL)
+    message(STATUS "Found 7zip.dll at: ${SEVEN_ZIP_DLL}")
+    set(
+      _dll_destinations
+      "${CMAKE_BINARY_DIR}/7z.dll"
+      "${CMAKE_INSTALL_PREFIX}/7z.dll"
+    )
+    foreach(dst IN LISTS _dll_destinations)
+      add_custom_command(
+        TARGET mixxx
+        POST_BUILD
+        COMMAND
+          ${CMAKE_COMMAND} -E copy_if_different "${SEVEN_ZIP_DLL}" "${dst}"
+        COMMENT "Copying 7zip.dll to ${dst}"
+      )
+      message(STATUS "Copied 7zip.dll to ${dst}")
+    endforeach()
+  else()
+    message(WARNING "7zip.dll not found, runtime compression may fail!")
+  endif()
+endif()
+
+if(UNIX)
+  file(
+    GLOB SEVEN_ZIP_BIN
+    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/7z"
+  )
+  if(SEVEN_ZIP_BIN)
+    message(STATUS "Found 7z at: ${SEVEN_ZIP_BIN}")
+    set(
+      _dll_destinations
+      "${CMAKE_BINARY_DIR}"
+      #"${CMAKE_INSTALL_PREFIX}"
+    )
+    foreach(dst IN LISTS _dll_destinations)
+      add_custom_command(
+        TARGET mixxx
+        POST_BUILD
+        COMMAND
+          ${CMAKE_COMMAND} -E copy_if_different "${SEVEN_ZIP_BIN}" "${dst}"
+        COMMENT "Copying 7z to ${dst}"
+      )
+      message(STATUS "Copied 7z to ${dst}")
+    endforeach()
+  else()
+    message(WARNING "7z not found, runtime compression may fail!")
+  endif()
 endif()
 
 # Chromaprint
@@ -3163,6 +3296,43 @@ target_include_directories(
   PUBLIC lib/rekordbox-metadata
 )
 target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
+
+if(WIN32)
+  set(IpSystemTypePath src/osc/ip/win32)
+  set(LIBS ${LIBS} Ws2_32 winmm)
+else()
+  set(IpSystemTypePath src/osc/ip/posix)
+endif()
+
+#eve osc
+add_library(
+  oscpack
+  src/osc/ip/IpEndpointName.cpp
+  src/osc/ip/IpEndpointName.h
+  src/osc/ip/NetworkingUtils.h
+  ${IpSystemTypePath}/NetworkingUtils.cpp
+  src/osc/ip/PacketListener.h
+  src/osc/ip/TimerListener.h
+  src/osc/ip/UdpSocket.h
+  ${IpSystemTypePath}/UdpSocket.cpp
+  src/osc/osc/MessageMappingOscPacketListener.h
+  src/osc/osc/OscException.h
+  src/osc/osc/OscHostEndianness.h
+  src/osc/osc/OscOutboundPacketStream.cpp
+  src/osc/osc/OscOutboundPacketStream.h
+  src/osc/osc/OscPacketListener.h
+  src/osc/osc/OscPrintReceivedElements.cpp
+  src/osc/osc/OscPrintReceivedElements.h
+  src/osc/osc/OscReceivedElements.cpp
+  src/osc/osc/OscReceivedElements.h
+  src/osc/osc/OscTypes.cpp
+  src/osc/osc/OscTypes.h
+)
+include_directories(${CMAKE_SOURCE_DIR})
+#target_link_libraries(mixxx oscpack ${LIBS})
+target_include_directories(mixxx-lib SYSTEM PRIVATE ip)
+target_include_directories(mixxx-lib SYSTEM PRIVATE osc)
+target_link_libraries(mixxx-lib PRIVATE oscpack)
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -3574,6 +3744,7 @@ if(Qt_IS_STATIC)
     target_link_libraries(
       mixxx-lib
       PRIVATE Qt${QT_VERSION_MAJOR}::QWindowsIntegrationPlugin
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
     )
     if(QT_VERSION VERSION_LESS 6.7)
       target_link_libraries(
@@ -3827,25 +3998,14 @@ else()
           COMPONENT
           applocal
       )
-      if(QT_VERSION VERSION_LESS 6.7)
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      else()
-        install(
-          IMPORTED_RUNTIME_ARTIFACTS
-            Qt${QT_VERSION_MAJOR}::QModernWindowsStylePlugin
-            DESTINATION
-            "${MIXXX_INSTALL_DATADIR}/styles"
-            COMPONENT
-            applocal
-        )
-      endif()
+      #install(
+      #IMPORTED_RUNTIME_ARTIFACTS
+      #Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
+      #DESTINATION
+      #"${MIXXX_INSTALL_DATADIR}/styles"
+      #COMPONENT
+      #applocal
+      #)
     endif()
     if(APPLE)
       install(
