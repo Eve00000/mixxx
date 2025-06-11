@@ -1312,6 +1312,15 @@ add_library(
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
+  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
+  # src/library/trackset/searchcrate/dlggroupedsearchcratesinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/groupedsearchcratesfeature.cpp
+  src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
+  src/library/trackset/searchcrate/searchcratestorage.cpp
+  src/library/trackset/searchcrate/searchcratetablemodel.cpp
   src/library/traktor/traktorfeature.cpp
   src/library/treeitem.cpp
   src/library/treeitemmodel.cpp
