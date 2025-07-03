@@ -29,6 +29,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
@@ -73,6 +74,7 @@ Library::Library(
           m_pMixxxLibraryFeature(nullptr),
           m_pPlaylistFeature(nullptr),
           m_pCrateFeature(nullptr),
+          m_pSearchCrateFeature(nullptr),
           m_pAnalysisFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
 
@@ -129,6 +131,8 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+    m_pSearchCrateFeature = new SearchCrateFeature(this, m_pConfig);
+    addFeature(m_pSearchCrateFeature);
 
     m_pBrowseFeature = new BrowseFeature(
             this, m_pConfig, pRecordingManager);
@@ -157,6 +161,10 @@ Library::Library(
             &AnalysisFeature::analyzeTracks);
     connect(m_pCrateFeature,
             &CrateFeature::analyzeTracks,
+            m_pAnalysisFeature,
+            &AnalysisFeature::analyzeTracks);
+    connect(m_pSearchCrateFeature,
+            &SearchCrateFeature::analyzeTracks,
             m_pAnalysisFeature,
             &AnalysisFeature::analyzeTracks);
     connect(this,
@@ -600,6 +608,10 @@ void Library::slotCreatePlaylist() {
 
 void Library::slotCreateCrate() {
     m_pCrateFeature->slotCreateCrate();
+}
+
+void Library::slotCreateSearchCrate() {
+    m_pSearchCrateFeature->slotCreateSearchCrate();
 }
 
 void Library::onSkinLoadFinished() {

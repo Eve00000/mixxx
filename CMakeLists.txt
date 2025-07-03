@@ -1403,6 +1403,10 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
+  src/library/trackset/searchcrate/searchcratestorage.cpp
+  src/library/trackset/searchcrate/searchcratetablemodel.cpp
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
