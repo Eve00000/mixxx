@@ -3,7 +3,9 @@
 #include <QInputDialog>
 #include <QLineEdit>
 
+#include "library/dao/trackschema.h"
 #include "library/trackcollection.h"
+#include "library/trackset/basetracksetfeature.h"
 #include "library/trackset/searchcrate/searchcrate.h"
 #include "library/trackset/searchcrate/searchcratesummary.h"
 #include "moc_searchcratefeaturehelper.cpp"
@@ -32,6 +34,33 @@ QString SearchCrateFeatureHelper::proposeNameForNewSearchCrate(
         }
     } while (m_pTrackCollection->searchCrates().readSearchCrateByName(proposedName));
     // Found an unused searchCrate name
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> proposedName" << proposedName;
+    }
+    // would be better with regex but ... :-)
+    proposedName.replace(LIBRARYTABLE_ARTIST + ":", "")
+            .replace(LIBRARYTABLE_TITLE + ":", "")
+            .replace(LIBRARYTABLE_ALBUM + ":", "")
+            .replace(LIBRARYTABLE_ALBUMARTIST + ":", "")
+            .replace(LIBRARYTABLE_GENRE + ":", "")
+            .replace(LIBRARYTABLE_COMMENT + ":", "")
+            .replace(LIBRARYTABLE_COMPOSER + ":", "")
+            .replace(LIBRARYTABLE_GROUPING + ":", "")
+            .replace(LIBRARYTABLE_FILETYPE + ":", "")
+            .replace(LIBRARYTABLE_KEY + ":", "")
+            .replace(LIBRARYTABLE_YEAR + ":", "")
+            .replace(LIBRARYTABLE_DATETIMEADDED + ":", "")
+            .replace(LIBRARYTABLE_DURATION + ":", "")
+            .replace(LIBRARYTABLE_BPM + ":", "")
+            .replace(LIBRARYTABLE_PLAYED + ":", "")
+            .replace(LIBRARYTABLE_RATING + ":", "")
+            .replace("\"", "");
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> cleaned "
+                    "proposedName"
+                 << proposedName;
+    }
+
     return proposedName;
 }
 
