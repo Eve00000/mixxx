@@ -53,6 +53,7 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
     void search(const QString& text);
     FocusWidget setLibraryFocus(FocusWidget newFocusWidget,
             Qt::FocusReason focusReason = Qt::OtherFocusReason);
+    void newSearchCrate(const QString& text);
 
   public slots:
     void slotSetFont(const QFont& font);
@@ -62,6 +63,9 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
 
     void slotClearSearch();
     bool slotClearSearchIfClearButtonHasFocus();
+
+    void slot2SearchCrate();
+    bool slot2SearchCrateIf2SearchCrateButtonHasFocus();
 
     /// The function selects an entry relative to the currently selected
     /// entry in the history and executes the search.
@@ -113,6 +117,7 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
 
     parented_ptr<QCompleter> m_completer;
     parented_ptr<QToolButton> const m_clearButton;
+    parented_ptr<QToolButton> const m_2SearchCrateButton;
 
     QTimer m_debouncingTimer;
     QTimer m_saveTimer;

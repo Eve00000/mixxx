@@ -133,6 +133,7 @@ class Library: public QObject {
     void slotCreatePlaylist();
     void slotCreateCrate();
     void slotCreateSearchCrate();
+    void slotCreateSearchCrateFromSearch(const QString& text);
     void slotSearchInCurrentView();
     void slotSearchInAllTracks();
     void onSkinLoadFinished();

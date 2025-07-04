@@ -429,6 +429,19 @@ void SearchCrateFeature::slotCreateSearchCrate() {
     }
 }
 
+void SearchCrateFeature::slotCreateSearchCrateFromSearch(const QString& text) {
+    SearchCrateId searchCrateId =
+            SearchCrateFeatureHelper(m_pTrackCollection, m_pConfig)
+                    .createEmptySearchCrateFromSearch(text);
+
+    if (searchCrateId.isValid()) {
+        // expand SearchCrate and scroll to new searchCrate
+        m_pSidebarWidget->selectChildIndex(indexFromSearchCrateId(searchCrateId), false);
+        m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
+        activateSearchCrate(searchCrateId);
+    }
+}
+
 void SearchCrateFeature::deleteItem(const QModelIndex& index) {
     m_lastRightClickedIndex = index;
     slotDeleteSearchCrate();

@@ -328,6 +328,10 @@ void Library::bindSearchboxWidget(WSearchLineEdit* pSearchboxWidget) {
             &WSearchLineEdit::search,
             this,
             &Library::search);
+    connect(pSearchboxWidget,
+            &WSearchLineEdit::newSearchCrate,
+            this,
+            &Library::slotCreateSearchCrateFromSearch);
     connect(this,
             &Library::disableSearch,
             pSearchboxWidget,
@@ -612,6 +616,10 @@ void Library::slotCreateCrate() {
 
 void Library::slotCreateSearchCrate() {
     m_pSearchCrateFeature->slotCreateSearchCrate();
+}
+
+void Library::slotCreateSearchCrateFromSearch(const QString& text) {
+    m_pSearchCrateFeature->slotCreateSearchCrateFromSearch(text);
 }
 
 void Library::onSkinLoadFinished() {
