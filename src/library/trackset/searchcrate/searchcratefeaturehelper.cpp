@@ -2,6 +2,9 @@
 
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QRegularExpression>
+#include <QString>
+#include <QStringList>
 
 #include "library/dao/trackschema.h"
 #include "library/trackcollection.h"
@@ -114,6 +117,358 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrate() {
                 tr("Creating SearchCrate Failed"),
                 tr("An unknown error occurred while creating searchCrate: ") +
                         newSearchCrate.getName());
+    }
+    return newSearchCrateId;
+}
+
+SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const QString& text) {
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH]";
+    }
+    SearchCrate newSearchCrate;
+    const QString proposedSearchCrateName =
+            proposeNameForNewSearchCrate(tr("Search for ") + text);
+    for (;;) {
+        bool ok = false;
+        auto newName =
+                QInputDialog::getText(
+                        nullptr,
+                        tr("New SearchCrate From Search"),
+                        tr("Enter name for new searchCrate:"),
+                        QLineEdit::Normal,
+                        proposedSearchCrateName,
+                        &ok)
+                        .trimmed();
+        if (!ok) {
+            return SearchCrateId();
+        }
+        if (newName.isEmpty()) {
+            QMessageBox::warning(
+                    nullptr,
+                    tr("Creating SearchCrate Failed"),
+                    tr("A searchCrate cannot have a blank name."));
+            continue;
+        }
+        if (m_pTrackCollection->searchCrates().readSearchCrateByName(newName)) {
+            QMessageBox::warning(
+                    nullptr,
+                    tr("Creating SearchCrate Failed"),
+                    tr("A searchCrate by that name already exists."));
+            continue;
+        }
+
+        // here a given text will be converted to parts: terms (fields) and
+        // values QStringList terms = {"artist:", "album_artist:", "album:",
+        // "title:", "genre:", "composer:", "grouping:", "comment:",
+        // "location:", "type:", "played:", "rating:", "year:", "key:", "bpm:",
+        // "duration:", "datetime_added:"}; clean the name
+        // would be better with regex but ... :-)
+        newName.replace(LIBRARYTABLE_ARTIST + ":", "")
+                .replace(LIBRARYTABLE_TITLE + ":", "")
+                .replace(LIBRARYTABLE_ALBUM + ":", "")
+                .replace(LIBRARYTABLE_ALBUMARTIST + ":", "")
+                .replace(LIBRARYTABLE_GENRE + ":", "")
+                .replace(LIBRARYTABLE_COMMENT + ":", "")
+                .replace(LIBRARYTABLE_COMPOSER + ":", "")
+                .replace(LIBRARYTABLE_GROUPING + ":", "")
+                .replace(LIBRARYTABLE_FILETYPE + ":", "")
+                .replace(LIBRARYTABLE_KEY + ":", "")
+                .replace(LIBRARYTABLE_YEAR + ":", "")
+                .replace(LIBRARYTABLE_DATETIMEADDED + ":", "")
+                .replace(LIBRARYTABLE_DURATION + ":", "")
+                .replace(LIBRARYTABLE_BPM + ":", "")
+                .replace(LIBRARYTABLE_PLAYED + ":", "")
+                .replace(LIBRARYTABLE_RATING + ":", "")
+                .replace("\"", "")
+                .replace("   ", " ")
+                .replace("  ", " ");
+
+        // clean the input text
+        QStringList stringTerms = {
+                LIBRARYTABLE_ARTIST,      // "artist"
+                LIBRARYTABLE_TITLE,       // "title"
+                LIBRARYTABLE_ALBUM,       // "album"
+                LIBRARYTABLE_ALBUMARTIST, // "album_artist"
+                LIBRARYTABLE_GENRE,       // "genre"
+                LIBRARYTABLE_COMMENT,     // "comment"
+                LIBRARYTABLE_COMPOSER,    // "composer"
+                LIBRARYTABLE_FILETYPE,    // "filetype"
+                LIBRARYTABLE_KEY};        // "key"
+        QStringList dateTerms = {
+                LIBRARYTABLE_YEAR,            // "year"
+                LIBRARYTABLE_DATETIMEADDED,   // "datetime_added"
+                LIBRARYTABLE_LAST_PLAYED_AT}; // "last_played_at"
+        QStringList numberTerms = {
+                LIBRARYTABLE_DURATION,    // "duration"
+                LIBRARYTABLE_BPM,         // "bpm"
+                LIBRARYTABLE_PLAYED,      // "played"
+                LIBRARYTABLE_TIMESPLAYED, // "timesplayed"
+                LIBRARYTABLE_RATING};     // "rating"
+
+        QString cleanedText = text;
+        // possible typing errors: replace ; / 2x  & 3x colons with a single colon
+        // replace , ?
+        cleanedText.replace("?", "");
+        cleanedText.replace(",", "");
+        cleanedText.replace(";", ":");
+        cleanedText.replace("::", ":");
+        cleanedText.replace(":::", ":");
+        cleanedText.replace("~", "");
+        cleanedText.replace("=", "");
+
+        // if the or-symbol | is in the text the combiners will be OR, else AND (default)
+        bool orCombiner = cleanedText.indexOf("|", 0) > 1;
+        cleanedText.replace("|", "");
+
+        if (sDebugSearchCrateFeatureHelper) {
+            qDebug() << "Cleaned Text:" << cleanedText;
+        }
+        //        QString pattern =
+        //        "\\b(?:artist:|album_artist:|album:|title:|genre:|composer:|grouping:|comment:|location:|type:|played:|rating:|year:|key:|bpm:|duration:|datetime_added:)\\s*(?:\"([^\"]*)\"|(\\S+))";
+        //        QRegularExpression termRegex(pattern,
+        //        QRegularExpression::CaseInsensitiveOption);
+
+        // const QString& pattern =
+        //        R"(\b(artist:|album_artist:|album:|title:|genre:|composer:|grouping:|comment:|location:|type:|played:|rating:|year:|key:|bpm:|duration:|datetime_added:)\s*([^:]+?)(?=\s*\b(?:artist:|album_artist:|album:|title:|genre:|composer:|grouping:|comment:|location:|type:|played:|rating:|year:|key:|bpm:|duration:|datetime_added:|$)))";
+
+        const QStringList patternFields = {
+                LIBRARYTABLE_ARTIST + ":",
+                LIBRARYTABLE_ALBUMARTIST + ":",
+                LIBRARYTABLE_ALBUM + ":",
+                LIBRARYTABLE_TITLE + ":",
+                LIBRARYTABLE_GENRE + ":",
+                LIBRARYTABLE_COMPOSER + ":",
+                LIBRARYTABLE_GROUPING + ":",
+                LIBRARYTABLE_COMMENT + ":",
+                LIBRARYTABLE_LOCATION + ":",
+                LIBRARYTABLE_FILETYPE + ":",
+                LIBRARYTABLE_PLAYED + ":",
+                LIBRARYTABLE_RATING + ":",
+                LIBRARYTABLE_YEAR + ":",
+                LIBRARYTABLE_KEY + ":",
+                LIBRARYTABLE_BPM + ":",
+                LIBRARYTABLE_DURATION + ":",
+                LIBRARYTABLE_DATETIMEADDED + ":"};
+
+        const QString patternFieldsJoined = patternFields.join("|");
+        const QString pattern = QString(R"(\b(%1)\s*([^:]+?)(?=\s*\b(?:%1|$)))")
+                                        .arg(patternFieldsJoined);
+
+        static QRegularExpression termRegex(pattern, QRegularExpression::CaseInsensitiveOption);
+
+        QRegularExpressionMatchIterator X = termRegex.globalMatch(cleanedText);
+        int conditionIndex = 1;
+        bool foundTerms = false;
+
+        while (X.hasNext() && conditionIndex <= 12) {
+            QRegularExpressionMatch match = X.next();
+            QString term = match.captured(1).split(":")[0].trimmed();
+            QString value = match.captured(2).trimmed();
+
+            if (!term.isEmpty() && !value.isEmpty()) {
+                foundTerms = true;
+
+                // Determine operator type based on term type
+                QString operatorType;
+                if (stringTerms.contains(term)) {
+                    operatorType = "contains";
+                } else if (numberTerms.contains(term)) {
+                    if (value.contains("-")) {
+                        operatorType = "between";
+                        value.replace("-", "|");
+                    } else if (value.startsWith("<")) {
+                        operatorType = "less than";
+                        value.replace("<", "");
+                    } else if (value.startsWith(">")) {
+                        operatorType = "greater than";
+                        value.replace(">", "");
+                    } else {
+                        operatorType = "equal to";
+                    }
+                } else if (dateTerms.contains(term)) {
+                    if (value.contains("-")) {
+                        operatorType = "between";
+                        value.replace("-", "|");
+                    } else if (value.startsWith("<")) {
+                        operatorType = "before";
+                        value.replace("<", "");
+                    } else if (value.startsWith(">")) {
+                        operatorType = "after";
+                        value.replace(">", "");
+                    } else {
+                        operatorType = "equal to";
+                    }
+                }
+
+                // Assign to the appropriate condition field
+                switch (conditionIndex) {
+                case 1:
+                    newSearchCrate.setCondition1Field(term);
+                    newSearchCrate.setCondition1Operator(operatorType);
+                    newSearchCrate.setCondition1Value(value);
+                    newSearchCrate.setCondition1Combiner(") END");
+                    break;
+                case 2:
+                    newSearchCrate.setCondition2Field(term);
+                    newSearchCrate.setCondition2Operator(operatorType);
+                    newSearchCrate.setCondition2Value(value);
+                    newSearchCrate.setCondition2Combiner(") END");
+                    newSearchCrate.setCondition1Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 3:
+                    newSearchCrate.setCondition3Field(term);
+                    newSearchCrate.setCondition3Operator(operatorType);
+                    newSearchCrate.setCondition3Value(value);
+                    newSearchCrate.setCondition3Combiner(") END");
+                    newSearchCrate.setCondition2Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 4:
+                    newSearchCrate.setCondition4Field(term);
+                    newSearchCrate.setCondition4Operator(operatorType);
+                    newSearchCrate.setCondition4Value(value);
+                    newSearchCrate.setCondition4Combiner(") END");
+                    newSearchCrate.setCondition3Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 5:
+                    newSearchCrate.setCondition5Field(term);
+                    newSearchCrate.setCondition5Operator(operatorType);
+                    newSearchCrate.setCondition5Value(value);
+                    newSearchCrate.setCondition5Combiner(") END");
+                    newSearchCrate.setCondition4Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 6:
+                    newSearchCrate.setCondition6Field(term);
+                    newSearchCrate.setCondition6Operator(operatorType);
+                    newSearchCrate.setCondition6Value(value);
+                    newSearchCrate.setCondition6Combiner(") END");
+                    newSearchCrate.setCondition5Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 7:
+                    newSearchCrate.setCondition7Field(term);
+                    newSearchCrate.setCondition7Operator(operatorType);
+                    newSearchCrate.setCondition7Value(value);
+                    newSearchCrate.setCondition7Combiner(") END");
+                    newSearchCrate.setCondition6Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 8:
+                    newSearchCrate.setCondition8Field(term);
+                    newSearchCrate.setCondition8Operator(operatorType);
+                    newSearchCrate.setCondition8Value(value);
+                    newSearchCrate.setCondition8Combiner(") END");
+                    newSearchCrate.setCondition7Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 9:
+                    newSearchCrate.setCondition9Field(term);
+                    newSearchCrate.setCondition9Operator(operatorType);
+                    newSearchCrate.setCondition9Value(value);
+                    newSearchCrate.setCondition9Combiner(") END");
+                    newSearchCrate.setCondition8Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 10:
+                    newSearchCrate.setCondition10Field(term);
+                    newSearchCrate.setCondition10Operator(operatorType);
+                    newSearchCrate.setCondition10Value(value);
+                    newSearchCrate.setCondition10Combiner(") END");
+                    newSearchCrate.setCondition9Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 11:
+                    newSearchCrate.setCondition11Field(term);
+                    newSearchCrate.setCondition11Operator(operatorType);
+                    newSearchCrate.setCondition11Value(value);
+                    newSearchCrate.setCondition11Combiner(") END");
+                    newSearchCrate.setCondition10Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                case 12:
+                    newSearchCrate.setCondition12Field(term);
+                    newSearchCrate.setCondition12Operator(operatorType);
+                    newSearchCrate.setCondition12Value(value);
+                    newSearchCrate.setCondition12Combiner(") END");
+                    newSearchCrate.setCondition11Combiner(orCombiner ? ") OR (" : ") AND (");
+                    break;
+                }
+
+                if (sDebugSearchCrateFeatureHelper) {
+                    qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> "
+                                "Detected Term:"
+                             << term << ", Value:" << value;
+                }
+                ++conditionIndex;
+            }
+        }
+
+        // what if no terms (field) were in the input ....
+        if (!foundTerms) {
+            if (sDebugSearchCrateFeatureHelper) {
+                qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> No term "
+                            "detected, setting noTermValue:"
+                         << text.trimmed();
+            }
+            cleanedText.replace("\"", "");
+            newSearchCrate.setSearchSql(newName);
+            newSearchCrate.setCondition1Field(LIBRARYTABLE_ARTIST);
+            newSearchCrate.setCondition1Operator("contains");
+            newSearchCrate.setCondition1Value(cleanedText);
+            newSearchCrate.setCondition1Combiner(") OR (");
+            newSearchCrate.setCondition2Field(LIBRARYTABLE_ALBUMARTIST);
+            newSearchCrate.setCondition2Operator("contains");
+            newSearchCrate.setCondition2Value(cleanedText);
+            newSearchCrate.setCondition2Combiner(") OR (");
+            newSearchCrate.setCondition3Field(LIBRARYTABLE_TITLE);
+            newSearchCrate.setCondition3Operator("contains");
+            newSearchCrate.setCondition3Value(cleanedText);
+            newSearchCrate.setCondition3Combiner(") OR (");
+            newSearchCrate.setCondition4Field(LIBRARYTABLE_ALBUM);
+            newSearchCrate.setCondition4Operator("contains");
+            newSearchCrate.setCondition4Value(cleanedText);
+            newSearchCrate.setCondition4Combiner(") OR (");
+            newSearchCrate.setCondition5Field(LIBRARYTABLE_GENRE);
+            newSearchCrate.setCondition5Operator("contains");
+            newSearchCrate.setCondition5Value(cleanedText);
+            newSearchCrate.setCondition5Combiner(") OR (");
+            newSearchCrate.setCondition6Field(LIBRARYTABLE_COMPOSER);
+            newSearchCrate.setCondition6Operator("contains");
+            newSearchCrate.setCondition6Value(cleanedText);
+            newSearchCrate.setCondition6Combiner(") OR (");
+            newSearchCrate.setCondition7Field(LIBRARYTABLE_COMMENT);
+            newSearchCrate.setCondition7Operator("contains");
+            newSearchCrate.setCondition7Value(cleanedText);
+            newSearchCrate.setCondition7Combiner(") END");
+        }
+
+        newSearchCrate.setName(std::move(newName));
+        DEBUG_ASSERT(newSearchCrate.hasName());
+        newSearchCrate.setSearchInput(text);
+        newSearchCrate.setSearchSql(text);
+        break;
+    }
+
+    SearchCrateId newSearchCrateId;
+
+    if (m_pTrackCollection->insertSearchCrate(newSearchCrate, &newSearchCrateId)) {
+        DEBUG_ASSERT(newSearchCrateId.isValid());
+        newSearchCrate.setId(newSearchCrateId);
+        if (sDebugSearchCrateFeatureHelper) {
+            qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> Created new "
+                        "searchCrate"
+                     << newSearchCrate;
+            qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> Created new "
+                        "searchCrate ID: "
+                     << newSearchCrateId;
+        }
+    } else {
+        DEBUG_ASSERT(!newSearchCrateId.isValid());
+        qWarning() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] "
+                      "-> Failed to create new searchCrate"
+                   << "->" << newSearchCrate.getName();
+        QMessageBox::warning(nullptr,
+                tr("Creating SearchCrate Failed"),
+                tr("An unknown error occurred while creating searchCrate: ") +
+                        newSearchCrate.getName());
+    }
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM SEARCH] -> "
+                    "newSearchCrateId "
+                 << newSearchCrateId;
     }
     return newSearchCrateId;
 }
