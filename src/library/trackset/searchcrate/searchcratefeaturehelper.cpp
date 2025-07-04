@@ -473,6 +473,46 @@ SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromSearch(const Q
     return newSearchCrateId;
 }
 
+SearchCrateId SearchCrateFeatureHelper::createEmptySearchCrateFromUI() {
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] ";
+    }
+    SearchCrate newSearchCrate;
+    const QString proposedSearchCrateName =
+            proposeNameForNewSearchCrate("New SearchCrate From Edit");
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [PROPOSE NEW NAME] -> proposedName"
+                 << proposedSearchCrateName;
+    }
+    for (;;) {
+        auto newName = proposedSearchCrateName;
+        SearchCrateId();
+        newSearchCrate.setName(std::move(newName));
+        DEBUG_ASSERT(newSearchCrate.hasName());
+        break;
+    }
+    SearchCrateId newSearchCrateId;
+    if (m_pTrackCollection->insertSearchCrate(newSearchCrate, &newSearchCrateId)) {
+        DEBUG_ASSERT(newSearchCrateId.isValid());
+        newSearchCrate.setId(newSearchCrateId);
+        if (sDebugSearchCrateFeatureHelper) {
+            qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] "
+                        "Created new searchCrate"
+                     << newSearchCrate;
+        }
+    } else {
+        DEBUG_ASSERT(!newSearchCrateId.isValid());
+        qWarning() << "Failed to create new searchCrate"
+                   << "->" << newSearchCrate.getName();
+    }
+    if (sDebugSearchCrateFeatureHelper) {
+        qDebug() << "[SEARCHCRATES] [HELPER] [NEW SEARCHCRATES FROM UI] -> "
+                    "newSearchCrateId "
+                 << newSearchCrateId;
+    }
+    return newSearchCrateId;
+}
+
 SearchCrateId SearchCrateFeatureHelper::duplicateSearchCrate(const SearchCrate& oldSearchCrate) {
     if (sDebugSearchCrateFeatureHelper) {
         qDebug() << "[SEARCHCRATES] [HELPER] [DUPLICATE SEARCHCRATES] -> START";

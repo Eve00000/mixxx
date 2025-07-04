@@ -19,6 +19,7 @@ class SearchCrateFeatureHelper : public QObject {
 
     SearchCrateId createEmptySearchCrate();
     SearchCrateId createEmptySearchCrateFromSearch(const QString& text);
+    SearchCrateId createEmptySearchCrateFromUI();
     SearchCrateId duplicateSearchCrate(const SearchCrate& oldSearchCrate);
 
   private:
