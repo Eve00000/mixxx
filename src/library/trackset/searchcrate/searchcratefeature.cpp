@@ -28,7 +28,7 @@
 #include "widget/wlibrarytextbrowser.h"
 
 namespace {
-
+const bool sDebugSearchCrateFeature = false;
 QString formatLabel(
         const SearchCrateSummary& searchCrateSummary) {
     return QStringLiteral("%1 (%2) %3")
@@ -72,7 +72,11 @@ void SearchCrateFeature::initActions() {
             &QAction::triggered,
             this,
             &SearchCrateFeature::slotCreateSearchCrate);
-
+    m_pEditSearchCrateAction = make_parented<QAction>(tr("Edit SearchCrate"), this);
+    connect(m_pEditSearchCrateAction.get(),
+            &QAction::triggered,
+            this,
+            &SearchCrateFeature::slotEditSearchCrate);
     m_pRenameSearchCrateAction = make_parented<QAction>(tr("Rename"), this);
     connect(m_pRenameSearchCrateAction.get(),
             &QAction::triggered,
@@ -367,7 +371,7 @@ void SearchCrateFeature::onRightClick(const QPoint& globalPos) {
     QMenu menu(m_pSidebarWidget);
     menu.addAction(m_pCreateSearchCrateAction.get());
     menu.addSeparator();
-    menu.addAction(m_pCreateImportPlaylistAction.get());
+    menu.addAction(m_pEditSearchCrateAction.get());
 #ifdef __ENGINEPRIME__
     menu.addSeparator();
     menu.addAction(m_pExportAllSearchCratesAction.get());
@@ -399,6 +403,9 @@ void SearchCrateFeature::onRightClickChild(
     QMenu menu(m_pSidebarWidget);
     menu.addAction(m_pCreateSearchCrateAction.get());
     menu.addSeparator();
+    menu.addAction(m_pEditSearchCrateAction.get());
+    menu.addSeparator();
+    menu.addAction(m_pCreateImportPlaylistAction.get());
     menu.addAction(m_pRenameSearchCrateAction.get());
     menu.addAction(m_pDuplicateSearchCrateAction.get());
     menu.addAction(m_pDeleteSearchCrateAction.get());
@@ -541,6 +548,425 @@ void SearchCrateFeature::slotDuplicateSearchCrate() {
         }
     }
     qDebug() << "Failed to duplicate selected searchCrate";
+}
+
+void SearchCrateFeature::slotEditSearchCrate() {
+    QMutex mutex;
+    mutex.lock();
+    if (sDebugSearchCrateFeature) {
+        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] "
+                    "-> slotEditSearchCrate";
+    }
+    SearchCrate searchCrate;
+    readLastRightClickedSearchCrate(&searchCrate);
+    if (sDebugSearchCrateFeature) {
+        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
+                    "m_lastRightClickedIndex  = "
+                 << m_lastRightClickedIndex;
+    }
+    // Load data into QVariant
+    searchCrateData.clear();
+    m_searchCrateTableModel.selectSearchCrate2QVL(
+            searchCrateIdFromIndex(m_lastRightClickedIndex), searchCrateData);
+    if (sDebugSearchCrateFeature) {
+        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
+                    "SearchCrate data loaded into QVariantList:"
+                 << searchCrateData;
+    }
+
+    QVariantList playlistsCratesData;
+    m_searchCrateTableModel.selectPlaylistsCrates2QVL(playlistsCratesData);
+    if (sDebugSearchCrateFeature) {
+        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
+                    "Playlists & Crates data loaded into QVariantList:"
+                 << playlistsCratesData;
+    }
+
+    if (readLastRightClickedSearchCrate(&searchCrate)) {
+        SearchCrateId searchCrateId = searchCrateIdFromIndex(m_lastRightClickedIndex);
+        if (sDebugSearchCrateFeature) {
+            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
+                        "SlotEditSearchCrate -> searchCrateID = "
+                     << searchCrateId;
+        }
+        // Pass this to provide the SearchCratesFeature instance
+        dlgSearchCrateInfo infoDialog(this);
+
+        if (sDebugSearchCrateFeature) {
+            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [START] -> "
+                        "[INIT DIALOG] -> INIT DIALOG ";
+        }
+
+        infoDialog.init(searchCrateData, playlistsCratesData);
+        // DLG -> Update SearchCrate on 'Apply'
+        connect(&infoDialog,
+                &dlgSearchCrateInfo::dataUpdated,
+                this,
+                [this, searchCrateId](const QVariantList& updatedData) mutable {
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[UPDATE] -> START Request UPDATE SearchCrate "
+                                    "searchCrateId "
+                                 << searchCrateId;
+                    }
+                    searchCrateData = updatedData; // Capture the updated data from the UI
+                    // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
+                    SearchCrateId searchCrateId(searchCrateData[0]);
+                    // SearchCrateId previousSearchCrateId(searchCrateData[56]);
+                    // bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
+                    // SearchCrateId nextSearchCrateId(searchCrateData[58]);
+                    // bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] extracted "
+                                    "searchCrateId from searchCrateData: "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
+                                 << searchCrateId;
+                        // qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
+                        //          << previousSearchCrateId;
+                        // qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
+                        //          << currentSearchCrateIdBOF;
+                        // qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
+                        //          << nextSearchCrateId;
+                        // qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
+                        //          << currentSearchCrateIdEOF;
+                    }
+                    if (searchCrateId.isValid()) {
+                        // Store updated data
+                        m_searchCrateTableModel.saveQVL2SearchCrate(searchCrateId, searchCrateData);
+                        // Send updated data back to ui-> adapted sql
+                        m_searchCrateTableModel.selectSearchCrate2QVL(
+                                searchCrateIdFromIndex(m_lastRightClickedIndex),
+                                searchCrateData);
+                        activateSearchCrate(searchCrateId);
+                        m_lastClickedIndex = indexFromSearchCrateId(searchCrateId);
+                        m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
+                        slotSearchCrateTableChanged(searchCrateId);
+                        if (sDebugSearchCrateFeature) {
+                            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                        "[UPDATE] -> END UPDATE searchCrateId "
+                                     << searchCrateId;
+                        }
+                        emit updateSearchCrateData(searchCrateData);
+                    } else {
+                        return;
+                    }
+                });
+        // DLG -> Delete SearchCrate on 'Delete'
+        connect(&infoDialog,
+                &dlgSearchCrateInfo::requestDeleteSearchCrate,
+                this,
+                [this]() {
+                    //[this, &searchCrateId]() {
+                    // [this, searchCrateId]() { // last
+                    // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
+                    SearchCrateId searchCrateId(searchCrateData[0]);
+                    SearchCrateId previousSearchCrateId(searchCrateData[56]);
+                    bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
+                    SearchCrateId nextSearchCrateId(searchCrateData[58]);
+                    bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[DELETE] -> START Request DELETE SearchCrate "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] extracted "
+                                    "searchCrateId from searchCrateData: "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
+                                 << previousSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
+                                 << currentSearchCrateIdBOF;
+                        qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
+                                 << nextSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
+                                 << currentSearchCrateIdEOF;
+                    }
+                    if (!searchCrateId.isValid()) {
+                        if (sDebugSearchCrateFeature) {
+                            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
+                                        "SEARCHCRATES] -> "
+                                        "[DELETE] -> Invalid SearchCrateId. : "
+                                     << searchCrateId;
+                        }
+                        return;
+                    } else {
+                        slotDeleteSearchCrate();
+                        if (currentSearchCrateIdBOF && !currentSearchCrateIdEOF) {
+                            if (nextSearchCrateId.isValid()) {
+                                m_searchCrateTableModel.selectSearchCrate2QVL(
+                                        nextSearchCrateId,
+                                        searchCrateData);
+                                emit updateSearchCrateData(searchCrateData);
+                                if (sDebugSearchCrateFeature) {
+                                    qDebug() << "[SEARCHCRATESFEATURE] [SLOT "
+                                                "EDIT SEARCHCRATES] -> "
+                                                "[DELETE] -> SearchCrate "
+                                                "DELETED, new active "
+                                                "searchCrate: "
+                                             << nextSearchCrateId;
+                                }
+                                m_lastRightClickedIndex = indexFromSearchCrateId(nextSearchCrateId);
+                                activateSearchCrate(nextSearchCrateId);
+                            } else {
+                                return;
+                            }
+                        } else {
+                            if (previousSearchCrateId.isValid()) {
+                                m_searchCrateTableModel.selectSearchCrate2QVL(
+                                        previousSearchCrateId,
+                                        searchCrateData);
+                                emit updateSearchCrateData(searchCrateData);
+                                if (sDebugSearchCrateFeature) {
+                                    qDebug() << "[SEARCHCRATESFEATURE] [SLOT "
+                                                "EDIT SEARCHCRATES] -> "
+                                                "[DELETE] -> SearchCrate "
+                                                "DELETED, new active "
+                                                "searchCrate: "
+                                             << previousSearchCrateId;
+                                }
+                                m_lastRightClickedIndex =
+                                        indexFromSearchCrateId(
+                                                previousSearchCrateId);
+                                activateSearchCrate(previousSearchCrateId);
+                            } else {
+                                return;
+                            }
+                        }
+                        slotSearchCrateTableChanged(previousSearchCrateId);
+                    }
+                });
+        // DLG -> New SearchCrate on 'New'
+        connect(&infoDialog,
+                &dlgSearchCrateInfo::requestNewSearchCrate,
+                this,
+                // [this, &searchCrateId]() {
+                [this, searchCrateId]() {
+                    //            emit setBlockerOff("new");
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[NEW] "
+                                    "-> START Request NEW SearchCrate searchCrateId "
+                                 << searchCrateId;
+                    }
+                    SearchCrateId searchCrateId =
+                            SearchCrateFeatureHelper(m_pTrackCollection, m_pConfig)
+                                    .createEmptySearchCrateFromUI();
+                    if (!searchCrateId.isValid()) {
+                        if (sDebugSearchCrateFeature) {
+                            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
+                                        "SEARCHCRATES] -> "
+                                        "[NEW] -> Creation failed.";
+                        }
+                        return;
+                    } else {
+                        if (sDebugSearchCrateFeature) {
+                            qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT "
+                                        "SEARCHCRATES] -> "
+                                        "[NEW] -> New searchCrate created. "
+                                        "searchCrateId "
+                                     << searchCrateId;
+                        }
+                    }
+                    activateSearchCrate(searchCrateId);
+                    searchCrateData.clear();
+                    m_searchCrateTableModel.selectSearchCrate2QVL(
+                            searchCrateId, searchCrateData);
+                    slotSearchCrateTableChanged(searchCrateId);
+                    m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[NEW] "
+                                    "-> END SearchCrate created searchCrateId "
+                                 << searchCrateId;
+                    }
+                    emit updateSearchCrateData(searchCrateData);
+                });
+        // DLG -> Previous SearchCrate on 'Previous'
+        connect(&infoDialog,
+                &dlgSearchCrateInfo::requestPreviousSearchCrate,
+                this,
+                [this]() {
+                    //[this, &searchCrateId]() {
+                    // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
+                    SearchCrateId searchCrateId(searchCrateData[0]);
+                    SearchCrateId previousSearchCrateId(searchCrateData[56]);
+                    bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
+                    SearchCrateId nextSearchCrateId(searchCrateData[58]);
+                    bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[PREVIOUS] -> START Request PREVIOUS SearchCrate "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] extracted "
+                                    "searchCrateId from searchCrateData: "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
+                                 << previousSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
+                                 << currentSearchCrateIdBOF;
+                        qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
+                                 << nextSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
+                                 << currentSearchCrateIdEOF;
+                    }
+                    if (currentSearchCrateIdBOF && !currentSearchCrateIdEOF) {
+                        if (nextSearchCrateId.isValid()) {
+                            m_searchCrateTableModel.selectSearchCrate2QVL(
+                                    nextSearchCrateId,
+                                    searchCrateData);
+                            emit updateSearchCrateData(searchCrateData);
+                            if (sDebugSearchCrateFeature) {
+                                qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                            "[PREVIOUS] -> new active searchCrate: "
+                                         << nextSearchCrateId;
+                            }
+                            m_lastRightClickedIndex = indexFromSearchCrateId(nextSearchCrateId);
+                            activateSearchCrate(nextSearchCrateId);
+                            slotSearchCrateTableChanged(nextSearchCrateId);
+                        } else {
+                            return;
+                        }
+                    } else {
+                        if (previousSearchCrateId.isValid()) {
+                            m_searchCrateTableModel.selectSearchCrate2QVL(
+                                    previousSearchCrateId,
+                                    searchCrateData);
+                            emit updateSearchCrateData(searchCrateData);
+                            if (sDebugSearchCrateFeature) {
+                                qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                            "[PREVIOUS] -> new active searchCrate: "
+                                         << previousSearchCrateId;
+                            }
+                            m_lastRightClickedIndex = indexFromSearchCrateId(previousSearchCrateId);
+                            activateSearchCrate(previousSearchCrateId);
+                            slotSearchCrateTableChanged(previousSearchCrateId);
+                        } else {
+                            return;
+                        }
+                    }
+                });
+        // DLG -> Next SearchCrate on 'Next'
+        connect(&infoDialog,
+                &dlgSearchCrateInfo::requestNextSearchCrate,
+                this,
+                [this]() {
+                    //[this, &searchCrateId]() {
+                    // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
+                    SearchCrateId searchCrateId(searchCrateData[0]);
+                    SearchCrateId previousSearchCrateId(searchCrateData[56]);
+                    bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
+                    SearchCrateId nextSearchCrateId(searchCrateData[58]);
+                    bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
+                    if (sDebugSearchCrateFeature) {
+                        qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                    "[NEXT] -> START Request NEXT SearchCrate "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] extracted "
+                                    "searchCrateId from searchCrateData: "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
+                                 << searchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
+                                 << previousSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
+                                 << currentSearchCrateIdBOF;
+                        qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
+                                 << nextSearchCrateId;
+                        qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
+                                 << currentSearchCrateIdEOF;
+                    }
+                    if (currentSearchCrateIdEOF && !currentSearchCrateIdBOF) {
+                        if (previousSearchCrateId.isValid()) {
+                            m_searchCrateTableModel.selectSearchCrate2QVL(
+                                    previousSearchCrateId,
+                                    searchCrateData);
+                            emit updateSearchCrateData(searchCrateData);
+                            if (sDebugSearchCrateFeature) {
+                                qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                            "[NEXT] -> new active searchCrate: "
+                                         << previousSearchCrateId;
+                            }
+                            m_lastRightClickedIndex = indexFromSearchCrateId(previousSearchCrateId);
+                            activateSearchCrate(previousSearchCrateId);
+                            slotSearchCrateTableChanged(previousSearchCrateId);
+                        } else {
+                            return;
+                        }
+                    } else {
+                        if (nextSearchCrateId.isValid()) {
+                            m_searchCrateTableModel.selectSearchCrate2QVL(
+                                    nextSearchCrateId,
+                                    searchCrateData);
+                            emit updateSearchCrateData(searchCrateData);
+                            if (sDebugSearchCrateFeature) {
+                                qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                                            "[NEXT] -> new active searchCrate: "
+                                         << nextSearchCrateId;
+                            }
+                            m_lastRightClickedIndex = indexFromSearchCrateId(nextSearchCrateId);
+                            activateSearchCrate(nextSearchCrateId);
+                            slotSearchCrateTableChanged(nextSearchCrateId);
+                        } else {
+                            return;
+                        }
+                    }
+                });
+        // Execute & close the dialog
+        if (infoDialog.exec() == QDialog::Accepted) {
+            // Extract SearchCrateId from searchCrateData
+            // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
+            SearchCrateId searchCrateId(searchCrateData[0]);
+            SearchCrateId previousSearchCrateId(searchCrateData[56]);
+            bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
+            SearchCrateId nextSearchCrateId(searchCrateData[58]);
+            bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
+            if (sDebugSearchCrateFeature) {
+                qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
+                            "[NEXT] -> START Request NEXT SearchCrate "
+                         << searchCrateId;
+                qDebug() << "[SEARCHCRATESFEATURE] extracted searchCrateId from searchCrateData: "
+                         << searchCrateId;
+                qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
+                         << searchCrateId;
+                qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
+                         << previousSearchCrateId;
+                qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
+                         << currentSearchCrateIdBOF;
+                qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
+                         << nextSearchCrateId;
+                qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
+                         << currentSearchCrateIdEOF;
+            }
+
+            if (searchCrateId.isValid()) {
+                // Store updated data
+                m_searchCrateTableModel.saveQVL2SearchCrate(searchCrateId, searchCrateData);
+                // Send updated data back to ui-> adapted sql
+                m_searchCrateTableModel.selectSearchCrate2QVL(
+                        searchCrateIdFromIndex(m_lastRightClickedIndex),
+                        searchCrateData);
+                activateSearchCrate(searchCrateId);
+                m_lastClickedIndex = indexFromSearchCrateId(searchCrateId);
+                m_lastRightClickedIndex = indexFromSearchCrateId(searchCrateId);
+                slotSearchCrateTableChanged(searchCrateId);
+                if (sDebugSearchCrateFeature) {
+                    qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> [CLOSE "
+                                "DIALOG] -> SearchCrate data saved from QVariantList "
+                                "to database for "
+                                "SearchCrateId:"
+                             << searchCrateId;
+                }
+                emit updateSearchCrateData(searchCrateData);
+            } else {
+                return;
+            }
+        }
+    }
+    mutex.unlock();
 }
 
 void SearchCrateFeature::slotToggleSearchCrateLock() {

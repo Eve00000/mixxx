@@ -7,6 +7,7 @@
 #include <QVariant>
 
 #include "library/trackset/basetracksetfeature.h"
+#include "library/trackset/searchcrate/dlgsearchcrateinfo.h"
 #include "library/trackset/searchcrate/searchcrate.h"
 #include "library/trackset/searchcrate/searchcratetablemodel.h"
 #include "preferences/usersettings.h"
@@ -19,6 +20,7 @@ class WLibrarySidebar;
 class QAction;
 class QPoint;
 class SearchCrateSummary;
+class dlgSearchCrateInfo;
 
 class SearchCrateFeature : public BaseTrackSetFeature {
     Q_OBJECT
@@ -59,6 +61,7 @@ class SearchCrateFeature : public BaseTrackSetFeature {
 
   private slots:
     void slotDeleteSearchCrate();
+    void slotEditSearchCrate();
     void slotRenameSearchCrate();
     void slotDuplicateSearchCrate();
     void slotAutoDjTrackSourceChanged();
@@ -118,6 +121,7 @@ class SearchCrateFeature : public BaseTrackSetFeature {
     TrackId m_selectedTrackId;
 
     parented_ptr<QAction> m_pCreateSearchCrateAction;
+    parented_ptr<QAction> m_pEditSearchCrateAction;
     parented_ptr<QAction> m_pDeleteSearchCrateAction;
     parented_ptr<QAction> m_pRenameSearchCrateAction;
     parented_ptr<QAction> m_pLockSearchCrateAction;
@@ -134,4 +138,5 @@ class SearchCrateFeature : public BaseTrackSetFeature {
     parented_ptr<QAction> m_pAnalyzeSearchCrateAction;
 
     QPointer<WLibrarySidebar> m_pSidebarWidget;
+    QVariantList searchCrateData;
 };
