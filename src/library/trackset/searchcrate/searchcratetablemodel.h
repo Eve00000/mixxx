@@ -24,8 +24,12 @@ class SearchCrateTableModel final : public TrackSetTableModel {
             int* pOutInsertionPos) final;
     bool isLocked() final;
 
+    void selectPlaylistsCrates2QVL(QVariantList& playlistsCratesData);
     void selectSearchCrate2QVL(SearchCrateId searchCrateId, QVariantList& searchCrateData);
+    void saveQVL2SearchCrate(SearchCrateId searchCrateId, const QVariantList& searchCrateData);
 
+    QString buildConditionUpdateQuery(
+            const QVariantList& searchCrateData, int startIdx, int endIdx);
     QString buildWhereClause(const QVariantList& searchCrateData);
     QVariant getPreviousRecordId(SearchCrateId currentId);
     QVariant getNextRecordId(SearchCrateId currentId);

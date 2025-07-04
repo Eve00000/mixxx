@@ -366,6 +366,74 @@ QString SearchCrateTableModel::modelKey(bool noSearch) const {
     }
 }
 
+void SearchCrateTableModel::selectPlaylistsCrates2QVL(QVariantList& playlistsCratesData) {
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT PLAYLISTS CRATES 2 QVL] -> Start";
+    }
+    playlistsCratesData.clear();
+
+    // Playlists
+    QSqlQuery playlistQuery(m_database);
+    playlistQuery.prepare(
+            "SELECT id, name FROM Playlists WHERE hidden=0 ORDER BY name ASC, "
+            "id ASC");
+    if (playlistQuery.exec()) {
+        while (playlistQuery.next()) {
+            QVariantMap playlistEntry;
+            playlistEntry["type"] = "playlist";
+            playlistEntry["id"] = playlistQuery.value("id");
+            playlistEntry["name"] = playlistQuery.value("name");
+            playlistsCratesData.append(playlistEntry);
+        }
+    } else {
+        qWarning() << "[SEARCHCRATESTABLEMODEL] [SELECT PLAYLISTS CRATES 2 QVL] -> "
+                      "Playlists Failed:"
+                   << playlistQuery.lastError();
+    }
+
+    // Playlists - history
+    QSqlQuery historyQuery(m_database);
+    historyQuery.prepare(
+            "SELECT id, name FROM Playlists WHERE hidden=2 ORDER BY name DESC, "
+            "id ASC");
+    if (historyQuery.exec()) {
+        while (historyQuery.next()) {
+            QVariantMap historyEntry;
+            historyEntry["type"] = "history";
+            historyEntry["id"] = historyQuery.value("id");
+            historyEntry["name"] = historyQuery.value("name");
+            playlistsCratesData.append(historyEntry);
+        }
+    } else {
+        qWarning() << "[SEARCHCRATESTABLEMODEL] [SELECT PLAYLISTS CRATES 2 QVL] -> "
+                      "History Failed:"
+                   << historyQuery.lastError();
+    }
+
+    // Crates
+    QSqlQuery crateQuery(m_database);
+    crateQuery.prepare("SELECT id, name FROM crates WHERE show=1 ORDER BY name ASC, id ASC");
+    if (crateQuery.exec()) {
+        while (crateQuery.next()) {
+            QVariantMap crateEntry;
+            crateEntry["type"] = "crate";
+            crateEntry["id"] = crateQuery.value("id");
+            crateEntry["name"] = crateQuery.value("name");
+            playlistsCratesData.append(crateEntry);
+        }
+    } else {
+        qWarning() << "[SEARCHCRATESTABLEMODEL] [SELECT PLAYLISTS CRATES 2 QVL] -> "
+                      "Crates Failed:"
+                   << crateQuery.lastError();
+    }
+
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT PLAYLISTS CRATES 2 QVL] -> "
+                    "Completed:"
+                 << playlistsCratesData;
+    }
+}
+
 void SearchCrateTableModel::selectSearchCrate2QVL(
         SearchCrateId searchCrateId, QVariantList& searchCrateData) {
     if (sDebugSearchCrateTableModel) {
@@ -468,6 +536,152 @@ QVariant SearchCrateTableModel::getNextRecordId(SearchCrateId currentId) {
         return query.value("id");
     }
     return {}; // Return a null QVariant if no next ID
+}
+
+void SearchCrateTableModel::saveQVL2SearchCrate(
+        SearchCrateId searchCrateId, const QVariantList& searchCrateData) {
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> starts "
+                    "for ID:"
+                 << searchCrateId;
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> UPDATE SQL WhereClause "
+                 << buildWhereClause(searchCrateData).replace("'", "");
+    }
+    QString whereClause2Save = buildWhereClause(searchCrateData).replace("'", "");
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> UPDATE SQL WhereClause "
+                 << whereClause2Save;
+    }
+    // Core update for basic fields
+    const QString& baseInfoUpdate =
+            QStringLiteral(
+                    "UPDATE searchcrates SET name = '%1', count = %2, show = %3, "
+                    "locked = %4, autodj_source = %5, "
+                    "search_input = '%6', search_sql = '%7' WHERE id = %8")
+                    .arg(searchCrateData[1].toString(),
+                            searchCrateData[2].toString(), // 1
+                            searchCrateData[3].toString(),
+                            searchCrateData[4].toString(),
+                            searchCrateData[5].toString(),
+                            searchCrateData[6].toString(), // 5
+                            whereClause2Save,
+                            searchCrateData[0].toString()); // 7
+
+    if (!FwdSqlQuery(m_database, baseInfoUpdate).execPrepared()) {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                        "baseInfo Update failed:";
+        }
+        return;
+    }
+
+    // Update for condition1 through condition3 fields
+    const QString& conditionUpdate1 = buildConditionUpdateQuery(searchCrateData, 8, 19);
+    if (!FwdSqlQuery(m_database, conditionUpdate1).execPrepared()) {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                        "Condition Update 1 failed:";
+        }
+        return;
+    }
+
+    // Update for condition4 through condition6 fields
+    const QString& conditionUpdate2 = buildConditionUpdateQuery(searchCrateData, 20, 31);
+    if (!FwdSqlQuery(m_database, conditionUpdate2).execPrepared()) {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                        "Condition Update 2 failed:";
+        }
+        return;
+    }
+
+    // Update for condition7 through condition9 fields
+    const QString& conditionUpdate3 = buildConditionUpdateQuery(searchCrateData, 32, 43);
+    if (!FwdSqlQuery(m_database, conditionUpdate3).execPrepared()) {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                        "Condition Update 3 failed:";
+        }
+        return;
+    }
+
+    // Update for condition10 through condition12 fields
+    const QString& conditionUpdate4 = buildConditionUpdateQuery(searchCrateData, 44, 55);
+    if (!FwdSqlQuery(m_database, conditionUpdate4).execPrepared()) {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                        "Condition Update 4 failed:";
+        }
+        return;
+    }
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SAVEQVL2SEARCHCRATES] -> "
+                    "completed for ID:"
+                 << searchCrateId;
+    }
+}
+
+QString SearchCrateTableModel::buildConditionUpdateQuery(
+        const QVariantList& searchCrateData, int startIdx, int endIdx) {
+    QString queryStr = "UPDATE searchcrates SET ";
+    QStringList fieldNames = {"condition1_field",
+            "condition1_operator",
+            "condition1_value",
+            "condition1_combiner",
+            "condition2_field",
+            "condition2_operator",
+            "condition2_value",
+            "condition2_combiner",
+            "condition3_field",
+            "condition3_operator",
+            "condition3_value",
+            "condition3_combiner",
+            "condition4_field",
+            "condition4_operator",
+            "condition4_value",
+            "condition4_combiner",
+            "condition5_field",
+            "condition5_operator",
+            "condition5_value",
+            "condition5_combiner",
+            "condition6_field",
+            "condition6_operator",
+            "condition6_value",
+            "condition6_combiner",
+            "condition7_field",
+            "condition7_operator",
+            "condition7_value",
+            "condition7_combiner",
+            "condition8_field",
+            "condition8_operator",
+            "condition8_value",
+            "condition8_combiner",
+            "condition9_field",
+            "condition9_operator",
+            "condition9_value",
+            "condition9_combiner",
+            "condition10_field",
+            "condition10_operator",
+            "condition10_value",
+            "condition10_combiner",
+            "condition11_field",
+            "condition11_operator",
+            "condition11_value",
+            "condition11_combiner",
+            "condition12_field",
+            "condition12_operator",
+            "condition12_value",
+            "condition12_combiner"};
+
+    for (int i = startIdx; i <= endIdx; ++i) {
+        queryStr += fieldNames[i - 8] + " = '" + searchCrateData[i].toString() + "'";
+        if (i < endIdx) {
+            queryStr += ", ";
+        }
+    }
+
+    queryStr += " WHERE id = " + searchCrateData[0].toString();
+    return queryStr;
 }
 
 QString SearchCrateTableModel::buildWhereClause(const QVariantList& searchCrateData) {
