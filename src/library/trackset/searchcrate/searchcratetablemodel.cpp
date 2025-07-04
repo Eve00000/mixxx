@@ -6,12 +6,13 @@
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackset/searchcrate/searchcrate.h"
+#include "library/trackset/searchcrate/searchcratefuntions.h"
 #include "moc_searchcratetablemodel.cpp"
 #include "track/track.h"
 #include "util/db/fwdsqlquery.h"
 
 namespace {
-
+const bool sDebugSearchCrateTableModel = false;
 const QString kModelName = QStringLiteral("searchCrate");
 
 } // anonymous namespace
@@ -26,9 +27,13 @@ SearchCrateTableModel::SearchCrateTableModel(
 }
 
 void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
-    // qDebug() << "SearchCrateTableModel::setSearchCrate()" << searchCrateId;
+    qDebug() << "SearchCrateTableModel::setSearchCrate()" << searchCrateId;
     if (searchCrateId == m_selectedSearchCrate) {
-        qDebug() << "Already focused on searchCrate " << searchCrateId;
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> Already focused on "
+                        "searchCrate "
+                     << searchCrateId;
+        }
         return;
     }
     // Store search text
@@ -43,7 +48,12 @@ void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
 
     m_selectedSearchCrate = searchCrateId;
 
-    QString tableName = QStringLiteral("searchCrate_%1").arg(m_selectedSearchCrate.toString());
+    const QString& checkStamp = QDateTime::currentDateTime().toString("hhmmss");
+    const QString& tableName = QStringLiteral("searchcrate_%1")
+                                       .arg(m_selectedSearchCrate.toString());
+    const QString& tableNameOld =
+            QStringLiteral("searchcrate_%1_%2")
+                    .arg(m_selectedSearchCrate.toString(), checkStamp);
     QStringList columns;
     columns << LIBRARYTABLE_ID
             << "'' AS " + LIBRARYTABLE_PREVIEW
@@ -54,23 +64,140 @@ void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
     // (mixxx_deleted = 0) from the view.
     // They are kept in the database, because we treat searchCrate membership as a
     // track property, which persist over a hide / unhide cycle.
-    QString queryString =
-            QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
-                    "SELECT %2 FROM %3 "
-                    "WHERE %4 IN (%5) "
-                    "AND %6=0")
-                    .arg(tableName,
-                            columns.join(","),
-                            LIBRARY_TABLE,
-                            LIBRARYTABLE_ID,
-                            SearchCrateStorage::formatSubselectQueryForSearchCrateTrackIds(
-                                    searchCrateId),
-                            LIBRARYTABLE_MIXXXDELETED);
-    FwdSqlQuery(m_database, queryString).execPrepared();
+    bool getLocked;
+    FwdSqlQuery queryGetLocked(m_database,
+            QStringLiteral("SELECT locked from searchcrates where id=:searchcrateid"));
+    queryGetLocked.bindValue(":searchcrateid", searchCrateId);
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> LOCKED ? -> get locked: queryGetLocked "
+                 << "SELECT locked from searchcrates where id = "
+                 << searchCrateId;
+    }
+
+    if (queryGetLocked.execPrepared() && queryGetLocked.next()) {
+        getLocked = queryGetLocked.fieldValue(0).toBool();
+    } else {
+        getLocked = false;
+    }
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> LOCKED ? -> locked: " << getLocked;
+    }
+
+    if (getLocked) {
+        // read cache = tracks from searchcrate_tracks
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> LOCKED -> GET CACHED TRACKS ";
+        }
+        QString queryStringTempView =
+                QStringLiteral(
+                        "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                        "SELECT %2 FROM %3 "
+                        "WHERE %4 IN (%5) "
+                        "AND %6=0")
+                        .arg(tableName,            // 1
+                                columns.join(","), // 2
+                                LIBRARY_TABLE,     // 3
+                                LIBRARYTABLE_ID,   // 4
+                                SearchCrateStorage::formatSubselectQueryForSearchCrateTrackIds(
+                                        searchCrateId),     // 5
+                                LIBRARYTABLE_MIXXXDELETED); // 6
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> LOCKED -> GET CACHED TRACKS "
+                        "queryStringTempView "
+                     << queryStringTempView;
+        }
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    } else {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED";
+        }
+        // delete cache = delete tracks in searchcrate_tracks table witg selected id
+        const QString& queryStringDeleteIDFromSearchCrateTracks =
+                QStringLiteral(
+                        "DELETE FROM searchcrate_tracks "
+                        "WHERE searchcrate_id = %1")
+                        .arg(searchCrateId.toVariant().toString());
+
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> DELETE CACHED TRACKS "
+                        "queryStringDeleteIDFromSearchCrateTracks "
+                     << queryStringDeleteIDFromSearchCrateTracks;
+        }
+        FwdSqlQuery(m_database, queryStringDeleteIDFromSearchCrateTracks).execPrepared();
+
+        // Create SQl based on conditions in searchCrate
+        QVariantList searchCrateData;
+        searchCrateData.clear();
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> "
+                        "CONSTRUCT SQL -> selectSearchCrate2QVL ";
+        }
+        selectSearchCrate2QVL(searchCrateId, searchCrateData); // Fetch searchCrate data
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> "
+                        "CONSTRUCT SQL -> whereClause ";
+        }
+        QString whereClause = buildWhereClause(searchCrateData); // Get the WHERE clause
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> "
+                        "CONSTRUCT SQL -> whereClause "
+                        "generated:"
+                     << whereClause;
+        }
+        // create cache = put tracks in searchcrate_tracks table witg selected id
+        const QString& queryStringIDtoSearchCrateTracks =
+                QStringLiteral(
+                        "INSERT OR IGNORE INTO searchcrate_tracks (searchcrate_id, "
+                        "track_id) "
+                        "SELECT %1, library.id FROM library WHERE %2")
+                        .arg(searchCrateId.toVariant().toString(), whereClause);
+
+        FwdSqlQuery(m_database, queryStringIDtoSearchCrateTracks).execPrepared();
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> CREATE "
+                        "CACHE -> Create temp "
+                        "view queryStringIDtoSearchCrateTracks "
+                     << queryStringIDtoSearchCrateTracks;
+        }
+
+        const QString& queryStringDropView = QStringLiteral("Alter table rename %1 to %2 ")
+                                                     .arg(tableName, tableNameOld);
+        FwdSqlQuery(m_database, queryStringIDtoSearchCrateTracks).execPrepared();
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [NOT LOCKED] [CREATE CACHE] -> Drop view ";
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> CREATE "
+                        "CACHE -> Rename TEMP table"
+                        "queryStringDropView "
+                     << queryStringDropView;
+        }
+
+        const QString& queryStringTempView =
+                QStringLiteral(
+                        "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                        "SELECT %2 FROM %3 "
+                        "WHERE %4")
+                        .arg(tableName,            // 1
+                                columns.join(","), // 2
+                                LIBRARY_TABLE,     // 3
+                                whereClause);      // 4
+
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> NOT LOCKED -> CREATE "
+                        "CACHE -> CREATE TEMP VIEW "
+                        "queryStringTempView "
+                     << queryStringTempView;
+        }
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    }
 
     columns[0] = LIBRARYTABLE_ID;
     columns[1] = LIBRARYTABLE_PREVIEW;
     columns[2] = LIBRARYTABLE_COVERART;
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECT] -> LOCKED / NOT LOCKED "
+                    "-> LOAD TRACKS IN TABLE";
+    }
+
     setTable(tableName,
             LIBRARYTABLE_ID,
             columns,
@@ -237,4 +364,171 @@ QString SearchCrateTableModel::modelKey(bool noSearch) const {
         return kModelName + QChar('#') +
                 currentSearch();
     }
+}
+
+void SearchCrateTableModel::selectSearchCrate2QVL(
+        SearchCrateId searchCrateId, QVariantList& searchCrateData) {
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECTSEARCHCRATES2QVL] -> start with "
+                    "SearchCrateId:"
+                 << searchCrateId;
+    }
+
+    // Assuming m_database is properly connected
+    QSqlQuery* query = new QSqlQuery(m_database);
+    query->prepare("SELECT * FROM searchcrates WHERE id = :id");
+    query->addBindValue(searchCrateId.toVariant());
+
+    if (query->exec()) {
+        if (query->next()) {
+            searchCrateData.clear(); // Clear any existing data before appending
+
+            // Populate searchCrateData with the fields from the database row
+            searchCrateData.append(query->value("id").toString());           // id
+            searchCrateData.append(query->value("name").toString());         // name
+            searchCrateData.append(query->value("count").toInt());           // count
+            searchCrateData.append(query->value("show").toBool());           // show
+            searchCrateData.append(query->value("locked").toBool());         // locked
+            searchCrateData.append(query->value("autodj_source").toBool());  // autoDJ
+            searchCrateData.append(query->value("search_input").toString()); // search_input
+            searchCrateData.append(query->value("search_sql").toString());   // search_sql
+
+            for (int i = 1; i <= 12; ++i) { // Handle conditions
+                searchCrateData.append(
+                        query->value(QStringLiteral("condition%1_field").arg(i))
+                                .toString());
+                searchCrateData.append(
+                        query->value(QStringLiteral("condition%1_operator").arg(i))
+                                .toString());
+                searchCrateData.append(
+                        query->value(QStringLiteral("condition%1_value").arg(i))
+                                .toString());
+                searchCrateData.append(
+                        query->value(QStringLiteral("condition%1_combiner").arg(i))
+                                .toString());
+            }
+
+            if (sDebugSearchCrateTableModel) {
+                qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECTSEARCHCRATES2QVL] -> loaded data into "
+                            "QVariantList:"
+                         << searchCrateData;
+            }
+            // Retrieve previous and next record IDs + BOF & EOF
+            QVariant previousId = getPreviousRecordId(searchCrateId);
+            // If no previous ID, at beginning
+            bool isBOF = (previousId.isNull());
+            QVariant nextId = getNextRecordId(searchCrateId);
+            // If no next ID, at end
+            bool isEOF = (nextId.isNull());
+            // Appending previous & next ID a BOF & EOF
+            searchCrateData.append(previousId);
+            searchCrateData.append(isBOF);
+            searchCrateData.append(nextId);
+            searchCrateData.append(isEOF);
+            if (sDebugSearchCrateTableModel) {
+                qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECTSEARCHCRATES2QVL] -> data found for "
+                            "SearchCrateId:"
+                         << searchCrateId
+                         << "Data in searchCrate:"
+                         << searchCrateData;
+            }
+        } else {
+            if (sDebugSearchCrateTableModel) {
+                qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECTSEARCHCRATES2QVL] "
+                            "-> No data found for "
+                            "SearchCrateId:"
+                         << searchCrateId;
+            }
+        }
+    } else {
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[SEARCHCRATESTABLEMODEL] [SELECTSEARCHCRATES2QVL] -> "
+                        "Failed to execute query -"
+                     << query->lastError();
+        }
+    }
+    delete query;
+}
+
+QVariant SearchCrateTableModel::getPreviousRecordId(SearchCrateId currentId) {
+    QSqlQuery query(m_database);
+    query.prepare("SELECT id FROM searchcrates WHERE id < :id ORDER BY id DESC LIMIT 1");
+    query.bindValue(":id", currentId.toVariant());
+    if (query.exec() && query.next()) {
+        return query.value("id");
+    }
+    return {}; // Return a null QVariant if no previous ID
+}
+
+QVariant SearchCrateTableModel::getNextRecordId(SearchCrateId currentId) {
+    QSqlQuery query(m_database);
+    query.prepare("SELECT id FROM searchcrates WHERE id > :id ORDER BY id ASC LIMIT 1");
+    query.bindValue(":id", currentId.toVariant());
+    if (query.exec() && query.next()) {
+        return query.value("id");
+    }
+    return {}; // Return a null QVariant if no next ID
+}
+
+QString SearchCrateTableModel::buildWhereClause(const QVariantList& searchCrateData) {
+    qDebug() << "searchCrateData size:" << searchCrateData.size();
+    QString whereClause = "(";
+    bool hasConditions = false;
+
+    QStringList combinerOptions = {") END", "AND", "OR", ") AND (", ") OR ("};
+    // Assuming searchValue is at index 6 (search_input)
+    // const QString& searchValue = searchCrateData[6].isNull() ? "" :
+    // searchCrateData[6].toString();
+    const QString& searchValue = searchCrateData[6].toString();
+
+    for (int i = 1; i <= 12; ++i) {
+        int baseIndex = 8 + (i - 1) * 4; // Adjusting for the correct index in searchCrateData
+
+        const QString& field = searchCrateData[baseIndex].toString();
+        const QString& op = searchCrateData[baseIndex + 1].toString();
+        const QString& value = searchCrateData[baseIndex + 2].toString();
+        // QString combiner = searchCrateData[baseIndex + 3].toString();
+
+        //  begin build condition
+        //  function moved to searchCratefunctions.h to share it with
+        //  dlgsearchCrateinfo to create preview
+        const QString& condition = buildCondition(field, op, value);
+
+        //  end build condition
+        if (condition != "") {
+            hasConditions = true;
+            whereClause += condition;
+            if (i < 12 && combinerOptions.contains(searchCrateData[baseIndex + 3].toString())) {
+                if (searchCrateData[baseIndex + 3].toString() == ") END") {
+                    whereClause += ")";
+                } else if ((searchCrateData[baseIndex + 3].toString() == "AND") ||
+                        (searchCrateData[baseIndex + 3].toString() == "OR")) {
+                    whereClause += " " + searchCrateData[baseIndex + 3].toString() + " ";
+                } else {
+                    whereClause += searchCrateData[baseIndex + 3].toString() + " ";
+                }
+            }
+        }
+    }
+
+    if (!hasConditions) {
+        whereClause += QStringLiteral(
+                "library.artist LIKE '%%1%' OR "
+                "library.title LIKE '%%1%' OR "
+                "library.album LIKE '%%1%' OR "
+                "library.album_artist LIKE '%%1%' OR "
+                "library.composer LIKE '%%1%' OR "
+                "library.genre LIKE '%%1%' OR "
+                "library.comment LIKE '%%1%')")
+                               .arg(searchValue);
+    }
+
+    //    whereClause += ")";
+
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SEARCHCRATESTABLEMODEL] [GETWHERECLAUSEFORSEARCHCRATES] "
+                    "[CONSTRUCT SQL] -> Constructed WHERE clause:"
+                 << whereClause;
+    }
+    return whereClause;
 }
