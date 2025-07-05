@@ -973,7 +973,9 @@ void SearchCrateFeature::slotToggleSearchCrateLock() {
 // }
 
 QModelIndex SearchCrateFeature::rebuildChildModel(SearchCrateId selectedSearchCrateId) {
-    qDebug() << "SearchCrateFeature::rebuildChildModel()" << selectedSearchCrateId;
+    if (sDebugSearchCrateFeature) {
+        qDebug() << "[SEARCHCRATESFEATURE] [RebuildChildModel]";
+    }
 
     m_lastRightClickedIndex = QModelIndex();
 

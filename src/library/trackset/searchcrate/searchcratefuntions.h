@@ -473,82 +473,82 @@ inline QString buildCondition(const QString& field, const QString& op, const QSt
                     //                             CRATE_TRACKS_TABLE,
                     //                             CRATETRACKSTABLE_TRACKID);
                 }
-                if (value == "all playlists") {
-                    if (op == "is a member of") {
-                        if (sDebugSearchCrateFunctions) {
-                            qDebug() << "Track -> is a member of: " << value;
-                        }
-                        condition = QStringLiteral(
-                                "%1.%2 IN (SELECT %3.%4 FROM %3 "
-                                "JOIN %6 "
-                                "  ON %3.%5 = %6.%7 "
-                                "WHERE %6.%8 = 0)")
-                                            .arg(LIBRARY_TABLE,
-                                                    LIBRARYTABLE_ID,
-                                                    PLAYLIST_TRACKS_TABLE,
-                                                    PLAYLISTTRACKSTABLE_TRACKID,
-                                                    PLAYLISTTRACKSTABLE_PLAYLISTID,
-                                                    PLAYLIST_TABLE,
-                                                    PLAYLISTTABLE_ID,
-                                                    PLAYLISTTABLE_HIDDEN);
+            }
+            if (value == "all playlists") {
+                if (op == "is a member of") {
+                    if (sDebugSearchCrateFunctions) {
+                        qDebug() << "Track -> is a member of: " << value;
                     }
-                    if (op == "is not a member of") {
-                        if (sDebugSearchCrateFunctions) {
-                            qDebug() << "Track -> is NOT a member of: " << value;
-                        }
-                        condition = QStringLiteral(
-                                "%1.%2 NOT IN (SELECT %3.%4 FROM %3 "
-                                "JOIN %6 "
-                                "  ON %3.%5 = %6.%7 "
-                                "WHERE %6.%8 = 0)")
-                                            .arg(LIBRARY_TABLE,
-                                                    LIBRARYTABLE_ID,
-                                                    PLAYLIST_TRACKS_TABLE,
-                                                    PLAYLISTTRACKSTABLE_TRACKID,
-                                                    PLAYLISTTRACKSTABLE_PLAYLISTID,
-                                                    PLAYLIST_TABLE,
-                                                    PLAYLISTTABLE_ID,
-                                                    PLAYLISTTABLE_HIDDEN);
-                    }
+                    condition = QStringLiteral(
+                            "%1.%2 IN (SELECT %3.%4 FROM %3 "
+                            "JOIN %6 "
+                            "  ON %3.%5 = %6.%7 "
+                            "WHERE %6.%8 = 0)")
+                                        .arg(LIBRARY_TABLE,
+                                                LIBRARYTABLE_ID,
+                                                PLAYLIST_TRACKS_TABLE,
+                                                PLAYLISTTRACKSTABLE_TRACKID,
+                                                PLAYLISTTRACKSTABLE_PLAYLISTID,
+                                                PLAYLIST_TABLE,
+                                                PLAYLISTTABLE_ID,
+                                                PLAYLISTTABLE_HIDDEN);
                 }
-                if (value == "all historylists") {
-                    if (op == "is a member of") {
-                        if (sDebugSearchCrateFunctions) {
-                            qDebug() << "Track -> is a member of: " << value;
-                        }
-                        condition = QStringLiteral(
-                                "%1.%2 IN (SELECT %3.%4 FROM %3 "
-                                "JOIN %6 "
-                                "  ON %3.%5 = %6.%7 "
-                                "WHERE %6.%8 = 2)")
-                                            .arg(LIBRARY_TABLE,
-                                                    LIBRARYTABLE_ID,
-                                                    PLAYLIST_TRACKS_TABLE,
-                                                    PLAYLISTTRACKSTABLE_TRACKID,
-                                                    PLAYLISTTRACKSTABLE_PLAYLISTID,
-                                                    PLAYLIST_TABLE,
-                                                    PLAYLISTTABLE_ID,
-                                                    PLAYLISTTABLE_HIDDEN);
+                if (op == "is not a member of") {
+                    if (sDebugSearchCrateFunctions) {
+                        qDebug() << "Track -> is NOT a member of: " << value;
                     }
-                    if (op == "is not a member of") {
-                        if (sDebugSearchCrateFunctions) {
-                            qDebug() << "Track -> is NOT a member of: " << value;
-                        }
+                    condition = QStringLiteral(
+                            "%1.%2 NOT IN (SELECT %3.%4 FROM %3 "
+                            "JOIN %6 "
+                            "  ON %3.%5 = %6.%7 "
+                            "WHERE %6.%8 = 0)")
+                                        .arg(LIBRARY_TABLE,
+                                                LIBRARYTABLE_ID,
+                                                PLAYLIST_TRACKS_TABLE,
+                                                PLAYLISTTRACKSTABLE_TRACKID,
+                                                PLAYLISTTRACKSTABLE_PLAYLISTID,
+                                                PLAYLIST_TABLE,
+                                                PLAYLISTTABLE_ID,
+                                                PLAYLISTTABLE_HIDDEN);
+                }
+            }
+            if (value == "all historylists") {
+                if (op == "is a member of") {
+                    if (sDebugSearchCrateFunctions) {
+                        qDebug() << "Track -> is a member of: " << value;
+                    }
+                    condition = QStringLiteral(
+                            "%1.%2 IN (SELECT %3.%4 FROM %3 "
+                            "JOIN %6 "
+                            "  ON %3.%5 = %6.%7 "
+                            "WHERE %6.%8 = 2)")
+                                        .arg(LIBRARY_TABLE,
+                                                LIBRARYTABLE_ID,
+                                                PLAYLIST_TRACKS_TABLE,
+                                                PLAYLISTTRACKSTABLE_TRACKID,
+                                                PLAYLISTTRACKSTABLE_PLAYLISTID,
+                                                PLAYLIST_TABLE,
+                                                PLAYLISTTABLE_ID,
+                                                PLAYLISTTABLE_HIDDEN);
+                }
+                if (op == "is not a member of") {
+                    if (sDebugSearchCrateFunctions) {
+                        qDebug() << "Track -> is NOT a member of: " << value;
+                    }
 
-                        condition = QStringLiteral(
-                                "%1.%2 NOT IN (SELECT %3.%4 FROM %3 "
-                                "JOIN %6 "
-                                "  ON %3.%5 = %6.%7 "
-                                "WHERE %6.%8 = 2)")
-                                            .arg(LIBRARY_TABLE,
-                                                    LIBRARYTABLE_ID,
-                                                    PLAYLIST_TRACKS_TABLE,
-                                                    PLAYLISTTRACKSTABLE_TRACKID,
-                                                    PLAYLISTTRACKSTABLE_PLAYLISTID,
-                                                    PLAYLIST_TABLE,
-                                                    PLAYLISTTABLE_ID,
-                                                    PLAYLISTTABLE_HIDDEN);
-                    }
+                    condition = QStringLiteral(
+                            "%1.%2 NOT IN (SELECT %3.%4 FROM %3 "
+                            "JOIN %6 "
+                            "  ON %3.%5 = %6.%7 "
+                            "WHERE %6.%8 = 2)")
+                                        .arg(LIBRARY_TABLE,
+                                                LIBRARYTABLE_ID,
+                                                PLAYLIST_TRACKS_TABLE,
+                                                PLAYLISTTRACKSTABLE_TRACKID,
+                                                PLAYLISTTRACKSTABLE_PLAYLISTID,
+                                                PLAYLIST_TABLE,
+                                                PLAYLISTTABLE_ID,
+                                                PLAYLISTTABLE_HIDDEN);
                 }
             }
         }

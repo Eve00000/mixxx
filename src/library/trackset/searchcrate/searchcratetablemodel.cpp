@@ -34,7 +34,7 @@ void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
                         "searchCrate "
                      << searchCrateId;
         }
-        return;
+        // return;
     }
     // Store search text
     QString currSearch = currentSearch();
