@@ -32,10 +32,10 @@ class SearchCrateFeature : public BaseTrackSetFeature {
 
     QVariant title() override;
 
-    bool dropAcceptChild(const QModelIndex& index,
-            const QList<QUrl>& urls,
-            QObject* pSource) override;
-    bool dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) override;
+    // bool dropAcceptChild(const QModelIndex& index,
+    //         const QList<QUrl>& urls,
+    //         QObject* pSource) override;
+    // bool dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) override;
 
     void bindLibraryWidget(WLibrary* libraryWidget,
             KeyboardEventFilter* keyboard) override;
@@ -55,8 +55,9 @@ class SearchCrateFeature : public BaseTrackSetFeature {
 
 #ifdef __ENGINEPRIME__
   signals:
-    void exportAllSearchCrates();
-    // void exportSearchCrate(SearchCrateId searchCrateId);
+    // engine export needs to be adapted for searchCrates first
+    // void exportAllSearchCrates();
+    void exportSearchCrate(SearchCrateId searchCrateId);
 #endif
 
   private slots:
@@ -64,11 +65,11 @@ class SearchCrateFeature : public BaseTrackSetFeature {
     void slotEditSearchCrate();
     void slotRenameSearchCrate();
     void slotDuplicateSearchCrate();
-    void slotAutoDjTrackSourceChanged();
+    //    void slotAutoDjTrackSourceChanged();
     void slotToggleSearchCrateLock();
-    void slotImportPlaylist();
-    void slotImportPlaylistFile(const QString& playlistFile, SearchCrateId searchCrateId);
-    void slotCreateImportSearchCrate();
+    //    void slotImportPlaylist();
+    //    void slotImportPlaylistFile(const QString& playlistFile, SearchCrateId searchCrateId);
+    //    void slotCreateImportSearchCrate();
     void slotExportPlaylist();
     // Copy all of the tracks in a searchCrate to a new directory (like a thumbdrive).
     void slotExportTrackFiles();
@@ -126,13 +127,14 @@ class SearchCrateFeature : public BaseTrackSetFeature {
     parented_ptr<QAction> m_pRenameSearchCrateAction;
     parented_ptr<QAction> m_pLockSearchCrateAction;
     parented_ptr<QAction> m_pDuplicateSearchCrateAction;
-    parented_ptr<QAction> m_pAutoDjTrackSourceAction;
+    // parented_ptr<QAction> m_pAutoDjTrackSourceAction;
     parented_ptr<QAction> m_pImportPlaylistAction;
-    parented_ptr<QAction> m_pCreateImportPlaylistAction;
+    // parented_ptr<QAction> m_pCreateImportPlaylistAction;
     parented_ptr<QAction> m_pExportPlaylistAction;
     parented_ptr<QAction> m_pExportTrackFilesAction;
 #ifdef __ENGINEPRIME__
-    parented_ptr<QAction> m_pExportAllSearchCratesAction;
+    // engine export needs to be adapted for searchCrates first
+    // parented_ptr<QAction> m_pExportAllSearchCratesAction;
     parented_ptr<QAction> m_pExportSearchCrateAction;
 #endif
     parented_ptr<QAction> m_pAnalyzeSearchCrateAction;

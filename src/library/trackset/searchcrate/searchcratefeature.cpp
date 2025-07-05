@@ -103,12 +103,12 @@ void SearchCrateFeature::initActions() {
             this,
             &SearchCrateFeature::slotToggleSearchCrateLock);
 
-    m_pAutoDjTrackSourceAction = make_parented<QAction>(tr("Auto DJ Track Source"), this);
-    m_pAutoDjTrackSourceAction->setCheckable(true);
-    connect(m_pAutoDjTrackSourceAction.get(),
-            &QAction::changed,
-            this,
-            &SearchCrateFeature::slotAutoDjTrackSourceChanged);
+    //    m_pAutoDjTrackSourceAction = make_parented<QAction>(tr("Auto DJ Track Source"), this);
+    //    m_pAutoDjTrackSourceAction->setCheckable(true);
+    //    connect(m_pAutoDjTrackSourceAction.get(),
+    //            &QAction::changed,
+    //            this,
+    //            &SearchCrateFeature::slotAutoDjTrackSourceChanged);
 
     m_pAnalyzeSearchCrateAction = make_parented<QAction>(tr("Analyze entire SearchCrate"), this);
     connect(m_pAnalyzeSearchCrateAction.get(),
@@ -116,16 +116,16 @@ void SearchCrateFeature::initActions() {
             this,
             &SearchCrateFeature::slotAnalyzeSearchCrate);
 
-    m_pImportPlaylistAction = make_parented<QAction>(tr("Import SearchCrate"), this);
-    connect(m_pImportPlaylistAction.get(),
-            &QAction::triggered,
-            this,
-            &SearchCrateFeature::slotImportPlaylist);
-    m_pCreateImportPlaylistAction = make_parented<QAction>(tr("Import SearchCrate"), this);
-    connect(m_pCreateImportPlaylistAction.get(),
-            &QAction::triggered,
-            this,
-            &SearchCrateFeature::slotCreateImportSearchCrate);
+    // m_pImportPlaylistAction = make_parented<QAction>(tr("Import SearchCrate"), this);
+    // connect(m_pImportPlaylistAction.get(),
+    //         &QAction::triggered,
+    //         this,
+    //         &SearchCrateFeature::slotImportPlaylist);
+    // m_pCreateImportPlaylistAction = make_parented<QAction>(tr("Import SearchCrate"), this);
+    // connect(m_pCreateImportPlaylistAction.get(),
+    //         &QAction::triggered,
+    //         this,
+    //         &SearchCrateFeature::slotCreateImportSearchCrate);
     m_pExportPlaylistAction = make_parented<QAction>(tr("Export SearchCrate as Playlist"), this);
     connect(m_pExportPlaylistAction.get(),
             &QAction::triggered,
@@ -136,24 +136,25 @@ void SearchCrateFeature::initActions() {
             &QAction::triggered,
             this,
             &SearchCrateFeature::slotExportTrackFiles);
-    // #ifdef __ENGINEPRIME__
-    //     m_pExportAllSearchCratesAction = make_parented<QAction>(tr("Export to
-    //     Engine DJ"), this); connect(m_pExportAllSearchCratesAction.get(),
-    //             &QAction::triggered,
-    //             this,
-    //             &SearchCrateFeature::exportAllSearchCrates);
-    //     m_pExportSearchCrateAction = make_parented<QAction>(tr("Export to
-    //     Engine DJ"), this); connect(m_pExportSearchCrateAction.get(),
-    //             &QAction::triggered,
-    //             this,
-    //             [this]() {
-    //                 SearchCrateId searchCrateId =
-    //                 searchCrateIdFromIndex(m_lastRightClickedIndex); if
-    //                 (searchCrateId.isValid()) {
-    //                     emit exportSearchCrate(searchCrateId);
-    //                 }
-    //             });
-    // #endif
+#ifdef __ENGINEPRIME__
+    // Engine DJ export needs to be adapted for searchCrates first
+    // m_pExportAllSearchCratesAction = make_parented<QAction>(tr("Export to Engine DJ"), this);
+    // connect(m_pExportAllSearchCratesAction.get(),
+    //        &QAction::triggered,
+    //        this,
+    //        &SearchCrateFeature::exportAllSearchCrates);
+    // m_pExportSearchCrateAction = make_parented<QAction>(tr("Export to Engine DJ"), this);
+    connect(m_pExportSearchCrateAction.get(),
+            &QAction::triggered,
+            this,
+            [this]() {
+                SearchCrateId searchCrateId =
+                        searchCrateIdFromIndex(m_lastRightClickedIndex);
+                if (searchCrateId.isValid()) {
+                    emit exportSearchCrate(searchCrateId);
+                }
+            });
+#endif
 }
 
 void SearchCrateFeature::connectLibrary(Library* pLibrary) {
@@ -245,40 +246,40 @@ void SearchCrateFeature::updateTreeItemForSearchCrateSummary(
     pTreeItem->setIcon(searchCrateSummary.isLocked() ? m_lockedSearchCrateIcon : QIcon());
 }
 
-bool SearchCrateFeature::dropAcceptChild(
-        const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource) {
-    SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
-    VERIFY_OR_DEBUG_ASSERT(searchCrateId.isValid()) {
-        return false;
-    }
-    // If a track is dropped onto a searchCrate's name, but the track isn't in the
-    // library, then add the track to the library before adding it to the
-    // playlist.
-    // pSource != nullptr it is a drop from inside Mixxx and indicates all
-    // tracks already in the DB
-    QList<TrackId> trackIds =
-            m_pLibrary->trackCollectionManager()->resolveTrackIdsFromUrls(urls, !pSource);
-    if (trackIds.isEmpty()) {
-        return false;
-    }
+// bool SearchCrateFeature::dropAcceptChild(
+//         const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource) {
+//     SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
+//     VERIFY_OR_DEBUG_ASSERT(searchCrateId.isValid()) {
+//         return false;
+//     }
+//     // If a track is dropped onto a searchCrate's name, but the track isn't in the
+//     // library, then add the track to the library before adding it to the
+//     // playlist.
+//     // pSource != nullptr it is a drop from inside Mixxx and indicates all
+//     // tracks already in the DB
+//     QList<TrackId> trackIds =
+//             m_pLibrary->trackCollectionManager()->resolveTrackIdsFromUrls(urls, !pSource);
+//     if (trackIds.isEmpty()) {
+//         return false;
+//     }
+//
+//     m_pTrackCollection->addSearchCrateTracks(searchCrateId, trackIds);
+//     return true;
+// }
 
-    m_pTrackCollection->addSearchCrateTracks(searchCrateId, trackIds);
-    return true;
-}
-
-bool SearchCrateFeature::dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) {
-    SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
-    if (!searchCrateId.isValid()) {
-        return false;
-    }
-    SearchCrate searchCrate;
-    if (!m_pTrackCollection->searchCrates().readSearchCrateById(searchCrateId, &searchCrate) ||
-            searchCrate.isLocked()) {
-        return false;
-    }
-    return SoundSourceProxy::isUrlSupported(url) ||
-            Parser::isPlaylistFilenameSupported(url.toLocalFile());
-}
+// bool SearchCrateFeature::dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) {
+//     SearchCrateId searchCrateId(searchCrateIdFromIndex(index));
+//     if (!searchCrateId.isValid()) {
+//         return false;
+//     }
+//     SearchCrate searchCrate;
+//     if (!m_pTrackCollection->searchCrates().readSearchCrateById(searchCrateId, &searchCrate) ||
+//             searchCrate.isLocked()) {
+//         return false;
+//     }
+//     return SoundSourceProxy::isUrlSupported(url) ||
+//             Parser::isPlaylistFilenameSupported(url.toLocalFile());
+// }
 
 void SearchCrateFeature::bindLibraryWidget(
         WLibrary* libraryWidget, KeyboardEventFilter* keyboard) {
@@ -370,11 +371,9 @@ void SearchCrateFeature::onRightClick(const QPoint& globalPos) {
     m_lastRightClickedIndex = QModelIndex();
     QMenu menu(m_pSidebarWidget);
     menu.addAction(m_pCreateSearchCrateAction.get());
-    menu.addSeparator();
-    menu.addAction(m_pEditSearchCrateAction.get());
 #ifdef __ENGINEPRIME__
-    menu.addSeparator();
-    menu.addAction(m_pExportAllSearchCratesAction.get());
+    // menu.addSeparator();
+    // menu.addAction(m_pExportAllSearchCratesAction.get());
 #endif
     menu.exec(globalPos);
 }
@@ -396,7 +395,7 @@ void SearchCrateFeature::onRightClickChild(
     m_pDeleteSearchCrateAction->setEnabled(!searchCrate.isLocked());
     m_pRenameSearchCrateAction->setEnabled(!searchCrate.isLocked());
 
-    m_pAutoDjTrackSourceAction->setChecked(searchCrate.isAutoDjSource());
+    //    m_pAutoDjTrackSourceAction->setChecked(searchCrate.isAutoDjSource());
 
     m_pLockSearchCrateAction->setText(searchCrate.isLocked() ? tr("Unlock") : tr("Lock"));
 
@@ -405,19 +404,19 @@ void SearchCrateFeature::onRightClickChild(
     menu.addSeparator();
     menu.addAction(m_pEditSearchCrateAction.get());
     menu.addSeparator();
-    menu.addAction(m_pCreateImportPlaylistAction.get());
+    //    menu.addAction(m_pCreateImportPlaylistAction.get());
     menu.addAction(m_pRenameSearchCrateAction.get());
     menu.addAction(m_pDuplicateSearchCrateAction.get());
     menu.addAction(m_pDeleteSearchCrateAction.get());
     menu.addAction(m_pLockSearchCrateAction.get());
     menu.addSeparator();
-    menu.addAction(m_pAutoDjTrackSourceAction.get());
-    menu.addSeparator();
+    //    menu.addAction(m_pAutoDjTrackSourceAction.get());
+    //    menu.addSeparator();
     menu.addAction(m_pAnalyzeSearchCrateAction.get());
     menu.addSeparator();
-    if (!searchCrate.isLocked()) {
-        menu.addAction(m_pImportPlaylistAction.get());
-    }
+    //    if (!searchCrate.isLocked()) {
+    //        menu.addAction(m_pImportPlaylistAction.get());
+    //    }
     menu.addAction(m_pExportPlaylistAction.get());
     menu.addAction(m_pExportTrackFilesAction.get());
 #ifdef __ENGINEPRIME__
@@ -612,24 +611,12 @@ void SearchCrateFeature::slotEditSearchCrate() {
                     searchCrateData = updatedData; // Capture the updated data from the UI
                     // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
                     SearchCrateId searchCrateId(searchCrateData[0]);
-                    // SearchCrateId previousSearchCrateId(searchCrateData[56]);
-                    // bool currentSearchCrateIdBOF(searchCrateData[57].toString() == "true");
-                    // SearchCrateId nextSearchCrateId(searchCrateData[58]);
-                    // bool currentSearchCrateIdEOF(searchCrateData[59].toString() == "true");
                     if (sDebugSearchCrateFeature) {
                         qDebug() << "[SEARCHCRATESFEATURE] extracted "
                                     "searchCrateId from searchCrateData: "
                                  << searchCrateId;
                         qDebug() << "[SEARCHCRATESFEATURE] current searchCrateId "
                                  << searchCrateId;
-                        // qDebug() << "[SEARCHCRATESFEATURE] previous SearchCrateId: "
-                        //          << previousSearchCrateId;
-                        // qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId BOF: "
-                        //          << currentSearchCrateIdBOF;
-                        // qDebug() << "[SEARCHCRATESFEATURE] next SearchCrateId: "
-                        //          << nextSearchCrateId;
-                        // qDebug() << "[SEARCHCRATESFEATURE] current SearchCrateId EOF: "
-                        //          << currentSearchCrateIdEOF;
                     }
                     if (searchCrateId.isValid()) {
                         // Store updated data
@@ -657,8 +644,6 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 &dlgSearchCrateInfo::requestDeleteSearchCrate,
                 this,
                 [this]() {
-                    //[this, &searchCrateId]() {
-                    // [this, searchCrateId]() { // last
                     // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
                     SearchCrateId searchCrateId(searchCrateData[0]);
                     SearchCrateId previousSearchCrateId(searchCrateData[56]);
@@ -741,9 +726,7 @@ void SearchCrateFeature::slotEditSearchCrate() {
         connect(&infoDialog,
                 &dlgSearchCrateInfo::requestNewSearchCrate,
                 this,
-                // [this, &searchCrateId]() {
                 [this, searchCrateId]() {
-                    //            emit setBlockerOff("new");
                     if (sDebugSearchCrateFeature) {
                         qDebug() << "[SEARCHCRATESFEATURE] [SLOT EDIT SEARCHCRATES] -> "
                                     "[NEW] "
@@ -788,7 +771,6 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 &dlgSearchCrateInfo::requestPreviousSearchCrate,
                 this,
                 [this]() {
-                    //[this, &searchCrateId]() {
                     // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
                     SearchCrateId searchCrateId(searchCrateData[0]);
                     SearchCrateId previousSearchCrateId(searchCrateData[56]);
@@ -854,7 +836,6 @@ void SearchCrateFeature::slotEditSearchCrate() {
                 &dlgSearchCrateInfo::requestNextSearchCrate,
                 this,
                 [this]() {
-                    //[this, &searchCrateId]() {
                     // current searchCrateId @ 0 prev/bof/next/eof pointers @ 56
                     SearchCrateId searchCrateId(searchCrateData[0]);
                     SearchCrateId previousSearchCrateId(searchCrateData[56]);
@@ -981,15 +962,15 @@ void SearchCrateFeature::slotToggleSearchCrateLock() {
     }
 }
 
-void SearchCrateFeature::slotAutoDjTrackSourceChanged() {
-    SearchCrate searchCrate;
-    if (readLastRightClickedSearchCrate(&searchCrate)) {
-        if (searchCrate.isAutoDjSource() != m_pAutoDjTrackSourceAction->isChecked()) {
-            searchCrate.setAutoDjSource(m_pAutoDjTrackSourceAction->isChecked());
-            m_pTrackCollection->updateSearchCrate(searchCrate);
-        }
-    }
-}
+// void SearchCrateFeature::slotAutoDjTrackSourceChanged() {
+//     SearchCrate searchCrate;
+//     if (readLastRightClickedSearchCrate(&searchCrate)) {
+//         if (searchCrate.isAutoDjSource() != m_pAutoDjTrackSourceAction->isChecked()) {
+//             searchCrate.setAutoDjSource(m_pAutoDjTrackSourceAction->isChecked());
+//             m_pTrackCollection->updateSearchCrate(searchCrate);
+//         }
+//     }
+// }
 
 QModelIndex SearchCrateFeature::rebuildChildModel(SearchCrateId selectedSearchCrateId) {
     qDebug() << "SearchCrateFeature::rebuildChildModel()" << selectedSearchCrateId;
@@ -1082,111 +1063,116 @@ QModelIndex SearchCrateFeature::indexFromSearchCrateId(SearchCrateId searchCrate
     return QModelIndex();
 }
 
-void SearchCrateFeature::slotImportPlaylist() {
-    // qDebug() << "slotImportPlaylist() row:" ; //<< m_lastRightClickedIndex.data();
+// void SearchCrateFeature::slotImportPlaylist() {
+//     // qDebug() << "slotImportPlaylist() row:" ; //<< m_lastRightClickedIndex.data();
+//
+//     QString playlistFile = getPlaylistFile();
+//     if (playlistFile.isEmpty()) {
+//         return;
+//     }
+//
+//     // Update the import/export searchCrate directory
+//     QFileInfo fileDirectory(playlistFile);
+//     m_pConfig->set(kConfigKeyLastImportExportSearchCrateDirectoryKey,
+//             ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
+//
+//     SearchCrateId searchCrateId = searchCrateIdFromIndex(m_lastRightClickedIndex);
+//     SearchCrate searchCrate;
+//     if (m_pTrackCollection->searchCrates().readSearchCrateById(searchCrateId, &searchCrate)) {
+//         qDebug() << "Importing playlist file" << playlistFile << "into searchCrate"
+//                  << searchCrateId << searchCrate;
+//     } else {
+//         qDebug() << "Importing playlist file" << playlistFile << "into searchCrate"
+//                  << searchCrateId << searchCrate << "failed!";
+//         return;
+//     }
+//
+//     slotImportPlaylistFile(playlistFile, searchCrateId);
+//     activateChild(m_lastRightClickedIndex);
+// }
 
-    QString playlistFile = getPlaylistFile();
-    if (playlistFile.isEmpty()) {
-        return;
-    }
+// void SearchCrateFeature::slotImportPlaylistFile(
+//         const QString& playlistFile, SearchCrateId searchCrateId) {
+//     // The user has picked a new directory via a file dialog. This means the
+//     // system sandboxer (if we are sandboxed) has granted us permission to
+//     this
+//     // folder. We don't need access to this file on a regular basis so we do
+//     not
+//     // register a security bookmark.
+//     // TODO(XXX): Parsing a list of track locations from a playlist file
+//     // is a general task and should be implemented separately.
+//     QList<QString> locations = Parser().parse(playlistFile);
+//     if (locations.empty()) {
+//         return;
+//     }
+//
+//     if (searchCrateId == m_searchCrateTableModel.selectedSearchCrate()) {
+//         // Add tracks directly to the model
+//         m_searchCrateTableModel.addTracks(QModelIndex(), locations);
+//     } else {
+//         // Create a temporary table model since the main one might have
+//         another
+//         // searchCrate selected which is not the searchCrate that received
+//         the right-click. std::unique_ptr<SearchCrateTableModel>
+//         pSearchCrateTableModel =
+//                 std::make_unique<SearchCrateTableModel>(this,
+//                 m_pLibrary->trackCollectionManager());
+//         pSearchCrateTableModel->selectSearchCrate(searchCrateId);
+//         pSearchCrateTableModel->select();
+//         pSearchCrateTableModel->addTracks(QModelIndex(), locations);
+//     }
+// }
 
-    // Update the import/export searchCrate directory
-    QFileInfo fileDirectory(playlistFile);
-    m_pConfig->set(kConfigKeyLastImportExportSearchCrateDirectoryKey,
-            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
-
-    SearchCrateId searchCrateId = searchCrateIdFromIndex(m_lastRightClickedIndex);
-    SearchCrate searchCrate;
-    if (m_pTrackCollection->searchCrates().readSearchCrateById(searchCrateId, &searchCrate)) {
-        qDebug() << "Importing playlist file" << playlistFile << "into searchCrate"
-                 << searchCrateId << searchCrate;
-    } else {
-        qDebug() << "Importing playlist file" << playlistFile << "into searchCrate"
-                 << searchCrateId << searchCrate << "failed!";
-        return;
-    }
-
-    slotImportPlaylistFile(playlistFile, searchCrateId);
-    activateChild(m_lastRightClickedIndex);
-}
-
-void SearchCrateFeature::slotImportPlaylistFile(
-        const QString& playlistFile, SearchCrateId searchCrateId) {
-    // The user has picked a new directory via a file dialog. This means the
-    // system sandboxer (if we are sandboxed) has granted us permission to this
-    // folder. We don't need access to this file on a regular basis so we do not
-    // register a security bookmark.
-    // TODO(XXX): Parsing a list of track locations from a playlist file
-    // is a general task and should be implemented separately.
-    QList<QString> locations = Parser().parse(playlistFile);
-    if (locations.empty()) {
-        return;
-    }
-
-    if (searchCrateId == m_searchCrateTableModel.selectedSearchCrate()) {
-        // Add tracks directly to the model
-        m_searchCrateTableModel.addTracks(QModelIndex(), locations);
-    } else {
-        // Create a temporary table model since the main one might have another
-        // searchCrate selected which is not the searchCrate that received the right-click.
-        std::unique_ptr<SearchCrateTableModel> pSearchCrateTableModel =
-                std::make_unique<SearchCrateTableModel>(this, m_pLibrary->trackCollectionManager());
-        pSearchCrateTableModel->selectSearchCrate(searchCrateId);
-        pSearchCrateTableModel->select();
-        pSearchCrateTableModel->addTracks(QModelIndex(), locations);
-    }
-}
-
-void SearchCrateFeature::slotCreateImportSearchCrate() {
-    // Get file to read
-    const QStringList playlistFiles = LibraryFeature::getPlaylistFiles();
-    if (playlistFiles.isEmpty()) {
-        return;
-    }
-
-    // Set last import directory
-    QFileInfo fileDirectory(playlistFiles.first());
-    m_pConfig->set(kConfigKeyLastImportExportSearchCrateDirectoryKey,
-            ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
-
-    SearchCrateId lastSearchCrateId;
-
-    // For each selected file create a new searchCrate
-    for (const QString& playlistFile : playlistFiles) {
-        const QFileInfo fileInfo(playlistFile);
-
-        SearchCrate searchCrate;
-
-        // Get a valid name
-        const QString baseName = fileInfo.completeBaseName();
-        for (int i = 0;; ++i) {
-            auto name = baseName;
-            if (i > 0) {
-                name += QStringLiteral(" %1").arg(i);
-            }
-            name = name.trimmed();
-            if (!name.isEmpty()) {
-                if (!m_pTrackCollection->searchCrates().readSearchCrateByName(name)) {
-                    // unused searchCrate name found
-                    searchCrate.setName(std::move(name));
-                    DEBUG_ASSERT(searchCrate.hasName());
-                    break; // terminate loop
-                }
-            }
-        }
-
-        if (!m_pTrackCollection->insertSearchCrate(searchCrate, &lastSearchCrateId)) {
-            QMessageBox::warning(nullptr,
-                    tr("SearchCrate Creation Failed"),
-                    tr("An unknown error occurred while creating searchCrate: ") +
-                            searchCrate.getName());
-            return;
-        }
-
-        slotImportPlaylistFile(playlistFile, lastSearchCrateId);
-    }
-    activateSearchCrate(lastSearchCrateId);
-}
+// void SearchCrateFeature::slotCreateImportSearchCrate() {
+//     // Get file to read
+//     const QStringList playlistFiles = LibraryFeature::getPlaylistFiles();
+//     if (playlistFiles.isEmpty()) {
+//         return;
+//     }
+//
+//     // Set last import directory
+//     QFileInfo fileDirectory(playlistFiles.first());
+//     m_pConfig->set(kConfigKeyLastImportExportSearchCrateDirectoryKey,
+//             ConfigValue(fileDirectory.absoluteDir().canonicalPath()));
+//
+//     SearchCrateId lastSearchCrateId;
+//
+//     // For each selected file create a new searchCrate
+//     for (const QString& playlistFile : playlistFiles) {
+//         const QFileInfo fileInfo(playlistFile);
+//
+//         SearchCrate searchCrate;
+//
+//         // Get a valid name
+//         const QString baseName = fileInfo.completeBaseName();
+//         for (int i = 0;; ++i) {
+//             auto name = baseName;
+//             if (i > 0) {
+//                 name += QStringLiteral(" %1").arg(i);
+//             }
+//             name = name.trimmed();
+//             if (!name.isEmpty()) {
+//                 if (!m_pTrackCollection->searchCrates().readSearchCrateByName(name)) {
+//                     // unused searchCrate name found
+//                     searchCrate.setName(std::move(name));
+//                     DEBUG_ASSERT(searchCrate.hasName());
+//                     break; // terminate loop
+//                 }
+//             }
+//         }
+//
+//         if (!m_pTrackCollection->insertSearchCrate(searchCrate, &lastSearchCrateId)) {
+//             QMessageBox::warning(nullptr,
+//                     tr("SearchCrate Creation Failed"),
+//                     tr("An unknown error occurred while creating searchCrate: ") +
+//                             searchCrate.getName());
+//             return;
+//         }
+//
+//         slotImportPlaylistFile(playlistFile, lastSearchCrateId);
+//     }
+//     activateSearchCrate(lastSearchCrateId);
+// }
 
 void SearchCrateFeature::slotAnalyzeSearchCrate() {
     if (m_lastRightClickedIndex.isValid()) {
