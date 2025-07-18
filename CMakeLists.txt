@@ -1318,6 +1318,7 @@ add_library(
   src/library/dao/cuedao.cpp
   src/library/dao/directorydao.cpp
   src/library/dao/libraryhashdao.cpp
+  src/library/dao/genredao.cpp
   src/library/dao/playlistdao.cpp
   src/library/dao/settingsdao.cpp
   src/library/dao/trackdao.cpp
@@ -1383,6 +1384,7 @@ add_library(
   src/library/tabledelegates/checkboxdelegate.cpp
   src/library/tabledelegates/colordelegate.cpp
   src/library/tabledelegates/coverartdelegate.cpp
+  src/library/tabledelegates/genredelegate.cpp
   src/library/tabledelegates/keydelegate.cpp
   src/library/tabledelegates/locationdelegate.cpp
   src/library/tabledelegates/multilineeditdelegate.cpp

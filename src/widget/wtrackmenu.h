@@ -8,6 +8,7 @@
 #include "analyzer/analyzertrack.h"
 #include "control/pollingcontrolproxy.h"
 #include "library/coverart.h"
+#include "library/dao/genredao.h"
 #include "library/dao/playlistdao.h"
 #include "library/trackprocessing.h"
 #include "preferences/usersettings.h"
@@ -113,6 +114,8 @@ class WTrackMenu : public QMenu {
     // Library management
     void slotRemoveFromDisk();
     const QString getDeckGroup() const;
+
+    void loadGenreData2QVL();
 
   signals:
 #ifdef __STEM__
@@ -402,6 +405,7 @@ class WTrackMenu : public QMenu {
     QString m_trackProperty;
 
     static bool s_showPurgeSuccessPopup;
+    QVariantList m_genreData;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WTrackMenu::Features)
