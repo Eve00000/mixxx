@@ -768,8 +768,10 @@ void MixxxMainWindow::slotUpdateWindowTitle(TrackPointer pTrack) {
             //  location and name for nowplayingfile
             if (m_pCoreServices->getSettings()->getValueString(ConfigKey(
                         "[Controls]", "CreateNowPlayingFile")) != "0") {
-                QString StatusNowPlayingFilePath = m_pCoreServices->getSettings()->getSettingsPath();
-                QString StatusNowPlayingFileLocation = StatusNowPlayingFilePath + "/NowPlaying.txt";
+                QString StatusNowPlayingFilePath =
+                        m_pCoreServices->getSettings()->getSettingsPath();
+                QString StatusNowPlayingFileLocation =
+                        StatusNowPlayingFilePath + "/NowPlaying.txt";
                 QFile StatusNowPlayingFile(StatusNowPlayingFileLocation);
                 //          remove previous nowplayingfile
                 StatusNowPlayingFile.remove();
