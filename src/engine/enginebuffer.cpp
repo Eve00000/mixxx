@@ -103,6 +103,7 @@ EngineBuffer::EngineBuffer(const QString& group,
           m_iSeekPhaseQueued(0),
           m_iEnableSyncQueued(SYNC_REQUEST_NONE),
           m_iSyncModeQueued(static_cast<int>(SyncMode::Invalid)),
+          m_slipQuitAndAdopt(0),
           m_bPlayAfterLoading(false),
           m_channelCount(mixxx::kEngineChannelOutputCount),
           m_pCrossfadeBuffer(SampleUtil::alloc(
@@ -285,9 +286,9 @@ EngineBuffer::EngineBuffer(const QString& group,
     // Quantization Controller for enabling and disabling the
     // quantization (alignment) of loop in/out positions and (hot)cues with
     // beats.
-    QuantizeControl* quantize_control = new QuantizeControl(group, pConfig);
-    addControl(quantize_control);
-    m_pQuantize = ControlObject::getControl(ConfigKey(group, "quantize"));
+    QuantizeControl* pQuantize_control = new QuantizeControl(group, pConfig);
+    addControl(pQuantize_control);
+    m_quantize = PollingControlProxy(ConfigKey(group, "quantize"));
 
     // Create the Loop Controller
     m_pLoopingControl = new LoopingControl(group, pConfig);
@@ -393,6 +394,9 @@ EngineBuffer::~EngineBuffer() {
     //close the writer
     df.close();
 #endif
+
+    qDeleteAll(m_engineControls.rbegin(), m_engineControls.rend());
+
     delete m_pReadAheadManager;
     delete m_pReader;
 
@@ -511,8 +515,6 @@ EngineBuffer::~EngineBuffer() {
     delete m_pReplayGain;
 
     SampleUtil::free(m_pCrossfadeBuffer);
-
-    qDeleteAll(m_engineControls);
 }
 
 void EngineBuffer::bindWorkers(EngineWorkerScheduler* pWorkerScheduler) {
@@ -1600,13 +1602,19 @@ void EngineBuffer::ejectTrack() {
 
     if (pOldTrack) {
         notifyTrackLoaded(TrackPointer(), pOldTrack);
+    } else {
+        // When not invoking notifyTrackLoaded() call this separately
+        m_pRateControl->resetPositionScratchController();
     }
+
     m_iTrackLoading = 0;
     m_pChannelToCloneFrom = nullptr;
 }
 
 void EngineBuffer::notifyTrackLoaded(
         TrackPointer pNewTrack, TrackPointer pOldTrack) {
+    m_pRateControl->resetPositionScratchController();
+
     if (pOldTrack) {
         disconnect(
                 pOldTrack.get(),
@@ -1740,7 +1748,7 @@ void EngineBuffer::slotControlPlayRequest(double v) {
     bool verifiedPlay = updateIndicatorsAndModifyPlay(v > 0.0, oldPlay);
 
     if (!oldPlay && verifiedPlay) {
-        if (m_pQuantize->toBool()
+        if (m_quantize.toBool()
 #ifdef __VINYLCONTROL__
                 && m_pVinylControlControl && !m_pVinylControlControl->isEnabled()
 #endif
@@ -1814,6 +1822,11 @@ void EngineBuffer::slotKeylockEngineChanged(double dIndex) {
         slotKeylockEngineChanged(static_cast<double>(defaultKeylockEngine()));
         break;
     }
+}
+
+void EngineBuffer::slipQuitAndAdopt() {
+    m_slipQuitAndAdopt.storeRelease(1);
+    m_pSlipButton->set(0);
 }
 
 void EngineBuffer::processTrackLocked(
@@ -2112,7 +2125,7 @@ void EngineBuffer::processTrackLocked(
     // Ife it's really desired, should this be moved to looping control in order
     // to set the sync'ed playposition right away and fill the wrap-around buffer
     // with correct samples from the sync'ed loop in / track start position?
-    if (m_pRepeat->toBool() && m_pQuantize->toBool() &&
+    if (m_pRepeat->toBool() && m_quantize.toBool() &&
             (m_playPos > playpos_old) == backwards) {
         // TODO() The resulting seek is processed in the following callback
         // That is to late
@@ -2209,8 +2222,12 @@ void EngineBuffer::processSlip(std::size_t bufferSize) {
             m_slipPos = m_playPos;
             m_dSlipRate = m_rate_old;
         } else {
-            // TODO(owen) assuming that looping will get canceled properly
-            seekExact(m_slipPos.toNearestFrameBoundary());
+            // If m_slipQuitAndAdopt is 1 we've already quit slip mode
+            // but we don't seek in that case.
+            if (m_slipQuitAndAdopt.fetchAndStoreAcquire(0) == 0) {
+                // TODO(owen) assuming that looping will get canceled properly
+                seekExact(m_slipPos.toNearestFrameBoundary());
+            }
             m_slipPos = mixxx::audio::kStartFramePos;
         }
     }
@@ -2294,7 +2311,7 @@ void EngineBuffer::processSeek(bool paused) {
             position = m_playPos;
             break;
         case SEEK_STANDARD:
-            if (m_pQuantize->toBool()) {
+            if (m_quantize.toBool()) {
                 seekType |= SEEK_PHASE;
             }
             // new position was already set above

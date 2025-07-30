@@ -210,7 +210,7 @@ void CrateTableModel::selectCrate(CrateId crateId) {
 
     // Restore search text
     setSearch(m_searchTexts.value(m_selectedCrate));
-    setDefaultSort(fieldIndex("artist"), Qt::AscendingOrder);
+    setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST), Qt::AscendingOrder);
 }
 
 void CrateTableModel::selectCrateGroup(const QString& groupName) {
@@ -318,7 +318,8 @@ TrackModel::Capabilities CrateTableModel::getCapabilities() const {
             Capability::Hide |
             Capability::RemoveFromDisk |
             Capability::Analyze |
-            Capability::Properties;
+            Capability::Properties |
+            Capability::Sorting;
 
     if (m_selectedCrate.isValid()) {
         Crate crate;

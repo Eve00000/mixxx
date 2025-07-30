@@ -2,44 +2,18 @@
 
 #include <QString>
 
-#include "track/trackid.h"
 #include "util/parented_ptr.h"
 #include "widget/wcuemenupopup.h"
 #include "widget/wpushbutton.h"
 
+/// Pushbutton with hotcue controls and cue menu popup on right-click.
+/// This button can be dropped onto other WHotcueButtons to swap their hotcues.
+/// Can also be dropped onto WPlayButton in order to easily switch from hotcue
+/// previewing to regular play.
 class WHotcueButton : public WPushButton {
     Q_OBJECT
-
-    struct HotcueDragInfo {
-        HotcueDragInfo(TrackId id, int cue)
-                : trackId(id),
-                  hotcue(cue) {};
-
-        static HotcueDragInfo fromByteArray(const QByteArray& bytes) {
-            QDataStream stream(bytes);
-            TrackId trackId;
-            int hotcue;
-            stream >> trackId >> hotcue;
-            return HotcueDragInfo(trackId, hotcue);
-        };
-
-        QByteArray toByteArray() {
-            QByteArray bytes;
-            QDataStream dataStream(&bytes, QIODevice::WriteOnly);
-            dataStream << trackId << hotcue;
-            return bytes;
-        };
-
-        bool isValid() {
-            return trackId.isValid() && hotcue != Cue::kNoHotCue;
-        }
-
-        TrackId trackId = TrackId();
-        int hotcue = Cue::kNoHotCue;
-    };
-
   public:
-    WHotcueButton(const QString& group, QWidget* pParent);
+    WHotcueButton(QWidget* pParent, const QString& group);
 
     void setup(const QDomNode& node, const SkinContext& context) override;
 
@@ -60,7 +34,6 @@ class WHotcueButton : public WPushButton {
     void mouseMoveEvent(QMouseEvent* pEvent) override;
     void dragEnterEvent(QDragEnterEvent* pEvent) override;
     void dropEvent(QDropEvent* pEvent) override;
-
     void restyleAndRepaint() override;
 
   private slots:

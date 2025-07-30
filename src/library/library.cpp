@@ -108,6 +108,18 @@ Library::Library(
 
     m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPlaylistFeature);
+#ifdef __ENGINEPRIME__
+    connect(m_pPlaylistFeature,
+            &PlaylistFeature::exportAllPlaylists,
+            this,
+            &Library::exportLibrary, // signal-to-signal
+            Qt::DirectConnection);
+    connect(m_pPlaylistFeature,
+            &PlaylistFeature::exportPlaylist,
+            this,
+            &Library::exportPlaylist, // signal-to-signal
+            Qt::DirectConnection);
+#endif
 
     if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) &&
             (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"), false))) {
@@ -197,6 +209,10 @@ Library::Library(
             &PlayerManager::trackAnalyzerIdle,
             this,
             &Library::onPlayerManagerTrackAnalyzerIdle);
+    connect(m_pAnalysisFeature,
+            &AnalysisFeature::trackProgress,
+            this,
+            &Library::onTrackAnalyzerProgress);
 
     // iTunes and Rhythmbox should be last until we no longer have an obnoxious
     // messagebox popup when you select them. (This forces you to reach for your
@@ -421,8 +437,7 @@ void Library::bindLibraryWidget(
     WTrackTableView* pTrackTableView = new WTrackTableView(m_pLibraryWidget,
             m_pConfig,
             this,
-            m_pLibraryWidget->getTrackTableBackgroundColorOpacity(),
-            true);
+            m_pLibraryWidget->getTrackTableBackgroundColorOpacity());
     pTrackTableView->installEventFilter(pKeyboard);
     connect(this,
             &Library::showTrackModel,
@@ -777,13 +792,27 @@ void Library::setEditMetadataSelectedClick(bool enabled) {
     emit setSelectedClick(enabled);
 }
 
+void Library::slotSearchInCurrentView() {
+    m_pLibraryControl->setLibraryFocus(FocusWidget::Searchbar, Qt::ShortcutFocusReason);
+}
+
+void Library::slotSearchInAllTracks() {
+    searchTracksInCollection();
+}
+
+void Library::searchTracksInCollection() {
+    VERIFY_OR_DEBUG_ASSERT(m_pMixxxLibraryFeature) {
+        return;
+    }
+    m_pMixxxLibraryFeature->selectAndActivate();
+    m_pLibraryControl->setLibraryFocus(FocusWidget::Searchbar, Qt::ShortcutFocusReason);
+}
+
 void Library::searchTracksInCollection(const QString& query) {
     VERIFY_OR_DEBUG_ASSERT(m_pMixxxLibraryFeature) {
         return;
     }
     m_pMixxxLibraryFeature->searchAndActivate(query);
-    emit switchToView(m_sTrackViewName);
-    m_pSidebarModel->activateDefaultSelection();
 }
 
 #ifdef __ENGINEPRIME__

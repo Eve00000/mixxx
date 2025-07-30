@@ -105,6 +105,10 @@ class Library: public QObject {
     void setRowHeight(int rowHeight);
     void setEditMetadataSelectedClick(bool enable);
 
+    /// Switches to the internal track collection view
+    /// and focuses the search box.
+    void searchTracksInCollection();
+
     /// Triggers a new search in the internal track collection
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
@@ -138,6 +142,8 @@ class Library: public QObject {
     //    void slotCreateSmartiesFromSearch();
     void slotCreateSmartiesFromSearch(const QString& text);
     // EVE
+    void slotSearchInCurrentView();
+    void slotSearchInAllTracks();
     void onSkinLoadFinished();
     void slotSaveCurrentViewState() const;
     void slotRestoreCurrentViewState() const;
@@ -174,6 +180,7 @@ class Library: public QObject {
     // EVE
     void exportSmarties(SmartiesId smartiesId);
     // EVE
+    void exportPlaylist(int playlistId);
 #endif
     void saveModelState();
     void restoreModelState();
@@ -181,6 +188,8 @@ class Library: public QObject {
     void setTrackTableFont(const QFont& font);
     void setTrackTableRowHeight(int rowHeight);
     void setSelectedClick(bool enable);
+
+    void onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
 
   private slots:
       void onPlayerManagerTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
