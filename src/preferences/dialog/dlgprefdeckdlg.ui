@@ -719,7 +719,7 @@ in a arrays to use them for displaying.
               </sizepolicy>
             </property>
           </spacer>
-        </item>  
+        </item>
       </layout>
     </widget>
    </item>

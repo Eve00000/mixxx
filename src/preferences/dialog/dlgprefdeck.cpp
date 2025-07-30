@@ -76,19 +76,19 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
 
     // create nowplayingfile checkbox
     CreateNowPlayingFileCheckBox->setChecked(m_pConfig->getValue(
-            ConfigKey("[Controls]", "CreateNowPlayingFile"), true));			
-	connect(CreateNowPlayingFileCheckBox,
+            ConfigKey("[Controls]", "CreateNowPlayingFile"), true));
+    connect(CreateNowPlayingFileCheckBox,
             &QCheckBox::stateChanged,
             this,
-            &DlgPrefDeck::slotToggleCreateNowPlayingFile);	
+            &DlgPrefDeck::slotToggleCreateNowPlayingFile);
     // create statusfiles checkbox
     CreateStatusFilesCheckBox->setChecked(m_pConfig->getValue(
-            ConfigKey("[Controls]", "CreateStatusFiles"), true));			
-	connect(CreateStatusFilesCheckBox,
+            ConfigKey("[Controls]", "CreateStatusFiles"), true));
+    connect(CreateStatusFilesCheckBox,
             &QCheckBox::stateChanged,
             this,
-            &DlgPrefDeck::slotToggleCreateStatusFiles);		
-                
+            &DlgPrefDeck::slotToggleCreateStatusFiles);
+
     // Track time display configuration
     connect(m_pControlTrackTimeDisplay.get(),
             &ControlObject::valueChanged,
@@ -780,8 +780,10 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermLeft"), m_dRatePermCoarse);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermRight"), m_dRatePermFine);
 
-    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateStatusFiles"), false));	
-    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), m_pConfig->getValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), false));				
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"),
+            m_pConfig->getValue(ConfigKey("[Controls]", "CreateStatusFiles"), false));
+    m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"),
+            m_pConfig->getValue(ConfigKey("[Controls]", "CreateNowPlayingFile"), false));
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {

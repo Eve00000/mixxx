@@ -708,7 +708,7 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
         QString DeckStatusFilePath = m_pConfig->getSettingsPath();
         DeckStatusFilePath.replace("Roaming", "Local");
         DeckStatusFilePath.replace("\\", "/");
-        QString DeckStatusFileLocation = 
+        QString DeckStatusFileLocation =
                 DeckStatusFilePath + "/controllers/Status" + getGroup() + ".js";
         //  Different file for each Deck / Sampler
         QString DeckStatusTxtLine1 = "var TrackDeck" + trackInfoDeck + " = { ";
