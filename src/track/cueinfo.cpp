@@ -48,6 +48,10 @@ CueInfo::CueInfo(
         const std::optional<int>& hotCueIndex,
         QString label,
         const mixxx::RgbColor::optional_t& color,
+        const std::optional<int>& stem1vol,
+        const std::optional<int>& stem2vol,
+        const std::optional<int>& stem3vol,
+        const std::optional<int>& stem4vol,
         CueFlags flags)
         : m_type(type),
           m_startPositionMillis(startPositionMillis),
@@ -55,6 +59,10 @@ CueInfo::CueInfo(
           m_hotCueIndex(hotCueIndex),
           m_label(std::move(label)),
           m_color(color),
+          m_stem1vol(stem1vol),
+          m_stem2vol(stem2vol),
+          m_stem3vol(stem3vol),
+          m_stem4vol(stem4vol),
           m_flags(flags) {
     assertEndPosition(type, endPositionMillis);
 }
@@ -90,6 +98,38 @@ std::optional<int> CueInfo::getHotCueIndex() const {
 
 void CueInfo::setHotCueIndex(int hotCueIndex) {
     m_hotCueIndex = hotCueIndex;
+}
+
+std::optional<int> CueInfo::getStem1vol() const {
+    return m_stem1vol;
+}
+
+std::optional<int> CueInfo::getStem2vol() const {
+    return m_stem2vol;
+}
+
+std::optional<int> CueInfo::getStem3vol() const {
+    return m_stem3vol;
+}
+
+std::optional<int> CueInfo::getStem4vol() const {
+    return m_stem4vol;
+}
+
+void CueInfo::setStem1vol(int stem1vol) {
+    m_stem1vol = stem1vol;
+}
+
+void CueInfo::setStem2vol(int stem2vol) {
+    m_stem2vol = stem2vol;
+}
+
+void CueInfo::setStem3vol(int stem3vol) {
+    m_stem3vol = stem3vol;
+}
+
+void CueInfo::setStem4vol(int stem4vol) {
+    m_stem4vol = stem4vol;
 }
 
 QString CueInfo::getLabel() const {

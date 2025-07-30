@@ -50,7 +50,7 @@ CrateFeature::CrateFeature(Library* pLibrary,
         : BaseTrackSetFeature(pLibrary, pConfig, "CRATEHOME", QStringLiteral("crates")),
           m_lockedCrateIcon(":/images/library/ic_library_locked_tracklist.svg"),
           m_pTrackCollection(pLibrary->trackCollectionManager()->internalCollection()),
-          m_crateTableModel(this, pLibrary->trackCollectionManager()) {
+          m_crateTableModel(this, pLibrary->trackCollectionManager(), pConfig) {
     initActions();
 
     // construct child model
@@ -683,7 +683,8 @@ void CrateFeature::slotImportPlaylistFile(const QString& playlistFile, CrateId c
         // Create a temporary table model since the main one might have another
         // crate selected which is not the crate that received the right-click.
         std::unique_ptr<CrateTableModel> pCrateTableModel =
-                std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
+                std::make_unique<CrateTableModel>(
+                        this, m_pLibrary->trackCollectionManager(), m_pConfig);
         pCrateTableModel->selectCrate(crateId);
         pCrateTableModel->select();
         pCrateTableModel->addTracks(QModelIndex(), locations);
@@ -806,7 +807,8 @@ void CrateFeature::slotExportPlaylist() {
     // Create list of files of the crate
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
-            std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
+            std::make_unique<CrateTableModel>(
+                    this, m_pLibrary->trackCollectionManager(), m_pConfig);
     pCrateTableModel->selectCrate(crateId);
     pCrateTableModel->select();
 
@@ -836,7 +838,8 @@ void CrateFeature::slotExportTrackFiles() {
     }
     // Create a new table model since the main one might have an active search.
     std::unique_ptr<CrateTableModel> pCrateTableModel =
-            std::make_unique<CrateTableModel>(this, m_pLibrary->trackCollectionManager());
+            std::make_unique<CrateTableModel>(
+                    this, m_pLibrary->trackCollectionManager(), m_pConfig);
     pCrateTableModel->selectCrate(crateId);
     pCrateTableModel->select();
 
