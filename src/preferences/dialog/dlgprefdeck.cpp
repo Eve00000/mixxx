@@ -876,10 +876,10 @@ void DlgPrefDeck::slotToggleCreateStatusFiles(int buttonState) {
     bool enable = buttonState == Qt::Checked;
     m_pConfig->setValue(ConfigKey("[Controls]", "CreateStatusFiles"),
             enable);
-}		
+}
 
 void DlgPrefDeck::slotToggleCreateNowPlayingFile(int buttonState) {
     bool enable = buttonState == Qt::Checked;
     m_pConfig->setValue(ConfigKey("[Controls]", "CreateNowPlayingFile"),
-            enable);			
+            enable);
 }
