@@ -81,7 +81,6 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             &QCheckBox::stateChanged,
             this,
             &DlgPrefDeck::slotToggleCreateNowPlayingFile);	
-		
     // create statusfiles checkbox
     CreateStatusFilesCheckBox->setChecked(m_pConfig->getValue(
             ConfigKey("[Controls]", "CreateStatusFiles"), true));			
