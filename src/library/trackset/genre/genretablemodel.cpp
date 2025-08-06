@@ -993,8 +993,9 @@ void GenreTableModel::EditGenresMulti() {
             combo->addItem(QObject::tr("(None)"), QString());
 
             for (const auto& pair : std::as_const(visibleGenreList)) {
-                if (pair.second == genreId)
+                if (pair.second == genreId) {
                     continue;
+                }
                 QString tag = QString("##%1##").arg(pair.second);
                 combo->addItem(pair.first, tag);
             }
@@ -1225,17 +1226,20 @@ void GenreTableModel::EditOrphanTrackGenres() {
 
             QSet<QString> tags;
             auto it = tagRegex.globalMatch(genreField);
-            while (it.hasNext())
+            while (it.hasNext()) {
                 tags.insert(it.next().captured(0));
-            for (const QString& tag : tags)
+            }
+            for (const QString& tag : tags) {
                 genreField.replace(tag, " ");
+            }
 
             // adapted to add the long strings in the orphan editor too
             QStringList semicolonParts = genreField.split(';', Qt::SkipEmptyParts);
             for (QString part : std::as_const(semicolonParts)) {
                 part = part.trimmed();
-                if (part.isEmpty())
+                if (part.isEmpty()) {
                     continue;
+                }
 
                 // 1st:  full part like "classica - opera"
                 orphanGenreStrings.insert(part);

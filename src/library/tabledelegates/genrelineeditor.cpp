@@ -69,11 +69,11 @@ QStringList GenreLineEditor::genres() const {
 
     for (const QString& genre : std::as_const(rawList)) {
         QString trimmedGenre = genre.trimmed();
-        if (!genre.isEmpty()) {
-            QString lower = genre.toLower();
+        if (!trimmedGenre.isEmpty()) {
+            QString lower = trimmedGenre.toLower();
             if (!uniqueSet.contains(lower)) {
                 uniqueSet.insert(lower);
-                cleanList << genre;
+                cleanList << trimmedGenre;
             }
         }
     }
