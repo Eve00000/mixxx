@@ -845,7 +845,7 @@ void DlgTrackInfoMulti::saveTracks() {
             QString updatedRawGenre = placeholders.join(';');
 
             rec.refMetadata().refTrackInfo().setGenre(updatedRawGenre);
-            const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(updatedRawGenre);
+            // const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(updatedRawGenre);
             // m_genreDao.updateGenreTracksForTrack(rec.getId(), genreIds);
         }
         // EVE

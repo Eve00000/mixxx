@@ -369,7 +369,7 @@ void DlgTrackInfo::init() {
                 const QString genreWithIds = m_genreDao.getIdsForGenreNames(editedText);
                 m_trackRecord.refMetadata().refTrackInfo().setGenre(genreWithIds);
 
-                const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(genreWithIds);
+                // const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(genreWithIds);
                 // m_genreDao.updateGenreTracksForTrack(m_trackRecord.getId(), genreIds);
             });
     // EVE

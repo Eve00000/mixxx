@@ -28,7 +28,8 @@ GenreLineEditor::GenreLineEditor(QWidget* parent)
 void GenreLineEditor::slotOnCompletionSelected(const QString& completion) {
     QString current = text();
     int cursorPos = cursorPosition();
-    int lastSemi = current.left(cursorPos).lastIndexOf(';');
+    // int lastSemi = current.left(cursorPos).lastIndexOf(';');
+    int lastSemi = QStringView(current).left(cursorPos).lastIndexOf(';');
 
     QString before;
     QString after;
@@ -58,8 +59,11 @@ QStringList GenreLineEditor::genres() const {
     QSet<QString> uniqueSet;
     QStringList cleanList;
 
-    for (QString genre : rawList) {
-        genre = genre.trimmed();
+    // for (const QString& genre : std::as_const(rawList)) {
+    // for (QString genre : rawList) {
+    //     genre = genre.trimmed();
+    for (const QString& genre : std::as_const(rawList)) {
+        QString trimmedGenre = genre.trimmed();
         if (!genre.isEmpty()) {
             QString lower = genre.toLower();
             if (!uniqueSet.contains(lower)) {

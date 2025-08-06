@@ -414,7 +414,7 @@ uint GenreStorage::countGenreTracks(GenreId genreId) const {
 
     // construct where-clause
     QStringList likeClauses;
-    for (const QString& tag : genreTags) {
+    for (const QString& tag : std::as_const(genreTags)) {
         likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
     }
     QString whereClause = likeClauses.join(" OR ");
@@ -602,8 +602,10 @@ GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(TrackId trackId) co
     //     makeEmptyGenreResult(trackId);
     // }
 
-    QRegularExpression re("##(\\d+)##");
-    QRegularExpressionMatchIterator i = re.globalMatch(genreField);
+    // QRegularExpression re("##(\\d+)##");
+    // QRegularExpressionMatchIterator i = re.globalMatch(genreField);
+    static const QRegularExpression kGenreIdRegex("##(\\d+)##");
+    QRegularExpressionMatchIterator i = kGenreIdRegex.globalMatch(genreField);
 
     QStringList idStrings;
     while (i.hasNext()) {

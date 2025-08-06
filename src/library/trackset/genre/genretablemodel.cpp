@@ -95,7 +95,7 @@ void GenreTableModel::selectGenre(GenreId genreId) {
 
     // construct where-clause
     QStringList likeClauses;
-    for (const QString& tag : genreTags) {
+    for (const QString& tag : std::as_const(genreTags)) {
         likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
     }
     QString whereClause = likeClauses.join(" OR ");
