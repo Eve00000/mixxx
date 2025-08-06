@@ -399,9 +399,9 @@ bool TrackCollection::purgeTracks(
     VERIFY_OR_DEBUG_ASSERT(m_crates.onPurgingTracks(trackIds)) {
         return false;
     }
-    VERIFY_OR_DEBUG_ASSERT(m_genres.onPurgingTracks(trackIds)) {
-        return false;
-    }
+    // VERIFY_OR_DEBUG_ASSERT(m_genres.onPurgingTracks(trackIds)) {
+    //     return false;
+    // }
     VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
         return false;
     }

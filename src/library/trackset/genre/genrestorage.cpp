@@ -1,5 +1,9 @@
 #include "library/trackset/genre/genrestorage.h"
 
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
+#include <QRegularExpressionMatchIterator>
+
 #include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "library/trackset/genre/genre.h"
@@ -992,7 +996,7 @@ bool GenreStorage::onRemovingGenreTracks(
     return true;
 }
 
-bool GenreStorage::onPurgingTracks(
-        const QList<TrackId>& trackIds) {
-    return true;
-}
+// bool GenreStorage::onPurgingTracks(
+//         const QList<TrackId>& trackIds) {
+//     return true;
+// }

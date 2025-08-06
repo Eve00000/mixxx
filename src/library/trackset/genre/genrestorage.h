@@ -271,8 +271,8 @@ class GenreStorage : public virtual /*implements*/ SqlStorage {
             GenreId genreId,
             const QList<TrackId>& trackIds);
 
-    bool onPurgingTracks(
-            const QList<TrackId>& trackIds);
+    // bool onPurgingTracks(
+    //         const QList<TrackId>& trackIds);
 
     /////////////////////////////////////////////////////////////////////////
     // Genre read operations (read-only, const)
