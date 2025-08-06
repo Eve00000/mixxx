@@ -192,10 +192,6 @@ void SearchQueryParser::parseTokens(QStringList tokens,
                     pNode = std::make_unique<NoCrateFilterNode>(
                           &m_pTrackCollection->crates());
                     qDebug() << pNode->toSql();
-                } else if (field == "genre") {
-                    pNode = std::make_unique<NoGenreFilterNode>(
-                            &m_pTrackCollection->genres());
-                    qDebug() << pNode->toSql();
                 } else {
                     pNode = std::make_unique<NullOrEmptyTextFilterNode>(
                           m_pTrackCollection->database(), m_fieldToSqlColumns[field]);
@@ -205,9 +201,6 @@ void SearchQueryParser::parseTokens(QStringList tokens,
                 if (field == "crate") {
                     pNode = std::make_unique<CrateFilterNode>(
                             &m_pTrackCollection->crates(), argument);
-                } else if (field == "genre") {
-                    pNode = std::make_unique<GenreFilterNode>(
-                            &m_pTrackCollection->genres(), argument);
                 } else {
                     pNode = std::make_unique<TextFilterNode>(
                             m_pTrackCollection->database(),
