@@ -3,6 +3,8 @@
 #include <QCompleter>
 #include <QKeyEvent>
 #include <QLineEdit>
+#include <QSortFilterProxyModel>
+#include <QStringList>
 #include <QStringListModel>
 
 class GenreLineEditor : public QLineEdit {
