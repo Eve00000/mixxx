@@ -37,9 +37,9 @@ class GenreDao : public QObject, public virtual DAO {
     QHash<qint64, QString> getIdToNameMap() const;
     QList<GenreId> getGenreIdsFromIdString(const QString& genreIdString);
 
-    bool updateGenreTracksForTrack(
-            TrackId trackId,
-            const QList<GenreId>& genreIds);
+    // bool updateGenreTracksForTrack(
+    //        TrackId trackId,
+    //        const QList<GenreId>& genreIds);
 
   private:
     QVariantList m_genreData;

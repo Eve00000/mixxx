@@ -846,7 +846,7 @@ void DlgTrackInfoMulti::saveTracks() {
 
             rec.refMetadata().refTrackInfo().setGenre(updatedRawGenre);
             const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(updatedRawGenre);
-            m_genreDao.updateGenreTracksForTrack(rec.getId(), genreIds);
+            // m_genreDao.updateGenreTracksForTrack(rec.getId(), genreIds);
         }
         // EVE
         if (!composer.isNull()) {
