@@ -19,12 +19,12 @@ class GenreDelegate : public QStyledItemDelegate {
 
     QWidget* createEditor(QWidget* parent,
             const QStyleOptionViewItem&,
-            const QModelIndex&) const;
+            const QModelIndex&) const override;
 
-    void setEditorData(QWidget* editor, const QModelIndex& index) const;
+    void setEditorData(QWidget* editor, const QModelIndex& index) const override;
     void setModelData(QWidget* editor,
             QAbstractItemModel* model,
-            const QModelIndex& index) const;
+            const QModelIndex& index) const override;
 
   private:
     GenreDao* m_pGenreDao;
