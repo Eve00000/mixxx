@@ -3,7 +3,7 @@
 #include <QString>
 
 #define GENRE_TABLE "genres"
-#define GENRE_TRACKS_TABLE "genre_tracks"
+// #define GENRE_TRACKS_TABLE "genre_tracks"
 
 const QString GENRETABLE_ID = QStringLiteral("id");
 const QString GENRETABLE_NAME = QStringLiteral("name");
@@ -30,5 +30,5 @@ const QString GENRETABLE_DISPLAYGROUP = QStringLiteral("display_group");
 const QString GENRETABLE_ISVISIBLE = QStringLiteral("is_visible");
 const QString GENRETABLE_ISMODELDEFINED = QStringLiteral("is_model_defined");
 
-const QString GENRETRACKSTABLE_GENREID = QStringLiteral("genre_id");
-const QString GENRETRACKSTABLE_TRACKID = QStringLiteral("track_id");
+// const QString GENRETRACKSTABLE_GENREID = QStringLiteral("genre_id");
+// const QString GENRETRACKSTABLE_TRACKID = QStringLiteral("track_id");

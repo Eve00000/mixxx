@@ -4,6 +4,7 @@
 
 class BaseSqlTableModel;
 class GenreDao;
+class GenreLineEditor;
 
 class GenreDelegate : public QStyledItemDelegate {
     Q_OBJECT
@@ -15,6 +16,15 @@ class GenreDelegate : public QStyledItemDelegate {
             QAbstractItemView* view,
             const QStyleOptionViewItem& option,
             const QModelIndex& index) override;
+
+    QWidget* createEditor(QWidget* parent,
+            const QStyleOptionViewItem&,
+            const QModelIndex&) const;
+
+    void setEditorData(QWidget* editor, const QModelIndex& index) const;
+    void setModelData(QWidget* editor,
+            QAbstractItemModel* model,
+            const QModelIndex& index) const;
 
   private:
     GenreDao* m_pGenreDao;

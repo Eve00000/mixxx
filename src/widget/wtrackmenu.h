@@ -30,6 +30,7 @@ class WCoverArtMenu;
 class WFindOnWebMenu;
 class WSearchRelatedTracksMenu;
 class WStarRatingAction;
+class GenreTableModel;
 
 /// A context menu for track(s).
 /// Can be used with individual track type widgets based on TrackPointer

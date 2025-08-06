@@ -222,67 +222,66 @@ void BaseSqlTableModel::select() {
                 << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
 
         // old based on genre_tracks
+        // QString queryStringTempView =
+        //        QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+        //                "SELECT %2 FROM %3 "
+        //                "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
+        //                "AND %9=0")
+        //                .arg(m_tableName,                   // 1
+        //                        columns.join(","),          // 2
+        //                        LIBRARY_TABLE,              // 3
+        //                        LIBRARYTABLE_ID,            // 4
+        //                        GENRETRACKSTABLE_TRACKID,   // 5
+        //                        GENRE_TRACKS_TABLE,         // 6
+        //                        GENRETRACKSTABLE_GENREID,   // 7
+        //                        genreId,                    // 8
+        //                        LIBRARYTABLE_MIXXXDELETED); // 9
+        //                                                    // qDebug() <<
+        //                                                    // "[BASESQLTABLEMODEL]
+        //                                                    // [SELECT] ->
+        //                                                    // [GENRES] Rebuild
+        //                                                    // temp view ->
+        //                                                    // queryStringTempView
+        //                                                    // " <<
+        //                                                    // queryStringTempView;
+        // convert to not using henre_tracks
+        QStringList genreTags;
+        // genreTags << QString("##%1##").arg(genreId.toString());
+        genreTags << QString("##%1##").arg(genreId);
+
+        // find existing display_group for genreId
+        QSqlQuery displayGroupQuery(m_database);
+        displayGroupQuery.prepare("SELECT id FROM genres WHERE display_group = :group_id");
+        displayGroupQuery.bindValue(":group_id", genreId);
+
+        if (!displayGroupQuery.exec()) {
+            qWarning() << "[GenreStorage] Failed to load display group members:"
+                       << displayGroupQuery.lastError().text();
+        } else {
+            while (displayGroupQuery.next()) {
+                genreTags << QString("##%1##").arg(displayGroupQuery.value(0).toInt());
+            }
+        }
+
+        // construct where-clause
+        QStringList likeClauses;
+        for (const QString& tag : genreTags) {
+            likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
+        }
+        QString whereClause = likeClauses.join(" OR ");
+
+        // create temp view query
         QString queryStringTempView =
                 QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
                         "SELECT %2 FROM %3 "
-                        "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
-                        "AND %9=0")
-                        .arg(m_tableName,                   // 1
-                                columns.join(","),          // 2
-                                LIBRARY_TABLE,              // 3
-                                LIBRARYTABLE_ID,            // 4
-                                GENRETRACKSTABLE_TRACKID,   // 5
-                                GENRE_TRACKS_TABLE,         // 6
-                                GENRETRACKSTABLE_GENREID,   // 7
-                                genreId,                    // 8
-                                LIBRARYTABLE_MIXXXDELETED); // 9
-                                                            // qDebug() <<
-                                                            // "[BASESQLTABLEMODEL]
-                                                            // [SELECT] ->
-                                                            // [GENRES] Rebuild
-                                                            // temp view ->
-                                                            // queryStringTempView
-                                                            // " <<
-                                                            // queryStringTempView;
-        //// convert to not using henre_tracks
-        // QStringList genreTags;
-        ////genreTags << QString("##%1##").arg(genreId.toString());
-        // genreTags << QString("##%1##").arg(genreId);
+                        "WHERE (%4) AND %5=0")
+                        .arg(m_tableName,
+                                columns.join(","),
+                                LIBRARY_TABLE,
+                                whereClause,
+                                LIBRARYTABLE_MIXXXDELETED);
 
-        //// find existing display_group for genreId
-        // QSqlQuery displayGroupQuery(m_database);
-        // displayGroupQuery.prepare("SELECT id FROM genres WHERE display_group = :group_id");
-        // displayGroupQuery.bindValue(":group_id", genreId);
-
-        // if (!displayGroupQuery.exec()) {
-        //     qWarning() << "[GenreStorage] Failed to load display group
-        //     members:" << displayGroupQuery.lastError().text();
-        // } else {
-        //     while (displayGroupQuery.next()) {
-        //         genreTags <<
-        //         QString("##%1##").arg(displayGroupQuery.value(0).toInt());
-        //     }
-        // }
-
-        //// construct where-clause
-        // QStringList likeClauses;
-        // for (const QString& tag : genreTags) {
-        //     likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
-        // }
-        // QString whereClause = likeClauses.join(" OR ");
-
-        //// create temp view query
-        // QString queryStringTempView =
-        //         QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
-        //                 "SELECT %2 FROM %3 "
-        //                 "WHERE (%4) AND %5=0")
-        //                 .arg(m_tableName,
-        //                         columns.join(","),
-        //                         LIBRARY_TABLE,
-        //                         whereClause,
-        //                         LIBRARYTABLE_MIXXXDELETED);
-
-        // qDebug() << "[BaseSqlTableModel] -> select -> queryString: " << queryStringTempView;
+        qDebug() << "[BaseSqlTableModel] -> select -> queryString: " << queryStringTempView;
         FwdSqlQuery(m_database, queryStringTempView).execPrepared();
     }
 

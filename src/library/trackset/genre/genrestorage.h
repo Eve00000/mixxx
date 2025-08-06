@@ -178,34 +178,25 @@ class GenreSummarySelectResult : public FwdSqlQuerySelectResult {
 class GenreTrackQueryFields {
   public:
     GenreTrackQueryFields() = default;
+
     explicit GenreTrackQueryFields(const FwdSqlQuery& query);
     virtual ~GenreTrackQueryFields() = default;
 
     GenreId genreId(const FwdSqlQuery& query) const {
         return GenreId(query.fieldValue(m_iGenreId));
     }
+
     TrackId trackId(const FwdSqlQuery& query) const {
         return TrackId(query.fieldValue(m_iTrackId));
     }
 
   private:
+    static constexpr const char* kGenreIdField = "genre_id";
+    static constexpr const char* kTrackIdField = "track_id";
+
     DbFieldIndex m_iGenreId;
     DbFieldIndex m_iTrackId;
 };
-
-// class GenreTrackQueryFields {
-//   public:
-//     GenreTrackQueryFields() = default;
-//     explicit GenreTrackQueryFields(const FwdSqlQuery& query);
-//     virtual ~GenreTrackQueryFields() = default;
-//
-//     TrackId trackId(const FwdSqlQuery& query) const {
-//         return TrackId(query.fieldValue(m_iTrackId));
-//     }
-//
-//   private:
-//     DbFieldIndex m_iTrackId;
-// };
 
 class GenreTrackSelectResult : public FwdSqlQuerySelectResult {
   public:
@@ -304,6 +295,10 @@ class GenreStorage : public virtual /*implements*/ SqlStorage {
     GenreSelectResult selectGenresByIds(    // subset of genres
             const QString& subselectForGenreIds,
             SqlSubselectMode subselectMode) const;
+    GenreTrackSelectResult makeEmptyGenreResult(TrackId trackId) const;
+
+    GenreTrackSelectResult selectTracksSortedByGenreNameLike(const QString& genreNameLike) const;
+    GenreTrackSelectResult selectAllTracksSorted() const;
 
     // TODO(XXX): Move this function into the AutoDJ component after
     // fixing various database design flaws in AutoDJ itself (see also:
@@ -319,8 +314,10 @@ class GenreStorage : public virtual /*implements*/ SqlStorage {
     uint countGenreTracks(GenreId genreId) const;
 
     // Format a subselect query for the tracks contained in genre.
-    static QString formatSubselectQueryForGenreTrackIds(
-            GenreId genreId); // no db access
+
+    // Was used with genre_tracks
+    // static QString formatSubselectQueryForGenreTrackIds(
+    //        GenreId genreId); // no db access
 
     QString formatQueryForTrackIdsByGenreNameLike(
             const QString& genreNameLike) const;      // no db access
@@ -335,9 +332,6 @@ class GenreStorage : public virtual /*implements*/ SqlStorage {
             TrackId trackId) const;
     GenreSummarySelectResult selectGenresWithTrackCount(
             const QList<TrackId>& trackIds) const;
-    GenreTrackSelectResult selectTracksSortedByGenreNameLike(
-            const QString& genreNameLike) const;
-    GenreTrackSelectResult selectAllTracksSorted() const;
 
     // Returns the set of genre ids for genres that contain any of the
     // provided track ids.

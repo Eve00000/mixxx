@@ -21,14 +21,6 @@ const QString GENRE_SUMMARY_VIEW = "genre_summary";
 const QString GENRESUMMARY_TRACK_COUNT = "track_count";
 const QString GENRESUMMARY_TRACK_DURATION = "track_duration";
 
-const QString kGenreTracksJoin =
-        QStringLiteral("LEFT JOIN %3 ON %3.%4=%1.%2")
-                .arg(GENRE_TABLE, GENRETABLE_ID, GENRE_TRACKS_TABLE, GENRETRACKSTABLE_GENREID);
-
-const QString kLibraryTracksJoin = kGenreTracksJoin +
-        QStringLiteral(" LEFT JOIN %3 ON %3.%4=%1.%2")
-                .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_TRACKID, LIBRARY_TABLE, LIBRARYTABLE_ID);
-
 const QString kGenreSummaryViewSelect =
         QStringLiteral(
                 "SELECT %1.*,"
@@ -43,17 +35,33 @@ const QString kGenreSummaryViewSelect =
                         GENRESUMMARY_TRACK_COUNT,
                         GENRESUMMARY_TRACK_DURATION);
 
-const QString kGenreSummaryViewQuery =
-        QStringLiteral(
-                "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS %2 %3 "
-                "WHERE %4.is_visible != 0 "
-                "GROUP BY %4.%5 ")
-                .arg(
-                        GENRE_SUMMARY_VIEW,
-                        kGenreSummaryViewSelect,
-                        kLibraryTracksJoin,
-                        GENRE_TABLE,
-                        GENRETABLE_ID);
+const QString kGenreSummaryViewQuery = QStringLiteral(
+        "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+        "SELECT g.*, "
+        "  (SELECT COUNT(*) FROM library l "
+        "   WHERE l.mixxx_deleted = 0 "
+        "     AND (l.genre LIKE '%%##' || g.id || '##%%' "
+        "          OR EXISTS ("
+        "            SELECT 1 FROM genres g2 "
+        "            WHERE g2.display_group = g.id "
+        "              AND l.genre LIKE '%%##' || g2.id || '##%%'"
+        "          ))"
+        "  ) AS %2, "
+        "  (SELECT SUM(l.duration) FROM library l "
+        "   WHERE l.mixxx_deleted = 0 "
+        "     AND (l.genre LIKE '%%##' || g.id || '##%%' "
+        "          OR EXISTS ("
+        "            SELECT 1 FROM genres g2 "
+        "            WHERE g2.display_group = g.id "
+        "              AND l.genre LIKE '%%##' || g2.id || '##%%'"
+        "          ))"
+        "  ) AS %3 "
+        "FROM genres g "
+        "WHERE g.is_visible != 0")
+                                               .arg(
+                                                       GENRE_SUMMARY_VIEW,
+                                                       GENRESUMMARY_TRACK_COUNT,
+                                                       GENRESUMMARY_TRACK_DURATION);
 
 class GenreQueryBinder final {
   public:
@@ -129,17 +137,16 @@ void GenreQueryFields::populateFromQuery(
     pGenre->setNameLevel4(getNameLevel4(query));
     pGenre->setNameLevel5(getNameLevel5(query));
     pGenre->setDisplayGroup(getDisplayGroup(query));
-    // not sure if needed
     pGenre->setVisible(isVisible(query));
     pGenre->setModelDefined(isModelDefined(query));
-    // pGenre->setCount(getCount(query));
-    // pGenre->setShow(getShow(query));
-    // pGenre->setDisplayOrder(getDisplayOrder(query));
 }
 
 GenreTrackQueryFields::GenreTrackQueryFields(const FwdSqlQuery& query)
-        : m_iGenreId(query.fieldIndex(GENRETRACKSTABLE_GENREID)),
-          m_iTrackId(query.fieldIndex(GENRETRACKSTABLE_TRACKID)) {
+        : m_iGenreId(query.fieldIndex(kGenreIdField)),
+          m_iTrackId(query.fieldIndex(kTrackIdField)) {
+    if (m_iGenreId == -1 || m_iTrackId == -1) {
+        qWarning() << "[GenreTrackQueryFields] Missing required columns in query result!";
+    }
 }
 
 GenreSummaryQueryFields::GenreSummaryQueryFields(const FwdSqlQuery& query)
@@ -204,36 +211,6 @@ void GenreStorage::repairDatabase(const QSqlDatabase& database) {
                     << "Fixed boolean values in table" << GENRE_TABLE
                     << "column" << GENRETABLE_AUTODJ_SOURCE
                     << "for" << query.numRowsAffected() << "genres";
-        }
-    }
-
-    // Genre tracks
-    {
-        // Remove tracks from non-existent genres
-        FwdSqlQuery query(database,
-                QStringLiteral(
-                        "DELETE FROM %1 WHERE %2 NOT IN (SELECT %3 FROM %4)")
-                        .arg(GENRE_TRACKS_TABLE,
-                                GENRETRACKSTABLE_GENREID,
-                                GENRETABLE_ID,
-                                GENRE_TABLE));
-        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
-            kLogger.warning() << "Removed" << query.numRowsAffected()
-                              << "genre tracks from non-existent genres";
-        }
-    }
-    {
-        // Remove library purged tracks from genres
-        FwdSqlQuery query(database,
-                QStringLiteral(
-                        "DELETE FROM %1 WHERE %2 NOT IN (SELECT %3 FROM %4)")
-                        .arg(GENRE_TRACKS_TABLE,
-                                GENRETRACKSTABLE_TRACKID,
-                                LIBRARYTABLE_ID,
-                                LIBRARY_TABLE));
-        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
-            kLogger.warning() << "Removed" << query.numRowsAffected()
-                              << "library purged tracks from genres";
         }
     }
 }
@@ -414,176 +391,59 @@ bool GenreStorage::readGenreSummaryById(
 }
 
 uint GenreStorage::countGenreTracks(GenreId genreId) const {
+    QStringList genreTags;
+    genreTags << QString("##%1##").arg(genreId.toString());
+
+    // find existing display_group for genreId
+    QSqlQuery displayGroupQuery(m_database);
+    displayGroupQuery.prepare("SELECT id FROM genres WHERE display_group = :group_id");
+    displayGroupQuery.bindValue(":group_id", genreId.toVariant());
+
+    if (!displayGroupQuery.exec()) {
+        qWarning() << "[GenreStorage] Failed to load display group members: "
+                   << displayGroupQuery.lastError().text();
+    } else {
+        while (displayGroupQuery.next()) {
+            genreTags << QString("##%1##").arg(displayGroupQuery.value(0).toInt());
+        }
+    }
+
+    // construct where-clause
+    QStringList likeClauses;
+    for (const QString& tag : genreTags) {
+        likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
+    }
+    QString whereClause = likeClauses.join(" OR ");
     FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT COUNT(*) FROM %1 WHERE %2=:genreId")
-                    .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_GENREID));
-    query.bindValue(":genreId", genreId);
+            QStringLiteral("SELECT COUNT(*) FROM %1 "
+                           "WHERE (%2) AND %3=0")
+                    .arg(LIBRARY_TABLE,
+                            whereClause,
+                            LIBRARYTABLE_MIXXXDELETED));
+
     if (query.execPrepared() && query.next()) {
         uint result = query.fieldValue(0).toUInt();
         DEBUG_ASSERT(!query.next());
+        qDebug() << "[GenreStorage] -> countGenreTracks result: " << result;
         return result;
     } else {
         return 0;
     }
 }
 
-// uint GenreStorage::countGenreTracks(GenreId genreId) const {
-//     QStringList genreTags;
-//     genreTags << QString("##%1##").arg(genreId.toString());
-//
-//     // find existing display_group for genreId
-//     QSqlQuery displayGroupQuery(m_database);
-//     displayGroupQuery.prepare("SELECT id FROM genres WHERE display_group = :group_id");
-//     displayGroupQuery.bindValue(":group_id", genreId.toVariant());
-//
-//     if (!displayGroupQuery.exec()) {
-//         qWarning() << "[GenreStorage] Failed to load display group members: "
-//                    << displayGroupQuery.lastError().text();
-//     } else {
-//         while (displayGroupQuery.next()) {
-//             genreTags << QString("##%1##").arg(displayGroupQuery.value(0).toInt());
-//         }
-//     }
-//
-//     // construct where-clause
-//     QStringList likeClauses;
-//     for (const QString& tag : genreTags) {
-//         likeClauses << QString("library.genre LIKE '%%1%'").arg(tag);
-//     }
-//     QString whereClause = likeClauses.join(" OR ");
-//     FwdSqlQuery query(m_database,
-//             QStringLiteral("SELECT COUNT(*) FROM %1 "
-//                     "WHERE (%2) AND %3=0")
-//                     .arg(LIBRARY_TABLE,
-//                             whereClause,
-//                             LIBRARYTABLE_MIXXXDELETED));
-//
-//     if (query.execPrepared() && query.next()) {
-//         uint result = query.fieldValue(0).toUInt();
-//         DEBUG_ASSERT(!query.next());
-//         qDebug() << "[GenreStorage] -> countGenreTracks result: " << result;
-//         return result;
-//     } else {
-//         return 0;
-//     }
-// }
-
-// static
-QString GenreStorage::formatSubselectQueryForGenreTrackIds(GenreId genreId) {
-    const QString genreIdStr = genreId.toString();
-    const QString displayGroupStr = QString("##%1##").arg(genreIdStr);
-    return QStringLiteral("SELECT %1 FROM %2 WHERE %3=%4 OR %5 = '%6'")
-            .arg(GENRETRACKSTABLE_TRACKID,
-                    GENRE_TRACKS_TABLE,
-                    GENRETRACKSTABLE_GENREID,
-                    genreId.toString(),
-                    GENRETABLE_DISPLAYGROUP,
-                    displayGroupStr);
-}
-
-QString GenreStorage::formatQueryForTrackIdsByGenreNameLike(
-        const QString& genreNameLike) const {
-    FieldEscaper escaper(m_database);
-    QString escapedGenreNameLike = escaper.escapeString(
-            kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll);
-    return QString(
-            "SELECT DISTINCT %1 FROM %2 "
-            "JOIN %3 ON %4=%5 WHERE %6 LIKE %7 "
-            "ORDER BY %1")
-            .arg(GENRETRACKSTABLE_TRACKID,
-                    GENRE_TRACKS_TABLE,
-                    GENRE_TABLE,
-                    GENRETRACKSTABLE_GENREID,
-                    GENRETABLE_ID,
-                    GENRETABLE_NAME,
-                    escapedGenreNameLike);
-}
-
-// static
-QString GenreStorage::formatQueryForTrackIdsWithGenre() {
-    return QStringLiteral(
-            "SELECT DISTINCT %1 FROM %2 JOIN %3 ON %4=%5 ORDER BY %1")
-            .arg(GENRETRACKSTABLE_TRACKID,
-                    GENRE_TRACKS_TABLE,
-                    GENRE_TABLE,
-                    GENRETRACKSTABLE_GENREID,
-                    GENRETABLE_ID);
-}
-
-GenreTrackSelectResult GenreStorage::selectGenreTracksSorted(
-        GenreId genreId) const {
-    FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT * FROM %1 WHERE %2=:genreId ORDER BY %3")
-                    .arg(GENRE_TRACKS_TABLE,
-                            GENRETRACKSTABLE_GENREID,
-                            GENRETRACKSTABLE_TRACKID));
-    query.bindValue(":genreId", genreId);
-    if (query.execPrepared()) {
-        return GenreTrackSelectResult(std::move(query));
-    } else {
-        return GenreTrackSelectResult();
-    }
-}
-
-GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(
-        TrackId trackId) const {
-    FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT * FROM %1 WHERE %2=:trackId ORDER BY %3")
-                    .arg(GENRE_TRACKS_TABLE,
-                            GENRETRACKSTABLE_TRACKID,
-                            GENRETRACKSTABLE_GENREID));
-    query.bindValue(":trackId", trackId);
-    if (query.execPrepared()) {
-        return GenreTrackSelectResult(std::move(query));
-    } else {
-        return GenreTrackSelectResult();
-    }
-}
-
-GenreSummarySelectResult GenreStorage::selectGenresWithTrackCount(
-        const QList<TrackId>& trackIds) const {
-    FwdSqlQuery query(m_database,
-            mixxx::DbConnection::collateLexicographically(
-                    QStringLiteral("SELECT *, "
-                                   "(SELECT COUNT(*) FROM %1 WHERE %2.%3 = %1.%4 and "
-                                   "%1.%5 in (%9)) AS %6, "
-                                   "0 as %7 FROM %2 WHERE %2.is_visible = 1 ORDER BY %8")
-                            .arg(
-                                    GENRE_TRACKS_TABLE,
-                                    GENRE_TABLE,
-                                    GENRETABLE_ID,
-                                    GENRETRACKSTABLE_GENREID,
-                                    GENRETRACKSTABLE_TRACKID,
-                                    GENRESUMMARY_TRACK_COUNT,
-                                    GENRESUMMARY_TRACK_DURATION,
-                                    GENRETABLE_NAME,
-                                    joinSqlStringList(trackIds))));
-
-    if (query.execPrepared()) {
-        return GenreSummarySelectResult(std::move(query));
-    } else {
-        return GenreSummarySelectResult();
-    }
-}
-
 GenreTrackSelectResult GenreStorage::selectTracksSortedByGenreNameLike(
         const QString& genreNameLike) const {
     // TODO: Do SQL LIKE wildcards in genreNameLike need to be escaped?
-    // Previously we used SqlLikeWildcardEscaper in the past for this
-    // purpose. This utility class has become obsolete but could be
-    // restored from the 2.3 branch if ever needed again.
+    // Consider using SqlLikeWildcardEscaper if needed in the future.
+
     FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT %1,%2 FROM %3 "
-                           "JOIN %4 ON %5 = %6 "
-                           "WHERE %7 LIKE :genreNameLike "
-                           "ORDER BY %1")
-                    .arg(GENRETRACKSTABLE_TRACKID,
-                            GENRETRACKSTABLE_GENREID,
-                            GENRE_TRACKS_TABLE,
+            QStringLiteral("SELECT %1 FROM %2 "
+                           "WHERE %3 LIKE :genreNameLike "
+                           "ORDER BY %3")
+                    .arg(LIBRARYTABLE_ID,
                             GENRE_TABLE,
-                            GENRETABLE_ID,
-                            GENRETRACKSTABLE_GENREID,
                             GENRETABLE_NAME));
+
     query.bindValue(":genreNameLike",
             QVariant(kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll));
 
@@ -594,14 +454,222 @@ GenreTrackSelectResult GenreStorage::selectTracksSortedByGenreNameLike(
     }
 }
 
+QString GenreStorage::formatQueryForTrackIdsByGenreNameLike(
+        const QString& genreNameLike) const {
+    FieldEscaper escaper(m_database);
+    QString escapedGenreNameLike = escaper.escapeString(
+            kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll);
+
+    return QString(
+            "SELECT DISTINCT %1 FROM %2 "
+            "WHERE EXISTS ("
+            " SELECT 1 FROM %3 "
+            " WHERE %4 LIKE %5 "
+            " AND %2.%6 LIKE '%%' || '##' || %3.%7 || '##' || '%%'"
+            ") ORDER BY %1")
+            .arg(LIBRARYTABLE_ID,
+                    LIBRARY_TABLE,
+                    GENRE_TABLE,
+                    GENRETABLE_NAME,
+                    escapedGenreNameLike,
+                    LIBRARYTABLE_GENRE,
+                    GENRETABLE_ID);
+}
+
+// QString GenreStorage::formatQueryForTrackIdsByGenreNameLike(
+//         const QString& genreNameLike) const {
+//     FieldEscaper escaper(m_database);
+//     QString escapedGenreNameLike = escaper.escapeString(
+//             kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll);
+//
+//     return QString(
+//             "SELECT DISTINCT %1 FROM %2 "
+//             "JOIN %3 ON %4 LIKE '%%'||%5||'%%' "
+//             "WHERE %6 LIKE %7 "
+//             "ORDER BY %1")
+//             .arg(LIBRARYTABLE_ID,
+//                     LIBRARY_TABLE,
+//                     GENRE_TABLE,
+//                     LIBRARYTABLE_GENRE,
+//                     QStringLiteral("##") + QString::number(/* genre id
+//                     placeholder */) + QStringLiteral("##"), // This is a
+//                     problem, see below. GENRETABLE_NAME,
+//                     escapedGenreNameLike);
+// }
+
+QString GenreStorage::formatQueryForTrackIdsWithGenre() {
+    // The library.genre column contains genre tags like ##id##;
+    // We use LIKE '%##id##%' to find tracks that have that genre.
+    return QStringLiteral(
+            "SELECT DISTINCT %1 FROM %2 "
+            "WHERE %3 LIKE '%' || '##' || %4 || '##' || '%' "
+            "ORDER BY %1")
+            .arg(LIBRARYTABLE_ID,
+                    LIBRARY_TABLE,
+                    LIBRARYTABLE_GENRE,
+                    LIBRARYTABLE_ID); // The %4 placeholder will be bound to the genre id string
+}
+
 GenreTrackSelectResult GenreStorage::selectAllTracksSorted() const {
     FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT DISTINCT %1 FROM %2 ORDER BY %1")
-                    .arg(GENRETRACKSTABLE_TRACKID, GENRE_TRACKS_TABLE));
+            QStringLiteral("SELECT DISTINCT %1 FROM %2 "
+                           "WHERE %3 LIKE '%%##%%' "
+                           "ORDER BY %1")
+                    .arg(LIBRARYTABLE_ID,
+                            LIBRARY_TABLE,
+                            LIBRARYTABLE_GENRE));
     if (query.execPrepared()) {
         return GenreTrackSelectResult(std::move(query));
     } else {
         return GenreTrackSelectResult();
+    }
+}
+
+GenreTrackSelectResult GenreStorage::selectGenreTracksSorted(
+        GenreId genreId) const {
+    QStringList genreTags;
+    genreTags << QString("##%1##").arg(genreId.toString());
+
+    // Fetch genres in the same display_group
+    QSqlQuery displayGroupQuery(m_database);
+    displayGroupQuery.prepare("SELECT id FROM genres WHERE display_group = :group_id");
+    displayGroupQuery.bindValue(":group_id", genreId.toVariant());
+
+    if (!displayGroupQuery.exec()) {
+        qWarning() << "[GenreStorage] Failed to load display group members: "
+                   << displayGroupQuery.lastError().text();
+    } else {
+        while (displayGroupQuery.next()) {
+            genreTags << QString("##%1##").arg(displayGroupQuery.value(0).toInt());
+        }
+    }
+
+    // Construct WHERE clause
+    QStringList likeClauses;
+    for (int i = 0; i < genreTags.size(); ++i) {
+        likeClauses << QString("genre LIKE :like%1").arg(i);
+    }
+
+    QString queryString =
+            QString("SELECT * FROM library WHERE (%1) AND mixxx_deleted = 0 "
+                    "ORDER BY id")
+                    .arg(likeClauses.join(" OR "));
+    FwdSqlQuery query(m_database, queryString);
+
+    for (int i = 0; i < genreTags.size(); ++i) {
+        const QString paramName = QString(":like%1").arg(i);
+        const QString pattern = "%" + genreTags[i] + "%";
+        query.bindValue(paramName, QVariant(pattern));
+    }
+
+    if (query.execPrepared()) {
+        return GenreTrackSelectResult(std::move(query));
+    } else {
+        return GenreTrackSelectResult();
+    }
+}
+
+GenreTrackSelectResult GenreStorage::makeEmptyGenreResult(TrackId trackId) const {
+    FwdSqlQuery emptyQuery(m_database,
+            QStringLiteral("SELECT :trackId AS track_id, CAST(NULL AS INTEGER) "
+                           "AS genre_id WHERE 0=1"));
+    emptyQuery.bindValue(":trackId", trackId);
+    emptyQuery.execPrepared();
+    return GenreTrackSelectResult(std::move(emptyQuery));
+}
+
+GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(TrackId trackId) const {
+    FwdSqlQuery genreFieldQuery(m_database,
+            QStringLiteral("SELECT %1 FROM %2 WHERE %3 = :trackId")
+                    .arg(LIBRARYTABLE_GENRE, LIBRARY_TABLE, LIBRARYTABLE_ID));
+    genreFieldQuery.bindValue(":trackId", trackId);
+
+    if (!genreFieldQuery.execPrepared() || !genreFieldQuery.next()) {
+        makeEmptyGenreResult(trackId);
+    }
+
+    const QVariant genreValue = genreFieldQuery.fieldValue(0);
+    // if (!genreValue.isValid() || genreValue.isNull()) {
+    //     makeEmptyGenreResult(trackId);
+    // }
+
+    const QString genreField = genreValue.toString();
+    // if (genreField.trimmed().isEmpty()) {
+    //     makeEmptyGenreResult(trackId);
+    // }
+
+    QRegularExpression re("##(\\d+)##");
+    QRegularExpressionMatchIterator i = re.globalMatch(genreField);
+
+    QStringList idStrings;
+    while (i.hasNext()) {
+        const QRegularExpressionMatch match = i.next();
+        idStrings << match.captured(1);
+    }
+
+    // if (idStrings.isEmpty()) {
+    //     makeEmptyGenreResult(trackId);
+    // }
+
+    QStringList placeholders;
+    for (int i = 0; i < idStrings.size(); ++i) {
+        placeholders << QString(":id%1").arg(i);
+    }
+
+    const QString inClause = placeholders.join(',');
+    FwdSqlQuery idQuery(m_database,
+            QStringLiteral("SELECT :trackId AS track_id, %1 AS genre_id "
+                           "FROM %2 WHERE %1 IN (%4) OR %3 IN (%4) ORDER BY %1 ")
+                    .arg(GENRETABLE_ID,
+                            GENRE_TABLE,
+                            GENRETABLE_DISPLAYGROUP,
+                            inClause));
+
+    idQuery.bindValue(":trackId", trackId);
+    for (int i = 0; i < idStrings.size(); ++i) {
+        idQuery.bindValue(QString(":id%1").arg(i), QVariant(idStrings.at(i).toInt()));
+    }
+    if (idQuery.execPrepared()) {
+        return GenreTrackSelectResult(std::move(idQuery));
+    } else {
+        makeEmptyGenreResult(trackId);
+    }
+}
+
+GenreSummarySelectResult GenreStorage::selectGenresWithTrackCount(
+        const QList<TrackId>& trackIds) const {
+    const QString trackIdList = joinSqlStringList(trackIds);
+
+    QString sql = QStringLiteral(
+            "SELECT *, "
+            "  (SELECT COUNT(*) FROM library "
+            "   WHERE library.id IN (%1) "
+            "     AND ("
+            "       library.genre LIKE '%%##' || genres.id || '##%%' "
+            "       OR EXISTS ("
+            "         SELECT 1 FROM genres AS g2 "
+            "         WHERE g2.display_group = genres.id "
+            "           AND library.genre LIKE '%%##' || g2.id || '##%%'"
+            "       )"
+            "     )"
+            "  ) AS %2, "
+            "  0 AS %3 "
+            "FROM %4 "
+            "WHERE is_visible = 1 "
+            "ORDER BY %5")
+                          .arg(trackIdList,
+                                  GENRESUMMARY_TRACK_COUNT,
+                                  GENRESUMMARY_TRACK_DURATION,
+                                  GENRE_TABLE,
+                                  GENRETABLE_NAME);
+
+    qDebug() << "[GenreStorage] -> selectGenresWithTrackCount sql: " << sql;
+
+    FwdSqlQuery query(m_database, mixxx::DbConnection::collateLexicographically(sql));
+    if (query.execPrepared()) {
+        return GenreSummarySelectResult(std::move(query));
+    } else {
+        return GenreSummarySelectResult();
     }
 }
 
@@ -709,21 +777,6 @@ bool GenreStorage::onDeletingGenre(GenreId genreId) {
         kLogger.warning() << "Cannot delete genre without a valid id";
         return false;
     }
-
-    // genre_tracks
-    {
-        FwdSqlQuery query(m_database,
-                QStringLiteral("DELETE FROM %1 WHERE %2=:id")
-                        .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_GENREID));
-        VERIFY_OR_DEBUG_ASSERT(query.isPrepared()) {
-            return false;
-        }
-        query.bindValue(":id", genreId);
-        VERIFY_OR_DEBUG_ASSERT(query.execPrepared()) {
-            return false;
-        }
-    }
-
     // ##id## from genre field
     const QString IdFormatted = QStringLiteral("##%1##").arg(genreId.toString());
 
@@ -803,57 +856,6 @@ bool GenreStorage::onDeletingGenre(GenreId genreId) {
     }
 }
 
-// bool GenreStorage::onDeletingGenre(
-//         GenreId genreId) {
-//     VERIFY_OR_DEBUG_ASSERT(genreId.isValid()) {
-//         kLogger.warning()
-//                 << "Cannot delete genre without a valid id";
-//         return false;
-//     }
-//     {
-//         FwdSqlQuery query(m_database,
-//                 QStringLiteral("DELETE FROM %1 WHERE %2=:id")
-//                         .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_GENREID));
-//         VERIFY_OR_DEBUG_ASSERT(query.isPrepared()) {
-//             return false;
-//         }
-//         query.bindValue(":id", genreId);
-//         VERIFY_OR_DEBUG_ASSERT(query.execPrepared()) {
-//             return false;
-//         }
-//         if (query.numRowsAffected() <= 0) {
-//             if (kLogger.debugEnabled()) {
-//                 kLogger.debug()
-//                         << "Deleting empty genre with id"
-//                         << genreId;
-//             }
-//         }
-//     }
-//     {
-//         FwdSqlQuery query(m_database,
-//                 QStringLiteral("DELETE FROM %1 WHERE %2=:id")
-//                         .arg(GENRE_TABLE, GENRETABLE_ID));
-//         VERIFY_OR_DEBUG_ASSERT(query.isPrepared()) {
-//             return false;
-//         }
-//         query.bindValue(":id", genreId);
-//         VERIFY_OR_DEBUG_ASSERT(query.execPrepared()) {
-//             return false;
-//         }
-//         if (query.numRowsAffected() > 0) {
-//             VERIFY_OR_DEBUG_ASSERT(query.numRowsAffected() <= 1) {
-//                 kLogger.warning()
-//                         << "Deleted multiple genres with the same id" << genreId;
-//             }
-//             return true;
-//         } else {
-//             kLogger.warning()
-//                     << "Cannot delete non-existent genre with id" << genreId;
-//             return false;
-//         }
-//     }
-// }
-
 bool GenreStorage::onAddingGenreTracks(GenreId genreId, const QList<TrackId>& trackIds) {
     VERIFY_OR_DEBUG_ASSERT(genreId.isValid()) {
         kLogger.warning() << "Invalid genreId in onAddingGenreTracks";
@@ -865,25 +867,6 @@ bool GenreStorage::onAddingGenreTracks(GenreId genreId, const QList<TrackId>& tr
     }
 
     const QString idFormatted = QStringLiteral("##%1##").arg(genreId.toVariant().toInt());
-
-    // update genre-tracks
-    FwdSqlQuery insertQuery(m_database,
-            QStringLiteral(
-                    "INSERT OR IGNORE INTO %1 (%2, %3) VALUES (:genreId, :trackId)")
-                    .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_GENREID, GENRETRACKSTABLE_TRACKID));
-    VERIFY_OR_DEBUG_ASSERT(insertQuery.isPrepared()) {
-        return false;
-    }
-
-    insertQuery.bindValue(":genreId", genreId);
-    for (const TrackId& trackId : trackIds) {
-        insertQuery.bindValue(":trackId", trackId);
-        if (!insertQuery.execPrepared()) {
-            kLogger.warning() << "[GenreStorage] Failed to insert track"
-                              << trackId << "into genre" << genreId;
-            return false;
-        }
-    }
 
     // update library.genre
     QStringList trackIdStrings;
@@ -931,32 +914,6 @@ bool GenreStorage::onRemovingGenreTracks(
 
     if (trackIds.isEmpty()) {
         return true;
-    }
-
-    // genre_tracks
-    {
-        FwdSqlQuery query(m_database,
-                QStringLiteral(
-                        "DELETE FROM %1 "
-                        "WHERE %2=:genreId AND %3=:trackId")
-                        .arg(
-                                GENRE_TRACKS_TABLE,
-                                GENRETRACKSTABLE_GENREID,
-                                GENRETRACKSTABLE_TRACKID));
-
-        VERIFY_OR_DEBUG_ASSERT(query.isPrepared()) {
-            return false;
-        }
-
-        query.bindValue(":genreId", genreId);
-
-        for (const auto& trackId : trackIds) {
-            query.bindValue(":trackId", trackId);
-            if (!query.execPrepared()) {
-                kLogger.warning() << "Failed to remove track" << trackId << "from genre" << genreId;
-                return false;
-            }
-        }
     }
 
     // ##id## from genre field
@@ -1037,20 +994,5 @@ bool GenreStorage::onRemovingGenreTracks(
 
 bool GenreStorage::onPurgingTracks(
         const QList<TrackId>& trackIds) {
-    // NOTE(uklotzde): Remove tracks from genres one-by-one.
-    // This might be optimized by deleting multiple track ids
-    // at once in chunks with a maximum size.
-    FwdSqlQuery query(m_database,
-            QStringLiteral("DELETE FROM %1 WHERE %2=:trackId")
-                    .arg(GENRE_TRACKS_TABLE, GENRETRACKSTABLE_TRACKID));
-    if (!query.isPrepared()) {
-        return false;
-    }
-    for (const auto& trackId : trackIds) {
-        query.bindValue(":trackId", trackId);
-        if (!query.execPrepared()) {
-            return false;
-        }
-    }
     return true;
 }

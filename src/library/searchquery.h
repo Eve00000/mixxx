@@ -14,6 +14,7 @@
 #include "util/assert.h"
 
 class CrateStorage;
+class GenreStorage;
 class TrackId;
 
 const QString kMissingFieldSearchTerm = "\"\""; // "" searches for an empty string
@@ -123,6 +124,21 @@ class CrateFilterNode : public QueryNode {
     mutable std::vector<TrackId> m_matchingTrackIds;
 };
 
+class GenreFilterNode : public QueryNode {
+  public:
+    GenreFilterNode(const GenreStorage* pGenreStorage,
+            const QString& genreNameLike);
+
+    bool match(const TrackPointer& pTrack) const override;
+    QString toSql() const override;
+
+  private:
+    const GenreStorage* m_pGenreStorage;
+    QString m_genreNameLike;
+    mutable bool m_matchInitialized;
+    mutable std::vector<TrackId> m_matchingTrackIds;
+};
+
 class NoCrateFilterNode : public QueryNode {
   public:
     explicit NoCrateFilterNode(const CrateStorage* pCrateStorage);
@@ -133,6 +149,20 @@ class NoCrateFilterNode : public QueryNode {
   private:
     const CrateStorage* m_pCrateStorage;
     QString m_crateNameLike;
+    mutable bool m_matchInitialized;
+    mutable std::vector<TrackId> m_matchingTrackIds;
+};
+
+class NoGenreFilterNode : public QueryNode {
+  public:
+    explicit NoGenreFilterNode(const GenreStorage* pGenreStorage);
+
+    bool match(const TrackPointer& pTrack) const override;
+    QString toSql() const override;
+
+  private:
+    const GenreStorage* m_pGenreStorage;
+    QString m_genreNameLike;
     mutable bool m_matchInitialized;
     mutable std::vector<TrackId> m_matchingTrackIds;
 };

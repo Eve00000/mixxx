@@ -294,27 +294,27 @@ QList<GenreId> GenreDao::getGenreIdsFromIdString(const QString& genreIdString) {
 }
 
 bool GenreDao::updateGenreTracksForTrack(TrackId trackId, const QList<GenreId>& genreIds) {
-    QSqlQuery deleteQuery(m_database);
-    deleteQuery.prepare("DELETE FROM genre_tracks WHERE track_id = :trackId");
-    deleteQuery.bindValue(":trackId", trackId.toVariant());
-    if (!deleteQuery.exec()) {
-        qWarning() << "[GenreDao] -> Failed to delete existing genre_tracks for track:" << trackId;
-        return false;
-    }
+    // QSqlQuery deleteQuery(m_database);
+    // deleteQuery.prepare("DELETE FROM genre_tracks WHERE track_id =
+    // :trackId"); deleteQuery.bindValue(":trackId", trackId.toVariant()); if
+    // (!deleteQuery.exec()) {
+    //     qWarning() << "[GenreDao] -> Failed to delete existing genre_tracks
+    //     for track:" << trackId; return false;
+    // }
 
-    QSqlQuery insertQuery(m_database);
-    insertQuery.prepare(
-            "INSERT OR IGNORE INTO genre_tracks (track_id, genre_id) "
-            "VALUES (:trackId, :genreId)");
+    // QSqlQuery insertQuery(m_database);
+    // insertQuery.prepare(
+    //         "INSERT OR IGNORE INTO genre_tracks (track_id, genre_id) "
+    //         "VALUES (:trackId, :genreId)");
 
-    for (const GenreId& genreId : genreIds) {
-        insertQuery.bindValue(":trackId", trackId.toVariant());
-        insertQuery.bindValue(":genreId", genreId.toVariant());
-        if (!insertQuery.exec()) {
-            qWarning() << "[GenreDao] -> Failed to insert genre_track:" << insertQuery.lastError();
-            return false;
-        }
-    }
+    // for (const GenreId& genreId : genreIds) {
+    //     insertQuery.bindValue(":trackId", trackId.toVariant());
+    //     insertQuery.bindValue(":genreId", genreId.toVariant());
+    //     if (!insertQuery.exec()) {
+    //         qWarning() << "[GenreDao] -> Failed to insert genre_track:" <<
+    //         insertQuery.lastError(); return false;
+    //     }
+    // }
 
     return true;
 }
