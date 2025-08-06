@@ -18,11 +18,12 @@ class GenreLineEditor : public QLineEdit {
   protected:
     void keyPressEvent(QKeyEvent* event) override;
 
-  private:
-    QCompleter* m_completer;
-    QStringListModel* m_model;
-
   private slots:
     void slotOnTextEdited(const QString& text);
     void slotOnCompletionSelected(const QString& completion);
+
+  private:
+    QCompleter* m_completer;
+    QStringListModel* m_model;
+    QSortFilterProxyModel* m_filterModel;
 };

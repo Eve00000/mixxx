@@ -9,10 +9,16 @@
 GenreLineEditor::GenreLineEditor(QWidget* parent)
         : QLineEdit(parent),
           m_completer(new QCompleter(this)),
-          m_model(new QStringListModel(this)) {
-    m_completer->setModel(m_model);
+          m_model(new QStringListModel(this)),
+          m_filterModel(new QSortFilterProxyModel(this)) {
+    m_filterModel->setSourceModel(m_model);
+    m_filterModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    m_filterModel->setFilterRole(Qt::DisplayRole);
+
+    m_completer->setModel(m_filterModel);
     m_completer->setCompletionMode(QCompleter::PopupCompletion);
     m_completer->setCaseSensitivity(Qt::CaseInsensitive);
+    m_completer->setFilterMode(Qt::MatchContains);
     m_completer->setWidget(this);
 
     connect(m_completer,
@@ -28,7 +34,6 @@ GenreLineEditor::GenreLineEditor(QWidget* parent)
 void GenreLineEditor::slotOnCompletionSelected(const QString& completion) {
     QString current = text();
     int cursorPos = cursorPosition();
-    // int lastSemi = current.left(cursorPos).lastIndexOf(';');
     int lastSemi = QStringView(current).left(cursorPos).lastIndexOf(';');
 
     QString before;
@@ -59,9 +64,6 @@ QStringList GenreLineEditor::genres() const {
     QSet<QString> uniqueSet;
     QStringList cleanList;
 
-    // for (const QString& genre : std::as_const(rawList)) {
-    // for (QString genre : rawList) {
-    //     genre = genre.trimmed();
     for (const QString& genre : std::as_const(rawList)) {
         QString trimmedGenre = genre.trimmed();
         if (!genre.isEmpty()) {
@@ -98,11 +100,12 @@ void GenreLineEditor::keyPressEvent(QKeyEvent* event) {
 void GenreLineEditor::slotOnTextEdited(const QString& text) {
     QString currentText = text.left(cursorPosition());
     int lastSemicolon = currentText.lastIndexOf(';');
-    QString prefix = (lastSemicolon != -1) ? currentText.mid(lastSemicolon + 1).trimmed()
-                                           : currentText.trimmed();
+    QString prefix = (lastSemicolon != -1)
+            ? currentText.mid(lastSemicolon + 1).trimmed()
+            : currentText.trimmed();
 
     if (!prefix.isEmpty()) {
-        m_completer->setCompletionPrefix(prefix);
+        m_filterModel->setFilterFixedString(prefix);
         m_completer->complete();
     } else {
         m_completer->popup()->hide();
