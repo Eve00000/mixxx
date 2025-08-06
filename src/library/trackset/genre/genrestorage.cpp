@@ -585,7 +585,7 @@ GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(TrackId trackId) co
     genreFieldQuery.bindValue(":trackId", trackId);
 
     if (!genreFieldQuery.execPrepared() || !genreFieldQuery.next()) {
-        makeEmptyGenreResult(trackId);
+        return makeEmptyGenreResult(trackId);
     }
 
     const QVariant genreValue = genreFieldQuery.fieldValue(0);
@@ -607,9 +607,9 @@ GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(TrackId trackId) co
         idStrings << match.captured(1);
     }
 
-    // if (idStrings.isEmpty()) {
-    //     makeEmptyGenreResult(trackId);
-    // }
+    if (idStrings.isEmpty()) {
+        return makeEmptyGenreResult(trackId);
+    }
 
     QStringList placeholders;
     for (int i = 0; i < idStrings.size(); ++i) {
@@ -632,7 +632,7 @@ GenreTrackSelectResult GenreStorage::selectTrackGenresSorted(TrackId trackId) co
     if (idQuery.execPrepared()) {
         return GenreTrackSelectResult(std::move(idQuery));
     } else {
-        makeEmptyGenreResult(trackId);
+        return makeEmptyGenreResult(trackId);
     }
 }
 
