@@ -2,9 +2,10 @@
 
 #include <QStyledItemDelegate>
 
+#include "library/tabledelegates/genrelineeditor.h"
+
 class BaseSqlTableModel;
 class GenreDao;
-class GenreLineEditor;
 
 class GenreDelegate : public QStyledItemDelegate {
     Q_OBJECT

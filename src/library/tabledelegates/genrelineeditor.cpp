@@ -1,7 +1,10 @@
 #include "library/tabledelegates/genrelineeditor.h"
 
 #include <QAbstractItemView>
+#include <QCompleter>
 #include <QKeyEvent>
+#include <QLineEdit>
+#include <QSortFilterProxyModel>
 #include <QStringList>
 
 #include "moc_genrelineeditor.cpp"
