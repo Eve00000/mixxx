@@ -1118,7 +1118,7 @@ void WTrackMenu::updateMenus() {
     }
 
     if (featureIsEnabled(Feature::Genre)) {
-        // Crate menu is lazy loaded on hover by slotPopulateCrateMenu
+        // Genre menu is lazy loaded on hover by slotPopulateGenreMenu
         // to avoid unnecessary database queries
         m_bGenreMenuLoaded = false;
     }
@@ -1716,8 +1716,8 @@ void WTrackMenu::slotPopulateCrateMenu() {
 }
 
 void WTrackMenu::slotPopulateGenreMenu() {
-    // The user may open the Crate submenu, move their cursor away, then
-    // return to the Crate submenu before exiting the track context menu.
+    // The user may open the Genre submenu, move their cursor away, then
+    // return to the Genre submenu before exiting the track context menu.
     // Avoid querying the database multiple times in that case.
     if (m_bGenreMenuLoaded) {
         return;
@@ -2901,8 +2901,6 @@ void WTrackMenu::slotShowDlgTrackInfo() {
         m_pDlgTrackInfoMulti = std::make_unique<DlgTrackInfoMulti>(
                 m_pConfig,
                 genreDao);
-        // m_pDlgTrackInfoMulti = std::make_unique<DlgTrackInfoMulti>(
-        //         m_pConfig);
         connect(m_pDlgTrackInfoMulti.get(),
                 &QDialog::finished,
                 this,
@@ -2918,7 +2916,6 @@ void WTrackMenu::slotShowDlgTrackInfo() {
         for (int i = 0; i < m_trackIndexList.size(); i++) {
             tracks.append(m_pTrackModel->getTrack(m_trackIndexList.at(i)));
         }
-        //        m_pDlgTrackInfoMulti->setGenreData(m_genreData);
         m_pDlgTrackInfoMulti->setGenreData(m_genreData);
         m_pDlgTrackInfoMulti->loadTracks(tracks);
         m_pDlgTrackInfoMulti->show();

@@ -389,12 +389,7 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
                 pOverviewDelegate,
                 &OverviewDelegate::slotInhibitLazyLoading);
         return pOverviewDelegate;
-        //} else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_GENRE)) {
-        //    return new GenreDelegate(pTableView);
-        //} else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_GENRE)) {
-        //    return new GenreDelegate(this);
     } else if (index == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_GENRE)) {
-        // reloadGenreData();
         GenreDao& genreDao = m_pTrackCollectionManager
                                      ->internalCollection()
                                      ->getGenreDao();
@@ -402,20 +397,6 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
     }
     return new DefaultDelegate(pTableView);
 }
-
-// void BaseTrackTableModel::reloadGenreData() {
-//     m_genreData.clear();
-//     GenreDao& genreDao = m_pTrackCollectionManager
-//                                  ->internalCollection()
-//                                  ->getGenreDao();
-//
-//     QStringList genreNames = genreDao.getGenreNameList();
-//     for (const QString& name : genreNames) {
-//         QVariantMap genreEntry;
-//         genreEntry["name"] = name;
-//         m_genreData.append(genreEntry);
-//     }
-// }
 
 QVariant BaseTrackTableModel::data(
         const QModelIndex& index,

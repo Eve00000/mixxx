@@ -221,29 +221,6 @@ void BaseSqlTableModel::select() {
                 << "'' AS " + LIBRARYTABLE_PREVIEW
                 << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
 
-        // old based on genre_tracks
-        // QString queryStringTempView =
-        //        QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
-        //                "SELECT %2 FROM %3 "
-        //                "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
-        //                "AND %9=0")
-        //                .arg(m_tableName,                   // 1
-        //                        columns.join(","),          // 2
-        //                        LIBRARY_TABLE,              // 3
-        //                        LIBRARYTABLE_ID,            // 4
-        //                        GENRETRACKSTABLE_TRACKID,   // 5
-        //                        GENRE_TRACKS_TABLE,         // 6
-        //                        GENRETRACKSTABLE_GENREID,   // 7
-        //                        genreId,                    // 8
-        //                        LIBRARYTABLE_MIXXXDELETED); // 9
-        //                                                    // qDebug() <<
-        //                                                    // "[BASESQLTABLEMODEL]
-        //                                                    // [SELECT] ->
-        //                                                    // [GENRES] Rebuild
-        //                                                    // temp view ->
-        //                                                    // queryStringTempView
-        //                                                    // " <<
-        //                                                    // queryStringTempView;
         // convert to not using henre_tracks
         QStringList genreTags;
         // genreTags << QString("##%1##").arg(genreId.toString());

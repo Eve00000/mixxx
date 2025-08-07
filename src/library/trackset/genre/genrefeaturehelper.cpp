@@ -131,23 +131,6 @@ GenreId GenreFeatureHelper::duplicateGenre(const Genre& oldGenre) {
         DEBUG_ASSERT(newGenreId.isValid());
         newGenre.setId(newGenreId);
         qDebug() << "Created new genre" << newGenre;
-        // QList<TrackId> trackIds;
-        // trackIds.reserve(
-        //         m_pTrackCollection->genres().countGenreTracks(oldGenre.getId()));
-        //{
-        //     GenreTrackSelectResult genreTracks(
-        //             m_pTrackCollection->genres().selectGenreTracksSorted(oldGenre.getId()));
-        //     while (genreTracks.next()) {
-        //         trackIds.append(genreTracks.trackId());
-        //     }
-        // }
-        //  if (m_pTrackCollection->addGenreTracks(newGenreId, trackIds)) {
-        //      qDebug() << "Duplicated genre"
-        //               << oldGenre << "->" << newGenre;
-        //  } else {
-        //      qWarning() << "Failed to copy tracks from"
-        //                 << oldGenre << "into" << newGenre;
-        //  }
     } else {
         qWarning() << "Failed to duplicate genre"
                    << oldGenre << "->" << newGenre.getName();
