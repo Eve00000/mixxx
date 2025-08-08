@@ -3,6 +3,8 @@
 #include <QDialog>
 #include <QHash>
 #include <QModelIndex>
+#include <QSet>
+#include <QStringList>
 #include <memory>
 
 #include "library/ui_dlgtrackinfomulti.h"
@@ -19,6 +21,9 @@ class WStarRating;
 class WCoverArtMenu;
 class WCoverArtLabel;
 class GenreDao;
+class QScrollArea;
+class QHBoxLayout;
+class QWidget;
 
 /// A dialog box to display and edit properties of multiple tracks.
 /// Use TrackPointers to load a track into the dialog.
@@ -115,6 +120,26 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
     QList<mixxx::TrackRecord> m_trackRecords;
 
     QHash<QString, QWidget*> m_propertyWidgets;
+
+    // UI container
+    QScrollArea* m_genreTagsArea = nullptr;
+    QWidget* m_genreTagsContainer = nullptr;
+    QHBoxLayout* m_genreTagsLayout = nullptr;
+
+    // Intersection
+    QStringList m_genreTagNames;
+    QSet<QString> m_genreSeenLower;
+
+    QSet<QString> m_pendingAdd;
+    QSet<QString> m_pendingRemove;
+
+    // Inline Genre Tags UI
+    void genreTagsInitUi();
+    void genreSetTags(const QStringList& names);
+    QWidget* genreCreateChip(const QString& name);
+    void genreRebuildChips();
+    void genreAddTag(const QString& name);
+    void genreRemoveTag(const QString& name);
 
     parented_ptr<WCoverArtMenu> m_pWCoverArtMenu;
     parented_ptr<WCoverArtLabel> m_pWCoverArtLabel;

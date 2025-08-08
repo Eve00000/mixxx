@@ -286,7 +286,8 @@
            </widget>
           </item>
           <item row="5" column="1">
-           <widget class="QLineEdit" name="txtGenre">
+           <!--<widget class="QLineEdit" name="txtGenre">-->
+           <widget class="QWidget" name="txtGenre">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
