@@ -1066,8 +1066,8 @@ QWidget* DlgTrackInfo::genreCreateChip(const QString& name) {
     auto* btn = new QToolButton(chip);
     btn->setAutoRaise(true);
     btn->setCursor(Qt::PointingHandCursor);
-    // btn->setText(QString::fromUtf8("×"));
-    btn->setText(QString::fromUtf8("\u00D7")); // × symbol
+    // btn->setText(QString::fromUtf8("Ã—"));
+    btn->setText(QString::fromUtf8("\u00D7")); // Ã— symbol
     btn->setFixedSize(QSize(16, 16));
 
     btn->setFixedSize(QSize(18, 18));
