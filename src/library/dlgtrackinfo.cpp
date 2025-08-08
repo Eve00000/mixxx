@@ -461,16 +461,13 @@ void DlgTrackInfo::updateTrackMetadataFields() {
     const QString display = m_genreDao.getDisplayGenreNameForGenreID(m_rawGenreString);
     QStringList names;
     // for (const QString& part : display.split(';', Qt::SkipEmptyParts)) {
-    //     const QString t = part.trimmed();
-    //     if (!t.isEmpty())
-    //         names << t;
-    // }
-    for (const auto& part : display.split(';', Qt::SkipEmptyParts)) {
+    QStringList parts = display.split(';', Qt::SkipEmptyParts);
+    for (const auto& part : parts) {
         const QString t = part.trimmed();
-        if (!t.isEmpty()) {
+        if (!t.isEmpty())
             names << t;
-        }
     }
+
     genreSetTags(names);
     txtComposer->setText(
             m_trackRecord.getMetadata().getTrackInfo().getComposer());

@@ -535,7 +535,7 @@ void DlgTrackInfoMulti::updateTrackMetadataFields() {
         //         cur.insert(t.toLower());
         // }
         QStringList parts = disp.split(';', Qt::SkipEmptyParts);
-        for (const QString& part : parts) {
+        for (const QString& part : std::as_const(parts)) {
             const QString t = part.trimmed();
             if (!t.isEmpty())
                 cur.insert(t.toLower());
@@ -1305,7 +1305,31 @@ void DlgTrackInfoMulti::genreTagsInitUi() {
     tags_layout->addWidget(m_genreTagsArea, r, c, rs, cs);
 
     // m_genreTagsArea->setStyleSheet(QString(
-    m_genreTagsArea->setStyleSheet(QStringLiteral(
+    //         "QScrollArea {"
+    //         "  background-color: %1;"
+    //         "  border: 1px solid %2;"
+    //         "  border-radius: %3px;"
+    //         "}"
+    //         "QScrollArea > QWidget { background: transparent; }"
+    //         "QScrollArea > QWidget > QWidget { background: transparent; }"
+    //         "QScrollArea QScrollBar:horizontal {"
+    //         "  height: %4px; background: transparent; margin: 0 %5px; border: none;"
+    //         "}"
+    //         "QScrollArea QScrollBar::handle:horizontal {"
+    //         "  background: #6a6a6a; border-radius: %6px; min-width: 24px;"
+    //         "}"
+    //         "QScrollArea QScrollBar::add-line:horizontal,"
+    //         "QScrollArea QScrollBar::sub-line:horizontal { width: 0; height: 0; }"
+    //         "QScrollArea QScrollBar::add-page:horizontal,"
+    //         "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }")
+    //                 .arg(kFieldBg)        // %1
+    //                 .arg(kFieldBorder)    // %2
+    //                 .arg(kFieldRadius)    // %3
+    //                 .arg(kScrollH)        // %4
+    //                 .arg(kScrollbarInset) // %5
+    //                 .arg(kScrollH / 2)    // %6
+    //);
+    m_genreTagsArea->setStyleSheet(QString(
             "QScrollArea {"
             "  background-color: %1;"
             "  border: 1px solid %2;"
