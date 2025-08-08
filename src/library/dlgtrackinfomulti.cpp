@@ -537,8 +537,9 @@ void DlgTrackInfoMulti::updateTrackMetadataFields() {
         QStringList parts = disp.split(';', Qt::SkipEmptyParts);
         for (const QString& part : std::as_const(parts)) {
             const QString t = part.trimmed();
-            if (!t.isEmpty())
+            if (!t.isEmpty()) {
                 cur.insert(t.toLower());
+            }
         }
 
         if (first) {
@@ -552,8 +553,9 @@ void DlgTrackInfoMulti::updateTrackMetadataFields() {
     // for (const QString& low : interLower) {
     for (const QString& low : std::as_const(interLower)) {
         QString nice = low;
-        if (!nice.isEmpty())
+        if (!nice.isEmpty()) {
             nice[0] = nice[0].toUpper();
+        }
         common << nice;
     }
     common.sort(Qt::CaseInsensitive);
@@ -814,18 +816,21 @@ void DlgTrackInfoMulti::saveTracks() {
             const QStringList parts = display.split(';', Qt::SkipEmptyParts);
             for (const QString& part : parts) {
                 const QString t = part.trimmed();
-                if (t.isEmpty())
+                if (t.isEmpty()) {
                     continue;
+                }
                 const QString low = t.toLower();
-                if (namesLower.contains(low))
+                if (namesLower.contains(low)) {
                     continue;
+                }
                 namesLower.insert(low);
                 namesOrdered << t;
             }
 
             for (const QString& low : std::as_const(m_pendingRemove)) {
-                if (!namesLower.contains(low))
+                if (!namesLower.contains(low)) {
                     continue;
+                }
                 namesLower.remove(low);
                 for (int i = 0; i < namesOrdered.size(); ++i) {
                     if (namesOrdered[i].trimmed().toLower() == low) {
@@ -1276,8 +1281,9 @@ void DlgTrackInfoMulti::slotReloadCoverArt() {
 }
 
 void DlgTrackInfoMulti::genreTagsInitUi() {
-    if (m_genreTagsArea)
+    if (m_genreTagsArea) {
         return;
+    }
 
     // Scroll area
     m_genreTagsArea = new QScrollArea(txtGenre->parentWidget());
@@ -1304,31 +1310,6 @@ void DlgTrackInfoMulti::genreTagsInitUi() {
     txtGenre->setVisible(false);
     tags_layout->addWidget(m_genreTagsArea, r, c, rs, cs);
 
-    // m_genreTagsArea->setStyleSheet(QString(
-    //         "QScrollArea {"
-    //         "  background-color: %1;"
-    //         "  border: 1px solid %2;"
-    //         "  border-radius: %3px;"
-    //         "}"
-    //         "QScrollArea > QWidget { background: transparent; }"
-    //         "QScrollArea > QWidget > QWidget { background: transparent; }"
-    //         "QScrollArea QScrollBar:horizontal {"
-    //         "  height: %4px; background: transparent; margin: 0 %5px; border: none;"
-    //         "}"
-    //         "QScrollArea QScrollBar::handle:horizontal {"
-    //         "  background: #6a6a6a; border-radius: %6px; min-width: 24px;"
-    //         "}"
-    //         "QScrollArea QScrollBar::add-line:horizontal,"
-    //         "QScrollArea QScrollBar::sub-line:horizontal { width: 0; height: 0; }"
-    //         "QScrollArea QScrollBar::add-page:horizontal,"
-    //         "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }")
-    //                 .arg(kFieldBg)        // %1
-    //                 .arg(kFieldBorder)    // %2
-    //                 .arg(kFieldRadius)    // %3
-    //                 .arg(kScrollH)        // %4
-    //                 .arg(kScrollbarInset) // %5
-    //                 .arg(kScrollH / 2)    // %6
-    //);
     m_genreTagsArea->setStyleSheet(QString(
             "QScrollArea {"
             "  background-color: %1;"
@@ -1347,13 +1328,8 @@ void DlgTrackInfoMulti::genreTagsInitUi() {
             "QScrollArea QScrollBar::sub-line:horizontal { width: 0; height: 0; }"
             "QScrollArea QScrollBar::add-page:horizontal,"
             "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }")
-                    .arg(kFieldBg)        // %1
-                    .arg(kFieldBorder)    // %2
-                    .arg(kFieldRadius)    // %3
-                    .arg(kScrollH)        // %4
-                    .arg(kScrollbarInset) // %5
-                    .arg(kScrollH / 2)    // %6
-    );
+                    .arg(kFieldBg, kFieldBorder)
+                    .arg(kFieldRadius, kScrollH, kScrollbarInset, (kScrollH / 2)));
 
     genreRebuildChips();
 }
@@ -1416,8 +1392,10 @@ QWidget* DlgTrackInfoMulti::genreCreateChip(const QString& name) {
 void DlgTrackInfoMulti::genreRebuildChips() {
     QLayoutItem* it = nullptr;
     while ((it = m_genreTagsLayout->takeAt(0))) {
-        if (QWidget* w = it->widget())
+        if (QWidget* w = it->widget()) {
             w->deleteLater();
+        }
+
         delete it;
     }
 
@@ -1451,8 +1429,10 @@ void DlgTrackInfoMulti::genreSetTags(const QStringList& names) {
 
 void DlgTrackInfoMulti::genreAddTag(const QString& name) {
     const QString trimmed = name.trimmed();
-    if (trimmed.isEmpty())
+    if (trimmed.isEmpty()) {
         return;
+    }
+
     const QString low = trimmed.toLower();
 
     if (m_genreSeenLower.contains(low)) {
@@ -1460,8 +1440,10 @@ void DlgTrackInfoMulti::genreAddTag(const QString& name) {
     }
 
     QString nice = trimmed;
-    if (!nice.isEmpty())
+    if (!nice.isEmpty()) {
         nice[0] = nice[0].toUpper();
+    }
+
     m_genreTagNames << nice;
     m_genreSeenLower.insert(low);
     m_pendingAdd.insert(low);
@@ -1471,8 +1453,9 @@ void DlgTrackInfoMulti::genreAddTag(const QString& name) {
 
 void DlgTrackInfoMulti::genreRemoveTag(const QString& name) {
     const QString low = name.trimmed().toLower();
-    if (!m_genreSeenLower.contains(low))
+    if (!m_genreSeenLower.contains(low)) {
         return;
+    }
 
     if (m_pendingAdd.contains(low)) {
         m_pendingAdd.remove(low);

@@ -462,10 +462,11 @@ void DlgTrackInfo::updateTrackMetadataFields() {
     QStringList names;
     // for (const QString& part : display.split(';', Qt::SkipEmptyParts)) {
     QStringList parts = display.split(';', Qt::SkipEmptyParts);
-    for (const auto& part : parts) {
+    for (const auto& part : std::as_const(parts)) {
         const QString t = part.trimmed();
-        if (!t.isEmpty())
+        if (!t.isEmpty()) {
             names << t;
+        }
     }
 
     genreSetTags(names);
@@ -1107,8 +1108,9 @@ QWidget* DlgTrackInfo::genreCreateChip(const QString& name) {
 void DlgTrackInfo::genreRebuildChips() {
     QLayoutItem* it = nullptr;
     while ((it = m_genreTagsLayout->takeAt(0))) {
-        if (QWidget* w = it->widget())
+        if (QWidget* w = it->widget()) {
             w->deleteLater();
+        }
         delete it;
     }
 
@@ -1130,11 +1132,13 @@ void DlgTrackInfo::genreRebuildChips() {
 
 void DlgTrackInfo::genreAddTag(const QString& name) {
     const QString t = name.trimmed();
-    if (t.isEmpty())
+    if (t.isEmpty()) {
         return;
+    }
     const QString low = t.toLower();
-    if (m_genreSeenLower.contains(low))
+    if (m_genreSeenLower.contains(low)) {
         return;
+    }
 
     m_genreSeenLower.insert(low);
     m_genreTagNames << t;
@@ -1146,8 +1150,9 @@ void DlgTrackInfo::genreAddTag(const QString& name) {
 
 void DlgTrackInfo::genreRemoveTag(const QString& name) {
     const QString low = name.trimmed().toLower();
-    if (!m_genreSeenLower.contains(low))
+    if (!m_genreSeenLower.contains(low)) {
         return;
+    }
 
     m_genreSeenLower.remove(low);
     // for (int i = 0; i < m_genreTagNames.size(); ++i) {
