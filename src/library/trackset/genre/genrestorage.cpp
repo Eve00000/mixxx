@@ -437,87 +437,79 @@ uint GenreStorage::countGenreTracks(GenreId genreId) const {
 
 GenreTrackSelectResult GenreStorage::selectTracksSortedByGenreNameLike(
         const QString& genreNameLike) const {
-    // TODO: Do SQL LIKE wildcards in genreNameLike need to be escaped?
-    // Consider using SqlLikeWildcardEscaper if needed in the future.
+    // qDebug() << "[GenreStorage] selectTracksSortedByGenreNameLike called with:" << genreNameLike;
+    QString escapedGenreNameLike = genreNameLike;
+    escapedGenreNameLike = escapedGenreNameLike.toLower()
+                                   .replace("genre=", "")
+                                   .replace('\'', "")
+                                   .replace('\"', "");
 
-    FwdSqlQuery query(m_database,
-            QStringLiteral("SELECT %1 FROM %2 "
-                           "WHERE %3 LIKE :genreNameLike "
-                           "ORDER BY %3")
-                    .arg(LIBRARYTABLE_ID,
-                            GENRE_TABLE,
-                            GENRETABLE_NAME));
+    QString queryString = QString(
+            "SELECT DISTINCT l.id as track_id, g.id as genre_id "
+            "FROM library l "
+            "    JOIN genres g "
+            "    ON ("
+            "        (g.id IN "
+            "        (SELECT id FROM genres WHERE name LIKE '%%1%' COLLATE NOCASE) "
+            "        )"
+            "    ) "
+            "WHERE "
+            "    (l.genre LIKE '%##' || g.id || '##%') "
+            "    OR "
+            "    (l.genre LIKE '%%1%' COLLATE NOCASE) ")
+                                  .arg(escapedGenreNameLike);
 
-    query.bindValue(":genreNameLike",
-            QVariant(kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll));
+    // qDebug() << "selectTracksSortedByGenreNameLike -> queryString " << queryString;
 
+    FwdSqlQuery query(m_database, queryString);
     if (query.execPrepared()) {
         return GenreTrackSelectResult(std::move(query));
     } else {
+        qDebug() << "selectTracksSortedByGenreNameLike -> SQL Error:" << query.lastError().text();
         return GenreTrackSelectResult();
     }
 }
 
 QString GenreStorage::formatQueryForTrackIdsByGenreNameLike(
         const QString& genreNameLike) const {
-    FieldEscaper escaper(m_database);
-    QString escapedGenreNameLike = escaper.escapeString(
-            kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll);
+    // qDebug() << "[GenreStorage] formatQueryForTrackIdsByGenreNameLike called
+    // with:" << genreNameLike;
+    QString escapedGenreNameLike = genreNameLike;
+    escapedGenreNameLike = escapedGenreNameLike.replace('\'', "").replace('\"', "");
 
-    return QString(
-            "SELECT DISTINCT %1 FROM %2 "
-            "WHERE EXISTS ("
-            " SELECT 1 FROM %3 "
-            " WHERE %4 LIKE %5 "
-            " AND %2.%6 LIKE '%%' || '##' || %3.%7 || '##' || '%%'"
-            ") ORDER BY %1")
-            .arg(LIBRARYTABLE_ID,
-                    LIBRARY_TABLE,
-                    GENRE_TABLE,
-                    GENRETABLE_NAME,
-                    escapedGenreNameLike,
-                    LIBRARYTABLE_GENRE,
-                    GENRETABLE_ID);
+    QString queryString = QString(
+            "SELECT DISTINCT l.id as track_id "
+            "FROM library l "
+            "    JOIN genres g "
+            "    ON ("
+            "        (g.id IN "
+            "        (SELECT id FROM genres WHERE name LIKE '%%1%' COLLATE NOCASE) "
+            "        )"
+            "    ) "
+            "WHERE "
+            "    (l.genre LIKE '%##' || g.id || '##%') "
+            "    OR "
+            "    (l.genre LIKE '%%1%' COLLATE NOCASE) ")
+                                  .arg(escapedGenreNameLike);
+
+    // qDebug() << "formatQueryForTrackIdsByGenreNameLike -> queryString: " << queryString;
+
+    return queryString;
 }
 
-// QString GenreStorage::formatQueryForTrackIdsByGenreNameLike(
-//         const QString& genreNameLike) const {
-//     FieldEscaper escaper(m_database);
-//     QString escapedGenreNameLike = escaper.escapeString(
-//             kSqlLikeMatchAll + genreNameLike + kSqlLikeMatchAll);
-//
-//     return QString(
-//             "SELECT DISTINCT %1 FROM %2 "
-//             "JOIN %3 ON %4 LIKE '%%'||%5||'%%' "
-//             "WHERE %6 LIKE %7 "
-//             "ORDER BY %1")
-//             .arg(LIBRARYTABLE_ID,
-//                     LIBRARY_TABLE,
-//                     GENRE_TABLE,
-//                     LIBRARYTABLE_GENRE,
-//                     QStringLiteral("##") + QString::number(/* genre id
-//                     placeholder */) + QStringLiteral("##"), // This is a
-//                     problem, see below. GENRETABLE_NAME,
-//                     escapedGenreNameLike);
-// }
-
 QString GenreStorage::formatQueryForTrackIdsWithGenre() {
-    // The library.genre column contains genre tags like ##id##;
-    // We use LIKE '%##id##%' to find tracks that have that genre.
     return QStringLiteral(
             "SELECT DISTINCT %1 FROM %2 "
-            "WHERE %3 LIKE '%' || '##' || %4 || '##' || '%' "
-            "ORDER BY %1")
+            "WHERE % 3 LIKE '%##%' "
+            "AND %3 GLOB '*##[0-9]*##*'")
             .arg(LIBRARYTABLE_ID,
                     LIBRARY_TABLE,
-                    LIBRARYTABLE_GENRE,
-                    LIBRARYTABLE_ID); // The %4 placeholder will be bound to the genre id string
+                    LIBRARYTABLE_GENRE);
 }
 
 GenreTrackSelectResult GenreStorage::selectAllTracksSorted() const {
     FwdSqlQuery query(m_database,
             QStringLiteral("SELECT DISTINCT %1 FROM %2 "
-                           "WHERE %3 LIKE '%%##%%' "
                            "ORDER BY %1")
                     .arg(LIBRARYTABLE_ID,
                             LIBRARY_TABLE,
@@ -669,7 +661,7 @@ GenreSummarySelectResult GenreStorage::selectGenresWithTrackCount(
                                   GENRE_TABLE,
                                   GENRETABLE_NAME);
 
-    qDebug() << "[GenreStorage] -> selectGenresWithTrackCount sql: " << sql;
+    // qDebug() << "[GenreStorage] -> selectGenresWithTrackCount sql: " << sql;
 
     FwdSqlQuery query(m_database, mixxx::DbConnection::collateLexicographically(sql));
     if (query.execPrepared()) {
