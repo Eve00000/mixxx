@@ -1310,26 +1310,45 @@ void DlgTrackInfoMulti::genreTagsInitUi() {
     txtGenre->setVisible(false);
     tags_layout->addWidget(m_genreTagsArea, r, c, rs, cs);
 
-    m_genreTagsArea->setStyleSheet(QString(
+    // m_genreTagsArea->setStyleSheet(QString(
+    //         "QScrollArea {"
+    //         "  background-color: %1;"
+    //         "  border: 1px solid %2;"
+    //         "  border-radius: %3px;"
+    //         "}"
+    //         "QScrollArea > QWidget { background: transparent; }"
+    //         "QScrollArea > QWidget > QWidget { background: transparent; }"
+    //         "QScrollArea QScrollBar:horizontal {"
+    //         "  height: %4px; background: transparent; margin: 0 %5px; border: none;"
+    //         "}"
+    //         "QScrollArea QScrollBar::handle:horizontal {"
+    //         "  background: #6a6a6a; border-radius: %6px; min-width: 24px;"
+    //         "}"
+    //         "QScrollArea QScrollBar::add-line:horizontal,"
+    //         "QScrollArea QScrollBar::sub-line:horizontal { width: 0; height: 0; }"
+    //         "QScrollArea QScrollBar::add-page:horizontal,"
+    //         "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }")
+    //                 .arg(kFieldBg, kFieldBorder)
+    //                 .arg(kFieldRadius, kScrollH, kScrollbarInset, (kScrollH / 2)));
+
+    m_genreTagsArea->setStyleSheet(
             "QScrollArea {"
-            "  background-color: %1;"
-            "  border: 1px solid %2;"
-            "  border-radius: %3px;"
+            "  background-color: #1a1a1a;"
+            "  border: 1px solid #373737;"
+            "  border-radius: 8px;"
             "}"
             "QScrollArea > QWidget { background: transparent; }"
             "QScrollArea > QWidget > QWidget { background: transparent; }"
             "QScrollArea QScrollBar:horizontal {"
-            "  height: %4px; background: transparent; margin: 0 %5px; border: none;"
+            "  height: 6px; background: transparent; margin: 0 6px; border: none;"
             "}"
             "QScrollArea QScrollBar::handle:horizontal {"
-            "  background: #6a6a6a; border-radius: %6px; min-width: 24px;"
+            "  background: #6a6a6a; border-radius: 3px; min-width: 24px;"
             "}"
             "QScrollArea QScrollBar::add-line:horizontal,"
             "QScrollArea QScrollBar::sub-line:horizontal { width: 0; height: 0; }"
             "QScrollArea QScrollBar::add-page:horizontal,"
-            "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }")
-                    .arg(kFieldBg, kFieldBorder)
-                    .arg(kFieldRadius, kScrollH, kScrollbarInset, (kScrollH / 2)));
+            "QScrollArea QScrollBar::sub-page:horizontal { background: transparent; }");
 
     genreRebuildChips();
 }
