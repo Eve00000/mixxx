@@ -39,16 +39,16 @@ namespace {
 
 // UI metrics
 constexpr int kScrollH = 6;
-constexpr int kFieldRadius = 8;
+// constexpr int kFieldRadius = 8;
 constexpr int kChipHPad = 10;
 constexpr int kChipVPad = 3;
 constexpr int kChipSpacing = 6;
 constexpr int kAreaPad = 8;
-constexpr int kScrollbarInset = 6;
+// constexpr int kScrollbarInset = 6;
 
 // FieldBox
-static const char* kFieldBg = "#1a1a1a";
-static const char* kFieldBorder = "#373737";
+// static const char* kFieldBg = "#1a1a1a";
+// static const char* kFieldBorder = "#373737";
 
 static const char* kChipBg = "#3b3b3b";
 static const char* kChipBorder = "#5a5a5a";
