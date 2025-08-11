@@ -433,7 +433,7 @@ endif()
 
 project(mixxx VERSION 2.7.0 LANGUAGES C CXX)
 # Work around missing version suffixes support https://gitlab.kitware.com/cmake/cmake/-/issues/16716
-set(MIXXX_VERSION_PRERELEASE "beta") # set to "alpha" "beta" or ""
+set(MIXXX_VERSION_PRERELEASE "alpha") # set to "alpha" "beta" or ""
 
 set(CMAKE_PROJECT_HOMEPAGE_URL "https://www.mixxx.org")
 set(
@@ -4899,7 +4899,16 @@ if(VINYLCONTROL)
 
   # Internal xwax library
   add_library(mixxx-xwax STATIC EXCLUDE_FROM_ALL)
-  target_sources(mixxx-xwax PRIVATE lib/xwax/timecoder.c lib/xwax/lut.c)
+  target_sources(
+    mixxx-xwax
+    PRIVATE
+      lib/xwax/timecoder.c
+      lib/xwax/timecoder_mk2.c
+      lib/xwax/lut.c
+      lib/xwax/lut_mk2.c
+      lib/xwax/filters.c
+      lib/xwax/delayline.c
+  )
   target_include_directories(mixxx-xwax SYSTEM PUBLIC lib/xwax)
   target_link_libraries(mixxx-lib PRIVATE mixxx-xwax)
 endif()
@@ -5064,7 +5073,7 @@ if(NOT CPACK_DEBIAN_PACKAGE_RELEASE)
   set(CPACK_DEBIAN_PACKAGE_RELEASE 1)
 endif()
 
-set(CPACK_DEBIAN_DISTRIBUTION_RELEASES noble oracular plucky questing)
+set(CPACK_DEBIAN_DISTRIBUTION_RELEASES noble plucky questing)
 set(CPACK_DEBIAN_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(
   CPACK_DEBIAN_UPLOAD_PPA_SCRIPT
