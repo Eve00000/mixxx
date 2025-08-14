@@ -7,15 +7,26 @@
 #include <thread>
 
 // Handler for incoming OSC messages
+// int osc_message_handler(const char* path,
+//        const char* types,
+//        lo_arg** argv,
+//        int argc,
+//        lo_message msg,
+//        void* user_data) {
+//    auto* flag = static_cast<std::atomic<bool>*>(user_data);
+//    flag->store(true);
+//    std::cout << "[OSC TEST] Message received at path: " << path << std::endl;
+//    return 0;
+//}
+
 int osc_message_handler(const char* path,
-        const char* types,
-        lo_arg** argv,
-        int argc,
-        lo_message msg,
+        const char* /*types*/,
+        lo_arg** /*argv*/,
+        int /*argc*/,
+        lo_message /*msg*/,
         void* user_data) {
-    auto* flag = static_cast<std::atomic<bool>*>(user_data);
-    flag->store(true);
-    std::cout << "[OSC TEST] Message received at path: " << path << std::endl;
+    auto* flag = static_cast<bool*>(user_data);
+    *flag = true;
     return 0;
 }
 
@@ -34,7 +45,7 @@ int main() {
 
     lo_server s = lo_server_thread_get_server(st);
     lo_server_thread_add_method(st, NULL, NULL, osc_message_handler, &messageReceived);
-    lo_server_thread_start(st);
+    (void)lo_server_thread_start(st);
 
     std::cout << "[OSC TEST] Receiver started on port " << oscPortIn << std::endl;
 
