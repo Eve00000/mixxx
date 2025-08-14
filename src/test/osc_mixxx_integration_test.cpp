@@ -19,7 +19,7 @@
 //    return 0;
 //}
 
-int osc_message_handler(const char* path,
+int osc_message_handler(const char* path /*path*/,
         const char* /*types*/,
         lo_arg** /*argv*/,
         int /*argc*/,
@@ -44,6 +44,7 @@ int main() {
     }
 
     lo_server s = lo_server_thread_get_server(st);
+    (void)s;
     lo_server_thread_add_method(st, NULL, NULL, osc_message_handler, &messageReceived);
     (void)lo_server_thread_start(st);
 
