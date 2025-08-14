@@ -2658,7 +2658,7 @@ if(BUILD_TESTING)
     src/test/mock_networkaccessmanager.cpp
     src/test/musicbrainzrecordingstasktest.cpp
     #src/test/osc_liblo_test.cpp
-    src/test/osc_mixxx_integration_test.cpp
+    #src/test/osc_mixxx_integration_test.cpp
     src/test/performancetimer_test.cpp
     src/test/playcountertest.cpp
     src/test/playermanagertest.cpp

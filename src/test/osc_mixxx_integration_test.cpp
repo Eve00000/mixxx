@@ -19,14 +19,32 @@
 //    return 0;
 //}
 
-int osc_message_handler(const char* path /*path*/,
-        const char* /*types*/,
-        lo_arg** /*argv*/,
-        int /*argc*/,
-        lo_message /*msg*/,
+// int osc_message_handler(const char* path /*path*/,
+//         const char* /*types*/,
+//         lo_arg** /*argv*/,
+//         int /*argc*/,
+//         lo_message /*msg*/,
+//         void* user_data) {
+//     auto* flag = static_cast<bool*>(user_data);
+//     *flag = true;
+//     return 0;
+// }
+
+int osc_message_handler(const char* path,
+        const char* types,
+        lo_arg** argv,
+        int argc,
+        lo_message msg,
         void* user_data) {
-    auto* flag = static_cast<bool*>(user_data);
-    *flag = true;
+    (void)path;
+    (void)types;
+    (void)argv;
+    (void)argc;
+    (void)msg;
+
+    bool* messageReceived = static_cast<bool*>(user_data);
+    *messageReceived = true;
+    std::cout << "[OSC TEST] Message received" << std::endl;
     return 0;
 }
 
