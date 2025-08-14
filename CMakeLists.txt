@@ -2657,6 +2657,8 @@ if(BUILD_TESTING)
     src/test/mixxxtest.cpp
     src/test/mock_networkaccessmanager.cpp
     src/test/musicbrainzrecordingstasktest.cpp
+    #src/test/osc_liblo_test.cpp
+    src/test/osc_mixxx_integration_test.cpp
     src/test/performancetimer_test.cpp
     src/test/playcountertest.cpp
     src/test/playermanagertest.cpp
@@ -3287,10 +3289,94 @@ endif()
 #find_package(liblo REQUIRED)
 #target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 
+#eve osc
+# liblo
+# if(WIN32)
+#   message(STATUS "Windows, installinf liblo from vcpkg")
+#   find_package(liblo REQUIRED)
+#   target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+# elseif(APPLE)
+#   message(STATUS "Detected macOS, now checking CPU")
+#   if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+#     message(
+#       STATUS
+#       "macOS ARM64 (Apple Silicon) detected, installing liblo with homebrew"
+#     )
+#     set(
+#       ENV{PKG_CONFIG_PATH}
+#       "/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$ENV{PKG_CONFIG_PATH}"
+#     )
+#   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+#     message(
+#       STATUS
+#       "macOS Intel detected, installing liblo from installed package"
+#     )
+#     set(
+#       ENV{PKG_CONFIG_PATH}
+#       "/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$ENV{PKG_CONFIG_PATH}"
+#     )
+#   else()
+#     message(
+#       WARNING
+#       "Unknown macOS CPU: ${CMAKE_SYSTEM_PROCESSOR} cannot install liblo"
+#     )
+#   endif()
+
+#   find_package(PkgConfig REQUIRED)
+#   pkg_check_modules(LIBLO REQUIRED liblo)
+
+#   add_library(liblo UNKNOWN IMPORTED)
+#   set_target_properties(
+#     liblo
+#     PROPERTIES
+#       IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+#       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
+#   )
+
+#   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
+#   message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
+
+#   target_link_libraries(mixxx-lib PRIVATE liblo)
+# elseif(UNIX)
+#   message(STATUS "Linux, installing liblo from installed package")
+#   find_package(PkgConfig REQUIRED)
+#   pkg_check_modules(LIBLO REQUIRED liblo)
+
+#   add_library(liblo UNKNOWN IMPORTED)
+#   set_target_properties(
+#     liblo
+#     PROPERTIES
+#       IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+#       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
+#   )
+
+#   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
+#   message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
+
+#   target_link_libraries(mixxx-lib PRIVATE liblo)
+# endif()
+
+# if(BUILD_TESTING)
+#     add_executable(osc_mixxx_integration_test tests/osc_mixxx_integration_test.cpp)
+
+# Link against the same liblo target used for mixxx-lib
+#     if(TARGET liblo::liblo)
+#         target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
+#     elseif(TARGET liblo)
+#         target_link_libraries(osc_mixxx_integration_test PRIVATE liblo)
+#     else()
+#         message(FATAL_ERROR "No liblo target found for osc_mixxx_integration_test")
+#     endif()
+
+#     add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
+# endif()
+
+# eve osc
+# liblo
+
 if(WIN32)
-  message(STATUS "Windows, installinf liblo from vcpkg")
-  find_package(liblo REQUIRED)
-  target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+  message(STATUS "Windows, installing liblo from vcpkg")
+  find_package(liblo REQUIRED) # This provides liblo::liblo directly
 elseif(APPLE)
   message(STATUS "Detected macOS, now checking CPU")
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
@@ -3329,10 +3415,11 @@ elseif(APPLE)
       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
   )
 
+  # Create a consistent alias so we always have liblo::liblo
+  add_library(liblo::liblo ALIAS liblo)
+
   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
   message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
-
-  target_link_libraries(mixxx-lib PRIVATE liblo)
 elseif(UNIX)
   message(STATUS "Linux, installing liblo from installed package")
   find_package(PkgConfig REQUIRED)
@@ -3346,10 +3433,26 @@ elseif(UNIX)
       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
   )
 
+  # Create a consistent alias so we always have liblo::liblo
+  add_library(liblo::liblo ALIAS liblo)
+
   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
   message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
+else()
+  message(FATAL_ERROR "Unsupported platform for liblo")
+endif()
 
-  target_link_libraries(mixxx-lib PRIVATE liblo)
+# Always link mixxx-lib against the unified target
+target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+
+# Tests
+if(BUILD_TESTING)
+  add_executable(
+    osc_mixxx_integration_test
+    src/test/osc_mixxx_integration_test.cpp
+  )
+  target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
+  add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
 endif()
 
 # Kaitai for reading Rekordbox libraries
