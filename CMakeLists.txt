@@ -3416,9 +3416,7 @@ endif()
 #       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
 #   )
 
-# Create a consistent alias so we always have liblo::liblo
 #   add_library(liblo::liblo ALIAS liblo)
-
 #   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
 #   message(STATUS "LIBLO_LINK_LIBRARIES: ${LIBLO_LINK_LIBRARIES}")
 # elseif(UNIX)
@@ -3434,7 +3432,6 @@ endif()
 #       INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
 #   )
 
-# Create a consistent alias so we always have liblo::liblo
 #   add_library(liblo::liblo ALIAS liblo)
 
 #   message(STATUS "LIBLO_INCLUDE_DIRS: ${LIBLO_INCLUDE_DIRS}")
@@ -3443,14 +3440,11 @@ endif()
 #   message(FATAL_ERROR "Unsupported platform for liblo")
 # endif()
 
-if(WIN32)
-  message(STATUS "Windows, installing liblo from vcpkg")
-  find_package(liblo REQUIRED) # Provides liblo::liblo
-elseif(APPLE)
-  message(STATUS "macOS, using liblo from vcpkg")
-  find_package(liblo REQUIRED) # vcpkg handles both x64 and ARM64
+if(WIN32 OR APPLE)
+  message(STATUS "[Liblo] Windows or macOS, using vcpkg")
+  find_package(liblo REQUIRED) # liblo::liblo target provided by vcpkg
 elseif(UNIX)
-  message(STATUS "Linux, installing liblo from system package")
+  message(STATUS "[Liblo] Linux, using pkg-config")
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(LIBLO REQUIRED liblo)
 
@@ -3458,19 +3452,19 @@ elseif(UNIX)
   set_target_properties(
     liblo
     PROPERTIES
-      IMPORTED_LOCATION "${LIBLO_LIBRARIES}"
-      INTERFACE_INCLUDE_DIRECTORIES "${LIBLO_INCLUDE_DIRS}"
+      IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
   )
 
   add_library(liblo::liblo ALIAS liblo)
-else()
-  message(FATAL_ERROR "Unsupported platform for liblo")
 endif()
 
-# Always link mixxx-lib against the unified target
+include_directories(${LIBLO_INCLUDE_DIRS})
 target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 
-# Tests
+# Liblo Test for CI
+# to check if liblo is included >> send some messages to itself
+# if received >> test passes
 if(BUILD_TESTING)
   add_executable(
     osc_mixxx_integration_test
