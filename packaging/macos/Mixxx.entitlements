@@ -36,6 +36,9 @@
     <!-- Allow access to the Local Network -->
     <key>com.apple.security.device.local-network</key>
     <true/>
+    <!-- Allow opening incoming network connections -->
+    <key>com.apple.security.network.server</key>
+    <true/>
 
     <!-- HARDENED RUNTIME ENTITLEMENTS
 
