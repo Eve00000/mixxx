@@ -95,6 +95,12 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     void slotUpdateSpeedAutoReset(bool);
     void slotUpdatePitchAutoReset(bool);
 
+  private slots:
+    // create statusfiles checkbox
+    void slotToggleCreateStatusFiles(int buttonState);
+    // create nowplayingfile checkbox
+    void slotToggleCreateNowPlayingFile(int buttonState);
+
   private:
     // Because the CueDefault list is out of order, we have to set the combo
     // box using the user data, not the index.  Returns the index of the item
