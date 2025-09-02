@@ -31,6 +31,8 @@ const QString kDisabledText = QStringLiteral("- - -");
 
 const QString kLibraryConfigGroup = QStringLiteral("[Library]");
 const QString kSavedQueriesConfigGroup = QStringLiteral("[SearchQueries]");
+const QString kSearchCrateConfigGroup = QStringLiteral("[SearchCrate]");
+const QString kSearchCrateQueriesConfigGroup = QStringLiteral("[SearchCrateQueries]");
 
 // Border width, max. 2 px when focused (in official skins)
 constexpr int kBorderWidth = 2;
@@ -88,6 +90,7 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
           m_pConfig(pConfig),
           m_completer(make_parented<QCompleter>(this)),
           m_clearButton(make_parented<QToolButton>(this)),
+          m_2SearchCrateButton(make_parented<QToolButton>(this)),
           m_queryEmitted(false) {
     qRegisterMetaType<FocusWidget>("FocusWidget");
     setAcceptDrops(false);
@@ -121,6 +124,14 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
             &QAbstractButton::clicked,
             this,
             &WSearchLineEdit::slotClearSearch);
+
+    m_2SearchCrateButton->setCursor(Qt::PointingHandCursor);
+    m_2SearchCrateButton->setObjectName(QStringLiteral("2SearchCrateButton"));
+    m_2SearchCrateButton->hide();
+    connect(m_2SearchCrateButton,
+            &QAbstractButton::clicked,
+            this,
+            &WSearchLineEdit::slot2SearchCrate);
 
     // Set up a timer to search after a few hundred milliseconds timeout.  This
     // stops us from thrashing the database if you type really fast.
@@ -212,6 +223,11 @@ void WSearchLineEdit::setup(const QDomNode& node, const SkinContext& context) {
 
     m_clearButton->setToolTip(tr("Clear input") + "\n" +
             tr("Clear the search bar input field"));
+
+    m_2SearchCrateButton->setToolTip(tr("Moves the result of the query") + "\n" +
+            tr("to a new SearchCrate container") + "\n\n" +
+            tr("Shortcut") + ": \n" +
+            tr("None Yet"));
 }
 
 void WSearchLineEdit::setupToolTip(const QString& searchInCurrentViewShortcut,
@@ -280,6 +296,26 @@ void WSearchLineEdit::saveQueriesInConfig() {
     }
 }
 
+void WSearchLineEdit::slot2SearchCrate() {
+#if ENABLE_TRACE_LOG
+    kLogger.trace()
+            << "slot2SearchCrate";
+#endif // ENABLE_TRACE_LOG
+    if (!isEnabled()) {
+        return;
+    }
+
+    emit newSearchCrate(getSearchText());
+    m_queryEmitted = true;
+
+    setCurrentIndex(-1);
+    saveQueriesInConfig();
+    lineEdit()->clear();
+
+    // Refocus the edit field
+    // setFocus(Qt::OtherFocusReason);
+}
+
 void WSearchLineEdit::resizeEvent(QResizeEvent* e) {
     QComboBox::resizeEvent(e);
     int innerHeight = height() - 2 * kBorderWidth;
@@ -294,13 +330,24 @@ void WSearchLineEdit::resizeEvent(QResizeEvent* e) {
         // after skin change/reload.
         refreshState();
     }
+    if (m_2SearchCrateButton->size().height() != innerHeight) {
+        QSize newSize = QSize(innerHeight, innerHeight);
+        m_2SearchCrateButton->resize(newSize);
+        m_2SearchCrateButton->setIconSize(newSize);
+        refreshState();
+    }
     int top = rect().top() + kBorderWidth;
     if (layoutDirection() == Qt::LeftToRight) {
         m_clearButton->move(rect().right() -
                         static_cast<int>(1.7 * innerHeight) - kBorderWidth,
                 top);
+        m_2SearchCrateButton->move(rect().right() -
+                        static_cast<int>(1.7 * innerHeight) - kBorderWidth,
+                top);
     } else {
         m_clearButton->move(static_cast<int>(0.7 * innerHeight) + kBorderWidth,
+                top);
+        m_2SearchCrateButton->move(static_cast<int>(0.7 * innerHeight) + kBorderWidth,
                 top);
     }
 }
@@ -697,6 +744,7 @@ void WSearchLineEdit::updateClearAndDropdownButton(const QString& text) {
     // Hide clear button if the text is empty and while placeholder is shown,
     // see disableSearch()
     m_clearButton->setVisible(!text.isEmpty());
+    m_2SearchCrateButton->setVisible(!text.isEmpty());
 
     // Ensure the text is not obscured by the clear button. Otherwise no text,
     // no clear button, so the placeholder should use the entire width.
@@ -767,6 +815,14 @@ bool WSearchLineEdit::slotClearSearchIfClearButtonHasFocus() {
         return false;
     }
     slotClearSearch();
+    return true;
+}
+
+bool WSearchLineEdit::slot2SearchCrateIf2SearchCrateButtonHasFocus() {
+    if (!m_2SearchCrateButton->hasFocus()) {
+        return false;
+    }
+    slot2SearchCrate();
     return true;
 }
 
