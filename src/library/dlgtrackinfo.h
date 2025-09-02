@@ -14,6 +14,7 @@
 #include "util/tapfilter.h"
 #include "widget/wcolorpickeraction.h"
 
+class GenreDao;
 class TrackModel;
 class WColorPickerAction;
 class WStarRating;
@@ -31,8 +32,12 @@ class DlgTrackInfo : public QDialog, public Ui::DlgTrackInfo {
     // TODO: Remove dependency on TrackModel
     explicit DlgTrackInfo(
             UserSettingsPointer pUserSettings,
+            GenreDao& genreDao,
             const TrackModel* trackModel = nullptr);
     ~DlgTrackInfo() override = default;
+
+    void setGenreData(const QVariantList& genreData);
+    void setupGenreCompleter();
 
   public slots:
     // Not thread safe. Only invoke via AutoConnection or QueuedConnection, not
@@ -112,7 +117,7 @@ class DlgTrackInfo : public QDialog, public Ui::DlgTrackInfo {
     void updateSpinBpmFromBeats();
 
     const UserSettingsPointer m_pUserSettings;
-
+    GenreDao& m_genreDao;
     const TrackModel* const m_pTrackModel;
 
     TrackPointer m_pLoadedTrack;
@@ -135,4 +140,6 @@ class DlgTrackInfo : public QDialog, public Ui::DlgTrackInfo {
     parented_ptr<WColorPickerAction> m_pColorPicker;
 
     std::unique_ptr<DlgTagFetcher> m_pDlgTagFetcher;
+    QVariantList m_genreData;
+    QString m_rawGenreString;
 };

@@ -1,13 +1,16 @@
 #include "library/dlgtrackinfomulti.h"
 
+#include <QCompleter>
 #include <QLineEdit>
 #include <QListView>
+#include <QSignalBlocker>
 #include <QStyleFactory>
 #include <QtDebug>
 
 #include "defs_urls.h"
 #include "library/coverartcache.h"
 #include "library/coverartutils.h"
+#include "library/dao/genredao.h"
 #include "library/library_prefs.h"
 #include "moc_dlgtrackinfomulti.cpp"
 #include "preferences/colorpalettesettings.h"
@@ -100,11 +103,14 @@ void setCommonValueOrVariousStringAndFormatFont(QLabel* pLabel,
 
 } // namespace
 
-DlgTrackInfoMulti::DlgTrackInfoMulti(UserSettingsPointer pUserSettings)
+DlgTrackInfoMulti::DlgTrackInfoMulti(
+        UserSettingsPointer pUserSettings,
+        GenreDao& genreDao)
         // No parent because otherwise it inherits the style parent's
         // style which can make it unreadable. Bug #673411
         : QDialog(nullptr),
           m_pUserSettings(std::move(pUserSettings)),
+          m_genreDao(genreDao),
           m_pWCoverArtMenu(make_parented<WCoverArtMenu>(this)),
           m_pWCoverArtLabel(make_parented<WCoverArtLabel>(this, m_pWCoverArtMenu)),
           m_pWStarRating(make_parented<WStarRating>(this)),
@@ -119,6 +125,41 @@ DlgTrackInfoMulti::DlgTrackInfoMulti(UserSettingsPointer pUserSettings)
                   ColorPaletteSettings(m_pUserSettings).getTrackColorPalette(),
                   this)) {
     init();
+}
+
+void DlgTrackInfoMulti::setGenreData(const QVariantList& genreData) {
+    m_genreData = genreData;
+    // qDebug() << "[DlgTrackInfoMulti] -> setGenreData passing genreData contains:" << m_genreData;
+    setupGenreCompleter();
+}
+
+void DlgTrackInfoMulti::setupGenreCompleter() {
+    QStringList genreNames = m_genreDao.getGenreNameList();
+
+    auto* genreCompleter = new QCompleter(genreNames, this);
+    genreCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    genreCompleter->setFilterMode(Qt::MatchContains);
+    genreCompleter->setCompletionMode(QCompleter::PopupCompletion);
+
+    genreSelectorEdit->setCompleter(genreCompleter);
+
+    connect(genreSelectorEdit, &QLineEdit::textEdited, this, [genreCompleter](const QString& text) {
+        QStringList parts = text.split(';', Qt::SkipEmptyParts);
+        const QString prefix = parts.isEmpty() ? QString() : parts.last().trimmed();
+        genreCompleter->setCompletionPrefix(prefix);
+        if (!prefix.isEmpty()) {
+            genreCompleter->complete();
+        } else {
+            genreCompleter->popup()->hide();
+        }
+    });
+
+    connect(genreCompleter,
+            QOverload<const QString&>::of(&QCompleter::activated),
+            this,
+            [this](const QString& selected) {
+                genreSelectorEdit->setText(selected.trimmed());
+            });
 }
 
 void DlgTrackInfoMulti::init() {
@@ -140,6 +181,30 @@ void DlgTrackInfoMulti::init() {
     m_propertyWidgets.insert("key", txtKey);
     m_propertyWidgets.insert("grouping", txtGrouping);
     m_propertyWidgets.insert("comment", txtComment);
+
+    // genre add-button
+    connect(genreAddButton, &QPushButton::clicked, this, [this]() {
+        const QString typed = genreSelectorEdit->text().trimmed();
+        if (typed.isEmpty()) {
+            return;
+        }
+
+        QString current = txtGenre->lineEdit()->text().trimmed();
+        QStringList parts = current.split(';', Qt::SkipEmptyParts);
+
+        if (!parts.contains(typed, Qt::CaseInsensitive)) {
+            parts << typed;
+            QString updated = parts.join("; ");
+            if (!updated.endsWith(";")) {
+                updated += "; ";
+            }
+
+            QSignalBlocker blocker(txtGenre->lineEdit());
+            txtGenre->lineEdit()->setText(updated);
+        }
+
+        genreSelectorEdit->clear();
+    });
 
     // QDialog buttons
     connect(btnApply,
@@ -428,7 +493,9 @@ void DlgTrackInfoMulti::updateTrackMetadataFields() {
         artists.insert(rec.getMetadata().getTrackInfo().getArtist());
         aTitles.insert(rec.getMetadata().getAlbumInfo().getTitle());
         aArtists.insert(rec.getMetadata().getAlbumInfo().getArtist());
-        genres.insert(rec.getMetadata().getTrackInfo().getGenre());
+        QString rawGenre = rec.getMetadata().getTrackInfo().getGenre();
+        QString displayGenres = m_genreDao.getDisplayGenreNameForGenreID(rawGenre);
+        genres.insert(displayGenres);
         composers.insert(rec.getMetadata().getTrackInfo().getComposer());
         grouping.insert(rec.getMetadata().getTrackInfo().getGrouping());
         years.insert(rec.getMetadata().getTrackInfo().getYear());
@@ -669,7 +736,28 @@ void DlgTrackInfoMulti::saveTracks() {
     const QString artist = validEditText(txtArtist);
     const QString album = validEditText(txtAlbum);
     const QString albumArtist = validEditText(txtAlbumArtist);
-    const QString genre = validEditText(txtGenre);
+    const QString genreDisplay = txtGenre->lineEdit()->text().trimmed();
+
+    QString rawToSave;
+    if (!genreDisplay.isNull()) {
+        if (genreDisplay.isEmpty()) {
+            rawToSave = QString();
+        } else {
+            QStringList chosen = genreDisplay.split(';', Qt::SkipEmptyParts);
+            QStringList placeholders;
+            for (const QString& name : std::as_const(chosen)) {
+                const QString trimmed = name.trimmed();
+                qint64 id = m_genreDao.getGenreId(trimmed);
+                if (id != -1) {
+                    placeholders << QStringLiteral("##%1##").arg(id);
+                } else {
+                    placeholders << trimmed;
+                }
+            }
+            rawToSave = placeholders.join(';');
+        }
+    }
+
     const QString composer = validEditText(txtComposer);
     const QString grouping = validEditText(txtGrouping);
     const QString year = validEditText(txtYear);
@@ -685,7 +773,7 @@ void DlgTrackInfoMulti::saveTracks() {
         // Remove trailing whitespaces.
         comment = mixxx::removeTrailingWhitespaces(currText);
     }
-
+    QStringList finalGenres;
     for (auto& rec : m_trackRecords) {
         if (!title.isNull()) {
             rec.refMetadata().refTrackInfo().setTitle(title);
@@ -699,8 +787,56 @@ void DlgTrackInfoMulti::saveTracks() {
         if (!albumArtist.isNull()) {
             rec.refMetadata().refAlbumInfo().setArtist(albumArtist);
         }
-        if (!genre.isNull()) {
-            rec.refMetadata().refTrackInfo().setGenre(genre);
+        if (!genreDisplay.isNull() && !genreDisplay.isEmpty()) {
+            QStringList newGenres = genreDisplay.split(';', Qt::SkipEmptyParts);
+            for (QString& g : newGenres) {
+                g = g.trimmed();
+            }
+
+            QString mode = genreActionModeBox->currentText().toLower();
+
+            if (mode == "add") {
+                // track -> get existing displayed genre names
+                QString rawGenre = rec.getMetadata().getTrackInfo().getGenre();
+                QStringList existingGenres;
+                if (!rawGenre.isEmpty()) {
+                    QString displayGenres = m_genreDao.getDisplayGenreNameForGenreID(rawGenre);
+                    existingGenres = displayGenres.split(';', Qt::SkipEmptyParts);
+                    for (QString& g : existingGenres) {
+                        g = g.trimmed();
+                    }
+                }
+
+                // add new genres, check if not already in the list
+                finalGenres = existingGenres;
+                for (const QString& newG : std::as_const(newGenres)) {
+                    if (!finalGenres.contains(newG, Qt::CaseInsensitive)) {
+                        finalGenres.append(newG);
+                    }
+                }
+            } else if (mode == "replace") {
+                // replace all genres with new selected genres
+                finalGenres = newGenres;
+            } else {
+                qWarning() << "[DlgTrackInfoMulti] Unknown genre action mode:" << mode;
+                finalGenres = newGenres;
+            }
+
+            // -> raw tag string
+            QStringList placeholders;
+            for (const QString& name : std::as_const(finalGenres)) {
+                qint64 id = m_genreDao.getGenreId(name);
+                if (id != -1) {
+                    placeholders << QStringLiteral("##%1##").arg(id);
+                } else {
+                    placeholders << name;
+                }
+            }
+            QString updatedRawGenre = placeholders.join(';');
+
+            rec.refMetadata().refTrackInfo().setGenre(updatedRawGenre);
+            const QList<GenreId> genreIds = m_genreDao.getGenreIdsFromIdString(updatedRawGenre);
+            m_genreDao.updateGenreTracksForTrack(rec.getId(), genreIds);
         }
         if (!composer.isNull()) {
             rec.refMetadata().refTrackInfo().setComposer(composer);
