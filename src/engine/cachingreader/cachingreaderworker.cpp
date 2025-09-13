@@ -448,7 +448,7 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
         if (tmpDir.exists()) {
             QStringList sessionFiles = tmpDir.entryList(
                     QStringList() << gSessionPrefix + "*", QDir::Files);
-            for (const QString& filename : sessionFiles) {
+            for (const QString& filename : std::as_const(sessionFiles)) {
                 QFileInfo fileInfo(tmpDir.filePath(filename));
                 mixxxSessionSize += fileInfo.size();
             }
