@@ -182,15 +182,21 @@ jobs:
       artifact-windows-win64: ${{ steps.prepare_deploy.outputs.artifact-windows-win64 }}
       artifact-windows-winarm: ${{ steps.prepare_deploy.outputs.artifact-windows-winarm }}
     steps:
+      - name: Remove leftover Git lock
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Cleaning leftover Git lock files..."
+          $lockFiles = Get-ChildItem 'D:\a\mixxx\mixxx\.git\refs\remotes\origin\*.lock' -ErrorAction SilentlyContinue
+          foreach ($file in $lockFiles) {
+          Remove-Item $file -Force
+          }
       - name: "Check out repository"
         uses: actions/checkout@v4.2.2
         with:
           # This is necessary for making `git describe` work.
           fetch-depth: 0
           clean: true
-      - name: Remove leftover Git lock
-        if: runner.os == 'Windows'
-        run: del /F /Q D:\a\mixxx\mixxx\.git\refs\remotes\origin\*.lock || echo "No lock files found"
       - name: "[Arch Linux] Workaround for the 'unsafe repository' issue caused by CVE-2022-24765"
         if: matrix.container != null
         # See https://github.com/actions/checkout/issues/760 for details
