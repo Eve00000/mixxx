@@ -1,5 +1,3 @@
-#include "engine/cachingreader/cachingreader.h"
-
 #include <QDir>
 #include <QRegularExpression>
 #include <QtDebug>

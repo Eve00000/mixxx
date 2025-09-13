@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QAtomicInt>
 #include <QHash>
 #include <QList>
