@@ -566,6 +566,8 @@ endif()
 # Optimizations
 #
 
+
+
 set(
   OPTIMIZE
   "portable"
@@ -2527,6 +2529,20 @@ if(MSVC)
       PDB # No spaces allowed
   )
 endif()
+
+# EVE Stem Resampling
+#set_source_files_properties(
+#  src/sources//soundsourcestem.cpp
+#  PROPERTIES
+#  COMPILE_FLAGS "-fno-fast-math"
+#  ))
+
+# EVE Stem Resampling
+set_source_files_properties(
+  src/sources//soundsourcestem.cpp
+  PROPERTIES
+  COMPILE_FLAGS "-fno-fast-math"
+  )
 
 if(WIN32 AND NOT QT6)
   # Qt 5 loads these ANGLE DLLs at runtime if the graphics driver is on the ignore list.

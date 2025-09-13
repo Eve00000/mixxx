@@ -542,9 +542,62 @@ void SoundSourceSTEM::close() {
 //    }
 //}
 
+
+// Alternative Linux implementation - Catmull-Rom spline (often more stable)
+// CSAMPLE SoundSourceSTEM::linuxCatmullRomInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE t) {
+//     volatile CSAMPLE t2 = t * t;
+//     volatile CSAMPLE t3 = t2 * t;
+    
+//     return 0.5f * ((2.0f * y1) + 
+//                   (-y0 + y2) * t +
+//                   (2.0f * y0 - 5.0f * y1 + 4.0f * y2 - y3) * t2 +
+//                   (-y0 + 3.0f * y1 - 3.0f * y2 + y3) * t3);
+// }
+
+
 void SoundSourceSTEM::processWithResampler(size_t streamIdx,
         const WritableSampleFrames& globalSampleFrames,
         CSAMPLE* pBuffer) {
+
+    #ifdef __linux__
+    static int callCount = 0;
+    callCount++;
+    
+    if (callCount % 100 == 1) {
+        qDebug() << "STEM Linux: Processing call" << callCount;
+        qDebug() << "STEM Linux: Sample buffer range:" 
+                 << m_resampleInputBuffer[0] << "to" 
+                 << m_resampleInputBuffer[std::min(100, (int)m_resampleInputBuffer.size()-1)];
+    }
+    #endif
+
+    #ifdef __linux__
+    //     // Linux: Force flush denormals to zero for better performance and stability
+    // #ifdef __SSE__
+    //     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+    //     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+    // #endif
+    
+        // Linux: Use volatile to prevent aggressive optimizations
+    volatile CSAMPLE* inputBuffer = m_resampleInputBuffer.data();
+    #else
+        CSAMPLE* inputBuffer = m_resampleInputBuffer.data();
+    #endif
+
+    #ifdef __linux__
+    static bool firstRun = true;
+    if (firstRun) {
+        firstRun = false;
+        qDebug() << "STEM: Linux build - checking audio data characteristics";
+        
+        // Check sample values and patterns
+        CSAMPLE testSample = 0.1f;
+        qDebug() << "STEM: Sample test - 0.1f stored as:" << testSample;
+        qDebug() << "STEM: Sample size:" << sizeof(CSAMPLE) << "bytes";
+        qDebug() << "STEM: Sample alignment:" << alignof(CSAMPLE);
+    }
+    #endif
+
     const auto& premixInfo = m_pStereoStreams.front()->getSignalInfo();
     const int refSampleRate = premixInfo.getSampleRate();
     const auto& stemInfo = m_pStereoStreams[streamIdx]->getSignalInfo();
@@ -599,6 +652,20 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
     // Perform resampling - use a robust approach
     std::size_t stemCount = m_pStereoStreams.size();
 
+#ifdef __linux__
+    for (SINT i = 0; i < outputFramesNeeded; i++) {
+        const int64_t precisePos = static_cast<int64_t>(i) * stemSampleRate;
+        const SINT sourceIndex = static_cast<SINT>(precisePos / refSampleRate);
+        const CSAMPLE fraction = static_cast<CSAMPLE>(precisePos % refSampleRate) / refSampleRate;
+        
+        if (sourceIndex + 1 < inputFramesNeeded) {
+            linearInterpolateAndMix(streamIdx, i, sourceIndex, fraction, pBuffer, stemCount);
+        }
+    }
+    return; // Skip cubic entirely on Linux
+#endif
+
+
     for (SINT i = 0; i < outputFramesNeeded; i++) {
         // Calculate source position using precise integer math
         const int64_t precisePos = static_cast<int64_t>(i) * stemSampleRate;
@@ -632,21 +699,95 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
 //    return ((a0 * mu + a1) * mu + a2) * mu + y1;
 //}
 
+
 CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-    // Handle denormals/NaN using the safe math functions
-    if (!util_isnormal(mu)) {
-        mu = 0.0f;
-    }
-
-    // Robust cubic interpolation that works across compilers
-    const CSAMPLE mu2 = mu * mu;
-    const CSAMPLE a0 = y3 - y2 - y0 + y1;
-    const CSAMPLE a1 = y0 - y1 - a0;
-    const CSAMPLE a2 = y2 - y0;
-
-    // Carefully ordered operations to minimize precision issues
+    #ifdef __linux__
+    // Linux-specific: Very conservative implementation
+    volatile CSAMPLE safe_mu = mu;
+    
+    // Clamp and validate
+    if (safe_mu < 0.0f) safe_mu = 0.0f;
+    if (safe_mu > 1.0f) safe_mu = 1.0f;
+    if (!util_isnormal(safe_mu)) safe_mu = 0.0f;
+    
+    // Use a different cubic formulation that's more robust on Linux
+    volatile CSAMPLE c0 = y1;
+    volatile CSAMPLE c1 = 0.5f * (y2 - y0);
+    volatile CSAMPLE c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+    volatile CSAMPLE c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+    
+    return c0 + c1 * safe_mu + c2 * safe_mu * safe_mu + c3 * safe_mu * safe_mu * safe_mu;
+    #else
+    // Windows/other: use existing implementation
+    CSAMPLE mu2 = mu * mu;
+    CSAMPLE a0 = y3 - y2 - y0 + y1;
+    CSAMPLE a1 = y0 - y1 - a0;
+    CSAMPLE a2 = y2 - y0;
     return ((a0 * mu + a1) * mu + a2) * mu + y1;
+    #endif
 }
+
+
+
+// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
+//     #ifdef __linux__
+//     // Linux-specific: More conservative implementation
+//     volatile CSAMPLE safe_mu = mu; // Prevent optimization
+    
+//     // Clamp to valid range
+//     if (safe_mu < 0.0f) safe_mu = 0.0f;
+//     if (safe_mu > 1.0f) safe_mu = 1.0f;
+    
+//     // Use a different cubic formulation that's more robust on Linux
+//     volatile CSAMPLE mu2 = safe_mu * safe_mu;
+//     volatile CSAMPLE mu3 = mu2 * safe_mu;
+    
+//     return (-0.5f * y0 + 1.5f * y1 - 1.5f * y2 + 0.5f * y3) * mu3 +
+//            (y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3) * mu2 +
+//            (-0.5f * y0 + 0.5f * y2) * safe_mu +
+//            y1;
+//     #else
+//     // Windows/other: use existing implementation
+//     CSAMPLE mu2 = mu * mu;
+//     CSAMPLE a0 = y3 - y2 - y0 + y1;
+//     CSAMPLE a1 = y0 - y1 - a0;
+//     CSAMPLE a2 = y2 - y0;
+//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
+//     #endif
+// }
+
+
+
+// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
+//     //extrele protection against fast-math
+//     volatile CSAMPLE safe_mu = mu;
+    
+//     if (!util_isnormal(safe_mu) || safe_mu < 0.0f || safe_mu > 1.0f) {
+//         safe_mu = 0.0f;
+//     }
+
+//     volatile CSAMPLE a0 = y3 - y2 - y0 + y1;
+//     volatile CSAMPLE a1 = y0 - y1 - a0;
+//     volatile CSAMPLE a2 = y2 - y0;
+
+//     return ((a0 * safe_mu + a1) * safe_mu + a2) * safe_mu + y1;
+// }
+
+// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
+//     // Handle denormals/NaN using the safe math functions
+//     if (!util_isnormal(mu)) {
+//         mu = 0.0f;
+//     }
+
+//     // Robust cubic interpolation that works across compilers
+//     const CSAMPLE mu2 = mu * mu;
+//     const CSAMPLE a0 = y3 - y2 - y0 + y1;
+//     const CSAMPLE a1 = y0 - y1 - a0;
+//     const CSAMPLE a2 = y2 - y0;
+
+//     // Carefully ordered operations to minimize precision issues
+//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
+// }
 
 void SoundSourceSTEM::interpolateAndMix(size_t streamIdx, SINT outputIndex, SINT sourceIndex, CSAMPLE fraction, CSAMPLE* pBuffer, std::size_t stemCount) {
     const CSAMPLE* in = m_resampleInputBuffer.data();
