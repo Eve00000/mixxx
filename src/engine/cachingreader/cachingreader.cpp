@@ -19,7 +19,6 @@ static QRegularExpression s_trailingSlashesRegex("/+$");
 // This is the default hint frameCount that is adopted in case of Hint::kFrameCountForward and
 // Hint::kFrameCountBackward count is provided. It matches 23 ms @ 44.1 kHz
 // TODO() Do we suffer cache misses if we use an audio buffer of above 23 ms?
-// constexpr SINT kDefaultHintFrames = 1024;
 constexpr SINT kDefaultHintFrames = 1024;
 
 // With CachingReaderChunk::kFrames = 8192 each chunk consumes
@@ -38,14 +37,6 @@ constexpr SINT kDefaultHintFrames = 1024;
 // to verify that the MRU/LRU cache works as expected. Even though
 // massive drop outs are expected to occur Mixxx should run reliably!
 constexpr SINT kNumberOfCachedChunksInMemory = 80;
-
-// constexpr SINT kMaxPreloadMinutes = 5; // Preload up to 10-minute tracks
-////constexpr SINT kPreloadFrames = 44100 * 60 * kMaxPreloadMinutes; // 26.46M frames
-// constexpr SINT kPreloadFrames = 48000 * 60 * kMaxPreloadMinutes; // 26.46M frames
-// constexpr SINT kNumberOfCachedChunksInMemory =
-//         (kPreloadFrames / 8192) + 1; // Dynamic sizing
-
-// For 10-minute 44.1kHz track: ~322 chunks × 65KB = ~21MB cache
 
 } // anonymous namespace
 
