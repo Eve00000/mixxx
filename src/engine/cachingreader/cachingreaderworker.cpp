@@ -696,33 +696,36 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
 
 // Needs to be added to mainwindow
 // Clean up all RAM files on shutdown
-static void cleanupAllRamFiles(const QString& ramDiskPath) {
-    QMutexLocker locker(&s_ramTracksMutex);
-
-    // Clear all entries
-    s_ramTracks.clear();
-
-    // Remove all RAM files from current session
-    QDir tmpDir(ramDiskPath);
-    if (!tmpDir.exists()) {
-        return; // Directory doesn't exist, nothing to clean up
-    }
-
-    QStringList sessionFiles = tmpDir.entryList(QStringList() << gSessionPrefix + "*", QDir::Files);
-
-    for (const QString& filename : sessionFiles) {
-        QString filePath = tmpDir.filePath(filename);
-        QFile file(filePath);
-        if (file.exists()) {
-            if (file.remove()) {
-                kLogger.debug() << "[RAM-PLAY] Removed session RAM file:" << filePath;
-            } else {
-                kLogger.warning() << "[RAM-PLAY] Failed to remove session RAM file:" << filePath
-                                  << "Error:" << file.errorString();
-            }
-        }
-    }
-}
+// static void cleanupAllRamFiles(const QString& ramDiskPath) {
+//    QMutexLocker locker(&s_ramTracksMutex);
+//
+//    // Clear all entries
+//    s_ramTracks.clear();
+//
+//    // Remove all RAM files from current session
+//    QDir tmpDir(ramDiskPath);
+//    if (!tmpDir.exists()) {
+//        return; // Directory doesn't exist, nothing to clean up
+//    }
+//
+//    QStringList sessionFiles = tmpDir.entryList(QStringList() <<
+//    gSessionPrefix + "*", QDir::Files);
+//
+//    for (const QString& filename : sessionFiles) {
+//        QString filePath = tmpDir.filePath(filename);
+//        QFile file(filePath);
+//        if (file.exists()) {
+//            if (file.remove()) {
+//                kLogger.debug() << "[RAM-PLAY] Removed session RAM file:" <<
+//                filePath;
+//            } else {
+//                kLogger.warning() << "[RAM-PLAY] Failed to remove session RAM
+//                file:" << filePath
+//                                  << "Error:" << file.errorString();
+//            }
+//        }
+//    }
+//}
 
 // static void cleanupAllRamFiles() {
 //    QMutexLocker locker(&s_ramTracksMutex);

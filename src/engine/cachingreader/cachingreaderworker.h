@@ -231,6 +231,7 @@ class CachingReaderWorker : public EngineWorker {
     // static void removeRamTrackUsage(const QString& group);
 
     // to use in mixxxmain
-    static void cleanupAllRamFiles(const QString& ramDiskPath);
+    // static void cleanupAllRamFiles(const QString& ramDiskPath);
+
     // QSet<QString> m_ramFilesInUse;
 };

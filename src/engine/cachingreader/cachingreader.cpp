@@ -1,5 +1,6 @@
 #include "engine/cachingreader/cachingreader.h"
 
+#include <QDir>
 #include <QtDebug>
 
 #include "moc_cachingreader.cpp"
