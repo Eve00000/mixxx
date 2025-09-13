@@ -1,6 +1,7 @@
 #include "engine/cachingreader/cachingreader.h"
 
 #include <QDir>
+#include <QRegularExpression>
 #include <QtDebug>
 
 #include "moc_cachingreader.cpp"
@@ -13,6 +14,7 @@
 namespace {
 
 mixxx::Logger kLogger("CachingReader");
+static QRegularExpression s_trailingSlashesRegex("/+$");
 
 // This is the default hint frameCount that is adopted in case of Hint::kFrameCountForward and
 // Hint::kFrameCountBackward count is provided. It matches 23 ms @ 44.1 kHz
@@ -154,7 +156,7 @@ CachingReader::CachingReader(const QString& group,
             basePath = "/dev/shm";
         }
         // Clean path - ensure it doesn't end with slash yet
-        basePath = basePath.replace(QRegularExpression("/+$"), "");
+        basePath = basePath.replace(s_trailingSlashesRegex, "");
 
         if (!basePath.endsWith('/')) {
             basePath += '/';
