@@ -182,16 +182,6 @@ jobs:
       artifact-windows-win64: ${{ steps.prepare_deploy.outputs.artifact-windows-win64 }}
       artifact-windows-winarm: ${{ steps.prepare_deploy.outputs.artifact-windows-winarm }}
     steps:
-      - name: Remove leftover Git lock
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Write-Host "Cleaning leftover Git lock files..."
-          $lockFiles = Get-ChildItem 'D:\a\mixxx\mixxx\.git\**\*.lock' -ErrorAction SilentlyContinue -File
-          foreach ($file in $lockFiles) {
-          Remove-Item -LiteralPath $file.FullName -Force
-          Write-Host "Deleted lock file: $($file.FullName)"
-          }
       - name: "Check out repository"
         uses: actions/checkout@v4.2.2
         with:
