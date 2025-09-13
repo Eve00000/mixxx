@@ -91,12 +91,20 @@ CachingReader::CachingReader(const QString& group,
         QString basePath = m_pConfig->getValueString(ConfigKey("RAM-Play]", "UnixPath"));
         QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
 
+        // Handle empty basePath with explicit if-else
         if (basePath.isEmpty()) {
-            basePath = QDir("/dev/shm").exists() ? "/dev/shm/" : QDir::tempPath() + "/";
+            if (QDir("/dev/shm").exists()) {
+                basePath = "/dev/shm/";
+            } else {
+                basePath = QDir::tempPath() + "/";
+            }
         }
+
         if (dirName.isEmpty()) {
             dirName = "MixxxTmp";
         }
+
+        // Ensure basePath ends with slash
         if (!basePath.endsWith('/')) {
             basePath += '/';
         }
