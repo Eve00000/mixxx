@@ -187,9 +187,10 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Cleaning leftover Git lock files..."
-          $lockFiles = Get-ChildItem 'D:\a\mixxx\mixxx\.git\refs\remotes\origin\*.lock' -ErrorAction SilentlyContinue
+          $lockFiles = Get-ChildItem 'D:\a\mixxx\mixxx\.git\**\*.lock' -ErrorAction SilentlyContinue -File
           foreach ($file in $lockFiles) {
-          Remove-Item $file -Force
+          Remove-Item -LiteralPath $file.FullName -Force
+          Write-Host "Deleted lock file: $($file.FullName)"
           }
       - name: "Check out repository"
         uses: actions/checkout@v4.2.2
