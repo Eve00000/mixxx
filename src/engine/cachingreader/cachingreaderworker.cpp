@@ -696,36 +696,39 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
 
 // Needs to be added to mainwindow
 // Clean up all RAM files on shutdown
-static void cleanupAllRamFiles() {
-    QMutexLocker locker(&s_ramTracksMutex);
-
-    // Clear all entries
-    s_ramTracks.clear();
-
-    // Remove all RAM files from current session
-#ifdef Q_OS_WIN
-    QString tmpPath = "R:/MixxxTmp/";
-#else
-    QString tmpPath = QDir("/dev/shm").exists()
-            ? "/dev/shm/MixxxTmp/"
-            : QDir::tempPath() + "/MixxxTmp/";
-#endif
-    QDir tmpDir(tmpPath);
-    QStringList sessionFiles = tmpDir.entryList(QStringList() << gSessionPrefix + "*", QDir::Files);
-
-    for (const QString& filename : sessionFiles) {
-        QString filePath = tmpDir.filePath(filename);
-        QFile file(filePath);
-        if (file.exists()) {
-            if (file.remove()) {
-                kLogger.debug() << "[RAM-PLAY] Removed unused RAM file:" << filePath;
-            } else {
-                kLogger.warning() << "[RAM-PLAY] Failed to remove RAM file:" << filePath
-                                  << "Error:" << file.errorString();
-            }
-        }
-    }
-}
+// static void cleanupAllRamFiles() {
+//    QMutexLocker locker(&s_ramTracksMutex);
+//
+//    // Clear all entries
+//    s_ramTracks.clear();
+//
+//    // Remove all RAM files from current session
+// #ifdef Q_OS_WIN
+//    QString tmpPath = "R:/MixxxTmp/";
+// #else
+//    QString tmpPath = QDir("/dev/shm").exists()
+//            ? "/dev/shm/MixxxTmp/"
+//            : QDir::tempPath() + "/MixxxTmp/";
+// #endif
+//    QDir tmpDir(tmpPath);
+//    QStringList sessionFiles = tmpDir.entryList(QStringList() <<
+//    gSessionPrefix + "*", QDir::Files);
+//
+//    for (const QString& filename : sessionFiles) {
+//        QString filePath = tmpDir.filePath(filename);
+//        QFile file(filePath);
+//        if (file.exists()) {
+//            if (file.remove()) {
+//                kLogger.debug() << "[RAM-PLAY] Removed unused RAM file:" <<
+//                filePath;
+//            } else {
+//                kLogger.warning() << "[RAM-PLAY] Failed to remove RAM file:"
+//                << filePath
+//                                  << "Error:" << file.errorString();
+//            }
+//        }
+//    }
+//}
 
 void CachingReaderWorker::unloadTrack() {
     closeAudioSource();
