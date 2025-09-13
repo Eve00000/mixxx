@@ -26,7 +26,7 @@ mixxx::Logger kLogger("CachingReaderWorker");
 
 // we need the last silence frame and the first sound frame
 constexpr SINT kNumSoundFrameToVerify = 2;
-
+static QRegularExpression s_filenameSanitizeRegex(R"([\/\\\:\*\?\"\<\>\|])");
 } // anonymous namespace
 
 CachingReaderWorker::CachingReaderWorker(
@@ -249,10 +249,17 @@ static QHash<QString, RamTrackEntry> s_ramTracks;
 static QHash<QString, QSet<QString>> s_fileToGroupsMap;
 static QMutex s_ramTracksMutex;
 
+// static QString sanitizeFileNamePart(const QString& str) {
+//     QString s = str;
+//     // Replace any character that is invalid in file names with underscore
+//     s.replace(QRegularExpression(R"([\/\\\:\*\?\"\<\>\|])"), "_");
+//     return s;
+// }
+
 static QString sanitizeFileNamePart(const QString& str) {
     QString s = str;
     // Replace any character that is invalid in file names with underscore
-    s.replace(QRegularExpression(R"([\/\\\:\*\?\"\<\>\|])"), "_");
+    s.replace(s_filenameSanitizeRegex, "_");
     return s;
 }
 
@@ -274,7 +281,7 @@ static void cleanupRamFileIfUnused(const QString& filePath) {
 
     // Check if file is in use
     bool isUsed = false;
-    for (const auto& entry : s_ramTracks) {
+    for (const auto& entry : std::as_const(s_ramTracks)) {
         if (entry.filePath == filePath) {
             isUsed = true;
             break;
@@ -409,7 +416,7 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
 
     QStringList oldFiles = tmpDir.entryList(QStringList() << "MixxxTemp_*", QDir::Files);
     // keep current session files, delete files from other (earlier) session
-    for (const QString& f : oldFiles) {
+    for (const QString& f : std::as_const(oldFiles)) {
         if (!f.startsWith(gSessionPrefix)) {
             QFile::remove(tmpDir.filePath(f));
         }
