@@ -117,9 +117,12 @@ CachingReader::CachingReader(const QString& group,
 #ifdef Q_OS_WIN
         ramDiskPath = "R:/MixxxTmp/";
 #else
-        ramDiskPath = QDir("/dev/shm").exists()
-                ? "/dev/shm/MixxxTmp/"
-                : QDir::tempPath() + "/MixxxTmp/";
+        // Use if-else to avoid ternary operator type issues
+        if (QDir("/dev/shm").exists()) {
+            ramDiskPath = "/dev/shm/MixxxTmp/";
+        } else {
+            ramDiskPath = QDir::tempPath() + "/MixxxTmp/";
+        }
 #endif
     }
 
