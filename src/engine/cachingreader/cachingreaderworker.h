@@ -134,6 +134,8 @@ class CachingReaderWorker : public EngineWorker {
         }
     };
     void setRamPlayConfig(bool enabled, const QString& ramDiskPath, int maxRamSizeMB);
+    // called in mixxxmain to clean up cache
+    static void cleanupAllRamFiles(const QString& ramDiskPath);
 
   signals:
     // Emitted once a new track is loaded and ready to be read from.
@@ -225,14 +227,6 @@ class CachingReaderWorker : public EngineWorker {
     static QMutex s_ramTracksMutex;
     static QString gSessionPrefix;
 
-    // Add these private static helper methods
     static bool isRamFileUsedByOtherGroups(const QString& filePath, const QString& currentGroup);
     static void cleanupRamFileIfUnused(const QString& filePath);
-    // static void updateRamTrackUsage(const QString& group, const QString& filePath);
-    // static void removeRamTrackUsage(const QString& group);
-
-    // to use in mixxxmain
-    // static void cleanupAllRamFiles(const QString& ramDiskPath);
-
-    // QSet<QString> m_ramFilesInUse;
 };

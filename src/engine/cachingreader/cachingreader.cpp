@@ -83,51 +83,6 @@ CachingReader::CachingReader(const QString& group,
     int maxRamSizeMB;
     QString ramDiskPath;
 
-    //    if (m_pConfig) {
-    //        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"), true);
-    //
-    // #ifdef Q_OS_WIN
-    //        ramDiskPath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsPath"));
-    //        if (ramDiskPath.isEmpty()) {
-    //            ramDiskPath = "R:/MixxxTmp/";
-    //        }
-    // #else
-    //        QString basePath = m_pConfig->getValueString(ConfigKey("RAM-Play]", "UnixPath"));
-    //        QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
-    //
-    //        // Handle empty basePath with explicit if-else
-    //        if (basePath.isEmpty()) {
-    //            if (QDir("/dev/shm").exists()) {
-    //                basePath = "/dev/shm/";
-    //            } else {
-    //                basePath = QDir::tempPath() + "/";
-    //            }
-    //        }
-    //
-    //        if (dirName.isEmpty()) {
-    //            dirName = "MixxxTmp";
-    //        }
-    //
-    //        // Ensure basePath ends with slash
-    //        if (!basePath.endsWith('/')) {
-    //            basePath += '/';
-    //        }
-    //
-    //        ramDiskPath = basePath + dirName + "/";
-    // #endif
-    //    } else {
-    //        // Default values if no config
-    // #ifdef Q_OS_WIN
-    //        ramDiskPath = "R:/MixxxTmp/";
-    // #else
-    //        if (QDir("/dev/shm").exists()) {
-    //            ramDiskPath = "/dev/shm/MixxxTmp/";
-    //        } else {
-    //            ramDiskPath = QDir::tempPath() + "/MixxxTmp/";
-    //        }
-    // #endif
-    //    }
-    // In CachingReader constructor
     if (m_pConfig) {
         ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"));
         maxRamSizeMB = m_pConfig->getValue<int>(ConfigKey("[RAM-Play]", "MaxSizeMB"));
