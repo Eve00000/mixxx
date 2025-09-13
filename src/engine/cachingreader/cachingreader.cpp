@@ -170,7 +170,7 @@ void CachingReader::initializeRamPlayConfigVars() {
 
     ConfigKey enabledKey("[RAM-Play]", "Enabled");
     if (!m_pConfig->exists(enabledKey)) {
-        m_pConfig->setValue(enabledKey, true);
+        m_pConfig->setValue(enabledKey, false);
     }
 
     ConfigKey maxSizeKey("[RAM-Play]", "MaxSizeMB");
