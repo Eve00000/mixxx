@@ -78,34 +78,84 @@ CachingReader::CachingReader(const QString& group,
     initializeRamPlayConfigVars();
     // Read config values for RAM-Play
     bool ramPlayEnabled = true;
+    int maxRamSizeMB;
     QString ramDiskPath;
 
+    //    if (m_pConfig) {
+    //        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"), true);
+    //
+    // #ifdef Q_OS_WIN
+    //        ramDiskPath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsPath"));
+    //        if (ramDiskPath.isEmpty()) {
+    //            ramDiskPath = "R:/MixxxTmp/";
+    //        }
+    // #else
+    //        QString basePath = m_pConfig->getValueString(ConfigKey("RAM-Play]", "UnixPath"));
+    //        QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
+    //
+    //        // Handle empty basePath with explicit if-else
+    //        if (basePath.isEmpty()) {
+    //            if (QDir("/dev/shm").exists()) {
+    //                basePath = "/dev/shm/";
+    //            } else {
+    //                basePath = QDir::tempPath() + "/";
+    //            }
+    //        }
+    //
+    //        if (dirName.isEmpty()) {
+    //            dirName = "MixxxTmp";
+    //        }
+    //
+    //        // Ensure basePath ends with slash
+    //        if (!basePath.endsWith('/')) {
+    //            basePath += '/';
+    //        }
+    //
+    //        ramDiskPath = basePath + dirName + "/";
+    // #endif
+    //    } else {
+    //        // Default values if no config
+    // #ifdef Q_OS_WIN
+    //        ramDiskPath = "R:/MixxxTmp/";
+    // #else
+    //        if (QDir("/dev/shm").exists()) {
+    //            ramDiskPath = "/dev/shm/MixxxTmp/";
+    //        } else {
+    //            ramDiskPath = QDir::tempPath() + "/MixxxTmp/";
+    //        }
+    // #endif
+    //    }
+    // In CachingReader constructor
     if (m_pConfig) {
-        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"), true);
-
-#ifdef Q_OS_WIN
-        ramDiskPath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsPath"));
-        if (ramDiskPath.isEmpty()) {
-            ramDiskPath = "R:/MixxxTmp/";
-        }
-#else
-        QString basePath = m_pConfig->getValueString(ConfigKey("RAM-Play]", "UnixPath"));
+        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"));
+        maxRamSizeMB = m_pConfig->getValue<int>(ConfigKey("[RAM-Play]", "MaxSizeMB"));
         QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
-
-        // Handle empty basePath with explicit if-else
-        if (basePath.isEmpty()) {
-            if (QDir("/dev/shm").exists()) {
-                basePath = "/dev/shm/";
-            } else {
-                basePath = QDir::tempPath() + "/";
-            }
-        }
 
         if (dirName.isEmpty()) {
             dirName = "MixxxTmp";
         }
 
-        // Ensure basePath ends with slash
+#ifdef Q_OS_WIN
+        QString driveLetter = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsDrive"));
+        if (driveLetter.isEmpty()) {
+            driveLetter = "R";
+        }
+        // Clean drive letter (remove any slashes, colons, etc.)
+        driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
+        if (driveLetter.isEmpty()) {
+            driveLetter = "R";
+        }
+
+        ramDiskPath = driveLetter + ":/" + dirName + "/";
+#else
+        QString basePath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "LinuxDrive"));
+        if (basePath.isEmpty()) {
+            // Default to /dev/shm for Linux/macOS
+            basePath = "/dev/shm";
+        }
+        // Clean path - ensure it doesn't end with slash yet
+        basePath = basePath.replace(QRegularExpression("/+$"), "");
+
         if (!basePath.endsWith('/')) {
             basePath += '/';
         }
@@ -113,21 +163,17 @@ CachingReader::CachingReader(const QString& group,
         ramDiskPath = basePath + dirName + "/";
 #endif
     } else {
-        // Default values if no config
+        maxRamSizeMB = 512;
+
 #ifdef Q_OS_WIN
         ramDiskPath = "R:/MixxxTmp/";
 #else
-        // Use if-else to avoid ternary operator type issues
-        if (QDir("/dev/shm").exists()) {
-            ramDiskPath = "/dev/shm/MixxxTmp/";
-        } else {
-            ramDiskPath = QDir::tempPath() + "/MixxxTmp/";
-        }
+        ramDiskPath = "/dev/shm/MixxxTmp/";
 #endif
     }
 
     // Pass config values directly to worker
-    m_worker.setRamPlayConfig(ramPlayEnabled, ramDiskPath);
+    m_worker.setRamPlayConfig(ramPlayEnabled, ramDiskPath, maxRamSizeMB);
 
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
@@ -179,57 +225,28 @@ void CachingReader::initializeRamPlayConfigVars() {
         m_pConfig->setValue(enabledKey, true);
     }
 
-#ifdef Q_OS_WIN
-    ConfigKey pathKey("[RAM-Play]", "WindowsPath");
-    if (!m_pConfig->exists(pathKey)) {
-        m_pConfig->setValue(pathKey, QString("R:/MixxxTmp/"));
-    }
-#else
-    ConfigKey unixPathKey("[RAM-Play]", "UnixPath");
-    if (!m_pConfig->exists(unixPathKey)) {
-        m_pConfig->setValue(unixPathKey, QString(""));
+    ConfigKey maxSizeKey("[RAM-Play]", "MaxSizeMB");
+    if (!m_pConfig->exists(maxSizeKey)) {
+        m_pConfig->setValue(maxSizeKey, 512);
     }
 
     ConfigKey dirNameKey("[RAM-Play]", "DirectoryName");
     if (!m_pConfig->exists(dirNameKey)) {
         m_pConfig->setValue(dirNameKey, QString("MixxxTmp"));
     }
+
+#ifdef Q_OS_WIN
+    ConfigKey driveKey("[RAM-Play]", "WindowsDrive");
+    if (!m_pConfig->exists(driveKey)) {
+        m_pConfig->setValue(driveKey, QString("R"));
+    }
+#else
+    ConfigKey linuxDriveKey("[RAM-Play]", "LinuxDrive");
+    if (!m_pConfig->exists(linuxDriveKey)) {
+        m_pConfig->setValue(linuxDriveKey, QString("/dev/shm"));
+    }
 #endif
 }
-
-// void CachingReader::initializeRamPlayConfigVars() {
-//     if (!m_pConfig) {
-//         kLogger.warning() << "No config available, cannot initialize RAM-Play config vars";
-//         return;
-//     }
-//
-//     // Check if config vars exist, if not set default values
-//     ConfigKey enabledKey("[RAM-Play]", "Enabled");
-//     if (!m_pConfig->exists(enabledKey)) {
-//         m_pConfig->setValue(enabledKey, true);
-//         kLogger.debug() << "Created default RAMPlay enabled config:" << true;
-//     }
-//
-// #ifdef Q_OS_WIN
-//     ConfigKey pathKey("[RAM-Play]", "WindowsPath");
-//     if (!m_pConfig->exists(pathKey)) {
-//         m_pConfig->setValue(pathKey, "R:/MixxxTmp/");
-//         kLogger.debug() << "Created default Windows RAM path config: R:/MixxxTmp/";
-//     }
-// #else
-//     ConfigKey unixPathKey("[RAM-lay]", "UnixPath");
-//     if (!m_pConfig->exists(unixPathKey)) {
-//         m_pConfig->setValue(unixPathKey, "");
-//         kLogger.debug() << "Created default Unix path config: (auto-detect)";
-//     }
-//
-//     ConfigKey dirNameKey("[RAM-Play]", "DirectoryName");
-//     if (!m_pConfig->exists(dirNameKey)) {
-//         m_pConfig->setValue(dirNameKey, "MixxxTmp");
-//         kLogger.debug() << "Created default directory name config: MixxxTmp";
-//     }
-// #endif
-// }
 
 void CachingReader::freeChunkFromList(CachingReaderChunkForOwner* pChunk) {
     pChunk->removeFromList(

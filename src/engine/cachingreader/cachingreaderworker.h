@@ -133,7 +133,7 @@ class CachingReaderWorker : public EngineWorker {
                   filePath(filePath) {
         }
     };
-    void setRamPlayConfig(bool enabled, const QString& ramDiskPath);
+    void setRamPlayConfig(bool enabled, const QString& ramDiskPath, int maxRamSizeMB);
 
   signals:
     // Emitted once a new track is loaded and ready to be read from.
@@ -188,6 +188,7 @@ class CachingReaderWorker : public EngineWorker {
     // RAM-Play vars
     bool m_ramPlayEnabled;
     QString m_ramDiskPath;
+    int m_maxRamSizeMB;
 
     void openAudioSource(const TrackPointer& trackToOpen
 #ifdef __STEM__
