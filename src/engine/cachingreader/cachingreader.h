@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QAtomicInt>
 #include <QHash>
 #include <QList>
@@ -137,6 +136,7 @@ class CachingReader : public QObject {
 
   private:
     const UserSettingsPointer m_pConfig;
+    void initializeRamPlayConfigVars();
 
     // Thread-safe FIFOs for communication between the engine callback and
     // reader thread.

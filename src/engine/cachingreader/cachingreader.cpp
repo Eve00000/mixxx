@@ -1,5 +1,5 @@
-#include "engine/cachingreader/cachingreader.h"
-
+#include <QDir>
+#include <QRegularExpression>
 #include <QtDebug>
 
 #include "moc_cachingreader.cpp"
@@ -9,9 +9,12 @@
 #include "util/logger.h"
 #include "util/sample.h"
 
+// for CI to start 2
+
 namespace {
 
 mixxx::Logger kLogger("CachingReader");
+static QRegularExpression s_trailingSlashesRegex("/+$");
 
 // This is the default hint frameCount that is adopted in case of Hint::kFrameCountForward and
 // Hint::kFrameCountBackward count is provided. It matches 23 ms @ 44.1 kHz
@@ -64,6 +67,62 @@ CachingReader::CachingReader(const QString& group,
                   &m_chunkReadRequestFIFO,
                   &m_readerStatusUpdateFIFO,
                   maxSupportedChannel) {
+    // check if RAM-Play vars exist in config, else create them
+    initializeRamPlayConfigVars();
+    // Read config values for RAM-Play
+    bool ramPlayEnabled = true;
+    int maxRamSizeMB;
+    QString ramDiskPath;
+
+    if (m_pConfig) {
+        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"));
+        maxRamSizeMB = m_pConfig->getValue<int>(ConfigKey("[RAM-Play]", "MaxSizeMB"));
+        QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
+
+        if (dirName.isEmpty()) {
+            dirName = "MixxxTmp";
+        }
+
+#ifdef Q_OS_WIN
+        QString driveLetter = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsDrive"));
+        if (driveLetter.isEmpty()) {
+            driveLetter = "R";
+        }
+        // Clean drive letter (remove any slashes, colons, etc.)
+        driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
+        if (driveLetter.isEmpty()) {
+            driveLetter = "R";
+        }
+
+        ramDiskPath = driveLetter + ":/" + dirName + "/";
+#else
+        QString basePath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "LinuxDrive"));
+        if (basePath.isEmpty()) {
+            // Default to /dev/shm for Linux/macOS
+            basePath = "/dev/shm";
+        }
+        // Clean path - ensure it doesn't end with slash yet
+        basePath = basePath.replace(s_trailingSlashesRegex, "");
+
+        if (!basePath.endsWith('/')) {
+            basePath += '/';
+        }
+
+        ramDiskPath = basePath + dirName + "/";
+#endif
+    } else {
+        maxRamSizeMB = 512;
+
+#ifdef Q_OS_WIN
+        ramDiskPath = "R:/MixxxTmp/";
+#else
+        ramDiskPath = "/dev/shm/MixxxTmp/";
+#endif
+    }
+
+    // Pass config values directly to worker
+    m_worker.setRamPlayConfig(ramPlayEnabled, ramDiskPath, maxRamSizeMB);
+
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
     // chunks. Initialize each chunk to hold nothing and add it to the free
@@ -80,14 +139,20 @@ CachingReader::CachingReader(const QString& group,
     }
 
     // Forward signals from worker
-    connect(&m_worker, &CachingReaderWorker::trackLoading,
-            this, &CachingReader::trackLoading,
+    connect(&m_worker,
+            &CachingReaderWorker::trackLoading,
+            this,
+            &CachingReader::trackLoading,
             Qt::DirectConnection);
-    connect(&m_worker, &CachingReaderWorker::trackLoaded,
-            this, &CachingReader::trackLoaded,
+    connect(&m_worker,
+            &CachingReaderWorker::trackLoaded,
+            this,
+            &CachingReader::trackLoaded,
             Qt::DirectConnection);
-    connect(&m_worker, &CachingReaderWorker::trackLoadFailed,
-            this, &CachingReader::trackLoadFailed,
+    connect(&m_worker,
+            &CachingReaderWorker::trackLoadFailed,
+            this,
+            &CachingReader::trackLoadFailed,
             Qt::DirectConnection);
 
     m_worker.start(QThread::HighPriority);
@@ -96,6 +161,39 @@ CachingReader::CachingReader(const QString& group,
 CachingReader::~CachingReader() {
     m_worker.quitWait();
     qDeleteAll(m_chunks);
+}
+
+void CachingReader::initializeRamPlayConfigVars() {
+    if (!m_pConfig) {
+        return;
+    }
+
+    ConfigKey enabledKey("[RAM-Play]", "Enabled");
+    if (!m_pConfig->exists(enabledKey)) {
+        m_pConfig->setValue(enabledKey, false);
+    }
+
+    ConfigKey maxSizeKey("[RAM-Play]", "MaxSizeMB");
+    if (!m_pConfig->exists(maxSizeKey)) {
+        m_pConfig->setValue(maxSizeKey, 512);
+    }
+
+    ConfigKey dirNameKey("[RAM-Play]", "DirectoryName");
+    if (!m_pConfig->exists(dirNameKey)) {
+        m_pConfig->setValue(dirNameKey, QString("MixxxTmp"));
+    }
+
+#ifdef Q_OS_WIN
+    ConfigKey driveKey("[RAM-Play]", "WindowsDrive");
+    if (!m_pConfig->exists(driveKey)) {
+        m_pConfig->setValue(driveKey, QString("R"));
+    }
+#else
+    ConfigKey linuxDriveKey("[RAM-Play]", "LinuxDrive");
+    if (!m_pConfig->exists(linuxDriveKey)) {
+        m_pConfig->setValue(linuxDriveKey, QString("/dev/shm"));
+    }
+#endif
 }
 
 void CachingReader::freeChunkFromList(CachingReaderChunkForOwner* pChunk) {
@@ -418,7 +516,6 @@ CachingReader::ReadResult CachingReader::read(SINT startSample,
             for (SINT chunkIndex = firstChunkIndex;
                     chunkIndex <= lastChunkIndex;
                     ++chunkIndex) {
-
                 // Process new messages from the reader thread before looking up
                 // the next chunk
                 process();
@@ -546,18 +643,18 @@ void CachingReader::hintAndMaybeWake(const HintVector& hintList) {
     // any are not, then wake.
     bool shouldWake = false;
 
-    for (const auto& hint: hintList) {
+    for (const auto& hint : hintList) {
         SINT hintFrame = hint.frame;
         SINT hintFrameCount = hint.frameCount;
 
         // Handle some special length values
         if (hintFrameCount == Hint::kFrameCountForward) {
-        	hintFrameCount = kDefaultHintFrames;
+            hintFrameCount = kDefaultHintFrames;
         } else if (hintFrameCount == Hint::kFrameCountBackward) {
-        	hintFrame -= kDefaultHintFrames;
-        	hintFrameCount = kDefaultHintFrames;
+            hintFrame -= kDefaultHintFrames;
+            hintFrameCount = kDefaultHintFrames;
             if (hintFrame < 0) {
-            	hintFrameCount += hintFrame;
+                hintFrameCount += hintFrame;
                 if (hintFrameCount <= 0) {
                     continue;
                 }
