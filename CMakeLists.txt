@@ -2538,11 +2538,24 @@ endif()
 #  ))
 
 # EVE Stem Resampling
-set_source_files_properties(
-  src/sources//soundsourcestem.cpp
-  PROPERTIES
-  COMPILE_FLAGS "-fno-fast-math"
-  )
+#set_source_files_properties(
+#  src/sources//soundsourcestem.cpp
+#  PROPERTIES
+#  COMPILE_FLAGS "-fno-fast-math"
+#  )
+
+# Add debug to check if file exists
+#if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/sources/soundsourcestem.cpp)
+#    message(STATUS "Found soundsourcestem.cpp - applying -fno-fast-math")
+#    set_source_files_properties(
+#        src/sources/soundsourcestem.cpp
+#        PROPERTIES 
+#        COMPILE_FLAGS "-fno-fast-math"
+#    )
+#else()
+#    message(WARNING "soundsourcestem.cpp not found at: ${CMAKE_CURRENT_SOURCE_DIR}/src/sources/soundsourcestem.cpp")
+#endif()
+
 
 if(WIN32 AND NOT QT6)
   # Qt 5 loads these ANGLE DLLs at runtime if the graphics driver is on the ignore list.
@@ -4558,6 +4571,23 @@ if(STEM)
       src/widget/wtrackstemmenu.cpp
       src/widget/wstemlabel.cpp
   )
+   # EVE STEM RESAMPLE
+  #if(UNIX AND NOT APPLE)
+  #  set_source_files_properties(
+  #    src/sources/soundsourcestem.cpp
+  #    PROPERTIES
+  #    COMPILE_FLAGS "-fno-fast-math"
+  #  )
+  #  message(STATUS "STEM: Added -fno-fast-math for soundsourcestem.cpp (Linux)")
+  #endif()
+  if(UNIX AND NOT APPLE)
+  target_compile_options(mixxx-lib PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:$<$<BOOL:${STEM}>:-fno-fast-math>>
+  )
+  message(STATUS "STEM: Added -fno-fast-math for all STEM C++ code (Linux)")
+endif()
+  # EVE END
+
   if(QOPENGL)
     target_sources(
       mixxx-lib

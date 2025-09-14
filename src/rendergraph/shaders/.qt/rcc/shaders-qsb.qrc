@@ -1,0 +1,15 @@
+<RCC>
+  <qresource prefix="/shaders/rendergraph">
+    <file alias="pattern.frag.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/pattern.frag.qsb</file>
+    <file alias="pattern.vert.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/pattern.vert.qsb</file>
+    <file alias="rgb.frag.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/rgb.frag.qsb</file>
+    <file alias="rgb.vert.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/rgb.vert.qsb</file>
+    <file alias="rgba.frag.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/rgba.frag.qsb</file>
+    <file alias="rgba.vert.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/rgba.vert.qsb</file>
+    <file alias="texture.frag.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/texture.frag.qsb</file>
+    <file alias="texture.vert.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/texture.vert.qsb</file>
+    <file alias="unicolor.frag.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/unicolor.frag.qsb</file>
+    <file alias="unicolor.vert.qsb">/home/evelynne/mixxx/src/rendergraph/shaders/.qsb/unicolor.vert.qsb</file>
+  </qresource>
+</RCC>
+
