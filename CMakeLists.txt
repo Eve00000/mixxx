@@ -2530,33 +2530,6 @@ if(MSVC)
   )
 endif()
 
-# EVE Stem Resampling
-#set_source_files_properties(
-#  src/sources//soundsourcestem.cpp
-#  PROPERTIES
-#  COMPILE_FLAGS "-fno-fast-math"
-#  ))
-
-# EVE Stem Resampling
-#set_source_files_properties(
-#  src/sources//soundsourcestem.cpp
-#  PROPERTIES
-#  COMPILE_FLAGS "-fno-fast-math"
-#  )
-
-# Add debug to check if file exists
-#if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/sources/soundsourcestem.cpp)
-#    message(STATUS "Found soundsourcestem.cpp - applying -fno-fast-math")
-#    set_source_files_properties(
-#        src/sources/soundsourcestem.cpp
-#        PROPERTIES 
-#        COMPILE_FLAGS "-fno-fast-math"
-#    )
-#else()
-#    message(WARNING "soundsourcestem.cpp not found at: ${CMAKE_CURRENT_SOURCE_DIR}/src/sources/soundsourcestem.cpp")
-#endif()
-
-
 if(WIN32 AND NOT QT6)
   # Qt 5 loads these ANGLE DLLs at runtime if the graphics driver is on the ignore list.
   # It does not work with Debug, because the debug version is compiled without the a d suffix
@@ -4544,23 +4517,6 @@ if(FFMPEG)
   target_include_directories(mixxx-lib PUBLIC "${FFMPEG_INCLUDE_DIRS}")
 endif()
 
-# EVE Stem Resampling
-if(UNIX AND NOT APPLE)
-#    set_source_files_properties(
-#        src/sources/soundsourcestem.cpp
-#        PROPERTIES
-#        COMPILE_FLAGS "-fno-fast-math"
-#    )
-  set_source_files_properties(
-      src/sources/soundsourcestem.cpp
-      PROPERTIES
-      COMPILE_FLAGS "-fno-fast-math -ffloat-store -mno-avx -fno-associative-math -fno-reciprocal-math"
-  )
-  target_compile_options(mixxx-lib PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-fast-math>
-  )
-endif()
-
 # STEM file support
 default_option(STEM "STEM file support" "FFMPEG_FOUND;FFMPEG")
 if(STEM)
@@ -4588,36 +4544,6 @@ if(STEM)
       src/widget/wtrackstemmenu.cpp
       src/widget/wstemlabel.cpp
   )
-
-  # EVE STEM RESAMPLING
-  if(UNIX AND NOT APPLE)
-    # Force no-fast-math specifically for the STEM processing file
-    set_source_files_properties(
-      src/sources/soundsourcestem.cpp
-      PROPERTIES
-      COMPILE_FLAGS "-fno-fast-math -ffloat-store"
-    )
-    message(STATUS "STEM: Added -fno-fast-math and -ffloat-store for soundsourcestem.cpp")
-  endif()
-  # EVE STEM RESAMPLING
-  
-  # EVE STEM RESAMPLE
-  #if(UNIX AND NOT APPLE)
-  #  set_source_files_properties(
-  #    src/sources/soundsourcestem.cpp
-  #    PROPERTIES
-  #    COMPILE_FLAGS "-fno-fast-math"
-  #  )
-  #  message(STATUS "STEM: Added -fno-fast-math for soundsourcestem.cpp (Linux)")
-  #endif()
-  #if(UNIX AND NOT APPLE)
-  #target_compile_options(mixxx-lib PRIVATE
-  #  $<$<COMPILE_LANGUAGE:CXX>:$<$<BOOL:${STEM}>:-fno-fast-math>>
-  #)
-  #message(STATUS "STEM: Added -fno-fast-math for all STEM C++ code (Linux)")
-  #endif()
-  # EVE END
-
   if(QOPENGL)
     target_sources(
       mixxx-lib

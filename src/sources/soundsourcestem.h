@@ -7,38 +7,15 @@
 namespace mixxx {
 
 /// @brief Handle a single stem embedded in a stem file
-// class SoundSourceSingleSTEM : public SoundSourceFFmpeg {
-//   public:
-//     // streamIdx is the FFmpeg stream id, which may different than stemIdx + 1
-//     // because STEM may contain other non audio stream
-//     //explicit SoundSourceSingleSTEM(const QUrl& url, unsigned int streamIdx);
-
-//     // Original constructor (stereo stream)
-//     SoundSourceSingleSTEM(const QUrl& url, unsigned int streamIdx);
-
-//     // New constructor (stereo pair inside a multichannel stream)
-//     SoundSourceSingleSTEM(const QUrl& url, unsigned int streamIdx, int channelPairIndex);
-
-//     // SINT readSampleFramesResampled(
-//     //         const WritableSampleFrames& outFrames,
-//     //         SINT targetSampleRate);
-//   protected:
-//     OpenResult tryOpen(
-//             OpenMode mode,
-//             const OpenParams& params) override;
-
-//   private:
-//     unsigned int m_streamIdx;
-// };
-
 class SoundSourceSingleSTEM : public SoundSourceFFmpeg {
   public:
-    // Original constructor (stereo stream)
+    // streamIdx is the FFmpeg stream id, which may different than stemIdx + 1
+    // because STEM may contain other non audio stream
     explicit SoundSourceSingleSTEM(const QUrl& url, unsigned int streamIdx);
 
-    // New constructor (stereo pair inside multichannel stream)
-    SoundSourceSingleSTEM(const QUrl& url, unsigned int streamIdx, int channelPairIndex);
-
+    // SINT readSampleFramesResampled(
+    //         const WritableSampleFrames& outFrames,
+    //         SINT targetSampleRate);
   protected:
     OpenResult tryOpen(
             OpenMode mode,
@@ -46,10 +23,7 @@ class SoundSourceSingleSTEM : public SoundSourceFFmpeg {
 
   private:
     unsigned int m_streamIdx;
-    int m_channelPairIndex{0}; // default to first stereo pair
 };
-
-
 
 /// @brief Handle a stem file, composed of multiple audio channel. Can open in
 /// stereo or in stem (4 x stereo). Use OpenParams to request a maximum number of channels.
@@ -70,25 +44,13 @@ class SoundSourceSTEM : public SoundSource {
     mixxx::audio::ChannelCount m_requestedChannelCount;
     /// // working
     std::vector<bool> m_needsResampling;
-
-    // Make sure the resample buffer is aligned for SSE
-    alignas(16) SampleBuffer m_resampleInputBuffer;
-    //SampleBuffer m_resampleInputBuffer;
+    SampleBuffer m_resampleInputBuffer;
     SampleBuffer m_resampleOutputBuffer;
 
     QMap<int, qint64> m_streamTotalFramesProcessed;
     QMap<int, qint64> m_streamTotalResamplingTime;
     // QElapsedTimer m_resampleTimer;
     // int m_debugCounter;
-
-    void dumpPCMToFile(const std::string& filename, const CSAMPLE* buffer, int numSamples);
-    void initializeDumpFiles();
-    //void closeDumpFiles();
-    //void close();
-    static std::ofstream s_dumpFiles[]; // Array of file streams, one per stem index
-     std::vector<std::ofstream> m_dumpFiles; 
-    static bool s_dumpFilesInitialized;
-    bool m_dumpDebugFiles = true; 
 
   protected:
     // Cubic interpolation function

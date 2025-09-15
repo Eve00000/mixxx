@@ -1,41 +1,19 @@
-#include <xmmintrin.h>
-
-inline void enableFTZ_DAZ() {
-#if defined(__x86_64__) || defined(__i386__)
-    // Only _MM_SET_FLUSH_ZERO_MODE is available on Linux
-    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-#endif
-}
-
-
 #include "sources/soundsourcestem.h"
 
 #include "sources/readaheadframebuffer.h"
-#ifndef __FAST_MATH__
-// #error "STEM: CRITICAL - Fast math is enabled! Audio quality will be broken!"
-#endif
 
 extern "C" {
 
 #include <libavutil/avutil.h>
-#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 0, 0) // FFmpeg 7.0+
-  #include <libavutil/channel_layout.h>
-  #include <libavutil/opt.h>
-  #include <libavutil/samplefmt.h>
-#elif LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
-  #include <libavutil/channel_layout.h>
-  #include <libavutil/opt.h>
-  #include <libavutil/samplefmt.h>
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
+#include <libavutil/channel_layout.h>
+#include <libavutil/opt.h>
+#include <libavutil/samplefmt.h>
 #endif
 
-
 #include <libswresample/swresample.h>
+
 } // extern "C"
-
-#include <QElapsedTimer>  // For timing
-#include <fstream>        // For file reading
-#include <string>         // For std::string
-
 
 #include "util/assert.h"
 #include "util/logger.h"
@@ -57,12 +35,7 @@ constexpr int kRequiredStreamCount = kNumStreams;
 
 const Logger kLogger("SoundSourceSTEM");
 
-const int MAX_STEMS = 5;
-//std::ofstream SoundSourceSTEM::s_dumpFiles[MAX_STEMS];
 } // anonymous namespace
-
-std::ofstream SoundSourceSTEM::s_dumpFiles[MAX_STEMS];
-bool SoundSourceSTEM::s_dumpFilesInitialized = false;
 
 const QString SoundSourceProviderSTEM::kDisplayName = QStringLiteral("STEM with FFmpeg");
 
@@ -468,21 +441,6 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
         return OpenResult::Failed;
     }
 
-    // DEBUG: Open continuous dump files for each stem
-    if (m_dumpDebugFiles) {
-        m_dumpFiles.clear(); // Ensure it's empty
-        for (std::size_t i = 0; i < m_pStereoStreams.size(); ++i) {
-            std::string filename = "/dev/shm/mixxx_stem_" + std::to_string(i) + "_full.raw";
-            m_dumpFiles.emplace_back(filename, std::ios::binary | std::ios::trunc);
-            if (!m_dumpFiles.back().is_open()) {
-                // kLogger.warning() << "Failed to open debug file:" << filename;
-            } else {
-                // kLogger.info() << "Debug dumping to:" << filename;
-            }
-        }
-    }
-
-
     if (params.getSignalInfo().getChannelCount() ==
                     mixxx::audio::ChannelCount::stereo() ||
             selectedStemMask) {
@@ -508,19 +466,6 @@ void SoundSourceSTEM::close() {
     for (auto& stream : m_pStereoStreams) {
         stream->close();
     }
-
-    if (m_dumpDebugFiles) {
-        for (auto& file : m_dumpFiles) {
-            if (file.is_open()) {
-                file.close();
-            }
-        }
-        m_dumpFiles.clear();
-    }
-
-    // Then call the parent close() or close your streams
-    // ... [your existing close logic for m_pStereoStreams] ...
-    //SoundSource::close(); // If applicable
 }
 
 //void SoundSourceSTEM::processWithResampler(size_t streamIdx,
@@ -597,52 +542,13 @@ void SoundSourceSTEM::close() {
 //    }
 //}
 
-// void SoundSourceSTEM::processWithResampler(size_t streamIdx,initializeResamplers,
-//         const WritableSampleFrames& globalSampleFrames,
-//         CSAMPLE* pBuffer) {
-// #ifdef __linux__
-//     // This will work on any Linux system
-//     asm volatile ("" : : : "memory");
-// #endif
-
 void SoundSourceSTEM::processWithResampler(size_t streamIdx,
         const WritableSampleFrames& globalSampleFrames,
         CSAMPLE* pBuffer) {
-
-// #if defined(__linux__) && (defined(__x86_64__) || defined(__i386__)) && defined(__SSE__)
-//     // Enable FTZ to fix denormal artifacts on Intel Linux
-//     enableFTZ();
-    
-//     // Memory barrier for additional safety
-//     asm volatile ("" : : : "memory");
-// #endif
-
-#if defined(__linux__) && (defined(__x86_64__) || defined(__i386__))
-    enableFTZ_DAZ();
-#endif
-
-
-// #ifdef __linux__
-//     static QElapsedTimer timer;
-//     static int callCount = 0;
-//     callCount++;
-    
-//     if (callCount % 100 == 1) {
-//         timer.start();
-//     }
-// #endif
-
-    // First, get the premixInfo
     const auto& premixInfo = m_pStereoStreams.front()->getSignalInfo();
     const int refSampleRate = premixInfo.getSampleRate();
     const auto& stemInfo = m_pStereoStreams[streamIdx]->getSignalInfo();
     const int stemSampleRate = stemInfo.getSampleRate();
-
-    // THEN initialize resamplers if needed
-    if (m_needsResampling.empty()) {
-        initializeResamplers(refSampleRate);  // Use refSampleRate here
-    }
-
 
     // Use integer arithmetic for critical calculations to ensure cross-platform consistency
     const SINT outputFramesNeeded = globalSampleFrames.frameLength();
@@ -708,21 +614,6 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
             linearInterpolateAndMix(streamIdx, i, sourceIndex, fraction, pBuffer, stemCount);
         }
     }
-#ifdef __linux__
-    // Another memory barrier at the end
-    asm volatile ("" : : : "memory");
-#endif
-// #ifdef __linux__
-//     if (callCount % 100 == 0) {
-//         qint64 microsecs = timer.nsecsElapsed() / 1000;
-//         qDebug() << "STEM: Processed 100 frames in" << microsecs << "μs (" 
-//                  << microsecs / 100.0 << "μs per frame)";
-//     }
-// #endif
-#if defined(__linux__) && (defined(__x86_64__) || defined(__i386__)) && defined(__SSE__)
-    // Optional: Restore previous state if needed, but usually not necessary
-    // for audio processing where FTZ/DAZ is beneficial
-#endif    
 }
 
 //CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
@@ -741,144 +632,21 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
 //    return ((a0 * mu + a1) * mu + a2) * mu + y1;
 //}
 
-// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-//     // Handle denormals/NaN using the safe math functions
-//     if (!util_isnormal(mu)) {
-//         mu = 0.0f;
-//     }
+CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
+    // Handle denormals/NaN using the safe math functions
+    if (!util_isnormal(mu)) {
+        mu = 0.0f;
+    }
 
-//     // Robust cubic interpolation that works across compilers
-//     const CSAMPLE mu2 = mu * mu;
-//     const CSAMPLE a0 = y3 - y2 - y0 + y1;
-//     const CSAMPLE a1 = y0 - y1 - a0;
-//     const CSAMPLE a2 = y2 - y0;
+    // Robust cubic interpolation that works across compilers
+    const CSAMPLE mu2 = mu * mu;
+    const CSAMPLE a0 = y3 - y2 - y0 + y1;
+    const CSAMPLE a1 = y0 - y1 - a0;
+    const CSAMPLE a2 = y2 - y0;
 
-//     // Carefully ordered operations to minimize precision issues
-//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
-// }
-
-// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-//     #if defined(__linux__) && defined(__x86_64__)
-//     // Intel CPU-specific: Use a different algorithm
-//     volatile CSAMPLE safe_mu = mu;
-    
-//     // Add tiny epsilon to prevent denormals on Intel CPUs
-//     const CSAMPLE EPSILON = 1.0e-20f;
-//     safe_mu += EPSILON;
-//     safe_mu -= EPSILON;
-    
-//     // Clamp and use conservative math
-//     if (safe_mu < 0.0f) safe_mu = 0.0f;
-//     if (safe_mu > 1.0f) safe_mu = 1.0f;
-    
-//     // Catmull-Rom spline (often more stable on Intel)
-//     CSAMPLE mu2 = safe_mu * safe_mu;
-//     CSAMPLE mu3 = mu2 * safe_mu;
-    
-//     return 0.5f * ((2.0f * y1) + 
-//                   (-y0 + y2) * safe_mu +
-//                   (2.0f * y0 - 5.0f * y1 + 4.0f * y2 - y3) * mu2 +
-//                   (-y0 + 3.0f * y1 - 3.0f * y2 + y3) * mu3);
-//     #else
-//     // Standard algorithm for others
-//     CSAMPLE mu2 = mu * mu;
-//     CSAMPLE a0 = y3 - y2 - y0 + y1;
-//     CSAMPLE a1 = y0 - y1 - a0;
-//     CSAMPLE a2 = y2 - y0;
-//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
-//     #endif
-// }
-
-// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-//     #if defined(__linux__) && (defined(__x86_64__) || defined(__i386__))
-//     // Intel/AMD CPUs: Use conservative math with memory barriers
-//     volatile CSAMPLE safe_mu = mu;
-    
-//     // Memory barrier to prevent CPU reordering
-//     asm volatile ("" : : : "memory");
-    
-//     // Clamp values
-//     if (safe_mu < 0.0f) safe_mu = 0.0f;
-//     if (safe_mu > 1.0f) safe_mu = 1.0f;
-    
-//     // Simple linear interpolation for Intel/AMD (guaranteed stable)
-//     CSAMPLE result = y1 + (y2 - y1) * safe_mu;
-    
-//     // Another memory barrier
-//     asm volatile ("" : : : "memory");
-//     return result;
-//     #else
-//     // Other CPUs: Use standard cubic interpolation
-//     CSAMPLE mu2 = mu * mu;
-//     CSAMPLE a0 = y3 - y2 - y0 + y1;
-//     CSAMPLE a1 = y0 - y1 - a0;
-//     CSAMPLE a2 = y2 - y0;
-//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
-//     #endif
-// }
-
-inline CSAMPLE SoundSourceSTEM::safeCubicInterpolate(
-        CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-
-    // Clamp fraction
-    if (mu < 0.0f) mu = 0.0f;
-    if (mu > 1.0f) mu = 1.0f;
-
-    // Use double precision for internal computation
-    const double y0d = y0;
-    const double y1d = y1;
-    const double y2d = y2;
-    const double y3d = y3;
-    const double mu2 = static_cast<double>(mu) * mu;
-    const double mu3 = mu2 * mu;
-
-    return static_cast<CSAMPLE>(0.5 * ((2.0 * y1d) +
-        (-y0d + y2d) * mu +
-        (2.0 * y0d - 5.0 * y1d + 4.0 * y2d - y3d) * mu2 +
-        (-y0d + 3.0 * y1d - 3.0 * y2d + y3d) * mu3));
+    // Carefully ordered operations to minimize precision issues
+    return ((a0 * mu + a1) * mu + a2) * mu + y1;
 }
-
-
-// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-//     // FTZ/DAZ will handle denormals, so use standard cubic
-//     CSAMPLE mu2 = mu * mu;
-//     CSAMPLE a0 = y3 - y2 - y0 + y1;
-//     CSAMPLE a1 = y0 - y1 - a0;
-//     CSAMPLE a2 = y2 - y0;
-//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
-// }
-
-// CSAMPLE SoundSourceSTEM::safeCubicInterpolate(CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-//     #if defined(__linux__) && (defined(__x86_64__) || defined(__i386__))
-//     // PHYSICAL INTEL CPU VERSION: Use Catmull-Rom spline (more stable)
-//     volatile CSAMPLE safe_mu = mu;
-    
-//     // Add tiny epsilon to prevent Intel CPU denormal issues
-//     const CSAMPLE EPSILON = 1.0e-20f;
-//     safe_mu += EPSILON;
-//     safe_mu -= EPSILON;
-    
-//     // Clamp values
-//     if (safe_mu < 0.0f) safe_mu = 0.0f;
-//     if (safe_mu > 1.0f) safe_mu = 1.0f;
-    
-//     // Catmull-Rom spline - often more stable on Intel hardware
-//     CSAMPLE mu2 = safe_mu * safe_mu;
-//     CSAMPLE mu3 = mu2 * safe_mu;
-    
-//     return 0.5f * ((2.0f * y1) + 
-//                   (-y0 + y2) * safe_mu +
-//                   (2.0f * y0 - 5.0f * y1 + 4.0f * y2 - y3) * mu2 +
-//                   (-y0 + 3.0f * y1 - 3.0f * y2 + y3) * mu3);
-//     #else
-//     // VIRTUAL CPU/OTHER: Use standard cubic (already works)
-//     CSAMPLE mu2 = mu * mu;
-//     CSAMPLE a0 = y3 - y2 - y0 + y1;
-//     CSAMPLE a1 = y0 - y1 - a0;
-//     CSAMPLE a2 = y2 - y0;
-//     return ((a0 * mu + a1) * mu + a2) * mu + y1;
-//     #endif
-// }
 
 void SoundSourceSTEM::interpolateAndMix(size_t streamIdx, SINT outputIndex, SINT sourceIndex, CSAMPLE fraction, CSAMPLE* pBuffer, std::size_t stemCount) {
     const CSAMPLE* in = m_resampleInputBuffer.data();
@@ -1248,10 +1016,6 @@ void SoundSourceSTEM::showResamplingSummary() {
 void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
         const WritableSampleFrames& globalSampleFrames,
         CSAMPLE* pBuffer) {
-#if defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
-    // Linux on Intel/AMD: Memory barrier for CPU consistency
-    asm volatile ("" : : : "memory");
-#endif            
     SINT outputSampleLength = m_pStereoStreams.front()->getSignalInfo().frames2samples(
             globalSampleFrames.frameLength());
 
@@ -1266,36 +1030,6 @@ void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
     // auto readResult = m_pStereoStreams[streamIdx]->readSampleFrames(currentStemFrame);
     m_pStereoStreams[streamIdx]->readSampleFrames(currentStemFrame);
     // qDebug() << "Read" << readResult.frameIndexRange().length() << "frames";
-
-
-    // ##### DEBUG DUMP: Write the chunk to the continuous file #####
-    if (m_dumpDebugFiles && streamIdx < m_dumpFiles.size() && m_dumpFiles[streamIdx].is_open()) {
-        m_dumpFiles[streamIdx].write(
-            reinterpret_cast<const char*>(m_buffer.data()),
-            outputSampleLength * sizeof(CSAMPLE));
-        // Flush to ensure data is written immediately (helps with debugging)
-        m_dumpFiles[streamIdx].flush();
-    }
-
-
-    // ##### DEBUG DUMP 1: Raw audio data for this stem AFTER being read #####
-    // Dump to /dev/shm for maximum speed
-
-    // Initialize dump files on first call
-    // static bool firstCall = true;
-    // if (firstCall) {
-    //     initializeDumpFiles();
-    //     firstCall = false;
-    // }
-
-    // static int callCount = 0;
-    // if (callCount < 200) { // Limit the number of dumps
-    //     std::string filename = "/dev/shm/mixxx_debug_stem_" + std::to_string(streamIdx) + "_read_" + std::to_string(callCount) + ".raw";
-    //     dumpPCMToFile(filename, m_buffer.data(), outputSampleLength);
-    //     callCount++;
-    // }
-    // ##### END DEBUG DUMP #####
-
 
     // Check audio data
     // bool hasAudio = false;
@@ -1312,74 +1046,17 @@ void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
     // qDebug() << "Audio detected:" << (hasAudio ? "YES" : "NO");
     // Mix directly from temp buffer
     std::size_t stemCount = m_pStereoStreams.size();
-    SINT totalOutputChannels = 2 * stemCount; // 2 channels per stem
 
-    if (m_requestedChannelCount != mixxx::audio::ChannelCount::stereo()) {
-        // Multichannel Stem Output Mode
-        for (SINT frameIndex = 0; frameIndex < globalSampleFrames.frameLength(); frameIndex++) {
-            // Calculate the base index for this frame in the large interleaved buffer
-            SINT baseIndex = frameIndex * totalOutputChannels;
-            
-            // Calculate the index for the current stem's left and right channel within this frame
-            SINT stemLeftIndex = baseIndex + (2 * streamIdx);
-            SINT stemRightIndex = stemLeftIndex + 1;
-            
-            // Calculate the index for the current frame in the source data (m_buffer)
-            SINT sourceIndex = 2 * frameIndex;
-            
-            // Assign the left and right samples to their correct positions
-            pBuffer[stemLeftIndex] = m_buffer[sourceIndex];
-            pBuffer[stemRightIndex] = m_buffer[sourceIndex + 1];
-        }
-    } else {
-        // Stereo Mix Output Mode
-        for (SINT i = 0; i < outputSampleLength / 2; i++) {
+    for (SINT i = 0; i < outputSampleLength / 2; i++) {
+        if (m_requestedChannelCount != mixxx::audio::ChannelCount::stereo()) {
+            pBuffer[2 * stemCount * i + 2 * streamIdx] = m_buffer[2 * i];
+            pBuffer[2 * stemCount * i + 2 * streamIdx + 1] = m_buffer[2 * i + 1];
+        } else {
             pBuffer[2 * i] += m_buffer[2 * i];
             pBuffer[2 * i + 1] += m_buffer[2 * i + 1];
         }
     }
-
-    // OLD OUTPUT BUFFER
-    // std::size_t stemCount = m_pStereoStreams.size();
-
-    // for (SINT i = 0; i < outputSampleLength / 2; i++) {
-    //     if (m_requestedChannelCount != mixxx::audio::ChannelCount::stereo()) {
-    //         pBuffer[2 * stemCount * i + 2 * streamIdx] = m_buffer[2 * i];
-    //         pBuffer[2 * stemCount * i + 2 * streamIdx + 1] = m_buffer[2 * i + 1];
-    //     } else {
-    //         pBuffer[2 * i] += m_buffer[2 * i];
-    //         pBuffer[2 * i + 1] += m_buffer[2 * i + 1];
-    //     }
-    // }
-
-    // ##### DEBUG DUMP: Append the raw audio data for this stem to its continuous file #####
-    if (streamIdx < MAX_STEMS && s_dumpFiles[streamIdx].is_open()) {
-        s_dumpFiles[streamIdx].write(reinterpret_cast<const char*>(m_buffer.data()), outputSampleLength * sizeof(CSAMPLE));
-        // Optional: Flush to make sure data is written immediately (slower but safer for debugging)
-        // s_dumpFiles[streamIdx].flush();
-    }
-
-
-    // ##### DEBUG DUMP 2: The main mix buffer AFTER processing this stem #####
-    // if (callCount < 200) {
-    //     // Let's also dump the main mix buffer to see the cumulative effect.
-    //     // Note: This dumps the ENTIRE multi-channel buffer. For stereo mix, it's just L,R.
-    //     // For stem view, it's L1,R1, L2,R2, L3,R3, ...
-    //     std::string filename = "/dev/shm/mixxx_debug_mix_after_stem_" + std::to_string(streamIdx) + "_" + std::to_string(callCount) + ".raw";
-    //     dumpPCMToFile(filename, pBuffer, outputSampleLength); // CAUTION: This might be the wrong size for stem view. See note below.
-    //     //dumpPCMToFile(filename, pBuffer, dumpFrames * 2);
-    //     // For stem view, the buffer size is outputSampleLength * stemCount.
-    //     // If you are in stem view mode, use this instead:
-    //     // dumpPCMToFile(filename, pBuffer, outputSampleLength * stemCount);
-    // }
-    // ##### END DEBUG DUMP #####
-    
-#if defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
-    asm volatile ("" : : : "memory");
-#endif    
 }
-
-
 
 void SoundSourceSTEM::testCubicInterpolation() {
     // Test cubic interpolation with known values
@@ -1394,21 +1071,7 @@ void SoundSourceSTEM::testCubicInterpolation() {
     qDebug() << "Cubic interpolation at mu=1.0:" << result << "(expected: 2.0)";
 }
 
-
 void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
-// FFmpeg version detection
-    qDebug() << "STEM: FFmpeg version:" << av_version_info();
-    qDebug() << "STEM: LIBAVUTIL_VERSION_INT:" << LIBAVUTIL_VERSION_INT;
-    
-    #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 0, 0)
-    qDebug() << "STEM: FFmpeg 7.x or newer detected";
-    // Add FFmpeg 7.x specific workarounds here
-    #else
-    qDebug() << "STEM: FFmpeg 6.x or older detected";
-    #endif    
-#if defined(__linux__) && (defined(__x86_64__) || defined(__i386__)) && defined(__SSE__)
-    qDebug() << "STEM: Intel Linux - FTZ/DAZ enabled for denormal handling";
-    #endif    
 // Debug output to check compilation flags
 #ifdef __FAST_MATH__
     qWarning() << "STEM: WARNING! Compiled with fast-math - audio quality may suffer!";
@@ -1429,143 +1092,6 @@ void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
         }
     }
 }
-
-
-
-// void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
-//     qDebug() << "STEM: Compiled with precise math settings";
-    
-//     #if defined(__linux__) && (defined(__x86_64__) || defined(__i386__))
-//     // Intel-specific microarchitecture workarounds
-//     qDebug() << "STEM: Applying Intel CPU workarounds";
-    
-//     // Force specific floating-point behavior for physical Intel CPUs
-//     asm volatile ("" : : : "memory");
-//     #endif
-// }
-
-
-
-// void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
-//     qDebug() << "STEM: Compiled with precise math settings";
-    
-//     #if defined(__linux__) && (defined(__x86_64__) || defined(__i386__))
-//     // Intel-specific microarchitecture workarounds
-//     qDebug() << "STEM: Applying Intel CPU workarounds";
-    
-//     // Force specific floating-point behavior for physical Intel CPUs
-//     asm volatile ("" : : : "memory");
-//     #endif
-// }
-
-// void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
-// #if defined(__linux__)
-//     qDebug() << "STEM: Compiler information";
-//     qDebug() << "  GCC version:" << __VERSION__;
-//     qDebug() << "  C++ standard:" << __cplusplus;
-    
-//     // Check compiler-specific macros
-//     #ifdef __GNUC__
-//         qDebug() << "  GCC detected, version:" << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__;
-//     #endif
-    
-//     #ifdef __clang__
-//         qDebug() << "  Clang detected, version:" << __clang_major__ << "." << __clang_minor__ << "." << __clang_patchlevel__;
-//     #endif
-    
-//     #ifdef __INTEL_COMPILER
-//         qDebug() << "  Intel compiler detected, version:" << __INTEL_COMPILER;
-//     #endif
-    
-//     // Check architecture
-//     #ifdef __x86_64__
-//         qDebug() << "  x86_64 architecture";
-//     #elif defined(__i386__)
-//         qDebug() << "  i386 architecture";
-//     #elif defined(__aarch64__)
-//         qDebug() << "  ARM64 architecture";
-//     #endif
-    
-//     // Check optimization levels
-//     #ifdef __OPTIMIZE__
-//         qDebug() << "  Optimizations enabled";
-//     #else
-//         qDebug() << "  Optimizations disabled";
-//     #endif
-// #endif
-// #ifdef __linux__
-//     qDebug() << "STEM: Linux build - using memory barriers for Intel CPU";
-// #else
-//     qDebug() << "STEM: Windows build - using standard processing";
-// #endif
-// #ifdef __linux__
-//     qDebug() << "STEM: Linux build - checking FFmpeg behavior";
-//     // Add debug to see if FFmpeg behaves differently
-// #endif
-// #ifdef __FAST_MATH__
-//     qWarning() << "STEM: WARNING! Compiled with fast-math - audio quality may suffer!";
-// #else
-//     qDebug() << "STEM: Compiled with precise math settings";
-// #endif
-
-//     qDebug() << "STEM: Compiled with precise math settings";
-    
-// #ifdef __linux__
-//     // Simple CPU detection without file I/O
-//     qDebug() << "STEM: CPU feature detection";
-    
-//     // Check CPU features using compiler macros
-//     #ifdef __SSE__
-//     qDebug() << "  SSE: Enabled";
-//     #endif
-    
-//     #ifdef __SSE2__
-//     qDebug() << "  SSE2: Enabled";
-//     #endif
-    
-//     #ifdef __AVX__
-//     qDebug() << "  AVX: Enabled";
-//     #endif
-    
-//     #ifdef __AVX2__
-//     qDebug() << "  AVX2: Enabled";
-//     #endif
-    
-//     #ifdef __FMA__
-//     qDebug() << "  FMA: Enabled";
-//     #endif
-    
-//     // Simple VM detection using compiler macros
-//     #ifdef __x86_64__
-//     qDebug() << "  x86_64 architecture";
-//     #endif
-    
-//     #ifdef __i386__
-//     qDebug() << "  i386 architecture";
-//     #endif
-    
-//     // Check if we might be in a VM using a simple method
-//     #if defined(__x86_64__) || defined(__i386__)
-//     qDebug() << "  Likely physical Intel/AMD hardware";
-//     #else
-//     qDebug() << "  Different architecture (possibly VM)";
-//     #endif
-// #endif
-    
-
-//     // Your existing code
-//     std::size_t stemCount = m_pStereoStreams.size();
-//     m_needsResampling.resize(stemCount, false);
-
-//     for (std::size_t streamIdx = 0; streamIdx < stemCount; streamIdx++) {
-//         const auto& stemInfo = m_pStereoStreams[streamIdx]->getSignalInfo();
-//         const int stemSampleRate = stemInfo.getSampleRate();
-
-//         if (stemSampleRate != refSampleRate) {
-//             m_needsResampling[streamIdx] = true;
-//         }
-//     }
-// }
 
 //void SoundSourceSTEM::initializeResamplers(int refSampleRate) {
 //    std::size_t stemCount = m_pStereoStreams.size();
@@ -1650,52 +1176,6 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
     return read;
 }
 
-void SoundSourceSTEM::initializeDumpFiles() {
-    if (!s_dumpFilesInitialized) {
-        s_dumpFilesInitialized = true;
-        for (int i = 0; i < MAX_STEMS; ++i) {
-            std::string filename = "/dev/shm/mixxx_stem_" + std::to_string(i) + "_continuous.raw";
-            s_dumpFiles[i].open(filename, std::ios::binary | std::ios::trunc); // truncaate existing file
-            if (!s_dumpFiles[i].is_open()) {
-                kLogger.warning() << "Failed to open dump file for stem" << i;
-            }
-        }
-    }
-}
-
-// void SoundSourceSTEM::close() {
-//     // Close debug files first
-//     if (m_dumpDebugFiles) {
-//         for (auto& file : m_dumpFiles) {
-//             if (file.is_open()) {
-//                 file.close();
-//             }
-//         }
-//         m_dumpFiles.clear();
-//     }
-
-//     // Then call the parent close() or close your streams
-//     // ... [your existing close logic for m_pStereoStreams] ...
-//     SoundSource::close(); // If applicable
-// }
-
-// void SoundSourceSTEM::closeDumpFiles() {
-//     if (s_dumpFilesInitialized) {
-//         for (int i = 0; i < MAX_STEMS; ++i) {
-//             if (s_dumpFiles[i].is_open()) {
-//                 s_dumpFiles[i].close();
-//             }
-//         }
-//         s_dumpFilesInitialized = false;
-//     }
-// }
-
-void SoundSourceSTEM::dumpPCMToFile(const std::string& filename, const CSAMPLE* buffer, int numSamples) {
-    std::ofstream file(filename, std::ios::binary | std::ios::app);
-    file.write(reinterpret_cast<const char*>(buffer), numSamples * sizeof(CSAMPLE));
-    file.close();
-}
-
 CSAMPLE SoundSourceSTEM::cubicInterpolate(
         CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, double mu) {
     // Cubic interpolation formula
@@ -1712,7 +1192,6 @@ SoundSourceSTEM::~SoundSourceSTEM() {
     // clean up
     m_needsResampling.clear();
     // showResamplingSummary();
-    //closeDumpFiles();
 }
 
 } // namespace mixxx
