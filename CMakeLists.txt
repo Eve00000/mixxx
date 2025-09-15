@@ -4544,6 +4544,23 @@ if(FFMPEG)
   target_include_directories(mixxx-lib PUBLIC "${FFMPEG_INCLUDE_DIRS}")
 endif()
 
+# EVE Stem Resampling
+if(UNIX AND NOT APPLE)
+#    set_source_files_properties(
+#        src/sources/soundsourcestem.cpp
+#        PROPERTIES
+#        COMPILE_FLAGS "-fno-fast-math"
+#    )
+  set_source_files_properties(
+      src/sources/soundsourcestem.cpp
+      PROPERTIES
+      COMPILE_FLAGS "-fno-fast-math -ffloat-store -mno-avx -fno-associative-math -fno-reciprocal-math"
+  )
+  target_compile_options(mixxx-lib PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-fast-math>
+  )
+endif()
+
 # STEM file support
 default_option(STEM "STEM file support" "FFMPEG_FOUND;FFMPEG")
 if(STEM)
@@ -4571,7 +4588,20 @@ if(STEM)
       src/widget/wtrackstemmenu.cpp
       src/widget/wstemlabel.cpp
   )
-   # EVE STEM RESAMPLE
+
+  # EVE STEM RESAMPLING
+  if(UNIX AND NOT APPLE)
+    # Force no-fast-math specifically for the STEM processing file
+    set_source_files_properties(
+      src/sources/soundsourcestem.cpp
+      PROPERTIES
+      COMPILE_FLAGS "-fno-fast-math -ffloat-store"
+    )
+    message(STATUS "STEM: Added -fno-fast-math and -ffloat-store for soundsourcestem.cpp")
+  endif()
+  # EVE STEM RESAMPLING
+  
+  # EVE STEM RESAMPLE
   #if(UNIX AND NOT APPLE)
   #  set_source_files_properties(
   #    src/sources/soundsourcestem.cpp
@@ -4580,12 +4610,12 @@ if(STEM)
   #  )
   #  message(STATUS "STEM: Added -fno-fast-math for soundsourcestem.cpp (Linux)")
   #endif()
-  if(UNIX AND NOT APPLE)
-  target_compile_options(mixxx-lib PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:$<$<BOOL:${STEM}>:-fno-fast-math>>
-  )
-  message(STATUS "STEM: Added -fno-fast-math for all STEM C++ code (Linux)")
-endif()
+  #if(UNIX AND NOT APPLE)
+  #target_compile_options(mixxx-lib PRIVATE
+  #  $<$<COMPILE_LANGUAGE:CXX>:$<$<BOOL:${STEM}>:-fno-fast-math>>
+  #)
+  #message(STATUS "STEM: Added -fno-fast-math for all STEM C++ code (Linux)")
+  #endif()
   # EVE END
 
   if(QOPENGL)
