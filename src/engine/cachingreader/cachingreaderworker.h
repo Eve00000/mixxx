@@ -133,7 +133,13 @@ class CachingReaderWorker : public EngineWorker {
                   filePath(filePath) {
         }
     };
-    void setRamPlayConfig(bool enabled, const QString& ramDiskPath, int maxRamSizeMB);
+    void setRamPlayConfig(
+            bool enabled,
+            const QString& ramDiskPath,
+            int maxRamSizeMB,
+            bool decksEnabled,
+            bool samplersEnabled,
+            bool previewEnabled);
     // called in mixxxmain to clean up cache
     static void cleanupAllRamFiles(const QString& ramDiskPath);
 
@@ -191,6 +197,27 @@ class CachingReaderWorker : public EngineWorker {
     bool m_ramPlayEnabled;
     QString m_ramDiskPath;
     int m_maxRamSizeMB;
+    bool m_ramPlayDecks;
+    bool m_ramPlaySamplers;
+    bool m_ramPlayPreview;
+
+    enum class GroupType {
+        Deck,
+        Sampler,
+        PreviewDeck,
+        Unknown
+    };
+
+    GroupType getGroupType() const {
+        if (m_group.contains("Channel", Qt::CaseInsensitive)) {
+            return GroupType::Deck;
+        } else if (m_group.contains("Sampler", Qt::CaseInsensitive)) {
+            return GroupType::Sampler;
+        } else if (m_group.contains("Preview", Qt::CaseInsensitive)) {
+            return GroupType::PreviewDeck;
+        }
+        return GroupType::Unknown;
+    }
 
     void openAudioSource(const TrackPointer& trackToOpen
 #ifdef __STEM__
