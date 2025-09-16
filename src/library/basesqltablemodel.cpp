@@ -9,6 +9,7 @@
 #include "library/starrating.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
+#include "library/trackset/searchcrate/searchcrateschema.h"
 #include "mixer/playermanager.h"
 #include "moc_basesqltablemodel.cpp"
 #include "track/keyutils.h"
@@ -23,7 +24,7 @@
 
 namespace {
 
-const bool sDebug = false;
+const bool sDebugBaseSqlTableModel = false;
 
 // The logic in the following code relies to a track column = 0
 // Do not change it without changing the logic
@@ -197,24 +198,58 @@ void BaseSqlTableModel::select() {
     // future, we can turn this check on and avoid a lot of needless
     // select()'s. rryan 9/2011
     // if (!m_bDirty) {
-    //     if (sDebug) {
+    //     if (sDebugBaseSqlTableModel) {
     //         qDebug() << this << "Skipping non-dirty select()";
     //     }
     //     return;
     // }
 
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "select()";
     }
 
     PerformanceTimer time;
     time.start();
 
+    if (m_tableName.startsWith("searchcrate")) {
+        // EVE drop view and rebuild it for Searchcrate
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Drop
+        //        temp table " << m_tableName;
+        QString queryStringDropView = QString("DROP VIEW IF EXISTS %1 ").arg(m_tableName);
+        FwdSqlQuery(m_database, queryStringDropView).execPrepared();
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] REBUILD TEMP";
+        QStringList columns;
+        QString searchCrateId = m_tableName;
+        searchCrateId = searchCrateId.replace("searchcrate_", "");
+        columns << LIBRARYTABLE_ID
+                << "'' AS " + LIBRARYTABLE_PREVIEW
+                << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+
+        QString queryStringTempView =
+                QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                        "SELECT %2 FROM %3 "
+                        "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
+                        "AND %9=0")
+                        .arg(m_tableName,                             // 1
+                                columns.join(","),                    // 2
+                                LIBRARY_TABLE,                        // 3
+                                LIBRARYTABLE_ID,                      // 4
+                                SEARCHCRATETRACKSTABLE_TRACKID,       // 5
+                                SEARCHCRATETRACKSTABLE,               // 6
+                                SEARCHCRATETRACKSTABLE_SEARCHCRATEID, // 7
+                                searchCrateId,                        // 8
+                                LIBRARYTABLE_MIXXXDELETED);           // 9
+        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Rebuild temp "
+                    "view -> queryStringTempView "
+                 << queryStringTempView;
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    }
+
     // Prepare query for id and all columns not in m_trackSource
     QString queryString = QString("SELECT %1 FROM %2 %3")
                                   .arg(m_tableColumns.join(","), m_tableName, m_tableOrderBy);
 
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "select() executing:" << queryString;
     }
 
@@ -279,7 +314,7 @@ void BaseSqlTableModel::select() {
         rowInfos.push_back(rowInfo);
     }
 
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << "Rows actually received:" << rowInfos.size();
     }
 
@@ -357,7 +392,7 @@ void BaseSqlTableModel::setTable(QString tableName,
         QString idColumn,
         QStringList tableColumns,
         QSharedPointer<BaseTrackCache> trackSource) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "setTable" << tableName << tableColumns << idColumn;
     }
     m_tableName = std::move(tableName);
@@ -409,7 +444,7 @@ const QString BaseSqlTableModel::currentSearch() const {
 }
 
 void BaseSqlTableModel::setSearch(const QString& searchText, const QString& extraFilter) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "setSearch" << searchText;
     }
 
@@ -427,7 +462,7 @@ void BaseSqlTableModel::setSearch(const QString& searchText, const QString& extr
 }
 
 void BaseSqlTableModel::search(const QString& searchText, const QString& extraFilter) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "search" << searchText;
     }
     setSearch(searchText, extraFilter);
@@ -435,7 +470,7 @@ void BaseSqlTableModel::search(const QString& searchText, const QString& extraFi
 }
 
 void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "setSort()" << column << order << m_tableColumns;
     }
 
@@ -510,7 +545,7 @@ void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
     out.flush();
     setModelSetting(COLUMNS_SORTING, val);
 
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << "setSort() sortColumns:" << val;
     }
 
@@ -572,7 +607,7 @@ void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
 }
 
 void BaseSqlTableModel::sort(int column, Qt::SortOrder order) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "sort()" << column << order;
     }
     setSort(column, order);
@@ -669,7 +704,7 @@ QVariant BaseSqlTableModel::rawValue(
         }
 
         const QVector<QVariant>& columnValues = rowInfo.columnValues;
-        if (sDebug) {
+        if (sDebugBaseSqlTableModel) {
             qDebug() << "Returning table-column value"
                      << columnValues.at(column)
                      << "for column" << column;
@@ -822,7 +857,7 @@ CoverInfo BaseSqlTableModel::getCoverInfo(const QModelIndex& index) const {
 }
 
 void BaseSqlTableModel::tracksChanged(const QSet<TrackId>& trackIds) {
-    if (sDebug) {
+    if (sDebugBaseSqlTableModel) {
         qDebug() << this << "trackChanged" << trackIds.size();
     }
 
