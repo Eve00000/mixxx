@@ -40,6 +40,7 @@ class PreparationFeature : public BasePlaylistFeature {
     void activate() override;
     void activateChild(const QModelIndex& index) override;
     void slotShowInLibraryWindow();
+    void onPreparationWindowReady();
 
   protected:
     QModelIndex constructChildModel(int selectedId);
@@ -69,4 +70,7 @@ class PreparationFeature : public BasePlaylistFeature {
     int m_yearNodeId;
     Library* m_pLibrary;
     UserSettingsPointer m_pConfig;
+
+    int m_pendingPlaylistId;
+    QString m_pendingPlaylistName;
 };

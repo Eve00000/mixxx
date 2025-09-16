@@ -49,7 +49,8 @@ PreparationFeature::PreparationFeature(
           m_currentPlaylistId(kInvalidPlaylistId),
           m_yearNodeId(kInvalidPlaylistId),
           m_pLibrary(pLibrary),
-          m_pConfig(pConfig) {
+          m_pConfig(pConfig),
+           m_pendingPlaylistId(kInvalidPlaylistId) {
     // remove unneeded entries
     deleteAllUnlockedPlaylistsWithFewerTracks();
 
@@ -169,7 +170,7 @@ void PreparationFeature::slotDeletePlaylist() {
 
 bool PreparationFeature::dropAcceptChild(
         const QModelIndex& index, const QList<QUrl>& urls, QObject* pSource) {
-    qDebug() << "[PREPARATIONFEATURE] -> dropAcceptChild triggered";
+    qDebug() << "[PreparationFeature] -> dropAcceptChild triggered";
     int playlistId = playlistIdFromIndex(index);
     VERIFY_OR_DEBUG_ASSERT(playlistId >= 0) {
         return false;
@@ -259,7 +260,7 @@ void PreparationFeature::onRightClickChild(const QPoint& globalPos, const QModel
 
 QModelIndex PreparationFeature::constructChildModel(int selectedId) {
     if (sDebug) {
-        qDebug() << "PreparationFeature::constructChildModel() selected:" << selectedId;
+        qDebug() << "[PreparationFeature] ->  constructChildModel() selected:" << selectedId;
     }
     // Setup the sidebar playlist model
     QSqlDatabase database =
@@ -401,7 +402,7 @@ void PreparationFeature::decorateChild(TreeItem* item, int playlistId) {
 /// Invoked on startup to create new current playlist and by "Finish current and start new"
 void PreparationFeature::slotGetNewPlaylist() {
     if (sDebug) {
-        qDebug() << "slotGetNewPlaylist() successfully triggered !";
+        qDebug() << "[PreparationFeature] -> slotGetNewPlaylist() successfully triggered !";
     }
 
     // create a new preparationList for today
@@ -417,19 +418,25 @@ void PreparationFeature::slotGetNewPlaylist() {
         preparation_name = preparation_name_format.arg(++i);
     }
     if (sDebug) {
-        qDebug() << "Creating session preparation playlist name:" << preparation_name;
+        qDebug() << "[PreparationFeature] -> Creating session preparation playlist name:" << preparation_name;
     }
     m_currentPlaylistId = m_playlistDao.createPlaylist(
             preparation_name, PlaylistDAO::PLHT_SET_PREPARATION);
 
     if (m_currentPlaylistId == kInvalidPlaylistId) {
         if (sDebug) {
-            qDebug() << "Setlog playlist Creation Failed";
-            qDebug() << "An unknown error occurred while creating playlist: "
+            qDebug() << "[PreparationFeature] -> Setlog playlist Creation Failed";
+            qDebug() << "[PreparationFeature] -> An unknown error occurred while creating playlist: "
                      << preparation_name;
         }
     } else {
         m_recentTracks.clear();
+        // As the preparationfeature is constructed before the skin & prepwin are completed,
+        // we need to store the newest created preparationlistID in a temp, pending to be sent 
+        // to the PrepWin.
+        m_pendingPlaylistId = m_currentPlaylistId;
+        m_pendingPlaylistName = preparation_name;
+
     }
 
     // reload child model again because the 'added' signal fired by PlaylistDAO
@@ -438,9 +445,24 @@ void PreparationFeature::slotGetNewPlaylist() {
     slotPlaylistTableChanged(m_currentPlaylistId);
 }
 
+void PreparationFeature::onPreparationWindowReady() {
+    if (m_pendingPlaylistId != kInvalidPlaylistId) {
+        qDebug() << "[PreparationFeature] -> Delayed emiting the new Preparationlist to Prepwin when the widget (skin) is ready.";
+        qDebug() << "[PreparationFeature] -> Newest PreparationList Id: " << m_pendingPlaylistId;
+        qDebug() << "[PreparationFeature] -> Newest PreparationList Name: " << m_pendingPlaylistName;
+
+        m_pPlaylistTableModel->selectPlaylist(m_pendingPlaylistId);
+        emit showTrackModelInPreparationWindow(m_pPlaylistTableModel);
+        emit enableCoverArtDisplay(true);
+
+        m_pendingPlaylistId = kInvalidPlaylistId;
+        m_pendingPlaylistName.clear();
+    }
+}
+
 void PreparationFeature::slotJoinWithPrevious() {
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotJoinWithPrevious() row:"
+        qDebug() << "[PreparationFeature] ->  slotJoinWithPrevious() row:"
                  << m_lastRightClickedIndex.data();
     }
     if (!m_lastRightClickedIndex.isValid()) {
@@ -454,7 +476,7 @@ void PreparationFeature::slotJoinWithPrevious() {
 
     bool locked = m_playlistDao.isPlaylistLocked(clickedPlaylistId);
     if (locked) {
-        qDebug() << "Aborting playlist join because playlist"
+        qDebug() << "[PreparationFeature] -> Aborting playlist join because playlist"
                  << clickedPlaylistId << "is locked.";
         return;
     }
@@ -463,7 +485,7 @@ void PreparationFeature::slotJoinWithPrevious() {
     int previousPlaylistId = m_playlistDao.getPreviousPlaylist(
             clickedPlaylistId, PlaylistDAO::PLHT_SET_PREPARATION);
     if (previousPlaylistId == kInvalidPlaylistId) {
-        qDebug() << "Aborting playlist join because playlist"
+        qDebug() << "[PreparationFeature] -> Aborting playlist join because playlist"
                  << clickedPlaylistId << "because there's no previous playlist.";
         return;
     }
@@ -494,7 +516,7 @@ void PreparationFeature::slotJoinWithPrevious() {
         // Change current preparationlist
         m_currentPlaylistId = previousPlaylistId;
     }
-    qDebug() << "slotJoinWithPrevious() current:"
+    qDebug() << "[PreparationFeature] -> slotJoinWithPrevious() current:"
              << clickedPlaylistId
              << " previous:" << previousPlaylistId;
     if (m_playlistDao.copyPlaylistTracks(clickedPlaylistId, previousPlaylistId)) {
@@ -504,7 +526,7 @@ void PreparationFeature::slotJoinWithPrevious() {
 
 void PreparationFeature::slotMarkAllTracksPlayed() {
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotMarkAllTracksPlayed()";
+        qDebug() << "[PreparationFeature] ->  slotMarkAllTracksPlayed()";
     }
     if (!m_lastRightClickedIndex.isValid()) {
         return;
@@ -554,9 +576,9 @@ void PreparationFeature::lockOrUnlockAllChildPlaylists(bool lock) {
         return;
     }
     if (lock) {
-        qWarning() << "lock all child playlists of" << m_lastRightClickedIndex.data().toString();
+        qWarning() << "[PreparationFeature] -> lock all child playlists of" << m_lastRightClickedIndex.data().toString();
     } else {
-        qWarning() << "unlock all child playlists of" << m_lastRightClickedIndex.data().toString();
+        qWarning() << "[PreparationFeature] -> unlock all child playlists of" << m_lastRightClickedIndex.data().toString();
     }
     TreeItem* item = static_cast<TreeItem*>(m_lastRightClickedIndex.internalPointer());
     if (!item) {
@@ -630,7 +652,7 @@ void PreparationFeature::slotDeleteAllUnlockedChildPlaylists() {
         return;
     }
     if (sDebug) {
-        qDebug() << "preparation: deleting all unlocked playlists of" << year;
+        qDebug() << "[PreparationFeature] -> deleting all unlocked playlists of" << year;
     }
     m_playlistDao.deleteUnlockedPlaylists(std::move(ids));
 }
@@ -695,7 +717,7 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
 
 void PreparationFeature::slotPlaylistTableChanged(int playlistId) {
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotPlaylistTableChanged() id:" << playlistId;
+        qDebug() << "[PreparationFeature] ->  slotPlaylistTableChanged() id:" << playlistId;
     }
     PlaylistDAO::HiddenType type = m_playlistDao.getHiddenType(playlistId);
     if (type != PlaylistDAO::PLHT_SET_PREPARATION &&
@@ -759,7 +781,7 @@ void PreparationFeature::slotPlaylistTableChanged(int playlistId) {
 
 void PreparationFeature::slotPlaylistContentOrLockChanged(const QSet<int>& playlistIds) {
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotPlaylistContentOrLockChanged() for"
+        qDebug() << "[PreparationFeature] ->  slotPlaylistContentOrLockChanged() for"
                  << playlistIds.count() << "playlist(s)";
     }
     QSet<int> idsToBeUpdated;
@@ -774,7 +796,7 @@ void PreparationFeature::slotPlaylistContentOrLockChanged(const QSet<int>& playl
 void PreparationFeature::slotPlaylistTableRenamed(int playlistId, const QString& newName) {
     Q_UNUSED(newName);
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotPlaylistTableRenamed() Id:" << playlistId;
+        qDebug() << "[PreparationFeature] ->  slotPlaylistTableRenamed() Id:" << playlistId;
     }
     if (m_playlistDao.getHiddenType(playlistId) == PlaylistDAO::PLHT_SET_PREPARATION) {
         updateChildModel(QSet<int>{playlistId});
@@ -783,11 +805,11 @@ void PreparationFeature::slotPlaylistTableRenamed(int playlistId, const QString&
 
 void PreparationFeature::slotShowInLibraryWindow() {
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotShowInLibraryWindow()";
+        qDebug() << "[PreparationFeature] ->  slotShowInLibraryWindow()";
     }
     int playlistId = playlistIdFromIndex(m_lastRightClickedIndex);
     if (sDebug) {
-        qDebug() << "PreparationFeature::slotShowInLibraryWindow() playlistId: " << playlistId;
+        qDebug() << "[PreparationFeature] ->  slotShowInLibraryWindow() playlistId: " << playlistId;
     }
     if (playlistId == kInvalidPlaylistId) {
         // may happen during initialization
@@ -815,7 +837,7 @@ void PreparationFeature::activate() {
 
 void PreparationFeature::activateChild(const QModelIndex& index) {
     if (sDebug) {
-        qDebug() << "PreparationFeature::activateChild()" << index;
+        qDebug() << "[PreparationFeature] ->  activateChild()" << index;
     }
     int playlistId = playlistIdFromIndex(index);
     if (playlistId == kInvalidPlaylistId) {
@@ -839,7 +861,7 @@ void PreparationFeature::activateChild(const QModelIndex& index) {
 
 void PreparationFeature::activatePlaylist(int playlistId) {
     if (sDebug) {
-        qDebug() << "PreparationFeature::activatePlaylist()" << playlistId;
+        qDebug() << "[PreparationFeature] ->  activatePlaylist()" << playlistId;
     }
     if (playlistId == kInvalidPlaylistId) {
         return;

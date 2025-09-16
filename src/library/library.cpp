@@ -840,6 +840,7 @@ void Library::slotCreateSearchCrate() {
 void Library::onSkinLoadFinished() {
     // Enable the default selection when a new skin is loaded.
     m_pSidebarModel->activateDefaultSelection();
+    m_pPreparationFeature->onPreparationWindowReady();
 }
 
 bool Library::requestAddDir(const QString& dir) {

@@ -25,6 +25,13 @@ WLibraryBaseWindow::WLibraryBaseWindow(
           m_mutex(QT_RECURSIVE_MUTEX_INIT),
           m_trackTableBackgroundColorOpacity(kDefaultTrackTableBackgroundColorOpacity),
           m_bShowButtonText(true) {
+    // EVE: to remove a black rectangle overlay from the stacked widget
+    QWidget* pEmptyWidget = new QWidget(this);
+    pEmptyWidget->setStyleSheet("background-color: #2d2d2d;"); // Match background
+    pEmptyWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addWidget(pEmptyWidget);
+    setCurrentWidget(pEmptyWidget);
+    // EVE: end tweak
     if (sDebug) {
         qDebug() << "Parent class set to:" << m_callingParent;
     }
