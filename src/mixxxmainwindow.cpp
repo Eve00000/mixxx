@@ -469,44 +469,8 @@ MixxxMainWindow::~MixxxMainWindow() {
     t.start();
 
     // Clean up RAM-Play files only if they were actually used and RAM-Play is enabled
-    bool ramPlayEnabled = m_pCoreServices->getSettings()->getValue<bool>(
-            ConfigKey("[RAM-Play]", "Enabled"), false);
-
-    if (ramPlayEnabled) {
-        QString dirName = m_pCoreServices->getSettings()->getValueString(
-                ConfigKey("[RAM-Play]", "DirectoryName"));
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp"; // Default if empty
-        }
-
-        QString ramDiskPath;
-#ifdef Q_OS_WIN
-        QString driveLetter = m_pCoreServices->getSettings()->getValueString(
-                ConfigKey("[RAM-Play]", "WindowsDrive"));
-        driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
-        if (driveLetter.isEmpty()) {
-            driveLetter = "R"; // Default if empty
-        }
-        ramDiskPath = driveLetter + ":/" + dirName + "/";
-#else
-        QString basePath = m_pCoreServices->getSettings()->getValueString(
-                ConfigKey("[RAM-Play]", "LinuxDrive"));
-        if (basePath.isEmpty()) {
-            basePath = "/dev/shm"; // Default if empty
-        }
-        // Remove trailing slashes
-        while (basePath.endsWith('/')) {
-            basePath.chop(1);
-        }
-        ramDiskPath = basePath + "/" + dirName + "/";
-#endif
-
-        qDebug() << t.elapsed(false).debugMillisWithUnit()
-                 << "cleaning up RAM-PLAY files from:" << ramDiskPath;
-
-        // Call static function directly
-        CachingReaderWorker::cleanupAllRamFiles(ramDiskPath);
-    }
+    // cleanUpRamPlayCache();
+    cleanUpRamPlayCache(m_pCoreServices->getSettings());
 
     // Save the current window state (position, maximized, etc)
     // Note(ronso0): Unfortunately saveGeometry() also stores the fullscreen state.
@@ -1628,4 +1592,51 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+// void MixxxMainWindow::cleanUpRamPlayCache() {
+void MixxxMainWindow::cleanUpRamPlayCache(UserSettingsPointer pConfig) {
+    if (!pConfig) {
+        return;
+    }
+    // Clean up RAM-Play files only if they were actually used and RAM-Play is enabled
+    bool ramPlayEnabled = pConfig->getValue<bool>(
+            ConfigKey("[RAM-Play]", "Enabled"), false);
+
+    if (!ramPlayEnabled) {
+        qDebug() << "RAM-Play cleanup skipped - disabled in config";
+        return;
+    }
+
+    QString dirName = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "DirectoryName"));
+    if (dirName.isEmpty()) {
+        dirName = "MixxxTmp"; // Default if empty
+    }
+
+    QString ramPlayPath;
+#ifdef Q_OS_WIN
+    QString driveLetter = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "WindowsDrive"));
+    driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
+    if (driveLetter.isEmpty()) {
+        driveLetter = "R"; // Default if empty
+    }
+    ramPlayPath = driveLetter + ":/" + dirName + "/";
+#else
+    QString basePath = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "LinuxDrive"));
+    if (basePath.isEmpty()) {
+        basePath = "/dev/shm"; // Default if empty
+    }
+    // Remove trailing slashes
+    while (basePath.endsWith('/')) {
+        basePath.chop(1);
+    }
+    ramPlayPath = basePath + "/" + dirName + "/";
+#endif
+
+    qDebug() << "Cleaning up RAM-PLAY files from:" << ramPlayPath;
+
+    CachingReaderWorker::cleanupAllRamFiles(ramPlayPath);
 }

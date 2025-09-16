@@ -9,8 +9,6 @@
 #include "util/logger.h"
 #include "util/sample.h"
 
-// for CI to start 2
-
 namespace {
 
 mixxx::Logger kLogger("CachingReader");
@@ -39,6 +37,8 @@ constexpr SINT kDefaultHintFrames = 1024;
 constexpr SINT kNumberOfCachedChunksInMemory = 80;
 
 } // anonymous namespace
+CachingReader::RamPlayConfig CachingReader::s_ramPlayConfig;
+QMutex CachingReader::s_configMutex;
 
 CachingReader::CachingReader(const QString& group,
         UserSettingsPointer config,
@@ -67,61 +67,18 @@ CachingReader::CachingReader(const QString& group,
                   &m_chunkReadRequestFIFO,
                   &m_readerStatusUpdateFIFO,
                   maxSupportedChannel) {
-    // check if RAM-Play vars exist in config, else create them
-    initializeRamPlayConfigVars();
-    // Read config values for RAM-Play
-    bool ramPlayEnabled = true;
-    int maxRamSizeMB;
-    QString ramDiskPath;
+    // Initialize RAM play config (only once)
+    initializeRamPlayConfig(m_pConfig);
 
-    if (m_pConfig) {
-        ramPlayEnabled = m_pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"));
-        maxRamSizeMB = m_pConfig->getValue<int>(ConfigKey("[RAM-Play]", "MaxSizeMB"));
-        QString dirName = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
-
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp";
-        }
-
-#ifdef Q_OS_WIN
-        QString driveLetter = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsDrive"));
-        if (driveLetter.isEmpty()) {
-            driveLetter = "R";
-        }
-        // Clean drive letter (remove any slashes, colons, etc.)
-        driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
-        if (driveLetter.isEmpty()) {
-            driveLetter = "R";
-        }
-
-        ramDiskPath = driveLetter + ":/" + dirName + "/";
-#else
-        QString basePath = m_pConfig->getValueString(ConfigKey("[RAM-Play]", "LinuxDrive"));
-        if (basePath.isEmpty()) {
-            // Default to /dev/shm for Linux/macOS
-            basePath = "/dev/shm";
-        }
-        // Clean path - ensure it doesn't end with slash yet
-        basePath = basePath.replace(s_trailingSlashesRegex, "");
-
-        if (!basePath.endsWith('/')) {
-            basePath += '/';
-        }
-
-        ramDiskPath = basePath + dirName + "/";
-#endif
-    } else {
-        maxRamSizeMB = 512;
-
-#ifdef Q_OS_WIN
-        ramDiskPath = "R:/MixxxTmp/";
-#else
-        ramDiskPath = "/dev/shm/MixxxTmp/";
-#endif
-    }
-
-    // Pass config values directly to worker
-    m_worker.setRamPlayConfig(ramPlayEnabled, ramDiskPath, maxRamSizeMB);
+    // Pass config values to worker
+    QMutexLocker locker(&s_configMutex);
+    m_worker.setRamPlayConfig(
+            s_ramPlayConfig.enabled,
+            s_ramPlayConfig.ramDiskPath,
+            s_ramPlayConfig.maxSizeMB,
+            s_ramPlayConfig.decksEnabled,
+            s_ramPlayConfig.samplersEnabled,
+            s_ramPlayConfig.previewEnabled);
 
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
@@ -163,8 +120,70 @@ CachingReader::~CachingReader() {
     qDeleteAll(m_chunks);
 }
 
-void CachingReader::initializeRamPlayConfigVars() {
-    if (!m_pConfig) {
+void CachingReader::initializeRamPlayConfig(UserSettingsPointer pConfig) {
+    QMutexLocker locker(&s_configMutex);
+
+    if (s_ramPlayConfig.initialized) {
+        return; // Already initialized
+    }
+
+    if (!pConfig) {
+        // Set defaults
+#ifdef Q_OS_WIN
+        s_ramPlayConfig.ramDiskPath = "R:/MixxxTmp/";
+#else
+        s_ramPlayConfig.ramDiskPath = "/dev/shm/MixxxTmp/";
+#endif
+        s_ramPlayConfig.initialized = true;
+        return;
+    }
+
+    // Check if config vars exist else create
+    createRamPlayConfigVars(pConfig);
+
+    s_ramPlayConfig.enabled = pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Enabled"));
+    s_ramPlayConfig.maxSizeMB = pConfig->getValue<int>(ConfigKey("[RAM-Play]", "MaxSizeMB"));
+    s_ramPlayConfig.decksEnabled = pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Decks"));
+    s_ramPlayConfig.samplersEnabled = pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "Samplers"));
+    s_ramPlayConfig.previewEnabled =
+            pConfig->getValue<bool>(ConfigKey("[RAM-Play]", "PreviewDeck"));
+
+    QString dirName = pConfig->getValueString(ConfigKey("[RAM-Play]", "DirectoryName"));
+    if (dirName.isEmpty()) {
+        dirName = "MixxxTmp";
+    }
+
+#ifdef Q_OS_WIN
+    QString driveLetter = pConfig->getValueString(ConfigKey("[RAM-Play]", "WindowsDrive"));
+    driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
+    if (driveLetter.isEmpty()) {
+        driveLetter = "R";
+    }
+    s_ramPlayConfig.ramDiskPath = driveLetter + ":/" + dirName + "/";
+#else
+    QString basePath = pConfig->getValueString(ConfigKey("[RAM-Play]", "LinuxDrive"));
+    if (basePath.isEmpty()) {
+        basePath = "/dev/shm";
+    }
+    while (basePath.endsWith('/')) {
+        basePath.chop(1);
+    }
+    s_ramPlayConfig.ramDiskPath = basePath + "/" + dirName + "/";
+#endif
+
+    s_ramPlayConfig.initialized = true;
+
+    kLogger.debug() << "[RAM-PLAY] Config initialized: "
+                    << "RAM-Play Enabled : " << s_ramPlayConfig.enabled
+                    << "- Path:" << s_ramPlayConfig.ramDiskPath
+                    << "- MaxSize:" << s_ramPlayConfig.maxSizeMB << "MB "
+                    << "- Decks:" << s_ramPlayConfig.decksEnabled
+                    << "- Samplers:" << s_ramPlayConfig.samplersEnabled
+                    << "- PreviewDeck:" << s_ramPlayConfig.previewEnabled;
+}
+
+void CachingReader::createRamPlayConfigVars(UserSettingsPointer pConfig) {
+    if (!pConfig) {
         return;
     }
 
@@ -181,6 +200,21 @@ void CachingReader::initializeRamPlayConfigVars() {
     ConfigKey dirNameKey("[RAM-Play]", "DirectoryName");
     if (!m_pConfig->exists(dirNameKey)) {
         m_pConfig->setValue(dirNameKey, QString("MixxxTmp"));
+    }
+
+    ConfigKey decksKey("[RAM-Play]", "Decks");
+    if (!m_pConfig->exists(decksKey)) {
+        m_pConfig->setValue(decksKey, true);
+    }
+
+    ConfigKey samplersKey("[RAM-Play]", "Samplers");
+    if (!m_pConfig->exists(samplersKey)) {
+        m_pConfig->setValue(samplersKey, true);
+    }
+
+    ConfigKey previewKey("[RAM-Play]", "PreviewDeck");
+    if (!m_pConfig->exists(previewKey)) {
+        m_pConfig->setValue(previewKey, false);
     }
 
 #ifdef Q_OS_WIN

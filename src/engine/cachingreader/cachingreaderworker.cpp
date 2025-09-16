@@ -21,7 +21,7 @@
 #include "util/span.h"
 
 namespace {
-
+const bool sDebugCachingReaderWorker = false;
 mixxx::Logger kLogger("CachingReaderWorker");
 
 // we need the last silence frame and the first sound frame
@@ -228,15 +228,26 @@ void CachingReaderWorker::closeAudioSource() {
 }
 
 // RAM-Play
-void CachingReaderWorker::setRamPlayConfig(
-        bool enabled, const QString& ramDiskPath, int maxRamSizeMB) {
+void CachingReaderWorker::setRamPlayConfig(bool enabled,
+        const QString& ramDiskPath,
+        int maxRamSizeMB,
+        bool decksEnabled,
+        bool samplersEnabled,
+        bool previewEnabled) {
     m_ramPlayEnabled = enabled;
     m_ramDiskPath = ramDiskPath;
     m_maxRamSizeMB = maxRamSizeMB;
-
-    kLogger.debug() << m_group << "[RAM-PLAY] Config - Enabled:" << m_ramPlayEnabled
-                    << "Path:" << m_ramDiskPath
-                    << "MaxSize:" << m_maxRamSizeMB << "MB";
+    m_ramPlayDecks = decksEnabled;
+    m_ramPlaySamplers = samplersEnabled;
+    m_ramPlayPreview = previewEnabled;
+    if (sDebugCachingReaderWorker) {
+        kLogger.debug() << m_group << "[RAM-PLAY] Config - Enabled:" << m_ramPlayEnabled
+                        << "Path:" << m_ramDiskPath
+                        << "MaxSize:" << m_maxRamSizeMB << "MB"
+                        << "RAM-Play for Decks: " << m_ramPlayDecks
+                        << "RAM-Play for Samplers: " << m_ramPlaySamplers
+                        << "RAM-Play for PreviexDeck: " << m_ramPlayPreview;
+    }
 }
 
 struct RamTrackEntry {
@@ -285,9 +296,9 @@ static void cleanupRamFileIfUnused(const QString& filePath) {
         QFile file(filePath);
         if (file.exists()) {
             if (file.remove()) {
-                kLogger.debug() << "[RAM] Removed unused RAM file:" << filePath;
+                kLogger.debug() << "[RAM-Play] -> Removed unused RAM file:" << filePath;
             } else {
-                kLogger.warning() << "[RAM] Failed to remove RAM file:" << filePath;
+                kLogger.warning() << "[RAM-Play] -> Failed to remove RAM file:" << filePath;
             }
         }
     }
@@ -361,29 +372,58 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
         return;
     }
 
-    // Check if RAM play is enabled
+    // Check if RAM play is enabled globally
     if (!m_ramPlayEnabled) {
-        kLogger.debug() << m_group << "[RAM-PLAY] RAM play disabled, using disk storage";
-        // Skip RAM processing and load directly from disk
+        if (sDebugCachingReaderWorker) {
+            kLogger.debug() << "[RAM-PLAY] -> Player: " << m_group
+                            << " RAM-Play disabled in preferences, playing "
+                               "file from original location";
+        }
+        // Skip RAM-Play and load from original location
         TrackPointer trackToOpen = pTrack;
         trackToOpen->setURL(pTrack->getURL());
-
-        // No RAM file used for this group
         updateRamTrackUsage(m_group, "");
-
-        // Continue with normal audio source opening
         openAudioSource(trackToOpen, stemMask);
         return;
     }
 
-    // -> 1: Setup RAM storage ///
+    // Check Deck/Sampler/PreviewDeck preferences
+    bool componentEnabled = true;
+    QString componentType;
+
+    if (m_group.contains("Channel", Qt::CaseInsensitive)) {
+        componentEnabled = m_ramPlayDecks;
+        componentType = "Deck";
+    } else if (m_group.contains("Sampler", Qt::CaseInsensitive)) {
+        componentEnabled = m_ramPlaySamplers;
+        componentType = "Sampler";
+    } else if (m_group.contains("Preview", Qt::CaseInsensitive)) {
+        componentEnabled = m_ramPlayPreview;
+        componentType = "PreviewDeck";
+    }
+
+    if (!componentEnabled) {
+        if (sDebugCachingReaderWorker) {
+            kLogger.debug() << "[RAM-PLAY] -> Player: " << m_group
+                            << " RAM-Play disabled for " << componentType
+                            << ", playing file from original location";
+        }
+        // Skip RAM-Play and load from original location
+        TrackPointer trackToOpen = pTrack;
+        trackToOpen->setURL(pTrack->getURL());
+        updateRamTrackUsage(m_group, "");
+        openAudioSource(trackToOpen, stemMask);
+        return;
+    }
+
+    // -> 1: Setup RAM-Play storage ///
     QString tmpPath = m_ramDiskPath;
     QDir tmpDir(tmpPath);
 
     // Create directory if it doesn't exist
     if (!tmpDir.exists()) {
         if (!tmpDir.mkpath(tmpPath)) {
-            kLogger.warning() << "[RAM-PLAY] Failed to create directory:" << tmpPath;
+            kLogger.warning() << "[RAM-PLAY] -> Failed to create directory:" << tmpPath;
             // Fall back to original file
             TrackPointer trackToOpen = pTrack;
             trackToOpen->setURL(pTrack->getURL());
@@ -391,7 +431,9 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
             openAudioSource(trackToOpen, stemMask);
             return;
         }
-        kLogger.debug() << "[RAM-PLAY] Created directory:" << tmpPath;
+        if (sDebugCachingReaderWorker) {
+            kLogger.debug() << "[RAM-PLAY] -> Created directory:" << tmpPath;
+        }
     }
 
     QStringList oldFiles = tmpDir.entryList(QStringList() << "MixxxTemp_*", QDir::Files);
@@ -416,13 +458,16 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
 
     QFile ramFile(ramFileName);
     if (ramFile.exists()) {
-        kLogger.debug() << "[RAM-PLAY] Reusing existing RAM file for track:" << ramFileName;
+        if (sDebugCachingReaderWorker) {
+            kLogger.debug() << "[RAM-PLAY] -> Player: " << m_group
+                            << " Reusing existing RAM file for track:" << ramFileName;
+        }
         useRamCopy = true;
     } else {
         qint64 trackSize = QFileInfo(pTrack->getFileInfo().location()).size();
         qint64 maxRamBytes = static_cast<qint64>(m_maxRamSizeMB) * 1024 * 1024;
 
-        // Calculate the size of ONLY Mixxx session files in our RAM directory
+        // Calculate the size of actual Mixxx session files in RAM-Play directory
         qint64 mixxxSessionSize = 0;
         QDir tmpDir(tmpPath);
         if (tmpDir.exists()) {
@@ -433,15 +478,16 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
                 mixxxSessionSize += fileInfo.size();
             }
         }
-
-        // DEBUG logging
-        kLogger.debug() << "[RAM-PLAY] Mixxx session size:" << mixxxSessionSize / (1024 * 1024)
-                        << "MB, Track:" << trackSize / (1024 * 1024)
-                        << "MB, Max allowed:" << m_maxRamSizeMB << "MB";
-
+        if (sDebugCachingReaderWorker) {
+            kLogger.debug() << "[RAM-PLAY] -> Mixxx session size:"
+                            << mixxxSessionSize / (1024 * 1024)
+                            << "MB, Track:" << trackSize / (1024 * 1024)
+                            << "MB, Max allowed:" << m_maxRamSizeMB << "MB";
+        }
         // Check if adding this track would exceed the Mixxx-specific limit
         if ((mixxxSessionSize + trackSize) > maxRamBytes) {
-            kLogger.warning() << "[RAM-PLAY] RAM copy would exceed Mixxx size limit. Track:"
+            kLogger.warning() << "[RAM-PLAY] -> Player: " << m_group
+                              << " RAM-Play copy would exceed Mixxx size limit. Track:"
                               << trackSize / (1024 * 1024) << "MB, Mixxx usage:"
                               << mixxxSessionSize / (1024 * 1024) << "MB, Max:"
                               << m_maxRamSizeMB << "MB";
@@ -449,21 +495,25 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
         } else {
             useRamCopy = true;
             if (!ramFile.open(QIODevice::WriteOnly)) {
-                kLogger.warning() << "[RAM-PLAY] Cannot open RAM file for writing:" << ramFileName;
+                kLogger.warning() << "[RAM-PLAY] -> Player: " << m_group
+                                  << " Cannot open RAM-Play file for writing:" << ramFileName;
                 useRamCopy = false;
             } else {
                 QFile originalFile(pTrack->getFileInfo().location());
                 if (!originalFile.open(QIODevice::ReadOnly)) {
                     kLogger.warning()
-                            << "[RAM-PLAY] Cannot read original track:"
-                            << pTrack->getLocation();
+                            << "[RAM-PLAY] -> Player: " << m_group
+                            << " Cannot read original track:" << pTrack->getLocation();
                     useRamCopy = false;
                 } else {
                     ramFile.write(originalFile.readAll());
                     ramFile.flush();
                     ramFile.close();
                     originalFile.close();
-                    kLogger.debug() << "[RAM-PLAY] Track copied to RAM:" << ramFileName;
+                    if (sDebugCachingReaderWorker) {
+                        kLogger.debug() << "[RAM-PLAY] -> Player: " << m_group
+                                        << " Track copied to RAM-Play directory:" << ramFileName;
+                    }
                 }
             }
         }
@@ -473,12 +523,9 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
     if (useRamCopy) {
         trackToOpen->setURL(QUrl::fromLocalFile(ramFileName).toString());
         m_ramFilesInUse.insert(ramFileName);
-
-        // Update RAM track usage for this group
         updateRamTrackUsage(m_group, ramFileName);
     } else {
         trackToOpen->setURL(pTrack->getURL());
-        // No RAM file used for this group
         updateRamTrackUsage(m_group, "");
     }
 
@@ -559,12 +606,17 @@ void CachingReaderWorker::cleanupAllRamFiles(const QString& ramDiskPath) {
     // Remove all RAM files from current session
     QDir tmpDir(ramDiskPath);
     if (!tmpDir.exists()) {
-        kLogger.warning() << "[RAM-PLAY] Cleanup failed - directory doesn't exist:" << ramDiskPath;
+        kLogger.warning()
+                << "[RAM-PLAY] -> Cleanup failed - directory doesn't exist:"
+                << ramDiskPath;
         return;
     }
 
     QStringList sessionFiles = tmpDir.entryList(QStringList() << gSessionPrefix + "*", QDir::Files);
-    kLogger.debug() << "[RAM-PLAY] Found" << sessionFiles.size() << "session files to clean up";
+    if (sDebugCachingReaderWorker) {
+        kLogger.debug() << "[RAM-PLAY] -> Found" << sessionFiles.size()
+                        << "previous session files to clean up";
+    }
 
     int removedCount = 0;
     int failedCount = 0;
@@ -575,11 +627,14 @@ void CachingReaderWorker::cleanupAllRamFiles(const QString& ramDiskPath) {
         if (file.exists()) {
             if (file.remove()) {
                 removedCount++;
-                kLogger.debug() << "[RAM-PLAY] Removed session RAM file:" << filePath;
+                if (sDebugCachingReaderWorker) {
+                    kLogger.debug() << "[RAM-PLAY] -> Removed session RAM-Play file:" << filePath;
+                }
             } else {
                 failedCount++;
-                kLogger.warning() << "[RAM-PLAY] Failed to remove session RAM file:" << filePath
-                                  << "Error:" << file.errorString();
+                kLogger.warning() << "[RAM-PLAY] -> Failed to remove previous "
+                                     "session RAM-Play file:"
+                                  << filePath << "Error:" << file.errorString();
             }
         }
     }
