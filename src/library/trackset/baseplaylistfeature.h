@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QString>
+#include <QStringList>
 
 #include "library/dao/playlistdao.h"
 #include "library/trackset/basetracksetfeature.h"
@@ -42,6 +43,8 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     void bindSidebarWidget(WLibrarySidebar* pSidebarWidget) override;
     void selectPlaylistInSidebar(int playlistId, bool select = true);
     int getSiblingPlaylistIdOf(QModelIndex& start);
+    int levenshteinDistance(const QString& s1, const QString& s2);
+    QString cleanString(const QString& input) const;
 
   public slots:
     void activateChild(const QModelIndex& index) override;
@@ -74,6 +77,7 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     void slotImportPlaylist();
     void slotImportPlaylistFile(const QString& playlistFile, int playlistId);
     void slotCreateImportPlaylist();
+    void slotCreateImportPlaylistFindTracks();
     void slotExportPlaylist();
     // Copy all of the tracks in a playlist to a new directory.
     void slotExportTrackFiles();
@@ -117,6 +121,7 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     QAction* m_pLockPlaylistAction;
     QAction* m_pImportPlaylistAction;
     QAction* m_pCreateImportPlaylistAction;
+    QAction* m_pCreateImportPlaylistFindTracksAction;
     QAction* m_pExportPlaylistAction;
     QAction* m_pExportTrackFilesAction;
     QAction* m_pDuplicatePlaylistAction;
@@ -138,7 +143,7 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     virtual QString getRootViewHtml() const = 0;
     void markTreeItem(TreeItem* pTreeItem);
     QString fetchPlaylistLabel(int playlistId);
-
+    QStringList parseCsvLine(const QString& line) const;
 
     const bool m_keepHiddenTracks;
 };

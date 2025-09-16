@@ -55,6 +55,8 @@ void PlaylistFeature::onRightClick(const QPoint& globalPos) {
     menu.addAction(m_pCreatePlaylistAction);
     menu.addSeparator();
     menu.addAction(m_pCreateImportPlaylistAction);
+    menu.addSeparator();
+    menu.addAction(m_pCreateImportPlaylistFindTracksAction);
     menu.exec(globalPos);
 }
 
