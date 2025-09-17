@@ -1775,6 +1775,7 @@ QWidget* LegacySkinParser::parseTableView(const QDomElement& node) {
     QList<int> splitterSizes;
     splitterSizes.push_back(50);
     splitterSizes.push_back(500);
+    splitterSizes.push_back(0);
     pSplitter->setSizes(splitterSizes);
 
     // Add the splitter to the library page's layout, so it's

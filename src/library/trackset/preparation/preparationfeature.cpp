@@ -50,7 +50,7 @@ PreparationFeature::PreparationFeature(
           m_yearNodeId(kInvalidPlaylistId),
           m_pLibrary(pLibrary),
           m_pConfig(pConfig),
-           m_pendingPlaylistId(kInvalidPlaylistId) {
+          m_pendingPlaylistId(kInvalidPlaylistId) {
     // remove unneeded entries
     deleteAllUnlockedPlaylistsWithFewerTracks();
 
@@ -447,7 +447,9 @@ void PreparationFeature::slotGetNewPlaylist() {
 
 void PreparationFeature::onPreparationWindowReady() {
     if (m_pendingPlaylistId != kInvalidPlaylistId) {
-        qDebug() << "[PreparationFeature] -> Delayed emiting the new Preparationlist to Prepwin when the widget (skin) is ready.";
+        qDebug() << "[PreparationFeature] -> Delayed emitting the new "
+                    "Preparationlist to Prepwin when the widget (skin) is "
+                    "ready.";
         qDebug() << "[PreparationFeature] -> Newest PreparationList Id: " << m_pendingPlaylistId;
         qDebug() << "[PreparationFeature] -> Newest PreparationList Name: " << m_pendingPlaylistName;
 
