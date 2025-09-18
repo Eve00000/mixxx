@@ -5,27 +5,47 @@
     <SizePolicy>e,min</SizePolicy>
     <Children>
 
-      <Template src="skins:LateNight/controls/button_2state.xml">
-        <SetVariable name="TooltipId">maximize_library</SetVariable>
-        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-        <SetVariable name="Size">80f,20f</SetVariable>
-        <SetVariable name="state_0_text">BIG LIBRARY</SetVariable>
-        <SetVariable name="state_1_text">BIG LIBRARY</SetVariable>
-        <SetVariable name="ConfigKey">[Skin],show_maximized_library</SetVariable>
-      </Template>
+      <!-- Big Library button - HIDDEN in wide layout -->
+      <WidgetGroup>
+        <Children>
+          <Template src="skins:LateNight/controls/button_2state.xml">
+            <SetVariable name="TooltipId">maximize_library</SetVariable>
+            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+            <SetVariable name="Size">80f,20f</SetVariable>
+            <SetVariable name="state_0_text">BIG LIBRARY</SetVariable>
+            <SetVariable name="state_1_text">BIG LIBRARY</SetVariable>
+            <SetVariable name="ConfigKey">[Skin],show_maximized_library</SetVariable>
+          </Template>
+        </Children>
+        <Connection>
+          <ConfigKey>[Skin],show_wide_layout</ConfigKey>
+          <Transform>
+            <Not/>
+          </Transform>
+          <BindProperty>visible</BindProperty>
+        </Connection>
+      </WidgetGroup>
 
       <WidgetGroup>
         <ObjectName>ToolbarSeparator</ObjectName>
         <Size>12f,9min</Size>
+        <Connection>
+          <ConfigKey>[Skin],show_wide_layout</ConfigKey>
+          <Transform>
+            <Not/>
+          </Transform>
+          <BindProperty>visible</BindProperty>
+        </Connection>
       </WidgetGroup>
 
-      <WidgetGroup><!-- GUI toggles with regular library -->
+      <WidgetGroup>
+        <!-- GUI toggles with regular library -->
         <ObjectName>ToolBarSection</ObjectName>
         <SizePolicy>min,min</SizePolicy>
         <Layout>horizontal</Layout>
         <Children>
 
-<Template src="skins:LateNight/controls/button_2state.xml">
+          <Template src="skins:LateNight/controls/button_2state.xml">
             <SetVariable name="TooltipId">show_waveforms</SetVariable>
             <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
             <SetVariable name="Size">80f,20f</SetVariable>
@@ -90,7 +110,7 @@
           </Template>
 
           <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
+            <SetVariable name="TooltipId">toggle_wide_layout</SetVariable>
             <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
             <SetVariable name="Size">52f,20f</SetVariable>
             <SetVariable name="state_0_text">WIDE</SetVariable>
@@ -144,7 +164,7 @@
           </Template>
 
           <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
+            <SetVariable name="TooltipId">toggle_wide_layout</SetVariable>
             <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
             <SetVariable name="Size">52f,20f</SetVariable>
             <SetVariable name="state_0_text">WIDE</SetVariable>
@@ -224,11 +244,13 @@
                 <Children>
                   <VuMeter>
                     <TooltipId>audio_latency_usage</TooltipId>
-                    <Size>59f,8f</Size>
-                    <MinimumSize>2,2</MinimumSize>
-                    <SizePolicy>me,me</SizePolicy>
-                    <PathBack>skins:LateNight/<Variable name="StyleScheme"/>/style/latency_bg.png</PathBack>
-                    <PathVu>skins:LateNight/<Variable name="StyleScheme"/>/style/latency_over.png</PathVu>
+                    <Size>59f,5f</Size>
+                    <PathBack>
+                      skins:LateNight/<Variable name="StyleScheme"/>/style/latency_bg.png
+                    </PathBack>
+                    <PathVu>
+                      skins:LateNight/<Variable name="StyleScheme"/>/style/latency_over.png
+                    </PathVu>
                     <Horizontal>true</Horizontal>
                     <PeakHoldSize>5</PeakHoldSize>
                     <PeakHoldTime>1000</PeakHoldTime>

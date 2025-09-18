@@ -579,8 +579,8 @@
                   <ObjectName>WideScreenSplitter</ObjectName>
                   <Orientation>horizontal</Orientation>
                   <SizePolicy>me,me</SizePolicy>
-                  <SplitSizes>50,50</SplitSizes>
-                  <Collapsible>0,0</Collapsible>
+                  <SplitSizes>50,50,50</SplitSizes>
+                  <Collapsible>0,0,0</Collapsible>
                   <Children>
 
                     <!-- LEFT Part: Waveforms - Decks & Mixer - EQ - Mic & Aux - Samplers -->

@@ -425,7 +425,7 @@
     <SingletonDefinition>
       <ObjectName>SamplerSettingsSingleton</ObjectName>
       <Children>
-        <Template src="skins:LateNight (64 Samplers)/helpers/skin_settings_samplers.xml"/>
+        <Template src="skins:LateNight/helpers/skin_settings_samplers.xml"/>
       </Children>
     </SingletonDefinition>
 
@@ -513,7 +513,7 @@
                                         </WidgetGroup>
 
                                         <Template src="skins:LateNight/fx_rack.xml"/>
-                                        <Template src="skins:LateNight (64 Samplers)/samplers_rack.xml"/>
+                                        <Template src="skins:LateNight/samplers_rack.xml"/>
                                         <Template src="skins:LateNight/mic_aux_rack.xml"/>
 
                                         <SingletonContainer>
@@ -579,8 +579,8 @@
                   <ObjectName>WideScreenSplitter</ObjectName>
                   <Orientation>horizontal</Orientation>
                   <SizePolicy>me,me</SizePolicy>
-                  <SplitSizes>50,50,50</SplitSizes>
-                  <Collapsible>0,0,0</Collapsible>
+                  <SplitSizes>50,50</SplitSizes>
+                  <Collapsible>0,0</Collapsible>
                   <Children>
 
                     <!-- LEFT Part: Waveforms - Decks & Mixer - EQ - Mic & Aux - Samplers -->
@@ -633,7 +633,7 @@
                             </WidgetGroup>
 
                             <Template src="skins:LateNight/fx_rack.xml"/>
-                            <Template src="skins:LateNight (64 Samplers)/samplers_rack.xml"/>
+                            <Template src="skins:LateNight/samplers_rack.xml"/>
                             <Template src="skins:LateNight/mic_aux_rack.xml"/>
                           </Children>
                         </WidgetGroup>
