@@ -1,23 +1,19 @@
 #ifndef OSCFUNCTIONS_H
 #define OSCFUNCTIONS_H
 
-constexpr int OUTPUT_BUFFER_SIZE = 1024;
-constexpr int IP_MTU_SIZE = 1536;
-
 #include <QChar>
 #include <QDataStream>
+#include <QDebug>
 #include <QFile>
+#include <QMutex>
 #include <QRegularExpression>
 #include <QSharedPointer>
 #include <QString>
+#include <atomic>
 #include <iostream>
 #include <memory>
 
-#include "osc/ip/UdpSocket.h"
-#include "osc/osc/OscOutboundPacketStream.h"
-#include "osc/osc/OscPacketListener.h"
-#include "osc/osc/OscReceivedElements.h"
-
+#include "lo/lo.h"
 static QMutex s_configMutex;
 QReadWriteLock g_oscTrackTableLock;
 extern std::atomic<bool> s_oscEnabled;
@@ -51,22 +47,16 @@ QString escapeStringToJsonUnicode(const QString& input) {
     return escaped;
 }
 
-void sendOscMessage(const char* receiverIp,
-        int port,
-        osc::OutboundPacketStream& p,
-        const QString& header,
-        const QString& statusTxtBody) {
-    if (receiverIp) {
-        UdpTransmitSocket transmitSocket(IpEndpointName(receiverIp, port));
-        transmitSocket.Send(p.Data(), p.Size());
-        qDebug() << QString("OSC Msg Send to Receiver (%1:%2) : <%3 : %4>")
-                            .arg(receiverIp)
-                            .arg(port)
-                            .arg(header, statusTxtBody);
-    }
-}
+// Function to send OSC message with liblo
+// void sendOscMessage(const char* receiverIp,
+//        int port,
+//        const QString& oscMessageHeader,
+//        const char* bodyType,
+//        QVariant oscMessageBodyData) {
+//}
 
 void oscFunctionsSendPtrType(
+        // UserSettingsPointer pConfig,
         const QString& oscGroup,
         const QString& oscKey,
         enum DefOscBodyType oscBodyType,
@@ -74,64 +64,117 @@ void oscFunctionsSendPtrType(
         int oscMessageBodyInt,
         double oscMessageBodyDouble,
         float oscMessageBodyFloat) {
-    // QString oscMessageHeader = "/" + oscGroup + "@" + oscKey;
+    // Proceed with sending OSC messages using the stored values
     QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
-    // oscMessageHeader.replace("[", "(");
     oscMessageHeader.replace("[", "");
-    // oscMessageHeader.replace("]", ")");
     oscMessageHeader.replace("]", "");
-
-    QByteArray oscMessageHeaderBa = oscMessageHeader.toLocal8Bit();
-    const char* oscMessageHeaderChar = oscMessageHeaderBa.data();
+    qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
 
     if (s_oscEnabled.load()) {
-        char buffer[IP_MTU_SIZE];
-        osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
-        QString oscStatusTxtBody;
-
-        // Creation of package
-        p.Clear();
-        p << osc::BeginBundle();
-        switch (oscBodyType) {
-        case DefOscBodyType::STRINGBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar)
-              << oscMessageBodyQString.toLocal8Bit().data() << osc::EndMessage;
-            oscStatusTxtBody = oscMessageBodyQString;
-            break;
-        case DefOscBodyType::INTBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyInt << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyInt);
-            break;
-        case DefOscBodyType::DOUBLEBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyDouble << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyDouble);
-            break;
-        case DefOscBodyType::FLOATBODY:
-            p << osc::BeginMessage(oscMessageHeaderChar) << oscMessageBodyFloat << osc::EndMessage;
-            oscStatusTxtBody = QString::number(oscMessageBodyFloat);
-            break;
-        }
-        p << osc::EndBundle;
-
         for (const auto& receiver : std::as_const(s_receiverConfigs)) {
-            if (receiver.first) {
+            if (receiver.first) { // Check if the receiver is active
                 QByteArray receiverIpBa = receiver.second.toLocal8Bit();
-                sendOscMessage(receiverIpBa.data(),
-                        s_ckOscPortOutInt,
-                        p,
-                        oscMessageHeader,
-                        oscStatusTxtBody);
+
+                // Create a new OSC message
+                lo_address address = lo_address_new_with_proto(LO_UDP,
+                        receiverIpBa.data(),
+                        std::to_string(s_ckOscPortOutInt).c_str());
+                lo_message msg = lo_message_new();
+                int result = -1;
+                QString oscStatusTxtBody;
+
+                // Prepare the message body
+                switch (oscBodyType) {
+                case DefOscBodyType::STRINGBODY:
+                    oscStatusTxtBody = oscMessageBodyQString;
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "s",
+                            oscMessageBodyQString.toLocal8Bit().data());
+                    break;
+                case DefOscBodyType::INTBODY:
+                    oscStatusTxtBody = QString::number(oscMessageBodyInt);
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "i",
+                            oscMessageBodyInt);
+                    break;
+                case DefOscBodyType::DOUBLEBODY:
+                    oscStatusTxtBody = QString::number(oscMessageBodyDouble);
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "d",
+                            oscMessageBodyDouble);
+                    break;
+                case DefOscBodyType::FLOATBODY:
+                    oscStatusTxtBody = QString::number(oscMessageBodyFloat);
+                    result = lo_send(address,
+                            oscMessageHeader.toLocal8Bit().data(),
+                            "f",
+                            oscMessageBodyFloat);
+                    break;
+                }
+
+                if (result == -1) {
+                    qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
+                } else {
+                    qDebug()
+                            << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
+                                       "Receiver (%1:%2) : <%3 : %4>")
+                                       .arg(receiverIpBa.data(),
+                                               QString::number(s_ckOscPortOutInt),
+                                               oscMessageHeader,
+                                               oscStatusTxtBody);
+                }
+
+                lo_message_free(msg);
+                lo_address_free(address);
             }
         }
     } else {
-        qDebug() << "OSC NOT Enabled";
+        qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC NOT Enabled";
     }
+}
+
+// function to reload the config OSC settinfs -> maybe call if they changed
+// not used at the moment
+void reloadOscConfiguration(UserSettingsPointer pConfig) {
+    QMutexLocker locker(&s_configMutex);
+
+    if (!pConfig) {
+        qWarning() << "[OSC] [OSCFUNCTIONS] -> pConfig is nullptr! Aborting reload.";
+        return;
+    }
+
+    s_oscEnabled = pConfig->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"));
+    s_ckOscPortOutInt = pConfig->getValue(ConfigKey("[OSC]", "OscPortOut")).toInt();
+
+    // Clear existing receiver configurations
+    s_receiverConfigs.clear();
+
+    // List of receiver configurations
+    const QList<std::pair<QString, QString>> receivers = {
+            {"[OSC]", "OscReceiver1"},
+            {"[OSC]", "OscReceiver2"},
+            {"[OSC]", "OscReceiver3"},
+            {"[OSC]", "OscReceiver4"},
+            {"[OSC]", "OscReceiver5"}};
+
+    // Store receiver configurations
+    for (const auto& receiver : receivers) {
+        bool active = pConfig->getValue<bool>(
+                ConfigKey(receiver.first, receiver.second + "Active"));
+        QString ip = pConfig->getValue(ConfigKey(receiver.first, receiver.second + "Ip"));
+        s_receiverConfigs.append({active, ip});
+    }
+
+    qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC configuration reloaded.";
 }
 
 void storeTrackInfo(const QString& oscGroup,
         const QString& trackArtist,
         const QString& trackTitle) {
-    QMutexLocker locker(&g_oscTrackTableMutex);
+    QMutexLocker locker(&g_oscTrackTableMutex); // Lock for thread safety
 
     // No existing oscGroup entry? -> update
     for (auto& entry : g_oscTrackTable) {
@@ -140,13 +183,13 @@ void storeTrackInfo(const QString& oscGroup,
             std::get<2>(entry) = trackTitle;
             qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
                      << oscGroup << trackArtist << trackTitle;
-            return;
+            return; // Exit function after updating
         }
     }
 
     // No existing entry? -> New entry
     for (int i = 0; i < kMaxOscTracks; ++i) {
-        if (std::get<0>(g_oscTrackTable[i]).isEmpty()) {
+        if (std::get<0>(g_oscTrackTable[i]).isEmpty()) { // Find empty slot
             g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist, trackTitle);
             qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
                      << oscGroup << trackArtist << trackTitle;
@@ -158,7 +201,8 @@ void storeTrackInfo(const QString& oscGroup,
 }
 
 QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
-    QReadLocker locker(&g_oscTrackTableLock);
+    // QMutexLocker locker(&g_oscTrackTableMutex); // Lock for thread safety
+    QReadLocker locker(&g_oscTrackTableLock); // Read lock
     for (const auto& entry : g_oscTrackTable) {
         if (std::get<0>(entry) == oscGroup) {
             if (oscKey == "TrackArtist") {
@@ -168,11 +212,10 @@ QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
             }
         }
     }
-    return "Unknown";
+    return "Unknown"; // Default value if not found
 }
 
-void sendNoTrackLoadedToOscClients(
-        const QString& oscGroup) {
+void sendNoTrackLoadedToOscClients(const QString& oscGroup) {
     oscFunctionsSendPtrType(
             oscGroup,
             "TrackArtist",
@@ -213,11 +256,11 @@ void sendNoTrackLoadedToOscClients(
             0,
             0,
             0);
-    // QString oscKeyArtist = QString(oscGroup + "TrackArtist");
-    // QString oscKeyValueNoTrackLoaded = QString("no track loaded");
-    // pConfig->set(ConfigKey("[OSC]", oscKeyArtist), oscKeyValueNoTrackLoaded);
-    // QString oscKeyTitle = QString(oscGroup + "TrackTitle");
-    // pConfig->set(ConfigKey("[OSC]", oscKeyTitle), oscKeyValueNoTrackLoaded);
+    //    QString oscKeyArtist = QString(oscGroup + "TrackArtist");
+    //    QString oscKeyValueNoTrackLoaded = QString("no track loaded");
+    //    pConfig->set(ConfigKey("[OSC]", oscKeyArtist), oscKeyValueNoTrackLoaded);
+    //    QString oscKeyTitle = QString(oscGroup + "TrackTitle");
+    //    pConfig->set(ConfigKey("[OSC]", oscKeyTitle), oscKeyValueNoTrackLoaded);
     const QString& trackArtist = "no track loaded";
     const QString& trackTitle = "no track loaded";
     storeTrackInfo(oscGroup, trackArtist, trackTitle);
@@ -270,10 +313,10 @@ void sendTrackInfoToOscClients(
             0,
             0,
             playposition);
-    // QString oscKeyArtist = QString(oscGroup + "TrackArtist");
-    // pConfig->set(ConfigKey("[OSC]", oscKeyArtist), trackArtist);
-    // QString oscKeyTitle = QString(oscGroup + "TrackTitle");
-    // pConfig->set(ConfigKey("[OSC]", oscKeyTitle), trackTitle);
+    //    QString oscKeyArtist = QString(oscGroup + "TrackArtist");
+    //    pConfig->set(ConfigKey("[OSC]", oscKeyArtist), trackArtist);
+    //    QString oscKeyTitle = QString(oscGroup + "TrackTitle");
+    //    pConfig->set(ConfigKey("[OSC]", oscKeyTitle), trackTitle);
     storeTrackInfo(oscGroup, trackArtist, trackTitle);
 }
 
@@ -296,6 +339,8 @@ QString translatePath(const QString& inputPath) {
 
     // Static QRegularExpression objects to avoid recompilation
     static QRegularExpression stemSpecificRegex(R"(/([^/]+)/Channel(\d+)Stem(\d+)/(.*))");
+    // stem fx
+    static QRegularExpression underscoreStemRegex(R"(/([^/]+)/Channel(\d+)_Stem(\d+)/(.*))");
     static QRegularExpression complexRackRegex(R"(/([^/]+)/([^/]+)/([^/]+)/([^/]+))");
     static QRegularExpression nestedRackRegex(R"(/([^/]+)/([^/]+)/([^/]+))");
     static QRegularExpression channelSpecificRegex(R"(/Channel(\d+)/(.*))");
@@ -313,6 +358,16 @@ QString translatePath(const QString& inputPath) {
         QString stem = match.captured(3);      // e.g., "1"
         QString parameter = match.captured(4); // e.g., "super1"
         return QString("[%1_[Channel%2Stem%3]],%4").arg(rack, channel, stem, parameter);
+    }
+
+    // Match paths with underscore stems like /QuickEffectRack1/Channel1_Stem1/enabled
+    QRegularExpressionMatch underscoreMatch = underscoreStemRegex.match(inputPath);
+    if (underscoreMatch.hasMatch()) {
+        QString rack = underscoreMatch.captured(1);      // e.g., "QuickEffectRack1"
+        QString channel = underscoreMatch.captured(2);   // e.g., "1"
+        QString stem = underscoreMatch.captured(3);      // e.g., "1"
+        QString parameter = underscoreMatch.captured(4); // e.g., "enabled"
+        return QString("[%1_[Channel%2_Stem%3]],%4").arg(rack, channel, stem, parameter);
     }
 
     // Match deeply nested paths like /EqualizerRack1/Channel2/Effect1/parameter1
@@ -390,8 +445,10 @@ QString translatePath(const QString& inputPath) {
     }
 
     // Return the input path unchanged if no matches are found
-    qDebug() << "[OSC] OSCFUNCTIONS Original path:" << originalPath
+    // if (sDebug) {
+    qDebug() << "[OSC] [OSCFUNCTIONS] -> Original path:" << originalPath
              << " Translated path:" << inputPath;
+    // }
     return inputPath;
 }
 #endif /* OSCFUNCTIONS_H */

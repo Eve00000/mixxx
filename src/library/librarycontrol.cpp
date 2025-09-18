@@ -659,17 +659,32 @@ void LibraryControl::slotUpdateTrackMenuControl(bool visible) {
     m_pShowTrackMenu->setAndConfirm(visible ? 1.0 : 0.0);
 }
 
+WTrackTableView* LibraryControl::getFocusedTrackTableView() const {
+    if (m_pLibraryPreparationWindowWidget &&
+            m_pLibraryPreparationWindowWidget->getCurrentTrackTableView() &&
+            m_pLibraryPreparationWindowWidget->getCurrentTrackTableView()->hasFocus()) {
+        return m_pLibraryPreparationWindowWidget->getCurrentTrackTableView();
+    } else if (m_pLibraryWidget &&
+            m_pLibraryWidget->getCurrentTrackTableView() &&
+            m_pLibraryWidget->getCurrentTrackTableView()->hasFocus()) {
+        return m_pLibraryWidget->getCurrentTrackTableView();
+    }
+    // fallback to library window if nothing has focus
+    return m_pLibraryWidget ? m_pLibraryWidget->getCurrentTrackTableView() : nullptr;
+}
+
 #ifdef __STEM__
 void LibraryControl::slotLoadSelectedTrackToGroup(
         const QString& group, mixxx::StemChannelSelection stemMask, bool play) {
 #else
 void LibraryControl::slotLoadSelectedTrackToGroup(const QString& group, bool play) {
 #endif
-    if (!m_pLibraryWidget) {
-        return;
-    }
+    //    if (!m_pLibraryWidget) {
+    //        return;
+    //    }
 
-    WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+    //    WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+    WTrackTableView* pTrackTableView = getFocusedTrackTableView();
     if (pTrackTableView) {
 #ifdef __STEM__
         pTrackTableView->loadSelectedTrackToGroup(group, stemMask, play);
@@ -969,6 +984,9 @@ FocusWidget LibraryControl::getFocusedWidget() {
         return FocusWidget::Sidebar;
     } else if (m_pLibraryWidget && m_pLibraryWidget->getActiveView()->hasFocus()) {
         return FocusWidget::TracksTable;
+    } else if (m_pLibraryPreparationWindowWidget &&
+            m_pLibraryPreparationWindowWidget->getActiveView()->hasFocus()) {
+        return FocusWidget::TracksTable;
     } else {
         // Unknown widget, for example Clear button in WSearcLineEdit,
         // some drop-down view, WBeatSpinBox or QLineEdit in WtrackTableView
@@ -1005,7 +1023,15 @@ void LibraryControl::setLibraryFocus(FocusWidget newFocusWidget) {
         VERIFY_OR_DEBUG_ASSERT(m_pLibraryWidget) {
             return;
         }
+        // VERIFY_OR_DEBUG_ASSERT(m_pLibraryPreparationWindowWidget) {
+        //     return;
+        // }
         m_pLibraryWidget->getActiveView()->setFocus();
+        // m_pLibraryPreparationWindowWidget->setFocus();
+        // qDebug() << "EVE -> LIBRARYFOCUS -> " <<
+        // m_pLibraryWidget->getActiveView()->hasFocus(); qDebug() << "EVE ->
+        // PREPARATIONWINDOWFOCUS -> " <<
+        // m_pLibraryPreparationWindowWidget->getActiveView()->hasFocus();
         return;
     case FocusWidget::None:
         // What could be the goal, what are the consequences of manually
@@ -1090,6 +1116,8 @@ void LibraryControl::slotEditItem(double v) {
     }
     case FocusWidget::TracksTable: {
         WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+        // WTrackTableView* pTrackTableView =
+        // m_pLibraryPreparationWindowWidget->getCurrentTrackTableView();
         if (pTrackTableView) {
             pTrackTableView->editSelectedItem();
         }
@@ -1121,6 +1149,8 @@ void LibraryControl::slotGoToItem(double v) {
         return;
     case FocusWidget::TracksTable: {
         WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+        // WTrackTableView* pTrackTableView =
+        // m_pLibraryPreparationWindowWidget->getCurrentTrackTableView();
         if (pTrackTableView) {
             pTrackTableView->activateSelectedTrack();
         }
