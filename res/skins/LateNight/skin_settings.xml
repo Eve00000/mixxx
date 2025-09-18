@@ -24,7 +24,6 @@ Description:
         <Layout>vertical</Layout>
         <Size>240f,1me</Size>
         <Children>
-
           <!-- Decks -->
           <WidgetGroup>
             <Layout>horizontal</Layout>
@@ -516,6 +515,32 @@ Description:
           <WidgetGroup>
             <Size>0me,0me</Size>
           </WidgetGroup>
+
+          <WidgetGroup>
+            <ObjectName>SkinSettingsSeparator</ObjectName>
+            <Size>1min,12f</Size>
+          </WidgetGroup>
+
+          <!-- Wide / Original Layout -->
+          <WidgetGroup>
+            <SizePolicy>me,f</SizePolicy>
+            <Layout>stacked</Layout>
+            <Children>
+              <WidgetGroup>
+                <SizePolicy>me,min</SizePolicy>
+                <Layout>vertical</Layout>
+                <Children>
+                  <Template src="skins:LateNight/helpers/skin_settings_labelbutton_2state.xml">
+                    <SetVariable name="Text">Wide / Normal Layout</SetVariable>
+                    <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
+                    <SetVariable name="TooltipId">show_wide_layout</SetVariable>
+                    <SetVariable name="Width">190me</SetVariable>
+                  </Template>
+                </Children>
+              </WidgetGroup>
+            </Children>
+          </WidgetGroup>
+          <!-- Wide / Original Layout -->
 
         </Children>
       </WidgetGroup>
