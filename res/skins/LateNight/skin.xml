@@ -561,8 +561,6 @@
                       </Children>
                     </WidgetStack>
                     <Template src="skins:LateNight/skin_settings.xml"/>
-
-
                   </Children>
                 </WidgetGroup>
                 <!-- regular/maximized library + skin settings menu -->
