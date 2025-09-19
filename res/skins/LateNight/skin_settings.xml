@@ -538,27 +538,22 @@ Description:
                     <SizePolicy>me,f</SizePolicy>
                     <Layout>stacked</Layout>
                     <Children>
-                      <!-- translucent cover when Wide layout is not avtive -->
+                      <!-- translucent cover when Wide layout is not active -->
                       <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
                         <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
                       </Template>
-
                       <WidgetGroup>
                         <SizePolicy>me,min</SizePolicy>
                         <Layout>vertical</Layout>
                         <Children>
-
                           <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
                             <SetVariable name="Text">Library left</SetVariable>
                             <SetVariable name="Setting">[Skin],wide_layout_library_left</SetVariable>
                           </Template>
-
-
                           <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
                             <SetVariable name="Text">Waveforms Bottom</SetVariable>
                             <SetVariable name="Setting">[Skin],wide_layout_waveforms_bottom</SetVariable>
                           </Template>
-
                         </Children>
                       </WidgetGroup>
                     </Children>
@@ -567,7 +562,6 @@ Description:
               </WidgetGroup>
             </Children>
           </WidgetGroup>
-          <!-- /Mixer -->
           <!-- Wide / Original Layout -->
           <!-- push the settings up, required with Qt6 -->
           <WidgetGroup>
