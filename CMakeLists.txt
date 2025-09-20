@@ -1345,6 +1345,7 @@ add_library(
   src/network/jsonwebtask.cpp
   src/network/networktask.cpp
   src/network/webtask.cpp
+  src/osc/oscreceiver.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -1988,6 +1989,8 @@ if(MSVC)
     target_compile_definitions(
       mixxx-lib
       PUBLIC
+        # Eve: to prevent multiple instances of winsock(2) being loaded
+        WIN32_LEAN_AND_MEAN
         _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
         _CRT_SECURE_NO_WARNINGS
     )
@@ -2081,6 +2084,8 @@ if(WIN32)
   # _WIN32_WINNT_WIN7 = 0x0601
   target_compile_definitions(mixxx-lib PUBLIC WINVER=0x0601)
   target_compile_definitions(mixxx-lib PUBLIC _WIN32_WINNT=0x0601)
+  # Eve: to prevent multiple instances of winsock(2) being loaded
+  target_compile_definitions(mixxx-lib PUBLIC WIN32_LEAN_AND_MEAN)
   if(MSVC)
     target_compile_definitions(mixxx-lib PUBLIC _USE_MATH_DEFINES)
   endif()
@@ -3257,42 +3262,42 @@ target_include_directories(
 )
 target_link_libraries(mixxx-lib PRIVATE rekordbox_metadata)
 
-if(WIN32)
-  set(IpSystemTypePath src/osc/ip/win32)
-  set(LIBS ${LIBS} Ws2_32 winmm)
-else()
-  set(IpSystemTypePath src/osc/ip/posix)
+#eve osc
+# liblo
+
+if(WIN32 OR APPLE)
+  message(STATUS "[Liblo] Windows or macOS, using vcpkg")
+  find_package(liblo REQUIRED)
+elseif(UNIX)
+  message(STATUS "[Liblo] Linux, using pkg-config")
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBLO REQUIRED liblo)
+
+  add_library(liblo UNKNOWN IMPORTED)
+  set_target_properties(
+    liblo
+    PROPERTIES
+      IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
+  )
+
+  add_library(liblo::liblo ALIAS liblo)
 endif()
 
-#eve osc
-add_library(
-  oscpack
-  src/osc/ip/IpEndpointName.cpp
-  src/osc/ip/IpEndpointName.h
-  src/osc/ip/NetworkingUtils.h
-  ${IpSystemTypePath}/NetworkingUtils.cpp
-  src/osc/ip/PacketListener.h
-  src/osc/ip/TimerListener.h
-  src/osc/ip/UdpSocket.h
-  ${IpSystemTypePath}/UdpSocket.cpp
-  src/osc/osc/MessageMappingOscPacketListener.h
-  src/osc/osc/OscException.h
-  src/osc/osc/OscHostEndianness.h
-  src/osc/osc/OscOutboundPacketStream.cpp
-  src/osc/osc/OscOutboundPacketStream.h
-  src/osc/osc/OscPacketListener.h
-  src/osc/osc/OscPrintReceivedElements.cpp
-  src/osc/osc/OscPrintReceivedElements.h
-  src/osc/osc/OscReceivedElements.cpp
-  src/osc/osc/OscReceivedElements.h
-  src/osc/osc/OscTypes.cpp
-  src/osc/osc/OscTypes.h
-)
-include_directories(${CMAKE_SOURCE_DIR})
-#target_link_libraries(mixxx oscpack ${LIBS})
-target_include_directories(mixxx-lib SYSTEM PRIVATE ip)
-target_include_directories(mixxx-lib SYSTEM PRIVATE osc)
-target_link_libraries(mixxx-lib PRIVATE oscpack)
+include_directories(${LIBLO_INCLUDE_DIRS})
+target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+
+# Liblo Test for CI
+# to check if liblo is included >> send some messages to itself
+# if received >> test passes
+if(BUILD_TESTING)
+  add_executable(
+    osc_mixxx_integration_test
+    src/test/osc_mixxx_integration_test.cpp
+  )
+  target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
+  add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
+endif()
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

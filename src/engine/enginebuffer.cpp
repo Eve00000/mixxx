@@ -63,8 +63,7 @@ void sendTrackInfoToOscClients(
         float track_loaded,
         float duration,
         float playposition);
-void sendNoTrackLoadedToOscClients(
-        const QString& oscGroup);
+void sendNoTrackLoadedToOscClients(const QString& oscGroup);
 // EveOSC
 
 EngineBuffer::EngineBuffer(const QString& group,
@@ -828,7 +827,6 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackArtist_4->set(trackPartChar2CalculatedValue(CharArtist, 15));
     m_pTrackArtist_5->set(trackPartChar2CalculatedValue(CharArtist, 20));
 
-    // Eve end
     //  EveOSC begin
     if (s_oscEnabled.load()) {
         sendTrackInfoToOscClients(
@@ -839,7 +837,8 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
                 (float)pTrack->getDuration(),
                 0);
     }
-    // EveOSC end
+    //  EveOSC end
+
     // Reset slip mode
     m_pSlipButton->set(0);
     m_bSlipEnabledProcessing = false;
@@ -996,10 +995,10 @@ void EngineBuffer::ejectTrack() {
     //    m_pTrackTitle_38->set(0);
     //    m_pTrackTitle_39->set(0);
     //    m_pTrackTitle_40->set(0);
+
     //  EveOSC begin
     if (s_oscEnabled.load()) {
-        sendNoTrackLoadedToOscClients(
-                getGroup());
+        sendNoTrackLoadedToOscClients(getGroup());
     }
     //  EveOSC end
 
