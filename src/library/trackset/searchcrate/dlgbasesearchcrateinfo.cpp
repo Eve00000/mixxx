@@ -20,15 +20,17 @@ dlgBaseSearchCrateInfo::dlgBaseSearchCrateInfo(BaseTrackSetFeature* feature, QWi
 void dlgBaseSearchCrateInfo::init(const QVariantList& searchCratesData,
         const QVariantList& playlistsCratesData) {
     // Initialize tables and UI
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 8; ++i) {
         headerTable[i] = "";
+    }
     for (int i = 0; i <= 12; ++i) {
         for (int j = 1; j <= 4; ++j) {
             conditionsTable[i][j] = "";
         }
     }
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 5; ++i) {
         prevnextTable[i] = "";
+    }
 
     if (!searchCratesData.isEmpty()) {
         initHeaderTable(searchCratesData);
