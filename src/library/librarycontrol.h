@@ -19,6 +19,7 @@ class WLibrarySidebar;
 class WLibraryPreparationWindow;
 class WSearchLineEdit;
 class KeyboardEventFilter;
+class WTrackTableView;
 
 class LoadToGroupController : public QObject {
     Q_OBJECT
@@ -147,6 +148,7 @@ class LibraryControl : public QObject {
 
     // Simulate pressing a key on the keyboard
     void emitKeyEvent(QKeyEvent&& event);
+    WTrackTableView* getFocusedTrackTableView() const;
 
     // Controls to navigate vertically within currently focused widget (up/down buttons)
     std::unique_ptr<ControlPushButton> m_pMoveUp;
