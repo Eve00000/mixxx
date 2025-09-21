@@ -755,7 +755,8 @@ void LibraryControl::slotSelectTrack(double v) {
         return;
     }
 
-    WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+    // WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
+    WTrackTableView* pTrackTableView = getFocusedTrackTableView();
     if (pTrackTableView) {
         int i = (int)v;
         pTrackTableView->moveSelection(i);
