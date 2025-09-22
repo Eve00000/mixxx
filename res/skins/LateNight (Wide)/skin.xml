@@ -32,7 +32,7 @@
     <title>LateNight</title>
     <author>owilliams, ronso0</author>
     <version>2.4.0.01</version>
-    <description>A wide nighttime skin with stacked waveforms, 4 decks in 3 configurations and up to 16 samplers.</description>
+    <description>A 4K or dualscreen wide nighttime skin with stacked waveforms, 4 decks in 3 configurations and up to 16 samplers.</description>
     <language>en</language>
     <license>Creative Commons Attribution, Share-Alike 3.0 Unported</license>
     <attributes>
@@ -560,7 +560,7 @@
                         <!-- regular/maximized library + skin settings menu -->
                       </Children>
                     </WidgetStack>
-                    <Template src="skins:LateNight/skin_settings.xml"/>
+                    <Template src="skins:LateNight (Wide)/skin_settings.xml"/>
                   </Children>
                 </WidgetGroup>
                 <!-- regular/maximized library + skin settings menu -->
@@ -626,8 +626,8 @@
                                         <Template src="skins:LateNight/decks/decks_right.xml"/>
                                       </Children>
                                     </WidgetGroup>
-                                    <Template src="skins:LateNight/fx_rack.xml"/>
-                                    <Template src="skins:LateNight/samplers_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_samplers_rack.xml"/>
                                     <Template src="skins:LateNight/mic_aux_rack.xml"/>
                                   </Children>
                                 </WidgetGroup>
@@ -660,8 +660,8 @@
                                         <Template src="skins:LateNight/decks/decks_right.xml"/>
                                       </Children>
                                     </WidgetGroup>
-                                    <Template src="skins:LateNight/fx_rack.xml"/>
-                                    <Template src="skins:LateNight/samplers_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_samplers_rack.xml"/>
                                     <Template src="skins:LateNight/mic_aux_rack.xml"/>
                                   </Children>
                                 </WidgetGroup>
@@ -681,7 +681,7 @@
                               <ObjectName>LibrarySingleton</ObjectName>
                               <SizePolicy>me,me</SizePolicy>
                             </SingletonContainer>
-                            <WidgetGroup>
+                            <!-- <WidgetGroup>
                               <Layout>vertical</Layout>
                               <SizePolicy>me,me</SizePolicy>
                               <Children>
@@ -690,11 +690,11 @@
                                   <SizePolicy>me,me</SizePolicy>
                                 </SingletonContainer>
                               </Children>
-                            </WidgetGroup>
+                            </WidgetGroup> -->
                           </Children>
                         </WidgetStack>
 
-                        <Template src="skins:LateNight/skin_settings.xml"/>
+                        <Template src="skins:LateNight (Wide)/skin_settings.xml"/>
 
                       </Children>
                     </Splitter>
@@ -717,7 +717,7 @@
                               <ObjectName>LibrarySingleton</ObjectName>
                               <SizePolicy>me,me</SizePolicy>
                             </SingletonContainer>
-                            <WidgetGroup>
+                            <!-- <WidgetGroup>
                               <Layout>vertical</Layout>
                               <SizePolicy>me,me</SizePolicy>
                               <Children>
@@ -726,7 +726,7 @@
                                   <SizePolicy>me,me</SizePolicy>
                                 </SingletonContainer>
                               </Children>
-                            </WidgetGroup>
+                            </WidgetGroup> -->
                           </Children>
                         </WidgetStack>
 
@@ -767,8 +767,8 @@
                                         <Template src="skins:LateNight/decks/decks_right.xml"/>
                                       </Children>
                                     </WidgetGroup>
-                                    <Template src="skins:LateNight/fx_rack.xml"/>
-                                    <Template src="skins:LateNight/samplers_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_samplers_rack.xml"/>
                                     <Template src="skins:LateNight/mic_aux_rack.xml"/>
                                   </Children>
                                 </WidgetGroup>
@@ -801,8 +801,8 @@
                                         <Template src="skins:LateNight/decks/decks_right.xml"/>
                                       </Children>
                                     </WidgetGroup>
-                                    <Template src="skins:LateNight/fx_rack.xml"/>
-                                    <Template src="skins:LateNight/samplers_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                    <Template src="skins:LateNight/wide_samplers_rack.xml"/>
                                     <Template src="skins:LateNight/mic_aux_rack.xml"/>
                                   </Children>
                                 </WidgetGroup>

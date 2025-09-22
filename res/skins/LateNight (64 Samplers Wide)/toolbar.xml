@@ -25,7 +25,7 @@
         <Layout>horizontal</Layout>
         <Children>
 
-<Template src="skins:LateNight/controls/button_2state.xml">
+          <Template src="skins:LateNight/controls/button_2state.xml">
             <SetVariable name="TooltipId">show_waveforms</SetVariable>
             <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
             <SetVariable name="Size">80f,20f</SetVariable>
@@ -171,15 +171,9 @@
         <ObjectName>AutoDjStatus</ObjectName>
         <Size>30f,22f</Size>
         <NumberPos>3</NumberPos>
-        <PathStatusLight1>
-          skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg
-        </PathStatusLight1>
-        <PathStatusLight2>
-          skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg
-        </PathStatusLight2>
-        <PathStatusLight3>
-          skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg
-        </PathStatusLight3>
+        <PathStatusLight1>skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg</PathStatusLight1>
+        <PathStatusLight2>skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg</PathStatusLight2>
+        <PathStatusLight3>skins:LateNight/<Variable name="StyleScheme"/>/style/autodj_status.svg</PathStatusLight3>
         <Connection>
           <ConfigKey>[AutoDJ],enabled</ConfigKey>
         </Connection>
@@ -271,16 +265,10 @@
             <ObjectName>Battery</ObjectName>
             <Size>24,24</Size>
             <SizePolicy>f,f</SizePolicy>
-            <PixmapCharged scalemode="STRETCH_ASPECT">
-              skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_charged.svg
-            </PixmapCharged>
+            <PixmapCharged scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_charged.svg</PixmapCharged>
             <NumberStates>8</NumberStates>
-            <PixmapsCharging scalemode="STRETCH_ASPECT">
-              skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_charging_%1.svg
-            </PixmapsCharging>
-            <PixmapsDischarging scalemode="STRETCH_ASPECT">
-              skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_discharging_%1.svg
-            </PixmapsDischarging>
+            <PixmapsCharging scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_charging_%1.svg</PixmapsCharging>
+            <PixmapsDischarging scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="StyleScheme"/>/style/batt/ic_battery_discharging_%1.svg</PixmapsDischarging>
           </Battery>
         </Children>
       </WidgetGroup>

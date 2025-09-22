@@ -25,6 +25,8 @@ constexpr int kMaxOscTracks = 70;
 inline std::array<std::tuple<QString, QString, QString>, kMaxOscTracks> g_oscTrackTable;
 inline QMutex g_oscTrackTableMutex;
 
+const bool sDebugOSCFunctions = false;
+
 enum class DefOscBodyType {
     STRINGBODY,
     INTBODY,
@@ -68,7 +70,9 @@ void oscFunctionsSendPtrType(
     QString oscMessageHeader = "/" + oscGroup + "/" + oscKey;
     oscMessageHeader.replace("[", "");
     oscMessageHeader.replace("]", "");
-    qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
+    if (sDebugOSCFunctions) {
+        qDebug() << "[OSC] [OSCFUNCTIONS] -> oscFunctionsSendPtrType -> start";
+    }
 
     if (s_oscEnabled.load()) {
         for (const auto& receiver : std::as_const(s_receiverConfigs)) {
@@ -118,13 +122,15 @@ void oscFunctionsSendPtrType(
                 if (result == -1) {
                     qWarning() << "[OSC] [OSCFUNCTIONS] -> Error sending OSC message.";
                 } else {
-                    qDebug()
+                    if (sDebugOSCFunctions) {
+                        qDebug()
                             << QString("[OSC] [OSCFUNCTIONS] -> Msg Send to "
                                        "Receiver (%1:%2) : <%3 : %4>")
                                        .arg(receiverIpBa.data(),
                                                QString::number(s_ckOscPortOutInt),
                                                oscMessageHeader,
                                                oscStatusTxtBody);
+                    }
                 }
 
                 lo_message_free(msg);
@@ -132,7 +138,9 @@ void oscFunctionsSendPtrType(
             }
         }
     } else {
-        qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC NOT Enabled";
+        if (sDebugOSCFunctions) {
+            qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC NOT Enabled";
+        }
     }
 }
 
@@ -167,8 +175,9 @@ void reloadOscConfiguration(UserSettingsPointer pConfig) {
         QString ip = pConfig->getValue(ConfigKey(receiver.first, receiver.second + "Ip"));
         s_receiverConfigs.append({active, ip});
     }
-
-    qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC configuration reloaded.";
+    if (sDebugOSCFunctions) {
+        qDebug() << "[OSC] [OSCFUNCTIONS] -> OSC configuration reloaded.";
+    }
 }
 
 void storeTrackInfo(const QString& oscGroup,
@@ -181,8 +190,10 @@ void storeTrackInfo(const QString& oscGroup,
         if (std::get<0>(entry) == oscGroup) {
             std::get<1>(entry) = trackArtist;
             std::get<2>(entry) = trackTitle;
-            qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
-                     << oscGroup << trackArtist << trackTitle;
+            if (sDebugOSCFunctions) {
+                qDebug() << "[OSC] [OSCFUNCTIONS] -> Updated Track Info: "
+                         << oscGroup << trackArtist << trackTitle;
+            }
             return; // Exit function after updating
         }
     }
@@ -191,13 +202,18 @@ void storeTrackInfo(const QString& oscGroup,
     for (int i = 0; i < kMaxOscTracks; ++i) {
         if (std::get<0>(g_oscTrackTable[i]).isEmpty()) { // Find empty slot
             g_oscTrackTable[i] = std::make_tuple(oscGroup, trackArtist, trackTitle);
-            qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
-                     << oscGroup << trackArtist << trackTitle;
+            if (sDebugOSCFunctions) {
+                qDebug() << "[OSC] [OSCFUNCTIONS] -> Stored New Track Info: "
+                         << oscGroup << trackArtist << trackTitle;
+            }
             return;
         }
     }
 
-    qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
+    if (sDebugOSCFunctions) {
+        qDebug() << "[OSC] -> Track Table is FULL! Cannot store more.";
+
+    }
 }
 
 QString getTrackInfo(const QString& oscGroup, const QString& oscKey) {
@@ -445,10 +461,10 @@ QString translatePath(const QString& inputPath) {
     }
 
     // Return the input path unchanged if no matches are found
-    // if (sDebug) {
-    qDebug() << "[OSC] [OSCFUNCTIONS] -> Original path:" << originalPath
-             << " Translated path:" << inputPath;
-    // }
+    if (sDebugOSCFunctions) {
+        qDebug() << "[OSC] [OSCFUNCTIONS] -> Original path:" << originalPath
+                 << " Translated path:" << inputPath;
+    }
     return inputPath;
 }
 #endif /* OSCFUNCTIONS_H */
