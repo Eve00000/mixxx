@@ -121,6 +121,14 @@ class Library: public QObject {
     bool requestRemoveDir(const QString& directory, LibraryRemovalType removalType);
     bool requestRelocateDir(const QString& previousDirectory, const QString& newDirectory);
 
+    // to let wtrackmenu get it
+    WLibraryPreparationWindow* preparationWindow() const {
+        return m_pLibraryPreparationWindowWidget;
+    }
+    WLibrary* libraryWidget() const {
+        return m_pLibraryWidget;
+    }
+
 #ifdef __ENGINEPRIME__
     std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(QWidget* parent);
 #endif
