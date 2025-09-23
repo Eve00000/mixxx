@@ -4,7 +4,7 @@
 
 
 <!--
-Eve: All singletons are defined in the regurlar fx_rack.xml so they don't get inserted more than once
+Eve: All singletons are defined in the regular fx_rack.xml so they don't get inserted more than once
 -->
   <!-- Create Singletons for samplers 1-4 because they're needed when
     showing 4 or 8 samplers... -->

@@ -1,7 +1,7 @@
 <Template>
 
 <!--
-Eve: All singletons are defined in the regurlar fx_rack.xml so they don't get inserted more than once
+Eve: All singletons are defined in the regular fx_rack.xml so they don't get inserted more than once
 -->
   <!-- <SingletonDefinition>
     <ObjectName>Samplers_Expander_<Variable name="Count"/>_Singleton</ObjectName>

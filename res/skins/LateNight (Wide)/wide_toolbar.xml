@@ -21,12 +21,6 @@
 
       <!--The library is always big in wide layout, so the toggle is removed-->
       <!--and the control/button is linked to the wide button-->
-      <WidgetGroup>
-        <ObjectName>ToolBarSection</ObjectName>
-        <SizePolicy>min,min</SizePolicy>
-        <Layout>horizontal</Layout>
-        <Children>
-
           <Template src="skins:LateNight/controls/button_2state.xml">
             <SetVariable name="TooltipId">show_waveforms</SetVariable>
             <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
