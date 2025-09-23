@@ -4,7 +4,7 @@
   <SetVariable name="ArcUnipolar">true</SetVariable>
 
 <!--
-Eve: All singletons are defined in the regurlar fx_rack.xml so they don't get inserted more than once
+Eve: All singletons are defined in the regular fx_rack.xml so they don't get inserted more than once
 -->
   <!-- Let's create Singletons for widgets we use multiple times
       at different places in each effect unit:
