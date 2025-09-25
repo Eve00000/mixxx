@@ -32,6 +32,10 @@
 #include "library/trackset/searchcrate/searchcrate.h"
 #include "library/trackset/searchcrate/searchcratefeaturehelper.h"
 #include "library/trackset/searchcrate/searchcratesummary.h"
+// for prepwin
+#include "library/playlisttablemodel.h"
+#include "widget/wlibrarypreparationwindow.h"
+#include "widget/wtracktableview.h"
 // EVE
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
@@ -316,6 +320,19 @@ void WTrackMenu::createActions() {
             // TODO(XXX): Qt6 replace enum | with QKeyCombination
             QKeySequence(static_cast<int>(kHideRemoveShortcutModifier) |
                     kHideRemoveShortcutKey);
+
+    m_pPreparationListBottomAct =
+            make_parented<QAction>(tr("Add to PreparationList (bottom)"), this);
+    connect(m_pPreparationListBottomAct,
+            &QAction::triggered,
+            this,
+            &WTrackMenu::slotAddToPreparationListBottom);
+
+    m_pPreparationListTopAct = make_parented<QAction>(tr("Add to PreparationList (top)"), this);
+    connect(m_pPreparationListTopAct,
+            &QAction::triggered,
+            this,
+            &WTrackMenu::slotAddToPreparationListTop);
 
     if (featureIsEnabled(Feature::AutoDJ)) {
         m_pAutoDJBottomAct = make_parented<QAction>(tr("Add to Auto DJ Queue (bottom)"), this);
@@ -627,6 +644,10 @@ void WTrackMenu::setupActions() {
         addAction(m_pAutoDJReplaceAct);
         addSeparator();
     }
+
+    addAction(m_pPreparationListBottomAct);
+    addAction(m_pPreparationListTopAct);
+    addSeparator();
 
     if (featureIsEnabled(Feature::LoadTo)) {
         addMenu(m_pLoadToMenu);
@@ -2841,6 +2862,68 @@ void WTrackMenu::slotShowDlgTagFetcher() {
         m_pDlgTagFetcher->loadTrack(m_pTrack);
     }
     m_pDlgTagFetcher->show();
+}
+
+void WTrackMenu::slotAddToPreparationListTop() {
+    addToPreparationList(PlaylistDAO::PreparationListSendLoc::TOP);
+}
+
+void WTrackMenu::slotAddToPreparationListBottom() {
+    addToPreparationList(PlaylistDAO::PreparationListSendLoc::BOTTOM);
+}
+
+int WTrackMenu::getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView) {
+    if (!pTrackTableView) {
+        return -1; // no table view
+    }
+
+    if (auto* pPlaylistModel = dynamic_cast<PlaylistTableModel*>(
+                pTrackTableView->getTrackModel())) {
+        int playlistId = pPlaylistModel->getPlaylist();
+        if (playlistId > 0) {
+            // qDebug() << "[WTrackMenu] ->
+            // getShowedPreparationListIdOrLatestCreated: playlistId " <<
+            // playlistId;
+            return playlistId;
+        } else {
+            // Another view in the PrepWin? -> we will add the tracks to the
+            // latest/newest preparationlist
+            qDebug() << "[WTrackMenu] -> getShowedPreparationListIdOrLatestCreated: playlistId = 0";
+            return 0;
+        }
+    }
+    // dynamic_cast failed, not a playlist model
+    // qDebug() << "[WTrackMenu] -> getShowedPreparationListIdOrLatestCreated: playlistId = 0";
+    return 0;
+}
+
+void WTrackMenu::addToPreparationList(PlaylistDAO::PreparationListSendLoc loc) {
+    const TrackIdList trackIds = getTrackIds();
+    if (trackIds.empty()) {
+        qWarning() << "[WTrackMenu] -> addToPreparationList: No tracks "
+                      "selected to add to PreparationList";
+        return;
+    }
+
+    if (!m_pLibrary) {
+        return;
+    }
+
+    WLibraryPreparationWindow* prepWindow = m_pLibrary->preparationWindow();
+    if (!prepWindow) {
+        // preparation window not open
+        return;
+    }
+
+    if (auto* pTrackTableView = prepWindow->getCurrentTrackTableView()) {
+        int playlistId = getShowedPreparationListIdOrLatestCreated(pTrackTableView);
+        PlaylistDAO& playlistDao = m_pLibrary->trackCollectionManager()
+                                           ->internalCollection()
+                                           ->getPlaylistDAO();
+        // qDebug() << "[WTrackMenu] -> addToPreparationList: playlistId " << playlistId
+        //          << " trackids sent to Playlistdao " << trackIds;
+        playlistDao.addTracksToPreparationList(playlistId, trackIds, loc);
+    }
 }
 
 void WTrackMenu::slotAddToAutoDJBottom() {

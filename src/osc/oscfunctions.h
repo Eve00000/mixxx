@@ -1,5 +1,6 @@
-#ifndef OSCFUNCTIONS_H
-#define OSCFUNCTIONS_H
+#pragma once
+// #ifndef OSCFUNCTIONS_H
+// #define OSCFUNCTIONS_H
 
 #include <QChar>
 #include <QDataStream>
@@ -467,4 +468,4 @@ QString translatePath(const QString& inputPath) {
     }
     return inputPath;
 }
-#endif /* OSCFUNCTIONS_H */
+// #endif /* OSCFUNCTIONS_H */

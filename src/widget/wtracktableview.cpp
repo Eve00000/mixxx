@@ -28,6 +28,8 @@
 #include "util/time.h"
 #include "widget/wtrackmenu.h"
 #include "widget/wtracktableviewheader.h"
+// EVE
+#include "widget/wlibrary.h"
 
 namespace {
 const bool sDebug = false;
@@ -1828,6 +1830,31 @@ bool WTrackTableView::setCurrentTrackId(const TrackId& trackId, int column, bool
     }
 
     return true;
+}
+
+void WTrackTableView::addToPreparationList(
+        int playlistId, PlaylistDAO::PreparationListSendLoc loc) {
+    // qDebug() << "[WTrackTableView] -> addToPreparationList toggled: playlistId= " << playlistId;
+
+    WTrackTableView* pLibraryTableView = m_pLibrary->libraryWidget()->getCurrentTrackTableView();
+
+    QList<TrackId> trackIds;
+    if (pLibraryTableView) {
+        trackIds = pLibraryTableView->getSelectedTrackIds();
+    }
+
+    if (trackIds.isEmpty()) {
+        qWarning() << "[WTrackTableView] -> addToPreparationList: No tracks selected in library";
+        return;
+    }
+
+    // qDebug() << "[WTrackTableView] -> addToPreparationList toggled: trackids: " << trackIds;
+    PlaylistDAO& playlistDao = m_pLibrary->trackCollectionManager()
+                                       ->internalCollection()
+                                       ->getPlaylistDAO();
+
+    m_pLibrary->trackCollectionManager()->unhideTracks(trackIds);
+    playlistDao.addTracksToPreparationList(playlistId, trackIds, loc);
 }
 
 void WTrackTableView::addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc) {

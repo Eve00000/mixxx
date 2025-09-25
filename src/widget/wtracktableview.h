@@ -138,6 +138,8 @@ class WTrackTableView : public WLibraryTableView {
     void slotrestoreCurrentIndex() {
         restoreCurrentIndex();
     }
+    TrackModel* getTrackModel() const;
+    void addToPreparationList(int playlistId, PlaylistDAO::PreparationListSendLoc loc);
 
   private slots:
     void doSortByColumn(int headerSection, Qt::SortOrder sortOrder);
@@ -175,7 +177,9 @@ class WTrackTableView : public WLibraryTableView {
     QList<int> getSelectedRowNumbers() const;
 
     // Returns the current TrackModel, or returns NULL if none is set.
-    TrackModel* getTrackModel() const;
+    // Eve Placed it in public to get access from librarycontrol to get the id of
+    // the current playlist/preparationlist in PrepWin
+    // TrackModel* getTrackModel() const;
 
     void initTrackMenu();
 

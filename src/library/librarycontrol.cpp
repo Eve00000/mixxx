@@ -11,6 +11,7 @@
 #include "control/controlpushbutton.h"
 #include "library/library.h"
 #include "library/libraryview.h"
+#include "library/playlisttablemodel.h"
 #include "mixer/playermanager.h"
 #include "moc_librarycontrol.cpp"
 #include "util/cmdlineargs.h"
@@ -281,6 +282,34 @@ LibraryControl::LibraryControl(Library* pLibrary)
                 &ControlPushButton::valueChanged,
                 this,
                 &LibraryControl::slotGoToItem);
+    }
+    // Add to preparationlmist controls
+    m_pPreparationListAddTop = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "PreparationListAddTop"));
+    m_pPreparationListAddTop->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("PreparationListAddTop")));
+#ifdef MIXXX_USE_QML
+    if (!CmdlineArgs::Instance().isQml())
+#endif
+    {
+        connect(m_pPreparationListAddTop.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotPreparationListAddTop);
+    }
+
+    m_pPreparationListAddBottom = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "PreparationListAddBottom"));
+    m_pPreparationListAddBottom->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("PreparationListAddBottom")));
+#ifdef MIXXX_USE_QML
+    if (!CmdlineArgs::Instance().isQml())
+#endif
+    {
+        connect(m_pPreparationListAddBottom.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotPreparationListAddBottom);
     }
 
     // Auto DJ controls
@@ -702,6 +731,57 @@ void LibraryControl::slotLoadSelectedIntoFirstStopped(double v) {
     WTrackTableView* pTrackTableView = m_pLibraryWidget->getCurrentTrackTableView();
     if (pTrackTableView) {
         pTrackTableView->activateSelectedTrack();
+    }
+}
+
+int LibraryControl::getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView) {
+    if (!pTrackTableView) {
+        return -1; // no table view
+    }
+
+    if (auto* pPlaylistModel = dynamic_cast<PlaylistTableModel*>(
+                pTrackTableView->getTrackModel())) {
+        int playlistId = pPlaylistModel->getPlaylist();
+        if (playlistId > 0) {
+            return playlistId;
+        } else {
+            // Another view in the PrepWin? -> we will add the tracks to the
+            // latest/newest preparationlist
+            return 0;
+        }
+    }
+    // dynamic_cast failed, not a playlist model
+    return 0;
+}
+
+void LibraryControl::slotPreparationListAddTop(double v) {
+    // qDebug() << "[LibraryControl] -> slotPreparationListAddTop toggled -> v = " << v;
+
+    if (!m_pLibraryWidget || v <= 0) {
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddTop no function";
+        return;
+    }
+
+    if (auto* pTrackTableView = m_pLibraryPreparationWindowWidget->getCurrentTrackTableView()) {
+        int playlistId = getShowedPreparationListIdOrLatestCreated(pTrackTableView);
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddTop: playlistId " << playlistId;
+        pTrackTableView->addToPreparationList(playlistId, PlaylistDAO::PreparationListSendLoc::TOP);
+    }
+}
+
+void LibraryControl::slotPreparationListAddBottom(double v) {
+    // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom toggled -> v = " << v;
+    if (!m_pLibraryWidget || v <= 0) {
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom no function";
+        return;
+    }
+
+    if (auto* pTrackTableView = m_pLibraryPreparationWindowWidget->getCurrentTrackTableView()) {
+        int playlistId = getShowedPreparationListIdOrLatestCreated(pTrackTableView);
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom:
+        // playlistId " << playlistId;
+        pTrackTableView->addToPreparationList(
+                playlistId, PlaylistDAO::PreparationListSendLoc::BOTTOM);
     }
 }
 

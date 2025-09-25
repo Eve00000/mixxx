@@ -456,9 +456,9 @@ void PreparationFeature::onPreparationWindowReady() {
         m_pPlaylistTableModel->selectPlaylist(m_pendingPlaylistId);
         emit showTrackModelInPreparationWindow(m_pPlaylistTableModel);
         emit enableCoverArtDisplay(true);
-
-        m_pendingPlaylistId = kInvalidPlaylistId;
-        m_pendingPlaylistName.clear();
+        // Don't remove the values, they are called when switching skin to fil the PrepWin
+        // m_pendingPlaylistId = kInvalidPlaylistId;
+        // m_pendingPlaylistName.clear();
     }
 }
 
