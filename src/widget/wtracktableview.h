@@ -113,6 +113,7 @@ class WTrackTableView : public WLibraryTableView {
     QColor getTrackMissingColor() const {
         return m_trackMissingColor;
     }
+    TrackModel* getTrackModel() const;
 
   signals:
     void trackMenuVisible(bool visible);
@@ -138,7 +139,6 @@ class WTrackTableView : public WLibraryTableView {
     void slotrestoreCurrentIndex() {
         restoreCurrentIndex();
     }
-    TrackModel* getTrackModel() const;
     void addToPreparationList(int playlistId, PlaylistDAO::PreparationListSendLoc loc);
 
   private slots:
