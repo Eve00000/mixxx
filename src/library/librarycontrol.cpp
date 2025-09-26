@@ -179,6 +179,11 @@ LibraryControl::LibraryControl(Library* pLibrary)
     m_pMoveFocusForward = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveFocusForward"));
     m_pMoveFocusBackward = std::make_unique<ControlPushButton>(ConfigKey("[Library]", "MoveFocusBackward"));
     m_pMoveFocus = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "MoveFocus"), false);
+    m_pFocusOnPreparationWindow = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "FocusOnPreparationWindow"));
+    m_pFocusOnLibraryWindow = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "FocusOnLibraryWindow"));
+
 #ifdef MIXXX_USE_QML
     if (!CmdlineArgs::Instance().isQml())
 #endif
@@ -195,6 +200,14 @@ LibraryControl::LibraryControl(Library* pLibrary)
                 &ControlEncoder::valueChanged,
                 this,
                 &LibraryControl::slotMoveFocus);
+        connect(m_pFocusOnPreparationWindow.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotFocusOnPreparationWindow);
+        connect(m_pFocusOnLibraryWindow.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotFocusOnLibraryWindow);
     }
 
     // Controls to move tracks on playlist
@@ -957,6 +970,32 @@ void LibraryControl::slotMoveFocusForward(double v) {
 void LibraryControl::slotMoveFocusBackward(double v) {
     if (v > 0) {
         slotMoveFocus(-1);
+    }
+}
+
+void LibraryControl::slotFocusOnPreparationWindow(double v) {
+    if (v <= 0) {
+        return;
+    }
+    if (m_pLibraryPreparationWindowWidget) {
+        if (auto* view = m_pLibraryPreparationWindowWidget->getActiveView()) {
+            view->setFocus();
+        } else {
+            qWarning() << "[LibraryControl] -> No active view in PreparationWindow to focus";
+        }
+    }
+}
+
+void LibraryControl::slotFocusOnLibraryWindow(double v) {
+    if (v <= 0) {
+        return;
+    }
+    if (m_pLibraryWidget) {
+        if (auto* view = m_pLibraryWidget->getActiveView()) {
+            view->setFocus();
+        } else {
+            qWarning() << "[LibraryControl] -> No active view in LibraryWindow to focus";
+        }
     }
 }
 

@@ -108,6 +108,8 @@ class LibraryControl : public QObject {
     void slotMoveFocusForward(double);
     void slotMoveFocusBackward(double);
     void slotMoveFocus(double);
+    void slotFocusOnPreparationWindow(double);
+    void slotFocusOnLibraryWindow(double);
     void slotMoveTrackUp(double);
     void slotMoveTrackDown(double);
     void slotMoveTrack(double);
@@ -176,6 +178,9 @@ class LibraryControl : public QObject {
     FocusWidget m_focusedWidget;
     std::unique_ptr<ControlPushButton> m_pRefocusPrevWidgetCO;
     FocusWidget m_prevFocusedWidget;
+    // Controls to focus directly on the desired window
+    std::unique_ptr<ControlPushButton> m_pFocusOnPreparationWindow;
+    std::unique_ptr<ControlPushButton> m_pFocusOnLibraryWindow;
 
     // Controls to move tracks (alt+up/down buttons)
     std::unique_ptr<ControlPushButton> m_pMoveTrackUp;
