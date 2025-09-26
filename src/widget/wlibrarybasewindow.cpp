@@ -322,7 +322,7 @@ LibraryView* WLibraryBaseWindow::getActiveView() const {
 }
 
 WTrackTableView* WLibraryBaseWindow::getCurrentTrackTableView() const {
-    qDebug() << windowName << " -> getCurrentTrackTableView toggled";
+    // qDebug() << windowName << " -> getCurrentTrackTableView toggled";
     QWidget* pCurrent = currentWidget();
     WTrackTableView* pTracksView = qobject_cast<WTrackTableView*>(pCurrent);
     if (!pTracksView) {
