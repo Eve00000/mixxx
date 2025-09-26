@@ -978,17 +978,20 @@ void LibraryControl::slotMoveFocusBackward(double v) {
 }
 
 void LibraryControl::slotFocusOnPreparationWindow(double v) {
-    qDebug() << "[LibraryControl] -> slotFocusOnPreparationWindow called width value: " << v;
     if (v <= 0) {
         return;
     }
-    if (m_pLibraryPreparationWindowWidget) {
-        if (auto* view = m_pLibraryPreparationWindowWidget->getActiveView()) {
-            view->setFocus();
-            qDebug() << "[LibraryControl] -> slotFocusOnPreparationWindow -> focussed set";
-        } else {
-            qWarning() << "[LibraryControl] -> No active view in PreparationWindow to focus";
-        }
+
+    if (!m_pLibrary) {
+        qWarning() << "[LibraryControl] No library available";
+        return;
+    }
+    auto* prepWindow = m_pLibrary->preparationWindow();
+    if (prepWindow && prepWindow->getActiveView()) {
+        prepWindow->getActiveView()->setFocus();
+        // qDebug() << "[LibraryControl] -> slotFocusOnPreparationWindow -> focussed set";
+    } else {
+        qWarning() << "[LibraryControl] -> No view available in PreparationWindow to focus on";
     }
 }
 
@@ -1000,9 +1003,9 @@ void LibraryControl::slotFocusOnLibraryWindow(double v) {
     if (m_pLibraryWidget) {
         if (auto* view = m_pLibraryWidget->getActiveView()) {
             view->setFocus();
-            qDebug() << "[LibraryControl] -> FocusOnLibraryWindow -> focussed set";
+            // qDebug() << "[LibraryControl] -> FocusOnLibraryWindow -> focussed set";
         } else {
-            qWarning() << "[LibraryControl] -> No active view in LibraryWindow to focus";
+            qWarning() << "[LibraryControl] -> No view available in LibraryWindow to focus on";
         }
     }
 }
