@@ -181,8 +181,12 @@ LibraryControl::LibraryControl(Library* pLibrary)
     m_pMoveFocus = std::make_unique<ControlEncoder>(ConfigKey("[Library]", "MoveFocus"), false);
     m_pFocusOnPreparationWindow = std::make_unique<ControlPushButton>(
             ConfigKey("[Library]", "FocusOnPreparationWindow"));
+    m_pFocusOnPreparationWindow->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("FocusOnPreparationWindow")));
     m_pFocusOnLibraryWindow = std::make_unique<ControlPushButton>(
             ConfigKey("[Library]", "FocusOnLibraryWindow"));
+    m_pFocusOnLibraryWindow->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("FocusOnLibraryWindow")));
 
 #ifdef MIXXX_USE_QML
     if (!CmdlineArgs::Instance().isQml())
@@ -974,12 +978,14 @@ void LibraryControl::slotMoveFocusBackward(double v) {
 }
 
 void LibraryControl::slotFocusOnPreparationWindow(double v) {
+    qDebug() << "[LibraryControl] -> slotFocusOnPreparationWindow called width value: " << v;
     if (v <= 0) {
         return;
     }
     if (m_pLibraryPreparationWindowWidget) {
         if (auto* view = m_pLibraryPreparationWindowWidget->getActiveView()) {
             view->setFocus();
+            qDebug() << "[LibraryControl] -> slotFocusOnPreparationWindow -> focussed set";
         } else {
             qWarning() << "[LibraryControl] -> No active view in PreparationWindow to focus";
         }
@@ -987,12 +993,14 @@ void LibraryControl::slotFocusOnPreparationWindow(double v) {
 }
 
 void LibraryControl::slotFocusOnLibraryWindow(double v) {
+    qDebug() << "[LibraryControl] -> FocusOnLibraryWindow called width value: " << v;
     if (v <= 0) {
         return;
     }
     if (m_pLibraryWidget) {
         if (auto* view = m_pLibraryWidget->getActiveView()) {
             view->setFocus();
+            qDebug() << "[LibraryControl] -> FocusOnLibraryWindow -> focussed set";
         } else {
             qWarning() << "[LibraryControl] -> No active view in LibraryWindow to focus";
         }
