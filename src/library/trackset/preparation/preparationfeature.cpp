@@ -701,7 +701,9 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
                 if (view != nullptr) {
                     hasActiveView = true;
                     const QList<TrackId> trackIds = view->getSelectedTrackIds();
-                    m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+                    if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId, m_currentPlaylistId)) {
+                        m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+                    }
                     view->setSelectedTracks(trackIds);
                 }
             }
@@ -711,8 +713,10 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
             }
         } else {
             // TODO(XXX): Care whether the append succeeded.
-            m_playlistDao.appendTrackToPlaylist(
-                    newLoadedTrackId, m_currentPlaylistId);
+            if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId, m_currentPlaylistId)) {
+                m_playlistDao.appendTrackToPlaylist(
+                        newLoadedTrackId, m_currentPlaylistId);
+            }
         }
     }
 }
