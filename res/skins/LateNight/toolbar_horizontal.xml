@@ -1,17 +1,19 @@
+<!-- Comment to get commit & CI-->
 <Template>
   <WidgetGroup>
     <ObjectName>ToolBar</ObjectName>
     <Layout>horizontal</Layout>
     <SizePolicy>e,min</SizePolicy>
     <Children>
-
+      <!--The library is always big in Horizontal layout, so the toggle is removed-->
+      <!--and the control/button is linked to the horizontal/vertical button-->
       <Template src="skins:LateNight/controls/button_2state.xml">
         <SetVariable name="TooltipId">maximize_library</SetVariable>
         <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
         <SetVariable name="Size">80f,20f</SetVariable>
         <SetVariable name="state_0_text">BIG LIBRARY</SetVariable>
         <SetVariable name="state_1_text">BIG LIBRARY</SetVariable>
-        <SetVariable name="ConfigKey">[Skin],show_maximized_library</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_horizontal_layout</SetVariable>
       </Template>
 
       <WidgetGroup>
@@ -19,127 +21,68 @@
         <Size>12f,9min</Size>
       </WidgetGroup>
 
-      <WidgetGroup><!-- GUI toggles with regular library -->
-        <ObjectName>ToolBarSection</ObjectName>
-        <SizePolicy>min,min</SizePolicy>
-        <Layout>horizontal</Layout>
-        <Children>
+      <Template src="skins:LateNight/controls/button_2state.xml">
+        <SetVariable name="TooltipId">show_waveforms</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">80f,20f</SetVariable>
+        <SetVariable name="state_0_text">WAVEFORMS</SetVariable>
+        <SetVariable name="state_1_text">WAVEFORMS</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_waveforms</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state.xml">
-            <SetVariable name="TooltipId">show_waveforms</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">80f,20f</SetVariable>
-            <SetVariable name="state_0_text">WAVEFORMS</SetVariable>
-            <SetVariable name="state_1_text">WAVEFORMS</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_waveforms</SetVariable>
-          </Template>
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">toggle_4decks</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">52f,20f</SetVariable>
+        <SetVariable name="state_0_text">4 DECKS</SetVariable>
+        <SetVariable name="state_1_text">4 DECKS</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_4decks</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">52f,20f</SetVariable>
-            <SetVariable name="state_0_text">4 DECKS</SetVariable>
-            <SetVariable name="state_1_text">4 DECKS</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_4decks</SetVariable>
-          </Template>
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">show_mixer</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">48f,20f</SetVariable>
+        <SetVariable name="state_0_text">MIXER</SetVariable>
+        <SetVariable name="state_1_text">MIXER</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_mixer</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">show_mixer</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">48f,20f</SetVariable>
-            <SetVariable name="state_0_text">MIXER</SetVariable>
-            <SetVariable name="state_1_text">MIXER</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_mixer</SetVariable>
-          </Template>
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">show_effects</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">59f,20f</SetVariable>
+        <SetVariable name="state_0_text">EFFECTS</SetVariable>
+        <SetVariable name="state_1_text">EFFECTS</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_effectrack</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">show_effects</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">59f,20f</SetVariable>
-            <SetVariable name="state_0_text">EFFECTS</SetVariable>
-            <SetVariable name="state_1_text">EFFECTS</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_effectrack</SetVariable>
-          </Template>
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">show_samplers</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">71f,20f</SetVariable>
+        <SetVariable name="state_0_text">SAMPLERS</SetVariable>
+        <SetVariable name="state_1_text">SAMPLERS</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_samplers</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">show_samplers</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">71f,20f</SetVariable>
-            <SetVariable name="state_0_text">SAMPLERS</SetVariable>
-            <SetVariable name="state_1_text">SAMPLERS</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_samplers</SetVariable>
-          </Template>
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">show_microphone</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">61f,20f</SetVariable>
+        <SetVariable name="state_0_text">MIC/AUX</SetVariable>
+        <SetVariable name="state_1_text">MIC/AUX</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_microphones</SetVariable>
+      </Template>
 
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">show_microphone</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">61f,20f</SetVariable>
-            <SetVariable name="state_0_text">MIC/AUX</SetVariable>
-            <SetVariable name="state_1_text">MIC/AUX</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_microphones</SetVariable>
-          </Template>
-
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_horizontal_layout</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">71f,20f</SetVariable>
-            <SetVariable name="state_0_text">HORIZONTAL</SetVariable>
-            <SetVariable name="state_1_text">HORIZONTAL</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_horizontal_layout</SetVariable>
-          </Template>
-
-        </Children>
-        <Connection>
-          <ConfigKey>[Skin],show_maximized_library</ConfigKey>
-          <Transform>
-            <Not/>
-          </Transform>
-          <BindProperty>visible</BindProperty>
-        </Connection>
-      </WidgetGroup>
-      <!-- GUI toggles with regular library -->
-
-      <WidgetGroup>
-        <!-- GUI toggles with maximized library -->
-        <ObjectName>ToolBarSection</ObjectName>
-        <SizePolicy>min,min</SizePolicy>
-        <Layout>horizontal</Layout>
-        <Children>
-
-          <Template src="skins:LateNight/controls/button_2state.xml">
-            <SetVariable name="TooltipId">show_waveforms</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">80f,20f</SetVariable>
-            <SetVariable name="state_0_text">DECKS</SetVariable>
-            <SetVariable name="state_1_text">DECKS</SetVariable>
-            <SetVariable name="ConfigKey">[LateNight],max_lib_show_decks</SetVariable>
-          </Template>
-
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">52f,20f</SetVariable>
-            <SetVariable name="state_0_text">4 DECKS</SetVariable>
-            <SetVariable name="state_1_text">4 DECKS</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_4decks</SetVariable>
-          </Template>
-
-          <Template src="skins:LateNight/controls/button_2state_persist.xml">
-            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
-            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
-            <SetVariable name="Size">52f,20f</SetVariable>
-            <SetVariable name="state_0_text">Horizontal</SetVariable>
-            <SetVariable name="state_1_text">Vertical</SetVariable>
-            <SetVariable name="ConfigKey">[Skin],show_horizontal_layout</SetVariable>
-          </Template>
-
-        </Children>
-        <Connection>
-          <ConfigKey>[Skin],show_maximized_library</ConfigKey>
-          <BindProperty>visible</BindProperty>
-        </Connection>
-      </WidgetGroup>
-      <!-- GUI toggles with maximized library -->
+      <Template src="skins:LateNight/controls/button_2state_persist.xml">
+        <SetVariable name="TooltipId">toggle_horizontal_layout</SetVariable>
+        <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+        <SetVariable name="Size">71f,20f</SetVariable>
+        <SetVariable name="state_0_text">HORIZONTAL</SetVariable>
+        <SetVariable name="state_1_text">HORIZONTAL</SetVariable>
+        <SetVariable name="ConfigKey">[Skin],show_horizontal_layout</SetVariable>
+      </Template>
 
       <!-- ADJUSTED SPACER TO COMPENSATE FOR ADDED BUTTON -->
       <!--WidgetGroup><Size>15f,min</Size></WidgetGroup-->
