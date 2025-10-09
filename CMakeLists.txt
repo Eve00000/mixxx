@@ -2729,6 +2729,9 @@ endif()
 # Tests
 #
 
+# Eve: to prevent multiple instances of winsock(2) being loaded
+### add_definitions(-DWIN32_LEAN_AND_MEAN)
+
 find_package(GTest CONFIG)
 default_option(BUILD_TESTING "Build with Unittests" "GTest_FOUND")
 if(BUILD_TESTING)
@@ -4382,14 +4385,6 @@ else()
             applocal
         )
       endif()
-      #install(
-      #  IMPORTED_RUNTIME_ARTIFACTS
-      #    Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin
-      #    DESTINATION
-      #    "${MIXXX_INSTALL_DATADIR}/styles"
-      #    COMPONENT
-      #    applocal
-      #)
     endif()
     if(APPLE)
       install(
