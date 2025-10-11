@@ -2460,6 +2460,7 @@ WSearchLineEdit {
   Used to split
   - Waveforms & Decks/FX/etc
   - Library feature & Coverart */
+#LibraryMainSplitter,
 #WaveformSplitter,
 #WaveformSplitter_Swapped,
 #WideScreenSplitter,
@@ -2469,6 +2470,7 @@ WSearchLineEdit {
   margin: 0px;
 }
 
+#LibraryMainSplitter::handle,
 #WaveformSplitter::handle,
 #WaveformSplitter_Swapped::handle,
 #WideScreenSplitter::handle,
@@ -2476,6 +2478,7 @@ WSearchLineEdit {
 #SidebarCoverSplitter::handle {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal.png);
   }
+  #LibraryMainSplitter::handle:pressed,
   #WaveformSplitter::handle:pressed,
   #WaveformSplitter_Swapped::handle:pressed,
   #WideScreenSplitter::handle:pressed,
@@ -2483,6 +2486,7 @@ WSearchLineEdit {
   #SidebarCoverSplitter::handle:pressed {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal_pressed.png);
   }
+  #LibraryMainSplitter::handle:vertical,
   #WaveformSplitter::handle:vertical,
   #WaveformSplitter_Swapped::handle:vertical,
   #WideScreenSplitter::handle:vertical,
