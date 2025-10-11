@@ -167,6 +167,11 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
     QSqlQuery query(m_database);
     if (cue->getId().isValid()) {
         // Update cue
+        // qDebug() << "CueDAO::saveCue: New cue - getStem1vol: " << cue->getStem1vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem2vol: " << cue->getStem2vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem3vol: " << cue->getStem3vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem4vol: " << cue->getStem4vol();
+
         query.prepare(QStringLiteral("UPDATE " CUE_TABLE " SET "
                                      "track_id=:track_id,"
                                      "type=:type,"
@@ -181,8 +186,18 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
                                      "stem_4_vol=:stem4vol"
                                      " WHERE id=:id"));
         query.bindValue(":id", cue->getId().toVariant());
+        query.bindValue(":stem1vol", cue->getStem1vol());
+        query.bindValue(":stem2vol", cue->getStem2vol());
+        query.bindValue(":stem3vol", cue->getStem3vol());
+        query.bindValue(":stem4vol", cue->getStem4vol());
+
     } else {
         // New cue
+        // qDebug() << "CueDAO::saveCue: New cue - getStem1vol: " << cue->getStem1vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem2vol: " << cue->getStem2vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem3vol: " << cue->getStem3vol();
+        // qDebug() << "CueDAO::saveCue: New cue - getStem4vol: " << cue->getStem4vol();
+
         query.prepare(
                 QStringLiteral("INSERT INTO " CUE_TABLE
                                " (track_id, type, position, length, hotcue, "
@@ -199,11 +214,11 @@ bool CueDAO::saveCue(TrackId trackId, Cue* cue) const {
     query.bindValue(":length", cue->getLengthFrames() * mixxx::kEngineChannelOutputCount);
     query.bindValue(":hotcue", cue->getHotCue());
     query.bindValue(":label", labelToQVariant(cue->getLabel()));
-    query.bindValue(":color", mixxx::RgbColor::toQVariant(cue->getColor())),
-            query.bindValue(":stem_1_vol", cue->getStem1vol()),
-            query.bindValue(":stem_2_vol", cue->getStem2vol()),
-            query.bindValue(":stem_3_vol", cue->getStem3vol()),
-            query.bindValue(":stem_4_vol", cue->getStem4vol());
+    query.bindValue(":color", mixxx::RgbColor::toQVariant(cue->getColor()));
+    query.bindValue(":stem_1_vol", cue->getStem1vol());
+    query.bindValue(":stem_2_vol", cue->getStem2vol());
+    query.bindValue(":stem_3_vol", cue->getStem3vol());
+    query.bindValue(":stem_4_vol", cue->getStem4vol());
     if (!query.exec()) {
         LOG_FAILED_QUERY(query);
         return false;
