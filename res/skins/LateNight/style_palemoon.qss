@@ -3081,16 +3081,25 @@ WSearchLineEdit {
   - Waveforms / Decks/FX/etc
   - Library sidebar / Lib Coverart */
 #WaveformSplitter,
+#WaveformSplitter_Swapped,
+#WideScreenSplitter,
+#WideScreenSplitter_Swapped,
 #SidebarCoverSplitter {
   padding: 0px;
   margin: 0px;
   }
   #WaveformSplitter::handle,
+  #WaveformSplitter_Swapped::handle,
+  #WideScreenSplitter::handle,
+  #WideScreenSplitter_Swapped::handle,
   #SidebarCoverSplitter::handle {
       image: url(skins:LateNight/palemoon/style/splitter_handle_horizontal.svg);
       height: 9px;
     }
     #WaveformSplitter::handle:pressed,
+	#WaveformSplitter_Swapped::handle:pressed,
+	#WideScreenSplitter::handle:pressed,
+	#WideScreenSplitter_Swapped::handle:pressed,
     #SidebarCoverSplitter::handle:pressed {
     /* doesn't catch hover state:
     #HorizontalSplitter::handle:hover,

@@ -2461,20 +2461,32 @@ WSearchLineEdit {
   - Waveforms & Decks/FX/etc
   - Library feature & Coverart */
 #WaveformSplitter,
+#WaveformSplitter_Swapped,
+#WideScreenSplitter,
+#WideScreenSplitter_Swapped,
 #SidebarCoverSplitter {
   padding: 0px;
   margin: 0px;
 }
 
 #WaveformSplitter::handle,
+#WaveformSplitter_Swapped::handle,
+#WideScreenSplitter::handle,
+#WideScreenSplitter_Swapped::handle,
 #SidebarCoverSplitter::handle {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal.png);
   }
   #WaveformSplitter::handle:pressed,
+  #WaveformSplitter_Swapped::handle:pressed,
+  #WideScreenSplitter::handle:pressed,
+  #WideScreenSplitter_Swapped::handle:pressed,
   #SidebarCoverSplitter::handle:pressed {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal_pressed.png);
   }
   #WaveformSplitter::handle:vertical,
+  #WaveformSplitter_Swapped::handle:vertical,
+  #WideScreenSplitter::handle:vertical,
+  #WideScreenSplitter_Swapped::handle:vertical,
   #SidebarCoverSplitter::handle:vertical {
     height: 9px;
   }
