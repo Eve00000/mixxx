@@ -309,8 +309,7 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     QString formatHotCueTooltip(
             const QString& columnValue,
             const QList<CuePointer>& cues,
-            double sampleRate,
-            TrackPointer pTrack) const;
+            double sampleRate) const;
     QString formatCuePosition(double position, double sampleRate) const;
     QString formatCueDuration(double duration, double sampleRate) const;
 };
