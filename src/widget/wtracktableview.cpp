@@ -4,6 +4,7 @@
 #include <QModelIndex>
 #include <QScrollBar>
 #include <QShortcut>
+#include <QToolTip>
 #include <QUrl>
 
 #include "control/controlobject.h"
@@ -271,6 +272,10 @@ void WTrackTableView::loadTrackModel(QAbstractItemModel* model, bool restoreStat
         header->setHighlightSections(false);
         header->setSortIndicatorShown(m_sorting);
         header->setDefaultAlignment(Qt::AlignLeft);
+        connect(selectionModel(),
+                &QItemSelectionModel::currentChanged,
+                this,
+                &WTrackTableView::slotShowTooltipForCurrentIndex);
 
         // Initialize all column-specific things
         for (int i = 0; i < model->columnCount(); ++i) {
@@ -441,6 +446,11 @@ void WTrackTableView::loadTrackModelInPreparationWindow(
         header->setSortIndicatorShown(m_sorting);
         header->setDefaultAlignment(Qt::AlignLeft);
 
+        connect(selectionModel(),
+                &QItemSelectionModel::currentChanged,
+                this,
+                &WTrackTableView::slotShowTooltipForCurrentIndex);
+
         // Initialize all column-specific things
         for (int i = 0; i < model->columnCount(); ++i) {
             // Setup delegates according to what the model tells us
@@ -541,6 +551,25 @@ void WTrackTableView::loadTrackModelInPreparationWindow(
                      << "windowNameLibrary" << " -> NO ACTION";
         }
     }
+}
+
+void WTrackTableView::slotShowTooltipForCurrentIndex(
+        const QModelIndex& current, const QModelIndex& previous) {
+    Q_UNUSED(previous);
+    if (!current.isValid()) {
+        return;
+    }
+    QString tooltipText =
+            model()->data(current, Qt::ToolTipRole).toString();
+    if (tooltipText.isEmpty()) {
+        return;
+    }
+    QRect rect = visualRect(current);
+    if (!rect.isValid()) {
+        return;
+    }
+    QPoint globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+    QToolTip::showText(globalPos, tooltipText, viewport(), rect);
 }
 
 void WTrackTableView::initTrackMenu() {
