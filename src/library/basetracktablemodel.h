@@ -306,10 +306,4 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     static bool s_bApplyPlayedTrackColor;
     QString composeHotCueTooltip(const QModelIndex& index, const QString& columnValue) const;
-    QString formatHotCueTooltip(
-            const QString& columnValue,
-            const QList<CuePointer>& cues,
-            double sampleRate) const;
-    QString formatCuePosition(double position, double sampleRate) const;
-    QString formatCueDuration(double duration, double sampleRate) const;
 };
