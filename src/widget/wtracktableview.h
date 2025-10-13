@@ -152,6 +152,7 @@ class WTrackTableView : public WLibraryTableView {
 
     void slotSortingChanged(int headerSection, Qt::SortOrder order);
     void keyNotationChanged();
+    void slotShowTooltipForCurrentIndex(const QModelIndex& current, const QModelIndex& previous);
 
   protected:
     QString getModelStateKey() const override;
@@ -206,4 +207,5 @@ class WTrackTableView : public WLibraryTableView {
     ControlProxy* m_pKeyNotation;
     ControlProxy* m_pSortColumn;
     ControlProxy* m_pSortOrder;
+    QTimer* m_pHideTooltipTimer;
 };

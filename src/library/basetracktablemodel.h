@@ -117,6 +117,10 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     static constexpr bool kApplyPlayedTrackColorDefault = true;
     static void setApplyPlayedTrackColor(bool apply);
 
+    ColumnCache::Column publicMapColumn(int column) const {
+        return mapColumn(column);
+    }
+
   protected:
     static constexpr int defaultColumnWidth() {
         return 50;
@@ -306,4 +310,7 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     static bool s_bApplyPlayedTrackColor;
     QString composeHotCueTooltip(const QModelIndex& index, const QString& columnValue) const;
+    QString generateHotcueRow(const CuePointer& pHotcue,
+            double sampleRate,
+            TrackPointer pTrack) const;
 };
