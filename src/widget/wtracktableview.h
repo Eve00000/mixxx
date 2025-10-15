@@ -207,4 +207,5 @@ class WTrackTableView : public WLibraryTableView {
     ControlProxy* m_pKeyNotation;
     ControlProxy* m_pSortColumn;
     ControlProxy* m_pSortOrder;
+    QTimer* m_pHideTooltipTimer;
 };

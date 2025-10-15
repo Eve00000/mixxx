@@ -1320,6 +1320,154 @@ QString BaseTrackTableModel::composeHotCueTooltip(
     if (!pTrack || !pTrack->getId().isValid()) {
         return columnValue;
     }
+    QColor trackColor = mixxx::RgbColor::toQColor(pTrack->getColor());
+    const QColor textColor = Color::chooseColorByBrightness(
+            trackColor,
+            Qt::white,
+            Qt::black,
+            127);
+    double duration = pTrack->getDuration();
+    QString bpmText = QString::number(pTrack->getBpm(), 'f', 2);
+    QString sampleRateText = QString::number(pTrack->getSampleRate() / 1000.0, 'f', 1);
+    QString played = QString::number(pTrack->getTimesPlayed());
+    QDateTime lastPlayed = mixxx::localDateTimeFromUtc(pTrack->getLastPlayedAt());
+    QDateTime dateAdded = mixxx::localDateTimeFromUtc(pTrack->getDateAdded());
+    // start info table
+    QString tooltipInfo = QStringLiteral(
+            "<table class='info-table' cellspacing='0' "
+            "cellpadding='0'><style>td {padding: 0; border: none;}</style>");
+
+    if (!columnValue.isEmpty()) {
+        tooltipInfo += QStringLiteral(
+                "<tr bgcolor=%1 valign=middle border=0>"
+                "<td align=left colspan=3 rowspan=1 class='fontsize-24' "
+                "style='border: none; white-space: nowrap;'><font "
+                "color=%2><b>&nbsp;%3&nbsp;</b></font></td>"
+                "<td align=right class='fontsize-28' style='border: none; "
+                "white-space: nowrap;'><font "
+                "color=%2><b>&nbsp;%4&nbsp;//&nbsp;%5&nbsp;//&nbsp;%6&nbsp;</"
+                "b></font></td>"
+                "</tr>")
+                               .arg(trackColor.name(),
+                                       textColor.name(),
+                                       // columnValue.toHtmlEscaped(),
+                                       pTrack->getTitle()
+                                               .toHtmlEscaped()
+                                               .replace(" ", "&nbsp;"),
+                                       mixxx::Duration::formatTime(duration,
+                                               mixxx::Duration::Precision::
+                                                       CENTISECONDS),
+                                       bpmText.toHtmlEscaped().replace(
+                                               " ", "&nbsp;"),
+                                       pTrack->getKeyText()
+                                               .toHtmlEscaped()
+                                               .replace(" ", "&nbsp;"));
+    }
+    tooltipInfo += QStringLiteral(
+            "<tr bgcolor=%1 valign=middle border=0>"
+            "<td align=left colspan=3 rowspan=1 class='fontsize-24' "
+            "style='border: none; white-space: nowrap;'><font "
+            "color=%2><b>&nbsp;%3&nbsp;</b></font></td>"
+            "<td align=right  class='fontsize-24' style='border: none; "
+            "white-space: nowrap;'><font "
+            "color=%2><b>&nbsp;%4&nbsp;//&nbsp;%5&nbsp;//&nbsp;%6&nbsp;</b></"
+            "font></td>"
+            "</tr>")
+                           .arg(trackColor.name(),
+                                   textColor.name(),
+                                   pTrack->getArtist().toHtmlEscaped().replace(
+                                           " ", "&nbsp;"),
+                                   pTrack->getType().toHtmlEscaped(),
+                                   pTrack->getBitrateText().toHtmlEscaped(),
+                                   sampleRateText.toHtmlEscaped());
+
+    // row with TimesPlayed - DateAdded - DateLastPlayed
+    tooltipInfo += QStringLiteral("<tr><td colspan=4 align=left class='fontsize-18'>");
+    tooltipInfo += QStringLiteral("<table width='100%'>");
+    tooltipInfo += QStringLiteral("<tr><td width='34%' align='left'>");
+    tooltipInfo += QStringLiteral("%1&nbsp;#&nbsp;Played&nbsp;")
+                           .arg(played.toHtmlEscaped());
+    tooltipInfo += QStringLiteral(
+            "</td><td align=left class='fontsize-18' width='33%' "
+            "align='center'>");
+    tooltipInfo += QStringLiteral("&nbsp;Last:&nbsp;%1&nbsp;")
+                           .arg(lastPlayed.toString("yyyy-MM-dd hh:mm:ss").toHtmlEscaped());
+    tooltipInfo += QStringLiteral(
+            "</td><td align=left class='fontsize-18' width='33%' "
+            "align='right'>");
+
+    tooltipInfo += QStringLiteral("DateAdded:&nbsp;%1")
+                           .arg(dateAdded.toString("yyyy-MM-dd").toHtmlEscaped());
+    tooltipInfo += QStringLiteral("</td></tr>");
+    tooltipInfo += QStringLiteral("</table>");
+    tooltipInfo += QStringLiteral("</td></tr>");
+
+    // row with Composer
+    if (!pTrack->getComposer().isEmpty()) {
+        tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+        tooltipInfo += QStringLiteral("&nbsp;Composer:&nbsp;%1")
+                               .arg(pTrack->getComposer().toHtmlEscaped().replace(" ", "&nbsp;"));
+        tooltipInfo += QStringLiteral("</td></tr>");
+    }
+
+    // row with AlbumArtist - Album
+    if (!pTrack->getAlbumArtist().isEmpty() || !pTrack->getAlbum().isEmpty()) {
+        tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+        if (!pTrack->getAlbumArtist().isEmpty()) {
+            tooltipInfo += QStringLiteral("&nbsp;%1").arg(pTrack->getAlbumArtist().toHtmlEscaped());
+        }
+        if (!pTrack->getAlbumArtist().isEmpty() && !pTrack->getAlbum().isEmpty()) {
+            tooltipInfo += QStringLiteral("&nbsp;::&nbsp;");
+        }
+        if (!pTrack->getAlbum().isEmpty()) {
+            tooltipInfo +=
+                    QStringLiteral("&nbsp;%1")
+                            .arg(pTrack->getAlbum().toHtmlEscaped().replace(
+                                    " ", "&nbsp;"));
+            tooltipInfo += QStringLiteral("&nbsp;#&nbsp;%1")
+                                   .arg(pTrack->getTrackNumber().toHtmlEscaped());
+        }
+        tooltipInfo += QStringLiteral("</td></tr>");
+    }
+
+    // row with Filename
+    tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+    tooltipInfo += QStringLiteral("&nbsp;File:&nbsp;%1")
+                           .arg(pTrack->getFileInfo()
+                                           .fileName()
+                                           .toHtmlEscaped()
+                                           .replace(" ", "&nbsp;"));
+    tooltipInfo += QStringLiteral("</td></tr>");
+
+    //// row with location
+    // tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+    // tooltipInfo += QStringLiteral("Path:&nbsp;%1")
+    //                        .arg(pTrack->getFileInfo().canonicalLocationPath().toHtmlEscaped().replace("
+    //                        ", "&nbsp;"));
+    // tooltipInfo += QStringLiteral("</td></tr>");
+
+    // row with Genre
+    if (!pTrack->getGenre().isEmpty()) {
+        tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+        tooltipInfo += QStringLiteral("&nbsp;Genre:&nbsp;%1")
+                               .arg(pTrack->getGenre().toHtmlEscaped().replace(" ", "&nbsp;"));
+        tooltipInfo += QStringLiteral("</td></tr>");
+    }
+
+    // row with Comment
+    if (!pTrack->getComment().isEmpty()) {
+        tooltipInfo += QStringLiteral("<tr><td colspan=4 class='fontsize-18'>");
+        tooltipInfo += QStringLiteral("&nbsp;Comment:&nbsp;%1")
+                               .arg(pTrack->getComment().toHtmlEscaped().replace(" ", "&nbsp;"));
+        tooltipInfo += QStringLiteral("</td></tr>");
+    }
+
+    // to force width
+    tooltipInfo += QStringLiteral("<tr height='10'><td colspan=4 class='fontsize-10'>");
+    tooltipInfo += QStringLiteral("&nbsp;").repeated(120);
+    tooltipInfo += QStringLiteral("</td></tr>");
+    // end info table
+    tooltipInfo += QStringLiteral("</table>");
 
     // Get all cue points for this track
     const QList<CuePointer> cues = pTrack->getCuePoints();
@@ -1331,9 +1479,30 @@ QString BaseTrackTableModel::composeHotCueTooltip(
         }
     }
 
-    // No hotcues -> column value
+    // Start HTML
+    QString tooltip = QStringLiteral(
+            "<html> "
+            "<head> "
+            "<style> "
+            ".tooltip-container { width: 800px; word-wrap: normal; }"
+            ".info-table { width: 100%; margin: 0; padding: 0; border: none; "
+            "border-collapse: collapse; }"
+            "td {padding: 0; margin:0; border: none;}"
+            ".fontsize-28 {font-size: 28px;} "
+            ".fontsize-24 {font-size: 24px;} "
+            ".fontsize-20 {font-size: 20px;} "
+            ".fontsize-18 {font-size: 18px;} "
+            ".hotcues-table { width: 100%; border-collapse: collapse; } "
+            "td { padding: 2px 5px; vertical-align: middle; } "
+            "</style> "
+            "</head> "
+            "<body> "
+            "<div class='tooltip-container'>");
+
     if (hotcues.isEmpty()) {
-        return columnValue;
+        tooltip += tooltipInfo;
+        tooltip += QStringLiteral("</div></body></html>");
+        return tooltip;
     }
 
     // Sort hotcues by number
@@ -1343,102 +1512,117 @@ QString BaseTrackTableModel::composeHotCueTooltip(
 
     double sampleRate = pTrack->getSampleRate();
 
-    // Start HTML
-    QString tooltip = QStringLiteral("<html><body>");
-
-    // Always show the column value (title, artist, composer, etc.)
-    if (!columnValue.isEmpty()) {
-        tooltip += QStringLiteral("<b>%1</b>").arg(columnValue.toHtmlEscaped());
-    }
-
-    if (!tooltip.isEmpty()) {
-        tooltip += QStringLiteral("<br><br>");
-    }
-    tooltip += QStringLiteral("<b>Hot Cues:</b>");
-    // In order to keep all properties aligned vertically we construct a html table.
-    // That means we need to wrap each field in <td></td> tags.
-    tooltip += QStringLiteral("<table><style>td {padding-right: 0.2em;}</style>");
+    tooltip += tooltipInfo;
+    // start hotcue table
+    tooltip += QStringLiteral("<table class='hotcues-table'>");
+    tooltip += QStringLiteral(
+            "<tr><td colspan=6 class='fontsize-20'><b>&nbsp;Hot "
+            "Cues:</b></td></tr>");
 
     for (const auto& pHotcue : std::as_const(hotcues)) {
-        tooltip += QStringLiteral("<tr>"); // start table row
+        // start table row
+        tooltip += QStringLiteral("<tr height='20'>");
 
-        // Make the cue appear like a colored hotcue button.
         QColor cueColor = mixxx::RgbColor::toQColor(pHotcue->getColor());
-        // Pick a contrasting color for the label, like in skins
-        // FIXME Use the skin's custoom dark/bright threshold?
         const QColor textColor = Color::chooseColorByBrightness(
                 cueColor,
                 Qt::white,
                 Qt::black,
                 127);
+
+        // td 1: #
         tooltip += QStringLiteral(
-                "<td align=right>"
+                "<td align=right class='fontsize-20'>&nbsp;"
                 "<span style='display:inline-block; "
                 "background-color: %1; "
                 "color: %2; "
                 "font-weight: bold; "
                 "vertical-align: middle; "
                 "border: 1px solid #444;'>"
-                // Qt RichText/Html only supports a subset of Html, so we
-                // need to fake left/right padding with whitespaces.
                 "&nbsp;%3&nbsp;"
                 "</span></td>")
                            .arg(cueColor.name(),
                                    textColor.name(),
                                    QString::number(pHotcue->getHotCue() + 1));
-        // Cue position
-        tooltip += QStringLiteral("<td>%1</td>")
-                           .arg(posOrLengthToSeconds(pHotcue->getPosition().value(), sampleRate));
 
-        // Add label if present
-        const QString label = pHotcue->getLabel();
-        if (!label.isEmpty()) {
-            tooltip += QStringLiteral("<td>%1</td>").arg(label.toHtmlEscaped());
-        }
-
-        // Add type icon
-        // Icons are copied from LateNight Palemoon to images/library
-        // white icons were created from the original black icons
-        // still need to detect the background
+        // td 2: icon
         QString iconHtml;
         switch (pHotcue->getType()) {
+        case mixxx::CueType::HotCue:
+            iconHtml = "\u2192";
+            tooltip += QStringLiteral(
+                    "<td class='fontsize-20' align=center><b>%1</b></td>")
+                               .arg(iconHtml);
+            break;
         case mixxx::CueType::Loop:
             // white
-            iconHtml = "<img src=':/images/library/ic_loop_active_w.svg' title='Loop'>";
+            iconHtml =
+                    "<img src=':/images/library/ic_loop_active_w.svg' "
+                    "height='20' width='20' title='Loop'>";
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;%1&nbsp;</td>").arg(iconHtml);
             // black
             // iconHtml = "<img src=':/images/library/ic_loop_active_w.svg' title='Loop'>";
             break;
         case mixxx::CueType::Jump:
             // white
-            iconHtml = "<img src=':/images/library/ic_beatjump_right_active_w.svg' title='Jump'>";
+            iconHtml =
+                    "<img "
+                    "src=':/images/library/ic_beatjump_right_active_w.svg' "
+                    "height='20' width='20' title='Jump'>";
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;%1&nbsp;</td>").arg(iconHtml);
             // black
             // iconHtml = "<img
             // src=':/images/library/ic_beatjump_right_active_bl.svg'
             // title='Jump'>";
             break;
         default:
-            iconHtml = "";
+            iconHtml = "&nbsp;";
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;%1&nbsp;</td>").arg(iconHtml);
             break;
         }
 
-        if (!iconHtml.isEmpty()) {
-            tooltip += QStringLiteral("<td>%1</td>").arg(iconHtml);
+        // td 3: add position
+        tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;%1&nbsp;</td>")
+                           .arg(posOrLengthToSeconds(pHotcue->getPosition().value(), sampleRate));
+
+        // td 4: Add label if present
+        const QString label = pHotcue->getLabel();
+        if (!label.isEmpty()) {
+            tooltip += QStringLiteral(
+                    "<td class='fontsize-20'>&nbsp;%1&nbsp;</td>")
+                               .arg(label.toHtmlEscaped());
         } else {
-            // Add empty cell for alignment when no icon
-            tooltip += QStringLiteral("<td></td>");
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;&nbsp;</td>");
         }
 
-        // Add duration for saved loops/jumps
+        // td 5: Add duration for saved loops/jumps
         const auto length = pHotcue->getLengthFrames();
         if (length > 0) {
-            tooltip += QStringLiteral("<td>(%1)</td>")
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;(%1)&nbsp;</td>")
                                .arg(posOrLengthToSeconds(length, sampleRate));
+        } else {
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;&nbsp;</td>");
         }
+
+        // 6: Stemvols
+        if (pTrack && pTrack->hasStem()) {
+            tooltip += QStringLiteral(
+                    "<td "
+                    "class='fontsize-20'>&nbsp;[%1%&nbsp;/&nbsp;%2%&nbsp;/"
+                    "&nbsp;%3%&nbsp;/&nbsp;%4%]</td>")
+                               .arg(pHotcue->getStem1vol() * 100, 0, 'f', 0)
+                               .arg(pHotcue->getStem2vol() * 100, 0, 'f', 0)
+                               .arg(pHotcue->getStem3vol() * 100, 0, 'f', 0)
+                               .arg(pHotcue->getStem4vol() * 100, 0, 'f', 0);
+        } else {
+            tooltip += QStringLiteral("<td class='fontsize-20'>&nbsp;</td>");
+        }
+
         tooltip += QStringLiteral("</tr>"); // end table row
     }
 
     // Close table and HTML
-    tooltip += QStringLiteral("</table></body></html>");
+    tooltip += QStringLiteral("</table></div></body></html>");
 
     return tooltip;
 }

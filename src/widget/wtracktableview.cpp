@@ -82,6 +82,13 @@ WTrackTableView::WTrackTableView(QWidget* parent,
             &WTrackTableView::scrollValueChanged,
             this,
             &WTrackTableView::slotScrollValueChanged);
+    // Timer to hide the tooltip after inactivity of
+    // (5) seconds if selection hasn't changed
+    m_pHideTooltipTimer = new QTimer(this);
+    m_pHideTooltipTimer->setSingleShot(true);
+    connect(m_pHideTooltipTimer, &QTimer::timeout, this, []() {
+        QToolTip::hideText();
+    });
 }
 
 WTrackTableView::~WTrackTableView() {
@@ -559,17 +566,42 @@ void WTrackTableView::slotShowTooltipForCurrentIndex(
     if (!current.isValid()) {
         return;
     }
-    QString tooltipText =
-            model()->data(current, Qt::ToolTipRole).toString();
+
+    QString tooltipText = model()->data(current, Qt::ToolTipRole).toString();
     if (tooltipText.isEmpty()) {
         return;
     }
+
     QRect rect = visualRect(current);
     if (!rect.isValid()) {
         return;
     }
-    QPoint globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+
+    QPoint globalPos;
+    auto* pBaseModel = qobject_cast<BaseSqlTableModel*>(model());
+    if (pBaseModel) {
+        auto field = pBaseModel->publicMapColumn(current.column());
+        if (field == ColumnCache::COLUMN_LIBRARYTABLE_TITLE ||
+                field == ColumnCache::COLUMN_LIBRARYTABLE_ARTIST) {
+            QWidget* mainWindow = window();
+            if (mainWindow) {
+                QRect windowRect = mainWindow->geometry();
+                globalPos = QPoint(windowRect.left() + 10,
+                        windowRect.bottom() - 10);
+            } else {
+                globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+            }
+        } else {
+            globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+        }
+    } else {
+        globalPos = viewport()->mapToGlobal(rect.bottomLeft());
+    }
+
     QToolTip::showText(globalPos, tooltipText, viewport(), rect);
+
+    // selection changed -> Restart the hide timer
+    m_pHideTooltipTimer->start(5000);
 }
 
 void WTrackTableView::initTrackMenu() {

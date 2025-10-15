@@ -117,6 +117,10 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     static constexpr bool kApplyPlayedTrackColorDefault = true;
     static void setApplyPlayedTrackColor(bool apply);
 
+    ColumnCache::Column publicMapColumn(int column) const {
+        return mapColumn(column);
+    }
+
   protected:
     static constexpr int defaultColumnWidth() {
         return 50;
