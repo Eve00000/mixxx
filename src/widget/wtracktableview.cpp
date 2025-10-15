@@ -1951,6 +1951,8 @@ void WTrackTableView::addToAutoDJReplace() {
     addToAutoDJ(PlaylistDAO::AutoDJSendLoc::REPLACE);
 }
 
+// if a field is selected, keep selection on that field, don't
+// select the whole row -> jumping to first column
 void WTrackTableView::selectTrack(const TrackId& trackId) {
     if (trackId.isValid() && setCurrentTrackId(trackId, 0, true)) {
         setSelectedTracks({trackId});
@@ -1966,44 +1968,96 @@ void WTrackTableView::moveSelection(int delta) {
         return;
     }
 
+    // Get current column before moving
+    QItemSelectionModel* currentSelection = selectionModel();
+    int currentColumn = 0; // default to first column
+
+    if (currentSelection->currentIndex().isValid()) {
+        currentColumn = currentSelection->currentIndex().column();
+    } else if (currentSelection->selectedIndexes().count() > 0) {
+        currentColumn = currentSelection->selectedIndexes().first().column();
+    }
+
     while (delta != 0) {
-        QItemSelectionModel* currentSelection = selectionModel();
         if (currentSelection->selectedRows().length() > 0) {
             if (delta > 0) {
                 // i is positive, so we want to move the highlight down
                 int row = currentSelection->selectedRows().last().row();
                 if (row + 1 < pModel->rowCount()) {
-                    selectRow(row + 1);
+                    setCurrentIndex(pModel->index(row + 1, currentColumn));
                 } else {
-                    // we wrap around at the end of the list so it is faster to get
-                    // to the top of the list again
-                    selectRow(0);
+                    // wrap around at the end of the list
+                    setCurrentIndex(pModel->index(0, currentColumn));
                 }
-
                 delta--;
             } else {
-                // i is negative, so move down
+                // i is negative, so move up
                 int row = currentSelection->selectedRows().first().row();
                 if (row - 1 >= 0) {
-                    selectRow(row - 1);
+                    setCurrentIndex(pModel->index(row - 1, currentColumn));
                 } else {
-                    selectRow(pModel->rowCount() - 1);
+                    setCurrentIndex(pModel->index(pModel->rowCount() - 1, currentColumn));
                 }
-
                 delta++;
             }
         } else {
             // no selection, so select the first or last element depending on delta
             if (delta > 0) {
-                selectRow(0);
+                setCurrentIndex(pModel->index(0, currentColumn));
                 delta--;
             } else {
-                selectRow(pModel->rowCount() - 1);
+                setCurrentIndex(pModel->index(pModel->rowCount() - 1, currentColumn));
                 delta++;
             }
         }
     }
 }
+
+// void WTrackTableView::moveSelection(int delta) {
+//     QAbstractItemModel* pModel = model();
+//
+//     if (pModel == nullptr) {
+//         return;
+//     }
+//
+//     while (delta != 0) {
+//         QItemSelectionModel* currentSelection = selectionModel();
+//         if (currentSelection->selectedRows().length() > 0) {
+//             if (delta > 0) {
+//                 // i is positive, so we want to move the highlight down
+//                 int row = currentSelection->selectedRows().last().row();
+//                 if (row + 1 < pModel->rowCount()) {
+//                     selectRow(row + 1);
+//                 } else {
+//                     // we wrap around at the end of the list so it is faster to get
+//                     // to the top of the list again
+//                     selectRow(0);
+//                 }
+//
+//                 delta--;
+//             } else {
+//                 // i is negative, so move down
+//                 int row = currentSelection->selectedRows().first().row();
+//                 if (row - 1 >= 0) {
+//                     selectRow(row - 1);
+//                 } else {
+//                     selectRow(pModel->rowCount() - 1);
+//                 }
+//
+//                 delta++;
+//             }
+//         } else {
+//             // no selection, so select the first or last element depending on delta
+//             if (delta > 0) {
+//                 selectRow(0);
+//                 delta--;
+//             } else {
+//                 selectRow(pModel->rowCount() - 1);
+//                 delta++;
+//             }
+//         }
+//     }
+// }
 
 void WTrackTableView::doSortByColumn(int headerSection, Qt::SortOrder sortOrder) {
     TrackModel* pTrackModel = getTrackModel();
