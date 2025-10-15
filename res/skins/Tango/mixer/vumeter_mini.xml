@@ -1,40 +1,251 @@
-<!--
-Description:
-  VUMeter embedded in Mic unit, Aux unit & Preview deck.
-Variables:
-  group   : [MicrophoneN], [AuxiliaryN], [PerviewDeck]
-  chanNum : channel number
-
-Rendering the meters from SVGs makes the entire GUI very laggy on older Macs.
-Refer to https://github.com/mixxxdj/mixxx/issues/9201
--->
 <Template>
+  <SetVariable name="StemGroup">
+    [Channel<Variable name="ChanNum"/>_Stem<Variable name="StemNum"/>]
+  </SetVariable>
+
   <WidgetGroup>
+    <ObjectName>StemChannel_ControlContainer</ObjectName>
     <Layout>horizontal</Layout>
-    <SizePolicy>min,max</SizePolicy>
+    <SizePolicy>min,min</SizePolicy>
     <Children>
-      <StatusLight>
-        <Size>2f,-1min</Size>
-        <TooltipId><Variable name="sourceType"/>_VuMeter</TooltipId>
-        <PathStatusLight scalemode="STRETCH">skins:Tango/graphics/vumeter_mini_clipping_over.png</PathStatusLight>
-        <PathBack scalemode="STRETCH">skins:Tango/graphics/vumeter_mini_clipping.png</PathBack>
+
+      <!-- Mini VU Meter (based on Tango skin design) -->
+      <WidgetGroup>
+        <Layout>horizontal</Layout>
+        <Size>50,26</Size>
+        <SizePolicy>min,min</SizePolicy>
+        <Children>
+          <!-- Clipping indicator -->
+          <StatusLight>
+            <Size>2f,20f</Size>
+            <TooltipId>StemPeakIndicator</TooltipId>
+            <PathStatusLight scalemode="STRETCH">
+              skins:LateNight/<Variable name="VUScheme"/>/vumeter/vumeter_stem_clipping_over.svg
+            </PathStatusLight>
+            <PathBack scalemode="STRETCH">
+              skins:LateNight/<Variable name="VUScheme"/>/vumeter/vumeter_stem_clipping.png
+            </PathBack>
+            <Connection>
+              <ConfigKey>
+                <Variable name="StemGroup"/>,peak_indicator
+              </ConfigKey>
+            </Connection>
+          </StatusLight>
+
+          <!-- Level meter -->
+          <VuMeter>
+            <Size>48f,20f</Size>
+            <PathVu scalemode="STRETCH">
+              skins:LateNight/<Variable name="VUScheme"/>/vumeter/vumeter_stem_level_over.svg
+            </PathVu>
+            <PathBack scalemode="STRETCH">
+              skins:LateNight/<Variable name="VUScheme"/>/vumeter/vumeter_stem_level.png
+            </PathBack>
+            <Horizontal>false</Horizontal>
+            <PeakHoldSize>2</PeakHoldSize>
+            <PeakHoldTime>500</PeakHoldTime>
+            <PeakFallTime>50</PeakFallTime>
+            <PeakFallStep>2</PeakFallStep>
+            <Connection>
+              <ConfigKey>
+                <Variable name="StemGroup"/>,vu_meter
+              </ConfigKey>
+            </Connection>
+          </VuMeter>
+        </Children>
+      </WidgetGroup>
+
+      <StemLabel>
+        <TooltipId>StemLabel</TooltipId>
+        <ObjectName>StemLabel</ObjectName>
+        <Group>
+          <Variable name="Group"/>
+        </Group>
+        <StemNum>
+          <Variable name="StemNum"/>
+        </StemNum>
+        <Alignment>left</Alignment>
+        <Elide>right</Elide>
+        <Size>50,26</Size>
+        <Text></Text>
+      </StemLabel>
+
+      <!-- Rest of your existing controls... -->
+      <PushButton>
+        <TooltipId>StemMuteButton</TooltipId>
+        <ObjectName>StemMuteButton</ObjectName>
+        <Size>18f,18f</Size>
+        <NumberStates>2</NumberStates>
+        <State>
+          <Number>0</Number>
+          <Unpressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill.svg
+          </Unpressed>
+          <Pressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Pressed>
+        </State>
+        <State>
+          <Number>1</Number>
+          <Unpressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Unpressed>
+          <Pressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Pressed>
+        </State>
         <Connection>
-          <ConfigKey><Variable name="group"/>,peak_indicator</ConfigKey>
+          <ButtonState>LeftButton</ButtonState>
+          <ConfigKey>
+            <Variable name="StemGroup"/>,mute_toggle
+          </ConfigKey>
+          <Transform>
+            <Not/>
+          </Transform>
         </Connection>
-      </StatusLight>
-      <VuMeter>
-        <Size><Variable name="Size"/></Size>
-        <PathVu scalemode="STRETCH">skins:Tango/graphics/vumeter_mini_level_over.png</PathVu>
-        <PathBack scalemode="STRETCH">skins:Tango/graphics/vumeter_mini_level.png</PathBack>
-        <Horizontal>false</Horizontal>
-        <PeakHoldSize>5</PeakHoldSize>
-        <PeakHoldTime>500</PeakHoldTime>
-        <PeakFallTime>50</PeakFallTime>
-        <PeakFallStep>2</PeakFallStep>
         <Connection>
-          <ConfigKey><Variable name="group"/>,vu_meter</ConfigKey>
+          <ButtonState>LeftButton</ButtonState>
+          <ConfigKey>
+            <Variable name="StemGroup"/>,mute
+          </ConfigKey>
+          <ConnectValueFromWidget>true</ConnectValueFromWidget>
+          <Transform>
+            <Not/>
+          </Transform>
         </Connection>
-      </VuMeter>
+      </PushButton>
+
+      <KnobComposed>
+        <TooltipId>StemVolumeKnob</TooltipId>
+        <Size>26f,26f</Size>
+        <Knob>
+          skins:LateNight/<Variable name="KnobScheme"/>/knobs/knob_indicator_<Variable name="KnobIndicator"/>_orange.svg
+        </Knob>
+        <BackPath>
+          skins:LateNight/<Variable name="KnobScheme"/>/knobs/knob_bg_fx.svg
+        </BackPath>
+        <MinAngle>
+          <Variable name="PotiMinAngle"/>
+        </MinAngle>
+        <MaxAngle>
+          <Variable name="PotiMaxAngle"/>
+        </MaxAngle>
+        <ArcRadius>
+          <Variable name="ArcRadiusSmall"/>
+        </ArcRadius>
+        <ArcUnipolar>
+          <Variable name="ArcUnipolar"/>
+        </ArcUnipolar>
+        <ArcReversed>
+          <Variable name="ArcReversed"/>
+        </ArcReversed>
+        <ArcColor>
+          <Variable name="ArcColorGain"/>
+        </ArcColor>
+        <ArcThickness>
+          <Variable name="ArcThickness"/>
+        </ArcThickness>
+        <ArcRoundCaps>
+          <Variable name="ArcRoundCaps"/>
+        </ArcRoundCaps>
+        <Connection>
+          <ConfigKey>
+            <Variable name="StemGroup"/>,volume
+          </ConfigKey>
+        </Connection>
+      </KnobComposed>
+
+      <WidgetGroup>
+        <Size>4f,0min</Size>
+      </WidgetGroup>
+
+      <EffectChainPresetSelector>
+        <ObjectName>StemQuickEffectSelector</ObjectName>
+        <Size>85f,18f</Size>
+        <EffectUnitGroup>
+          [QuickEffectRack1_<Variable name="StemGroup"/>]
+        </EffectUnitGroup>
+      </EffectChainPresetSelector>
+
+      <WidgetGroup>
+        <Size>2f,0min</Size>
+      </WidgetGroup>
+
+      <PushButton>
+        <TooltipId>QuickEffectRack_enabled</TooltipId>
+        <ObjectName>QuickEffectButton</ObjectName>
+        <Size>18f,18f</Size>
+        <NumberStates>2</NumberStates>
+        <State>
+          <Number>0</Number>
+          <Unpressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill.svg
+          </Unpressed>
+          <Pressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Pressed>
+        </State>
+        <State>
+          <Number>1</Number>
+          <Unpressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Unpressed>
+          <Pressed scalemode="STRETCH">
+            skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_eqkill_active.svg
+          </Pressed>
+        </State>
+        <Connection>
+          <ConfigKey>
+            [QuickEffectRack1_<Variable name="StemGroup"/>],enabled
+          </ConfigKey>
+          <ButtonState>LeftButton</ButtonState>
+        </Connection>
+      </PushButton>
+
+      <WidgetGroup>
+        <Size>2f,0min</Size>
+      </WidgetGroup>
+
+      <KnobComposed>
+        <TooltipId>QuickEffectRack_super1</TooltipId>
+        <Size>26f,26f</Size>
+        <Knob>
+          skins:LateNight/<Variable name="KnobScheme"/>/knobs/knob_indicator_<Variable name="KnobIndicator"/>_<Variable name="KnobColorQuickEffect"/>.svg
+        </Knob>
+        <BackPath>
+          skins:LateNight/<Variable name="KnobScheme"/>/knobs/knob_bg_fx.svg
+        </BackPath>
+        <MinAngle>
+          <Variable name="PotiMinAngle"/>
+        </MinAngle>
+        <MaxAngle>
+          <Variable name="PotiMaxAngle"/>
+        </MaxAngle>
+        <ArcRadius>
+          <Variable name="ArcRadiusSmall"/>
+        </ArcRadius>
+        <ArcUnipolar>
+          <Variable name="ArcUnipolar"/>
+        </ArcUnipolar>
+        <ArcReversed>
+          <Variable name="ArcReversed"/>
+        </ArcReversed>
+        <ArcColor>
+          <Variable name="ArcColorFx12Quick"/>
+        </ArcColor>
+        <ArcThickness>
+          <Variable name="ArcThickness"/>
+        </ArcThickness>
+        <ArcRoundCaps>
+          <Variable name="ArcRoundCaps"/>
+        </ArcRoundCaps>
+        <Connection>
+          <ConfigKey>
+            [QuickEffectRack1_<Variable name="StemGroup"/>],super1
+          </ConfigKey>
+        </Connection>
+      </KnobComposed>
+
     </Children>
   </WidgetGroup>
 </Template>

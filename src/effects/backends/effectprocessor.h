@@ -57,7 +57,7 @@ class EffectState {
         // Subclasses should call engineParametersChanged here.
         Q_UNUSED(engineParameters);
     };
-    virtual ~EffectState(){};
+    virtual ~EffectState() {};
 };
 
 /// EffectProcessor is an abstract base class for interfacing with an EffectSlot

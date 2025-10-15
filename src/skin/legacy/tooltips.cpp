@@ -95,6 +95,10 @@ void Tooltips::addStandardTooltips() {
             << tr("Channel Peak Indicator")
             << tr("Indicates when the signal on the channel is clipping,")
             << clippingHelp;
+    add("stem_peak_indicator")
+            << tr("Stem Peak Indicator")
+            << tr("Indicates when the signal on the channel is clipping,")
+            << clippingHelp;
 
     add("channel_peak_indicator_left")
             << tr("Channel L Peak Indicator")
@@ -124,6 +128,10 @@ void Tooltips::addStandardTooltips() {
     add("channel_VuMeter")
             << tr("Channel Volume Meter")
             << tr("Shows the current channel volume.");
+
+    add("stem_VuMeter")
+            << tr("Stem Volume Meter")
+            << tr("Shows the current stem volume.");
 
     add("channel_VuMeterL")
             << tr("Channel L Volume Meter")
@@ -984,6 +992,12 @@ void Tooltips::addStandardTooltips() {
     // Intro & outro cues
     add("show_intro_outro_cues")
             << tr("Show/hide intro & outro markers and associated buttons.");
+
+    add("keep_consistent_waveform_heights") << tr(
+            "Ensure all waveforms to have the same height across all channels. "
+            "By default, when displaying the stem controls, waveform for "
+            "channel that have no stem may render with a shorter height in "
+            "order to honor the waveform container size you have requested..");
 
     add("intro_start")
             << tr("Intro Start Marker")

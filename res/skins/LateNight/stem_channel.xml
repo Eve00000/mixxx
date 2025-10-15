@@ -7,16 +7,16 @@
 		<SizePolicy>min,min</SizePolicy>
 		<Children>
 
-			<StemLabel>
-				<TooltipId>StemLabel</TooltipId>
-				<ObjectName>StemLabel</ObjectName>
-				<Group><Variable name="Group"/></Group>
-				<StemNum><Variable name="StemNum"/></StemNum>
-				<Alignment>left</Alignment>
-				<Elide>right</Elide>
-				<Size>50,26</Size>
-				<Text></Text>
-			</StemLabel>
+      <StemLabel>
+        <TooltipId>StemLabel</TooltipId>
+        <ObjectName>StemLabel</ObjectName>
+        <Group><Variable name="Group"/></Group>
+        <StemNum><Variable name="StemNum"/></StemNum>
+        <Alignment>left</Alignment>
+        <Elide>right</Elide>
+        <Size>50f,26f</Size>
+        <Text></Text>
+      </StemLabel>
 
 			<PushButton>
 				<TooltipId>StemMuteButton</TooltipId>
@@ -119,6 +119,23 @@
 					<ConfigKey>[QuickEffectRack1_<Variable name="StemGroup"/>],super1</ConfigKey>
         </Connection>
       </KnobComposed>
+
+      <WidgetGroup><Size>2f,0min</Size></WidgetGroup>
+
+      <WidgetGroup>
+        <ObjectName>StemVU</ObjectName>
+        <Layout>horizontal</Layout>
+        <SizePolicy>40f,min</SizePolicy>
+        <!-- Changed from "f,min" to "f,fixed" -->
+        <!--Size>0min,26f</Size-->
+        <!-- Add fixed height to match other controls -->
+        <Children>
+          <Template src="skins:LateNight/mixer/vumeter_stem.xml">
+            <SetVariable name="ChannelType">stem</SetVariable>
+            <SetVariable name="VuSize">stem</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
 
     </Children>
   </WidgetGroup>
