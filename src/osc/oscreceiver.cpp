@@ -28,7 +28,7 @@ inline std::atomic<qint64> s_lastTriggerTime = 0;
 
 namespace {
 // const bool sDebug = true;
-const bool sDebugOSC = false;
+const bool sDebugOSC = true;
 } // namespace
 
 void oscFunctionsSendPtrType(

@@ -20,6 +20,7 @@ class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
 class OscReceiver;
+class OscNotifier;
 
 namespace mixxx {
 
@@ -170,4 +171,5 @@ class MixxxMainWindow : public QMainWindow {
     QSet<ControlObject*> m_skinCreatedControls;
     QThread m_oscThread;
     std::unique_ptr<OscReceiver> m_pOscReceiver;
+    std::unique_ptr<OscNotifier> m_pOscNotifier;
 };

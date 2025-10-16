@@ -68,6 +68,7 @@
 
 //  EveOSC
 #include "osc/oscfunctions.h"
+#include "osc/oscnotifier.cpp"
 #include "osc/oscreceiver.cpp"
 //  EveOSC
 
@@ -1668,6 +1669,16 @@ void MixxxMainWindow::oscEnable() {
                 responsivenessTimer->start(5000); // Check every 5 seconds
             });
         }
+
+        if (!m_pOscNotifier) {
+            qDebug() << "Create new m_pOscNotifier";
+            m_pOscNotifier = std::make_unique<OscNotifier>();
+            // Add a 3-second delay before observing the controls
+            QTimer::singleShot(3000, this, [this] {
+                m_pOscNotifier->observeControls();
+            });
+        }
+
     } else {
         qDebug() << "[MIXXXMAINWINDOW] -> Mixxx OSC Service NOT Enabled";
 
@@ -1686,6 +1697,11 @@ void MixxxMainWindow::oscEnable() {
             }
             // Reset the receiver pointer & delete the object
             m_pOscReceiver.reset();
+        }
+
+        if (m_pOscNotifier) {
+            // Reset the notifier pointer & delete the object
+            m_pOscNotifier.reset();
         }
     }
 }
