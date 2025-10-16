@@ -552,6 +552,7 @@ MixxxMainWindow::~MixxxMainWindow() {
     delete m_pGuiTick;
     delete m_pVisualsManager;
 
+    // OscReceiver
     if (m_pOscReceiver) {
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> Stopping OSC Receiver before shutdown";
         m_pOscReceiver->stop();
@@ -568,6 +569,22 @@ MixxxMainWindow::~MixxxMainWindow() {
         // m_pOscReceiver->deleteLater();
         // m_pOscReceiver.reset();
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> OSC Receiver stopped and cleaned up";
+    }
+
+    // OscNotifier
+    if (m_pOscNotifier) {
+        qDebug() << "[MIXXXMAINWINDOW] -> [OSCNOTIFIER] -> Stopping OSC Notifier thread before shutdown";
+        if (m_oscNotifierThread.isRunning()) {
+            m_oscNotifierThread.quit();
+            if (!m_oscNotifierThread.wait(3000)) {
+                qWarning()
+                        << "[MIXXXMAINWINDOW] -> [OSCNOTIFIER] -> OSC notifier thread "
+                           "did not stop in time, forcing termination.";
+                m_oscNotifierThread.terminate();
+                m_oscNotifierThread.wait();
+            }
+        }
+        qDebug() << "[MIXXXMAINWINDOW] -> [OSCNOTIFIER] -> OSC Notifier stopped and cleaned up";
     }
 }
 
@@ -1673,9 +1690,21 @@ void MixxxMainWindow::oscEnable() {
         if (!m_pOscNotifier) {
             qDebug() << "Create new m_pOscNotifier";
             m_pOscNotifier = std::make_unique<OscNotifier>();
+            m_pOscNotifier->moveToThread(&m_oscNotifierThread);
             // Add a 3-second delay before observing the controls
             QTimer::singleShot(3000, this, [this] {
-                m_pOscNotifier->observeControls();
+                qDebug() << "[MIXXXMAINWINDOW] -> Starting OSC notifier thread after delay...";
+                connect(&m_oscNotifierThread,
+                        &QThread::started,
+                        m_pOscNotifier.get(),
+                        [this] {
+                            m_pOscNotifier->observeControls();
+                        });
+                connect(&m_oscNotifierThread,
+                        &QThread::finished,
+                        this,
+                        &MixxxMainWindow::onOscNotifierThreadFinished);
+                m_oscNotifierThread.start();
             });
         }
 
@@ -1703,6 +1732,21 @@ void MixxxMainWindow::oscEnable() {
             // Reset the notifier pointer & delete the object
             m_pOscNotifier.reset();
         }
+
+        if (m_pOscNotifier) {
+            // Request interruption
+            m_oscNotifierThread.requestInterruption();
+            // Quit the thread gracefully
+            m_oscNotifierThread.quit();
+            // Wait for the thread to finish with a timeout
+            if (!m_oscNotifierThread.wait(3000)) {
+                qWarning() << "[MIXXXMAINWINDOW] -> OSC notifier thread did not stop in "
+                              "time, forcing termination.";
+                m_oscNotifierThread.terminate(); // Forcibly terminate if not stopped in time
+            }
+            // Reset the receiver pointer & delete the object
+            m_pOscNotifier.reset();
+        }
     }
 }
 
@@ -1715,5 +1759,17 @@ void MixxxMainWindow::onOscThreadFinished() {
         m_pOscReceiver->deleteLater();
         // Reset the unique pointer to null
         m_pOscReceiver.reset();
+    }
+}
+
+void MixxxMainWindow::onOscNotifierThreadFinished() {
+    qDebug() << "[MIXXXMAINWINDOW] -> OSC notifier thread finished";
+
+    // Safely delete the notifier object once the thread has finished
+    if (m_pOscNotifier) {
+        // Ensure the notifier object is deleted in the main thread
+        m_pOscNotifier->deleteLater();
+        // Reset the unique pointer to null
+        m_pOscNotifier.reset();
     }
 }

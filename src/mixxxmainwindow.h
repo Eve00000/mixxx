@@ -113,6 +113,7 @@ class MixxxMainWindow : public QMainWindow {
     // EveOSC
     void oscEnable();
     void onOscThreadFinished();
+    void onOscNotifierThreadFinished();
     // EveOSC
 
     /// Load skin to a QWidget that we set as the central widget.
@@ -170,6 +171,7 @@ class MixxxMainWindow : public QMainWindow {
 
     QSet<ControlObject*> m_skinCreatedControls;
     QThread m_oscThread;
+    QThread m_oscNotifierThread;
     std::unique_ptr<OscReceiver> m_pOscReceiver;
     std::unique_ptr<OscNotifier> m_pOscNotifier;
 };
