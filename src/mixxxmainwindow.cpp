@@ -573,7 +573,8 @@ MixxxMainWindow::~MixxxMainWindow() {
 
     // OscNotifier
     if (m_pOscNotifier) {
-        qDebug() << "[MIXXXMAINWINDOW] -> [OSCNOTIFIER] -> Stopping OSC Notifier thread before shutdown";
+        qDebug() << "[MIXXXMAINWINDOW] -> [OSCNOTIFIER] -> Stopping OSC "
+                    "Notifier thread before shutdown";
         if (m_oscNotifierThread.isRunning()) {
             m_oscNotifierThread.quit();
             if (!m_oscNotifierThread.wait(3000)) {
