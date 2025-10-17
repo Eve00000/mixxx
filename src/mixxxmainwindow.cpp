@@ -68,8 +68,8 @@
 
 //  EveOSC
 #include "osc/oscfunctions.h"
-#include "osc/oscnotifier.cpp"
-#include "osc/oscreceiver.cpp"
+#include "osc/oscnotifier.h"
+#include "osc/oscreceiver.h"
 //  EveOSC
 
 namespace {
@@ -1687,25 +1687,27 @@ void MixxxMainWindow::oscEnable() {
                 responsivenessTimer->start(5000); // Check every 5 seconds
             });
         }
-        if (!m_pOscNotifier) {
-            qDebug() << "Create new m_pOscNotifier";
-            m_pOscNotifier = std::make_unique<OscNotifier>();
-            m_pOscNotifier->moveToThread(&m_oscNotifierThread);
-            // Add a 3-second delay before observing the controls
-            QTimer::singleShot(3000, this, [this] {
-                qDebug() << "[MIXXXMAINWINDOW] -> Starting OSC notifier thread after delay...";
-                connect(&m_oscNotifierThread,
-                        &QThread::started,
-                        m_pOscNotifier.get(),
-                        [this] {
-                            m_pOscNotifier->observeControls();
-                        });
-                connect(&m_oscNotifierThread,
-                        &QThread::finished,
-                        this,
-                        &MixxxMainWindow::onOscNotifierThreadFinished);
-                m_oscNotifierThread.start();
-            });
+        if (m_pCoreServices->getSettings()->getValue<bool>(ConfigKey("[OSC]", "OscNotifier"))) {
+            if (!m_pOscNotifier) {
+                qDebug() << "Create new m_pOscNotifier";
+                m_pOscNotifier = std::make_unique<OscNotifier>();
+                m_pOscNotifier->moveToThread(&m_oscNotifierThread);
+                // Add a 3-second delay before observing the controls
+                QTimer::singleShot(3000, this, [this] {
+                    qDebug() << "[MIXXXMAINWINDOW] -> Starting OSC notifier thread after delay...";
+                    connect(&m_oscNotifierThread,
+                            &QThread::started,
+                            m_pOscNotifier.get(),
+                            [this] {
+                                m_pOscNotifier->observeControls();
+                            });
+                    connect(&m_oscNotifierThread,
+                            &QThread::finished,
+                            this,
+                            &MixxxMainWindow::onOscNotifierThreadFinished);
+                    m_oscNotifierThread.start();
+                });
+            }
         }
     } else {
         qDebug() << "[MIXXXMAINWINDOW] -> Mixxx OSC Service NOT Enabled";

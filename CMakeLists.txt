@@ -1436,6 +1436,7 @@ add_library(
   src/network/jsonwebtask.cpp
   src/network/networktask.cpp
   src/network/webtask.cpp
+  src/osc/oscfunctions.cpp
   src/osc/oscreceiver.cpp
   src/osc/oscnotifier.cpp
   src/preferences/colorpaletteeditor.cpp

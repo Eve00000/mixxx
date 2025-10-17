@@ -84,6 +84,10 @@ void DlgPrefOsc::slotUpdate() {
             ConfigKey("[OSC]", "OscSendSyncTriggers"), false));
     OscSendSyncTriggersInterval->setValue(m_pConfig->getValue(
             ConfigKey("[OSC]", "OscSendSyncTriggersInterval"), 5000));
+    OscNotifier->setChecked(m_pConfig->getValue(
+            ConfigKey("[OSC]", "OscNotifier"), false));
+    OscNotifierInterval->setValue(m_pConfig->getValue(
+            ConfigKey("[OSC]", "OscNotifierInterval"), 5000));
 }
 
 void DlgPrefOsc::slotApply() {
@@ -220,6 +224,11 @@ void DlgPrefOsc::slotApply() {
             OscSendSyncTriggers->isChecked());
     m_pConfig->setValue(ConfigKey("[OSC]", "OscSendSyncTriggersInterval"),
             OscSendSyncTriggersInterval->value());
+    // Notifier
+    m_pConfig->setValue(ConfigKey("[OSC]", "OscNotifier"),
+            OscNotifier->isChecked());
+    m_pConfig->setValue(ConfigKey("[OSC]", "OscNotifierInterval"),
+            OscNotifierInterval->value());
 }
 
 void DlgPrefOsc::slotResetToDefaults() {
