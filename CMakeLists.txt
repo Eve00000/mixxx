@@ -1437,6 +1437,7 @@ add_library(
   src/network/networktask.cpp
   src/network/webtask.cpp
   src/osc/oscreceiver.cpp
+  src/osc/oscnotifier.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
