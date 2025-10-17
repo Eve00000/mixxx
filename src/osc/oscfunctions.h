@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QMutex>
+#include <QReadWriteLock>
 #include <QRegularExpression>
 #include <QSharedPointer>
 #include <QString>
@@ -13,6 +14,7 @@
 #include <memory>
 
 #include "lo/lo.h"
+#include "preferences/usersettings.h"
 
 // Global variables (declarations)
 extern QMutex s_configMutex;
