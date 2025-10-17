@@ -1458,6 +1458,49 @@ void PlaylistDAO::setAutoDJProcessor(AutoDJProcessor* pAutoDJProcessor) {
     m_pAutoDJProcessor = pAutoDJProcessor;
 }
 
+int PlaylistDAO::getLatestPreparationList() const {
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral(
+            "SELECT id FROM Playlists WHERE HiddenType = :type order by id desc"));
+    query.bindValue(":type", PLHT_PREPLIST);
+    if (query.exec()) {
+        if (query.next()) {
+            return query.value(query.record().indexOf("id")).toInt();
+        }
+    } else {
+        LOG_FAILED_QUERY(query);
+    }
+    return kInvalidPlaylistId;
+}
+
+void PlaylistDAO::addTracksToPreparationList(int playlistId,
+        const QList<TrackId>& trackIds,
+        PreparationListSendLoc loc) {
+    // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId;
+    int targetPlaylistId = playlistId;
+    if (targetPlaylistId <= 0) {
+        targetPlaylistId = getLatestPreparationList();
+        if (targetPlaylistId == kInvalidPlaylistId) {
+            return;
+        }
+    }
+
+    switch (loc) {
+    case PreparationListSendLoc::TOP:
+        // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId
+        //          << "to Top"
+        //          << targetPlaylistId << trackIds;
+        insertTracksIntoPlaylist(trackIds, targetPlaylistId, 1);
+        break;
+    case PreparationListSendLoc::BOTTOM:
+        // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId
+        //          << "to Bottom"
+        //          << targetPlaylistId << trackIds;
+        appendTracksToPlaylist(trackIds, targetPlaylistId);
+        break;
+    }
+}
+
 void PlaylistDAO::addTracksToAutoDJQueue(const QList<TrackId>& trackIds, AutoDJSendLoc loc) {
     int iAutoDJPlaylistId = getPlaylistIdFromName(AUTODJ_TABLE);
     if (iAutoDJPlaylistId == kInvalidPlaylistId) {
