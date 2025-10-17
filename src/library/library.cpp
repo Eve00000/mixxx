@@ -29,6 +29,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/preplist/preplistfeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
@@ -78,7 +79,8 @@ Library::Library(
           m_pAutoDJFeature(nullptr),
           m_pPlaylistFeature(nullptr),
           m_pCrateFeature(nullptr),
-          m_pAnalysisFeature(nullptr) {
+          m_pAnalysisFeature(nullptr),
+          m_pPrepListFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
 
     m_pKeyNotation.reset(
@@ -105,6 +107,9 @@ Library::Library(
 
     m_pAutoDJFeature = new AutoDJFeature(this, m_pConfig, pPlayerManager);
     addFeature(m_pAutoDJFeature);
+
+    m_pPrepListFeature = new PrepListFeature(this, UserSettingsPointer(m_pConfig));
+    addFeature(m_pPrepListFeature);
 
     m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPlaylistFeature);
@@ -740,6 +745,7 @@ void Library::slotCreateCrate() {
 void Library::onSkinLoadFinished() {
     // Enable the default selection when a new skin is loaded.
     m_pSidebarModel->activateDefaultSelection();
+    m_pPrepListFeature->onPreparationWindowReady();
 }
 
 bool Library::requestAddDir(const QString& dir) {
