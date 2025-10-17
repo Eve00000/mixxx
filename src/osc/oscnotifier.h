@@ -27,7 +27,7 @@ enum class Category { Toggle,
 struct ControlSpec {
     QString group;
     QString key;
-    // If policy/interval not set, we’ll use category defaults
+    // If policy/interval not set, weâ€™ll use category defaults
     Category category;
     std::optional<Policy> policyOverride;
     std::optional<int> intervalMsOverride;
