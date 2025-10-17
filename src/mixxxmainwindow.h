@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <QThread>
 #include <memory>
 
 #include "preferences/constants.h"
@@ -18,6 +19,8 @@ class LaunchImage;
 class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
+class OscReceiver;
+class OscNotifier;
 
 namespace mixxx {
 
@@ -107,6 +110,11 @@ class MixxxMainWindow : public QMainWindow {
   private:
     void initializeWindow();
     void checkDirectRendering();
+    // EveOSC
+    void oscEnable();
+    void onOscThreadFinished();
+    void onOscNotifierThreadFinished();
+    // EveOSC
 
     /// Load skin to a QWidget that we set as the central widget.
     bool loadConfiguredSkin();
@@ -162,4 +170,8 @@ class MixxxMainWindow : public QMainWindow {
     mixxx::preferences::ScreenSaver m_inhibitScreensaver;
 
     QSet<ControlObject*> m_skinCreatedControls;
+    QThread m_oscThread;
+    QThread m_oscNotifierThread;
+    std::unique_ptr<OscReceiver> m_pOscReceiver;
+    std::unique_ptr<OscNotifier> m_pOscNotifier;
 };
