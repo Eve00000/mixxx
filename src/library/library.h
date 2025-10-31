@@ -10,6 +10,7 @@
 #ifdef __ENGINEPRIME__
 #include "library/trackset/crate/crateid.h"
 #endif
+#include "library/trackset/searchcrate/searchcrateid.h"
 #include "preferences/usersettings.h"
 #include "track/track_decl.h"
 #include "util/db/dbconnectionpool.h"
@@ -28,6 +29,7 @@ class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
 class RecordingManager;
+class SearchCrateFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
@@ -134,6 +136,8 @@ class Library: public QObject {
     void slotRefreshLibraryModels();
     void slotCreatePlaylist();
     void slotCreateCrate();
+    void slotCreateSearchCrate();
+    void slotCreateSearchCrateFromSearch(const QString& text);
     void slotSearchInCurrentView();
     void slotSearchInAllTracks();
     void onSkinLoadFinished();
@@ -199,6 +203,7 @@ class Library: public QObject {
     AutoDJFeature* m_pAutoDJFeature;
     PlaylistFeature* m_pPlaylistFeature;
     CrateFeature* m_pCrateFeature;
+    SearchCrateFeature* m_pSearchCrateFeature;
     AnalysisFeature* m_pAnalysisFeature;
     BrowseFeature* m_pBrowseFeature;
     QFont m_trackTableFont;
