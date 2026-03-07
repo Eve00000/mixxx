@@ -10,6 +10,8 @@
 #include "preferences/usersettings.h"
 #include "util/duration.h"
 #include "util/parented_ptr.h"
+#include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wlibrarytableview.h"
 #ifdef __STEM__
 #include "engine/engine.h"
@@ -21,6 +23,8 @@ class DlgTrackInfo;
 class ExternalTrackCollection;
 class Library;
 class WTrackMenu;
+class WLibrary;
+class WLibraryPreparationWindow;
 
 class WTrackTableView : public WLibraryTableView {
     Q_OBJECT
@@ -41,6 +45,7 @@ class WTrackTableView : public WLibraryTableView {
     bool hasFocus() const override;
     void setFocus() override;
     void pasteFromSidebar() override;
+    void pasteFromSidebarInPreparationWindow();
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void editSelectedItem();
@@ -119,6 +124,9 @@ class WTrackTableView : public WLibraryTableView {
                     MEMBER m_dropIndicatorColor
                             NOTIFY dropIndicatorColorChanged
                                     DESIGNABLE true);
+    // Eve Placed it in public to get access from librarycontrol to get the id of
+    // the current playlist/preparationlist in PrepWin
+    TrackModel* getTrackModel() const;
 
   signals:
     void trackMenuVisible(bool visible);
@@ -129,6 +137,7 @@ class WTrackTableView : public WLibraryTableView {
 
   public slots:
     void loadTrackModel(QAbstractItemModel* model, bool restoreState = false);
+    void loadTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = false);
     void slotMouseDoubleClicked(const QModelIndex &);
     void slotUnhide();
     void slotPurge();
@@ -144,6 +153,7 @@ class WTrackTableView : public WLibraryTableView {
     void slotrestoreCurrentIndex() {
         restoreCurrentIndex();
     }
+    void addToPreparationList(int playlistId, PlaylistDAO::PreparationListSendLoc loc);
 
   private slots:
     void doSortByColumn(int headerSection, Qt::SortOrder sortOrder);
@@ -185,7 +195,9 @@ class WTrackTableView : public WLibraryTableView {
     QList<int> getSelectedRowNumbers() const;
 
     // Returns the current TrackModel, or returns NULL if none is set.
-    TrackModel* getTrackModel() const;
+    // Eve Placed it in public to get access from librarycontrol to get the id of
+    // the current playlist/preparationlist in PrepWin
+    // TrackModel* getTrackModel() const;
 
     void initTrackMenu();
     void showTrackMenu(const QPoint pos, const QModelIndex& index);
