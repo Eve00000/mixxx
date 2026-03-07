@@ -129,6 +129,7 @@ repos:
     rev: latest # No release tag yet including #9 fix
     hooks:
       - id: qml_formatter
+        files: \.(d\.ts|ya?ml)$
   - repo: https://github.com/BlankSpruce/gersemi
     rev: 0.26.0
     hooks:
@@ -160,6 +161,17 @@ repos:
         language: python
         types: [text]
         files: ^CHANGELOG.md$
+      - id: qmlformat
+        name: qmlformat
+        entry: qmlformat
+        pass_filenames: true
+        require_serial: true
+        language: system
+        types: [text]
+        files: ^.*\.qml$
+        args: [-n, -i]
+        stages:
+          - manual
       - id: qmllint
         name: qmllint
         entry: qmllint
