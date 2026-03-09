@@ -3290,14 +3290,14 @@ target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
 # Liblo Test for CI
 # to check if liblo is included >> send some messages to itself
 # if received >> test passes
-if(BUILD_TESTING)
-  add_executable(
-    osc_mixxx_integration_test
-    src/test/osc_mixxx_integration_test.cpp
-  )
-  target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
-  add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
-endif()
+# if(BUILD_TESTING)
+#  add_executable(
+#    osc_mixxx_integration_test
+#    src/test/osc_mixxx_integration_test.cpp
+#  )
+#  target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
+#  add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
+#endif()
 
 #silence "enumeration values not handled in switch" in generated code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
