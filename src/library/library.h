@@ -19,6 +19,7 @@
 #include "util/parented_ptr.h"
 
 class AnalysisFeature;
+class AutoDJFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
@@ -227,18 +228,20 @@ class Library: public QObject {
     const static QString m_sAutoDJViewName;
     WLibrary* m_pLibraryWidget;
     WLibraryPreparationWindow* m_pLibraryPreparationWindowWidget;
-    MixxxLibraryFeature* m_pMixxxLibraryFeature;
-    PlaylistFeature* m_pPlaylistFeature;
-    GroupedPlaylistsFeature* m_pGroupedPlaylistsFeature;
-    CrateFeature* m_pCrateFeature;
-    SearchCrateFeature* m_pSearchCrateFeature;
-    GroupedSearchCratesFeature* m_pGroupedSearchCratesFeature;
-    GroupedCratesFeature* m_pGroupedCratesFeature;
-    AnalysisFeature* m_pAnalysisFeature;
-    BrowseFeature* m_pBrowseFeature;
-    PreparationFeature* m_pPreparationFeature;
+
+    parented_ptr<MixxxLibraryFeature> m_pMixxxLibraryFeature;
+    parented_ptr<AutoDJFeature> m_pAutoDJFeature;
+    parented_ptr<PlaylistFeature> m_pPlaylistFeature;
+    parented_ptr<GroupedPlaylistsFeature> m_pGroupedPlaylistsFeature;
+    parented_ptr<CrateFeature> m_pCrateFeature;
+    parented_ptr<GroupedCratesFeature> m_pGroupedCratesFeature;
+    parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
+    parented_ptr<GroupedSearchCratesFeature> m_pGroupedSearchCratesFeature;
+    parented_ptr<AnalysisFeature> m_pAnalysisFeature;
+    parented_ptr<BrowseFeature> m_pBrowseFeature;
+    parented_ptr<PreparationFeature> m_pPreparationFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;
     bool m_editMetadataSelectedClick;
-    QScopedPointer<ControlObject> m_pKeyNotation;
+    std::unique_ptr<ControlObject> m_pKeyNotation;
 };
