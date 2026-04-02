@@ -5,6 +5,7 @@
 #include "moc_rgbwaveformwidget.cpp"
 #include "waveform/renderers/waveformrenderbackground.h"
 #include "waveform/renderers/waveformrenderbeat.h"
+#include "waveform/renderers/waveformrenderbpmcurve.h"
 #include "waveform/renderers/waveformrendererendoftrack.h"
 #include "waveform/renderers/waveformrendererpreroll.h"
 #include "waveform/renderers/waveformrendererrgb.h"
@@ -20,6 +21,7 @@ RGBWaveformWidget::RGBWaveformWidget(const QString& group,
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
     addRenderer<WaveformRendererRGB>(options);
+    m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 
