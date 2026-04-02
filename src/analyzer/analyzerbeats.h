@@ -28,6 +28,8 @@ class AnalyzerBeats : public Analyzer {
     void cleanup() override;
 
   private:
+    bool saveBpmSegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray);
+    // bool saveBpmSegments2DB(TrackPointer pTrack, const QJsonArray& segmentsArray);
     bool shouldAnalyze(TrackPointer pTrack) const;
     static QHash<QString, QString> getExtraVersionInfo(
             const QString& pluginId, bool bPreferencesFastAnalysis);

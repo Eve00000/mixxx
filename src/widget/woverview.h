@@ -1,8 +1,12 @@
 #pragma once
 
 #include <QColor>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QList>
 #include <QPixmap>
+#include <QVector>
 
 #include "analyzer/analyzerprogress.h"
 #include "track/track_decl.h"
@@ -21,6 +25,26 @@ class PlayerManager;
 class QDomNode;
 class SkinContext;
 
+struct OverviewBpmPoint {
+    double position;
+    double duration;
+    double bpm_start;
+    double bpm_end;
+    double range_start;
+    double range_end;
+    QString type; // "STABLE", "INCREASE", "DECREASE"
+
+    OverviewBpmPoint()
+            : position(0),
+              duration(0),
+              bpm_start(0),
+              bpm_end(0),
+              range_start(0),
+              range_end(0),
+              type("STABLE") {
+    }
+};
+
 class WOverview : public WWidget, public TrackDropTarget {
     Q_OBJECT
   public:
@@ -33,6 +57,8 @@ class WOverview : public WWidget, public TrackDropTarget {
     void setup(const QDomNode& node, const SkinContext& context);
     virtual void initWithTrack(TrackPointer pTrack);
 
+    void loadBpmCurveForTrack(TrackPointer pTrack);
+
   public slots:
     void onConnectedControlChanged(double dParameter, double dValue) override;
     void slotTrackLoaded(TrackPointer pTrack);
@@ -43,6 +69,7 @@ class WOverview : public WWidget, public TrackDropTarget {
   signals:
     void trackDropped(const QString& filename, const QString& group) override;
     void cloneDeck(const QString& sourceGroup, const QString& targetGroup) override;
+    void requestBeatsAnalysis(TrackPointer pTrack);
 
   protected:
 
@@ -73,6 +100,21 @@ class WOverview : public WWidget, public TrackDropTarget {
     void slotScalingChanged();
 
   private:
+    // BPM curve
+    PlayerManager* m_pPlayerManager;
+    QVector<OverviewBpmPoint> m_bpmCurvePoints;
+    bool m_showBpmCurve;
+    double m_minBpm;
+    double m_maxBpm;
+    double m_yMinBpm;
+    double m_yMaxBpm;
+
+    void calculateBpmRange();
+    double mapBpmToOverviewY(double bpm, double height);
+    void drawBpmCurve(QPainter* painter, const QRect& widgetRect);
+    void triggerAnalysisForTrack(TrackPointer pTrack);
+    void checkAndRequestBpmCurve(TrackPointer pTrack);
+
     // Append the waveform overview pixmap according to available data
     // in waveform
     bool drawNextPixmapPart();

@@ -6,7 +6,9 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPen>
+#include <QStandardPaths>
 #include <QVBoxLayout>
+#include <utility>
 
 #include "analyzer/analyzerprogress.h"
 #include "control/controlproxy.h"
@@ -287,6 +289,318 @@ void WOverview::initWithTrack(TrackPointer pTrack) {
     }
 }
 
+void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
+    qDebug() << "[WOverview-BPM] loadBpmCurveForTrack called";
+
+    if (!pTrack) {
+        qDebug() << "[WOverview-BPM] No track pointer";
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    // Get track ID
+    if (!pTrack->getId().isValid()) {
+        qDebug() << "[WOverview-BPM] Track has no valid ID";
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[WOverview-BPM] Track ID string is empty";
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    QString trackTitle = pTrack->getTitle();
+    qDebug() << "[WOverview-BPM] Loading BPM curve for track:" << trackTitle << "ID:" << trackIdStr;
+
+    QString bpmDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/bpmcurve/";
+    QString jsonPath = bpmDir + trackIdStr + ".json";
+
+    qDebug() << "[WOverview-BPM] jsonPath:" << jsonPath;
+
+    // retry logic to open JSON, sometime there is a race condition
+    QFile file(jsonPath);
+    int maxRetries = 5;
+    int retryDelay = 200;
+
+    for (int retry = 0; retry < maxRetries; ++retry) {
+        if (file.open(QIODevice::ReadOnly)) {
+            break; // success
+        }
+
+        // file exists ? -> can't be opened
+        if (file.exists()) {
+            qDebug() << "[WOverview-BPM] JSON exists but cannot open (retry "
+                     << retry + 1 << "/" << maxRetries << ")";
+            QThread::msleep(retryDelay);
+            retryDelay *= 2;
+        } else {
+            // file does NOT exist
+            qDebug() << "[WOverview-BPM] Cannot open BPM JSON:" << jsonPath;
+            m_bpmCurvePoints.clear();
+            return;
+        }
+    }
+
+    if (!file.isOpen()) {
+        qDebug() << "[WOverview-BPM] Failed to open JSON after " << maxRetries << " retries";
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+    if (doc.isNull()) {
+        qDebug() << "[WOverview-BPM] Invalid JSON document:" << jsonPath;
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    if (!doc.isObject()) {
+        qDebug() << "[WOverview-BPM] JSON is not an object:" << jsonPath;
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray bpmArray;
+
+    if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
+        bpmArray = rootObj["bpm_curve"].toArray();
+    } else {
+        qDebug() << "[WOverview-BPM] No BPM array found in JSON:" << jsonPath;
+        m_bpmCurvePoints.clear();
+        return;
+    }
+
+    m_bpmCurvePoints.clear();
+
+    for (const QJsonValue& val : std::as_const(bpmArray)) {
+        if (!val.isObject())
+            continue;
+
+        QJsonObject obj = val.toObject();
+        OverviewBpmPoint pt;
+
+        pt.position = obj["position"].toDouble();
+        pt.duration = obj["duration"].toDouble();
+        pt.bpm_start = obj["bpm_start"].toDouble();
+        pt.bpm_end = obj["bpm_end"].toDouble();
+        pt.range_start = obj["range_start"].toDouble();
+        pt.range_end = obj["range_end"].toDouble();
+        pt.type = obj["type"].toString();
+
+        m_bpmCurvePoints.append(pt);
+    }
+
+    if (m_bpmCurvePoints.isEmpty()) {
+        qDebug() << "[WOverview-BPM] No valid BPM points in JSON:" << jsonPath;
+        return;
+    }
+
+    // calculate BPM range for Y-axis
+    calculateBpmRange();
+
+    qDebug() << "[WOverview-BPM] Loaded" << m_bpmCurvePoints.size() << "BPM segments for track:"
+             << trackTitle << "(" << trackIdStr << ")";
+
+    update();
+}
+
+void WOverview::checkAndRequestBpmCurve(TrackPointer pTrack) {
+    if (!pTrack)
+        return;
+
+    // Get track ID
+    if (!pTrack->getId().isValid()) {
+        return;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        return;
+    }
+
+    // JSON exists ?
+    QString bpmDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/bpmcurve/";
+    QString jsonPath = bpmDir + trackIdStr + ".json";
+
+    QFile file(jsonPath);
+    if (file.exists()) {
+        qDebug() << "[WOverview-BPM] JSON exists for track:" << pTrack->getTitle();
+        return;
+    }
+
+    // No JSON -> reanalysis
+    qDebug() << "[WOverview-BPM] No JSON for track:" << pTrack->getTitle()
+             << "- requesting analysis";
+    emit requestBeatsAnalysis(pTrack);
+}
+
+void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
+    if (!m_showBpmCurve || m_bpmCurvePoints.isEmpty()) {
+        return;
+    }
+
+    // get track info
+    ControlProxy trackSamplesControl(m_group, "track_samples");
+    ControlProxy trackSampleRateControl(m_group, "track_samplerate");
+
+    double totalTrackSamples = trackSamplesControl.get() / 2; // scale
+    double sampleRate = trackSampleRateControl.get();
+
+    if (totalTrackSamples <= 0 || sampleRate <= 0) {
+        return;
+    }
+
+    double trackLengthSeconds = totalTrackSamples / sampleRate;
+    const int width = widgetRect.width();
+    const int height = widgetRect.height();
+
+    PainterScope scope(painter);
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // draw curve with Stable / Increase / Decrease
+    painter->setPen(QPen(QColor(0, 255, 0, 180), 2));
+
+    QVector<QLineF> curveLines;
+
+    for (int i = 0; i < m_bpmCurvePoints.size(); ++i) {
+        const OverviewBpmPoint& seg = m_bpmCurvePoints[i];
+
+        double startTime = seg.position;
+        double endTime = seg.range_end;
+        double startBpm = seg.bpm_start;
+        double endBpm = seg.bpm_end;
+
+        // calculate X positions
+        double x1 = (startTime / trackLengthSeconds) * width;
+        double x2 = (endTime / trackLengthSeconds) * width;
+        double y1 = mapBpmToOverviewY(startBpm, height);
+        double y2 = mapBpmToOverviewY(endBpm, height);
+
+        // widget bounds ?
+        x1 = qBound(0.0, x1, (double)width);
+        x2 = qBound(0.0, x2, (double)width);
+        y1 = qBound(0.0, y1, (double)height);
+        y2 = qBound(0.0, y2, (double)height);
+
+        // draw line from start to end
+        curveLines.append(QLineF(x1, y1, x2, y2));
+    }
+
+    if (!curveLines.isEmpty()) {
+        painter->drawLines(curveLines);
+    }
+
+    // draw markers
+    painter->setPen(QPen(QColor(255, 0, 0, 150), 1, Qt::DashLine));
+
+    QVector<QLineF> markerLines;
+
+    for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
+        double boundaryTime = seg.position;
+        double x = (boundaryTime / trackLengthSeconds) * width;
+
+        if (x >= 0 && x <= width) {
+            markerLines.append(QLineF(x, 0, x, height));
+        }
+    }
+
+    // marker at end of last segment
+    if (!m_bpmCurvePoints.isEmpty()) {
+        double endTime = m_bpmCurvePoints.last().range_end;
+        double x = (endTime / trackLengthSeconds) * width;
+        if (x >= 0 && x <= width) {
+            markerLines.append(QLineF(x, 0, x, height));
+        }
+    }
+
+    if (!markerLines.isEmpty()) {
+        painter->drawLines(markerLines);
+    }
+
+    // draw top/bottom markers symbols
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 0, 0, 200));
+
+    for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
+        double boundaryTime = seg.position;
+        double x = (boundaryTime / trackLengthSeconds) * width;
+
+        if (x >= 0 && x <= width) {
+            QPolygonF diamond;
+            diamond << QPointF(x, 0) << QPointF(x + 3, 4)
+                    << QPointF(x, 8) << QPointF(x - 3, 4);
+            painter->drawPolygon(diamond);
+        }
+    }
+
+    // draw top/bottom markers symbols -> end of last segment
+    if (!m_bpmCurvePoints.isEmpty()) {
+        double endTime = m_bpmCurvePoints.last().range_end;
+        double x = (endTime / trackLengthSeconds) * width;
+        if (x >= 0 && x <= width) {
+            QPolygonF diamond;
+            diamond << QPointF(x, 0) << QPointF(x + 3, 4)
+                    << QPointF(x, 8) << QPointF(x - 3, 4);
+            painter->drawPolygon(diamond);
+        }
+    }
+}
+
+void WOverview::calculateBpmRange() {
+    if (m_bpmCurvePoints.isEmpty()) {
+        return;
+    }
+
+    m_minBpm = m_bpmCurvePoints[0].bpm_start;
+    m_maxBpm = m_bpmCurvePoints[0].bpm_start;
+
+    for (const auto& pt : std::as_const(m_bpmCurvePoints)) {
+        if (pt.bpm_start < m_minBpm)
+            m_minBpm = pt.bpm_start;
+        if (pt.bpm_start > m_maxBpm)
+            m_maxBpm = pt.bpm_start;
+        if (pt.bpm_end < m_minBpm)
+            m_minBpm = pt.bpm_end;
+        if (pt.bpm_end > m_maxBpm)
+            m_maxBpm = pt.bpm_end;
+    }
+
+    // 10% extra on Y-axis
+    double bpmRange = m_maxBpm - m_minBpm;
+    double padding = bpmRange * 0.1;
+    if (padding < 0.5)
+        padding = 0.5;
+
+    m_yMinBpm = m_minBpm - padding;
+    m_yMaxBpm = m_maxBpm + padding;
+
+    qDebug() << "[WOverview] BPM range:" << m_minBpm << "-" << m_maxBpm;
+    qDebug() << "[WOverview] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+}
+
+double WOverview::mapBpmToOverviewY(double bpm, double height) {
+    double bpmRange = m_yMaxBpm - m_yMinBpm;
+    if (bpmRange <= 0.001) {
+        qDebug() << "[WOverview] Invalid BPM range:" << m_yMinBpm << "-" << m_yMaxBpm;
+        return height / 2;
+    }
+
+    double normalized = (bpm - m_yMinBpm) / bpmRange;
+    normalized = qBound(0.0, normalized, 1.0);
+    return height - (normalized * height);
+}
+
 void WOverview::onConnectedControlChanged(double dParameter, double dValue) {
     // this is connected via skin to "playposition"
     Q_UNUSED(dValue);
@@ -359,6 +673,13 @@ void WOverview::onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyz
     if (updateNeeded || (m_analyzerProgress != analyzerProgress)) {
         m_analyzerProgress = analyzerProgress;
         update();
+
+        // If progress is over 95%, try to load the curve (loadBpmCurveForTrack will retry)
+        if (analyzerProgress > 0.95) {
+            QTimer::singleShot(500, this, [this]() {
+                loadBpmCurveForTrack(m_pCurrentTrack);
+            });
+        }
     }
 }
 
@@ -370,6 +691,13 @@ void WOverview::slotTrackLoaded(TrackPointer pTrack) {
     if (m_pCurrentTrack) {
         updateCues(m_pCurrentTrack->getCuePoints());
     }
+
+    if (pTrack) {
+        loadBpmCurveForTrack(pTrack);
+    } else {
+        m_bpmCurvePoints.clear();
+    }
+
     update();
 }
 
@@ -409,6 +737,10 @@ void WOverview::slotLoadingTrack(TrackPointer pNewTrack, TrackPointer pOldTrack)
                 &WOverview::slotWaveformSummaryUpdated);
         slotWaveformSummaryUpdated();
         connect(pNewTrack.get(), &Track::cuesUpdated, this, &WOverview::receiveCuesUpdated);
+
+        m_bpmCurvePoints.clear();
+        // JSON for BPM curve? -> if not reanalysis
+        checkAndRequestBpmCurve(pNewTrack);
     } else {
         m_pCurrentTrack.reset();
         m_pWaveform.clear();
@@ -717,6 +1049,8 @@ void WOverview::paintEvent(QPaintEvent* pEvent) {
         drawWaveformPixmap(&painter);
         drawPlayedOverlay(&painter);
         drawMinuteMarkers(&painter);
+        // BPM curve
+        drawBpmCurve(&painter, rect());
         drawPlayPosition(&painter);
         drawEndOfTrackFrame(&painter);
         drawAnalyzerProgress(&painter);
