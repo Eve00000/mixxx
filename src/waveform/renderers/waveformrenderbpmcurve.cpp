@@ -18,8 +18,11 @@
 #include "waveform/renderers/waveformwidgetrenderer.h"
 #include "widget/wskincolor.h"
 
+<<<<<<< HEAD
 constexpr bool showDebugWaveformRenderBpmCurve = false;
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
         : WaveformRendererAbstract(renderer),
           m_visible(true),
@@ -27,6 +30,7 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
           m_maxBpm(0),
           m_yMinBpm(0),
           m_yMaxBpm(0),
+<<<<<<< HEAD
           m_offsetSeconds(0.0),
           m_currentRateRatio(1.0),
           m_pRateRatioCO(nullptr) {
@@ -71,6 +75,9 @@ void WaveformRenderBpmCurve::onRateRatioChanged(double value) {
 
     // Recalculate Y-axis range with new rate ratio
     calculateBpmRange();
+=======
+          m_offsetSeconds(0.0) {
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 }
 
 void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skinContext) {
@@ -112,6 +119,7 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 
     QString markerLineStyleStr = skinContext.selectString(node, QStringLiteral("MarkerLineStyle"));
     if (!markerLineStyleStr.isEmpty()) {
+<<<<<<< HEAD
         if (markerLineStyleStr == "solid") {
             m_style.markerLineStyle = Qt::SolidLine;
         } else if (markerLineStyleStr == "dash") {
@@ -121,6 +129,16 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
         } else if (markerLineStyleStr == "dashdot") {
             m_style.markerLineStyle = Qt::DashDotLine;
         }
+=======
+        if (markerLineStyleStr == "solid")
+            m_style.markerLineStyle = Qt::SolidLine;
+        else if (markerLineStyleStr == "dash")
+            m_style.markerLineStyle = Qt::DashLine;
+        else if (markerLineStyleStr == "dot")
+            m_style.markerLineStyle = Qt::DotLine;
+        else if (markerLineStyleStr == "dashdot")
+            m_style.markerLineStyle = Qt::DashDotLine;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     }
 
     // label styling
@@ -188,6 +206,7 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 
     QString offsetLineStyleStr = skinContext.selectString(node, QStringLiteral("OffsetLineStyle"));
     if (!offsetLineStyleStr.isEmpty()) {
+<<<<<<< HEAD
         if (offsetLineStyleStr == "solid") {
             m_style.offsetLineStyle = Qt::SolidLine;
         } else if (offsetLineStyleStr == "dash") {
@@ -197,6 +216,16 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
         } else if (offsetLineStyleStr == "dashdot") {
             m_style.offsetLineStyle = Qt::DashDotLine;
         }
+=======
+        if (offsetLineStyleStr == "solid")
+            m_style.offsetLineStyle = Qt::SolidLine;
+        else if (offsetLineStyleStr == "dash")
+            m_style.offsetLineStyle = Qt::DashLine;
+        else if (offsetLineStyleStr == "dot")
+            m_style.offsetLineStyle = Qt::DotLine;
+        else if (offsetLineStyleStr == "dashdot")
+            m_style.offsetLineStyle = Qt::DashDotLine;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     }
 
     // visibility -> future
@@ -238,11 +267,19 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
         m_offsetSeconds = offsetStr.toDouble();
     }
 
+<<<<<<< HEAD
     loadBpmCurve();
+=======
+    // BPM curve data
+    loadBpmCurve();
+
+    // Calculate BPM range
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     calculateBpmRange();
 }
 
 void WaveformRenderBpmCurve::loadBpmCurve() {
+<<<<<<< HEAD
     m_segments.clear();
 
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
@@ -258,14 +295,31 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] Track has no valid ID";
         }
+=======
+    // current track from the renderer
+    TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+
+    if (!pTrack) {
+        qDebug() << "[WaveformRenderBpmCurve] No track loaded";
+        return;
+    }
+
+    // track ID
+    if (!pTrack->getId().isValid()) {
+        qDebug() << "[WaveformRenderBpmCurve] Track has no valid ID";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
     QString trackIdStr = pTrack->getId().toString();
     if (trackIdStr.isEmpty()) {
+<<<<<<< HEAD
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] Track ID string is empty";
         }
+=======
+        qDebug() << "[WaveformRenderBpmCurve] Track ID string is empty";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
@@ -275,6 +329,7 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
             "/bpmcurve/";
     QString jsonPath = bpmDir + trackIdStr + ".json";
 
+<<<<<<< HEAD
     // if (showDebugWaveformRenderBpmCurve) {
     qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve from:" << jsonPath;
     //}
@@ -284,6 +339,13 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] Cannot open BPM JSON:" << jsonPath;
         }
+=======
+    qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve from:" << jsonPath;
+
+    QFile file(jsonPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "[WaveformRenderBpmCurve] Cannot open BPM JSON:" << jsonPath;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
@@ -292,16 +354,24 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull()) {
+<<<<<<< HEAD
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] Invalid JSON document";
         }
+=======
+        qDebug() << "[WaveformRenderBpmCurve] Invalid JSON document";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
     if (!doc.isObject()) {
+<<<<<<< HEAD
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] JSON is not an object";
         }
+=======
+        qDebug() << "[WaveformRenderBpmCurve] JSON is not an object";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
@@ -311,9 +381,13 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
     if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
         bpmArray = rootObj["bpm_curve"].toArray();
     } else {
+<<<<<<< HEAD
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] No BPM array found in JSON";
         }
+=======
+        qDebug() << "[WaveformRenderBpmCurve] No BPM array found in JSON";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         return;
     }
 
@@ -329,9 +403,14 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
     if (isSegmentFormat) {
         // Load as segments directly
         for (const QJsonValue& val : std::as_const(bpmArray)) {
+<<<<<<< HEAD
             if (!val.isObject()) {
                 continue;
             }
+=======
+            if (!val.isObject())
+                continue;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
             QJsonObject obj = val.toObject();
             SegmentPoint seg;
@@ -346,9 +425,13 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 
             m_segments.append(seg);
         }
+<<<<<<< HEAD
         if (showDebugWaveformRenderBpmCurve) {
             qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size() << "BPM segments";
         }
+=======
+        qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size() << "BPM segments";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     }
 
     // offset from JSON if present
@@ -356,10 +439,15 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         QJsonObject trackObj = rootObj["track"].toObject();
         if (trackObj.contains("offset_seconds")) {
             m_offsetSeconds = trackObj["offset_seconds"].toDouble();
+<<<<<<< HEAD
             if (showDebugWaveformRenderBpmCurve) {
                 qDebug() << "[WaveformRenderBpmCurve] Loaded offset from JSON:"
                          << m_offsetSeconds << "s";
             }
+=======
+            qDebug() << "[WaveformRenderBpmCurve] Loaded offset from JSON:"
+                     << m_offsetSeconds << "s";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         }
     }
 
@@ -367,6 +455,7 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 }
 
 void WaveformRenderBpmCurve::onSetTrack() {
+<<<<<<< HEAD
     if (showDebugWaveformRenderBpmCurve) {
         qDebug() << "[WaveformRenderBpmCurve] onSetTrack called";
     }
@@ -377,6 +466,9 @@ void WaveformRenderBpmCurve::onSetTrack() {
     m_maxBpm = 0;
     m_yMinBpm = 0;
     m_yMaxBpm = 0;
+=======
+    qDebug() << "[WaveformRenderBpmCurve] onSetTrack called";
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     loadBpmCurve();
     calculateBpmRange();
 }
@@ -390,6 +482,7 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
         return;
     }
 
+<<<<<<< HEAD
     double minBpm = m_segments[0].bpm_start * m_currentRateRatio;
     double maxBpm = m_segments[0].bpm_start * m_currentRateRatio;
 
@@ -448,6 +541,33 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
                  << "):" << m_minBpm << "-" << m_maxBpm;
         qDebug() << "[WaveformRenderBpmCurve] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
     }
+=======
+    m_minBpm = m_segments[0].bpm_start;
+    m_maxBpm = m_segments[0].bpm_start;
+
+    for (const auto& seg : std::as_const(m_segments)) {
+        if (seg.bpm_start < m_minBpm)
+            m_minBpm = seg.bpm_start;
+        if (seg.bpm_start > m_maxBpm)
+            m_maxBpm = seg.bpm_start;
+        if (seg.bpm_end < m_minBpm)
+            m_minBpm = seg.bpm_end;
+        if (seg.bpm_end > m_maxBpm)
+            m_maxBpm = seg.bpm_end;
+    }
+
+    // 10% extra Y-axis
+    double bpmRange = m_maxBpm - m_minBpm;
+    double padding = bpmRange * 0.1;
+    if (padding < 0.5)
+        padding = 0.5;
+
+    m_yMinBpm = m_minBpm - padding;
+    m_yMaxBpm = m_maxBpm + padding;
+
+    qDebug() << "[WaveformRenderBpmCurve] BPM range:" << m_minBpm << "-" << m_maxBpm;
+    qDebug() << "[WaveformRenderBpmCurve] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 }
 
 void WaveformRenderBpmCurve::setOffset(double offsetSeconds) {
@@ -460,6 +580,7 @@ double WaveformRenderBpmCurve::getPositionWithOffset(double positionSeconds) con
 
 double WaveformRenderBpmCurve::mapBpmToY(
         double bpm, double yMinBpm, double yMaxBpm, double height) {
+<<<<<<< HEAD
     // Apply rate ratio to BPM value
     double adjustedBpm = bpm * m_currentRateRatio;
 
@@ -469,6 +590,13 @@ double WaveformRenderBpmCurve::mapBpmToY(
     }
 
     double normalized = (adjustedBpm - yMinBpm) / bpmRange;
+=======
+    double bpmRange = yMaxBpm - yMinBpm;
+    if (bpmRange <= 0)
+        return height / 2;
+
+    double normalized = (bpm - yMinBpm) / bpmRange;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     normalized = qBound(0.0, normalized, 1.0);
     return height - (normalized * height);
 }
@@ -477,10 +605,14 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
         const QPointF& position,
         double bpm,
         Qt::Orientation orientation) {
+<<<<<<< HEAD
     // Apply rate ratio to displayed BPM value
     double adjustedBpm = bpm * m_currentRateRatio;
     QString labelText = QString::number(adjustedBpm, 'f', m_style.labelDecimalPlaces);
 
+=======
+    QString labelText = QString::number(bpm, 'f', m_style.labelDecimalPlaces);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     QRect textRect = painter->fontMetrics().boundingRect(labelText);
     int padding = 4;
 
@@ -495,6 +627,7 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
             labelPos.setX(painter->device()->width() - textRect.width() - padding * 2);
         }
 
+<<<<<<< HEAD
         // Draw background if needed
         // if background rectangle is needed
         // QRect bgRect(static_cast<int>(labelPos.x() - padding),
@@ -506,6 +639,18 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
         // painter->drawRoundedRect(bgRect, 3, 3);
 
         // Draw textlabels
+=======
+        // Draw background - explicit int casts
+        QRect bgRect(static_cast<int>(labelPos.x() - padding),
+                static_cast<int>(labelPos.y() - padding),
+                textRect.width() + padding * 2,
+                textRect.height() + padding * 2);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(m_style.labelBackgroundColor);
+        painter->drawRoundedRect(bgRect, 3, 3);
+
+        // Draw text - explicit int casts
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         painter->setPen(QPen(m_style.labelTextColor, 1));
         painter->drawText(static_cast<int>(labelPos.x()),
                 static_cast<int>(labelPos.y() + textRect.height()),
@@ -514,6 +659,7 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
+<<<<<<< HEAD
     // if segments would change like with re-analyze
     // check for reload -> once per second max
     // static int frameCount = 0;
@@ -549,6 +695,8 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         return;
     }
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     if (!m_visible || m_segments.isEmpty()) {
         return;
     }
@@ -558,6 +706,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         return;
     }
 
+<<<<<<< HEAD
     // Update rate ratio from control proxy each frame atm
     if (m_pRateRatioCO) {
         double newRate = m_pRateRatioCO->get();
@@ -571,6 +720,8 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         }
     }
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     double trackLengthSeconds = pTrack->getDuration();
     double trackSamples = m_waveformRenderer->getTrackSamples();
 
@@ -612,6 +763,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     QVector<QLineF> curveLines;
 
     for (const auto& seg : std::as_const(m_segments)) {
+<<<<<<< HEAD
         // Skip invalid segments
         if (seg.duration <= 0.001) {
             continue;
@@ -628,6 +780,11 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
             continue;
         }
 
+=======
+        double startTime = seg.position + m_offsetSeconds;
+        double endTime = seg.range_end + m_offsetSeconds;
+
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         double startBpm = seg.bpm_start;
         double endBpm = seg.bpm_end;
 
@@ -635,10 +792,13 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         double startPos = startTime * (trackSamples / trackLengthSeconds);
         double endPos = endTime * (trackSamples / trackLengthSeconds);
 
+<<<<<<< HEAD
         // Clamp to valid sample range
         startPos = qMax(0.0, qMin(startPos, trackSamples));
         endPos = qMax(0.0, qMin(endPos, trackSamples));
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         // outside visible range
         if (endPos < startSample || startPos > endSample) {
             continue;
@@ -716,7 +876,11 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
         // draw labels
         if (m_style.showLabels) {
+<<<<<<< HEAD
             for (const auto& labelInfo : std::as_const(labelPositions)) {
+=======
+            for (const auto& labelInfo : labelPositions) {
+>>>>>>> b48e47df9c (BPMCURVE TEST)
                 drawLabel(painter, labelInfo.first, labelInfo.second, orientation);
             }
         }
@@ -729,11 +893,19 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
                 0.0, ::WaveformRendererAbstract::Play);
         if (trackStartX >= 0 && trackStartX <= rendererWidth) {
             if (orientation == Qt::Horizontal) {
+<<<<<<< HEAD
+=======
+                // painter->drawLine(trackStartX, 0, trackStartX, rendererHeight);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
                 painter->drawLine(static_cast<int>(trackStartX),
                         0,
                         static_cast<int>(trackStartX),
                         static_cast<int>(rendererHeight));
             } else {
+<<<<<<< HEAD
+=======
+                // painter->drawLine(0, trackStartX, rendererWidth, trackStartX);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
                 painter->drawLine(0,
                         static_cast<int>(trackStartX),
                         static_cast<int>(rendererWidth),
@@ -742,6 +914,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         }
     }
 
+<<<<<<< HEAD
     // draw segment end marker with BPM label (at the end of the last segment)
     if (m_style.showTrackStart && !m_segments.isEmpty()) {
         painter->setPen(QPen(m_style.trackStartColor, m_style.trackStartWidth, Qt::SolidLine));
@@ -783,6 +956,8 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         }
     }
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     // draw offset
     if (m_style.showOffsetIndicator && !m_segments.isEmpty() && std::abs(m_offsetSeconds) > 0.001) {
         painter->setPen(QPen(m_style.offsetColor, m_style.offsetWidth, m_style.offsetLineStyle));
@@ -794,11 +969,19 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
         if (offsetX >= 0 && offsetX <= rendererWidth) {
             if (orientation == Qt::Horizontal) {
+<<<<<<< HEAD
+=======
+                // painter->drawLine(offsetX, 0, offsetX, rendererHeight);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
                 painter->drawLine(static_cast<int>(offsetX),
                         0,
                         static_cast<int>(offsetX),
                         static_cast<int>(rendererHeight));
             } else {
+<<<<<<< HEAD
+=======
+                // painter->drawLine(0, offsetX, rendererWidth, offsetX);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
                 painter->drawLine(0,
                         static_cast<int>(offsetX),
                         static_cast<int>(rendererWidth),

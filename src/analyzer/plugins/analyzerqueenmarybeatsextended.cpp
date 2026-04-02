@@ -8,7 +8,10 @@
 #include <numeric>
 #include <set>
 #include <utility>
+<<<<<<< HEAD
 #include <vector>
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
 #include "analyzer/constants.h"
 #include "util/math.h"
@@ -33,10 +36,18 @@ DFConfig makeDetectionFunctionConfig(int stepSizeFrames, int windowSize) {
 
 } // namespace
 
+<<<<<<< HEAD
+=======
+// static constexpr int kWindowSizeBeats = 12;
+// static constexpr int kStepSizeBeats = 3;
+// static constexpr int kSmoothWindowLength = 7;
+
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 AnalyzerQueenMaryBeatsExtended::AnalyzerQueenMaryBeatsExtended()
         : m_windowSize(0),
           m_stepSizeFrames(0),
           m_trackDuration(0.0) {
+<<<<<<< HEAD
     // Initialize musical context with defaults
     m_musicalContext.timeSignature = 4;
     m_musicalContext.beatsPerBar = 4;
@@ -44,6 +55,8 @@ AnalyzerQueenMaryBeatsExtended::AnalyzerQueenMaryBeatsExtended()
     m_musicalContext.perceivedBpm = 120.0;
     m_musicalContext.beatsPerPhrase = 32;
     m_musicalContext.phraseSeconds = 16.0;
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 }
 
 AnalyzerQueenMaryBeatsExtended::~AnalyzerQueenMaryBeatsExtended() {
@@ -91,9 +104,14 @@ double AnalyzerQueenMaryBeatsExtended::calculateLocalBpm(const std::vector<doubl
 }
 
 double AnalyzerQueenMaryBeatsExtended::calculateConfidence(const std::vector<double>& intervals) {
+<<<<<<< HEAD
     if (intervals.size() < 2) {
         return 0.6;
     }
+=======
+    if (intervals.size() < 2)
+        return 0.6;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
     double sum = std::accumulate(intervals.begin(), intervals.end(), 0.0);
     double mean = sum / static_cast<double>(intervals.size());
@@ -111,9 +129,14 @@ double AnalyzerQueenMaryBeatsExtended::calculateConfidence(const std::vector<dou
 
 void AnalyzerQueenMaryBeatsExtended::smoothBpmData(
         std::vector<double>& bpmValues, int windowLength) {
+<<<<<<< HEAD
     if (static_cast<int>(bpmValues.size()) < windowLength) {
         return;
     }
+=======
+    if (static_cast<int>(bpmValues.size()) < windowLength)
+        return;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
     std::vector<double> smoothed(bpmValues.size());
     int halfWindow = windowLength / 2;
@@ -134,6 +157,7 @@ void AnalyzerQueenMaryBeatsExtended::smoothBpmData(
     bpmValues = smoothed;
 }
 
+<<<<<<< HEAD
 void AnalyzerQueenMaryBeatsExtended::detectMusicalContext() {
     if (m_beatTimes.size() < 100) {
         qDebug() << "[QueenMaryBeatsExtended] Not enough beats to detect musical context";
@@ -328,6 +352,10 @@ void AnalyzerQueenMaryBeatsExtended::snapSegmentsToBeats() {
 
 void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
     if (m_resultBeats.size() < kWindowSizeBeats) {
+=======
+void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
+    if (m_resultBeats.size() < 12) {
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM analysis";
         return;
     }
@@ -340,13 +368,17 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
 
     m_trackDuration = m_beatTimes.back();
 
+<<<<<<< HEAD
     // Detect musical context (time signature, phrase length)
     detectMusicalContext();
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     // Calculate BPM at sliding windows
     std::vector<double> bpmTimes;
     std::vector<double> bpmValues;
 
+<<<<<<< HEAD
     for (size_t i = 0; i + kWindowSizeBeats <= m_beatTimes.size(); i += kStepSizeBeats) {
         double bpm = calculateLocalBpm(m_beatTimes, static_cast<int>(i), kWindowSizeBeats);
         if (bpm > 0 && bpm < 300) {
@@ -354,6 +386,16 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
             bpmTimes.push_back(m_beatTimes[windowCenter]);
             bpmValues.push_back(bpm);
         }
+=======
+    for (size_t i = 0; i + 12 <= m_beatTimes.size(); i += 3) {
+        double totalInterval = m_beatTimes[i + 12] - m_beatTimes[i];
+        double avgInterval = totalInterval / 12;
+        double localBpm = 60.0 / avgInterval;
+
+        size_t windowCenter = i + 6;
+        bpmTimes.push_back(m_beatTimes[windowCenter]);
+        bpmValues.push_back(localBpm);
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     }
 
     if (bpmValues.empty()) {
@@ -361,6 +403,7 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
         return;
     }
 
+<<<<<<< HEAD
     // Smooth BPM data
     std::vector<double> bpmSmooth = bpmValues;
     smoothBpmData(bpmSmooth, kSmoothWindowLength);
@@ -373,21 +416,66 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
         if (timeSpan <= 0) {
             continue;
         }
+=======
+    // Light smoothing
+    std::vector<double> bpmSmooth = bpmValues;
+    int smoothWindow = 5;
+    // if (bpmSmooth.size() >= smoothWindow) {
+    if (static_cast<int>(bpmSmooth.size()) >= smoothWindow) {
+        std::vector<double> smoothed(bpmSmooth.size());
+        for (size_t i = 0; i < bpmSmooth.size(); ++i) {
+            int start = std::max(0, static_cast<int>(i) - 2);
+            int end = std::min(static_cast<int>(bpmSmooth.size()) - 1, static_cast<int>(i) + 2);
+            double sum = 0;
+            int count = 0;
+            for (int j = start; j <= end; ++j) {
+                sum += bpmSmooth[j];
+                count++;
+            }
+            smoothed[i] = sum / count;
+        }
+        bpmSmooth = smoothed;
+    }
+
+    // Detect change points based on rate of change (BPM per second)
+    std::vector<double> changeTimes;
+    double minRateChange = 0.5; // 0.3 BPM / sec = change
+    // double minDuration = 5.0;
+
+    for (size_t i = 2; i < bpmSmooth.size() - 2; ++i) {
+        // Calculate rate of change over a window
+        double timeSpan = bpmTimes[i + 2] - bpmTimes[i - 2];
+        if (timeSpan <= 0)
+            continue;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
         double bpmChange = bpmSmooth[i + 2] - bpmSmooth[i - 2];
         double ratePerSec = std::abs(bpmChange) / timeSpan;
 
+<<<<<<< HEAD
         if (ratePerSec >= kMinRateChange) {
+=======
+        if (ratePerSec >= minRateChange) {
+            // significant change point !!
+>>>>>>> b48e47df9c (BPMCURVE TEST)
             changeTimes.push_back(bpmTimes[i]);
             i += 3;
         }
     }
 
+<<<<<<< HEAD
     // Add start and end
     changeTimes.insert(changeTimes.begin(), 0.0);
     changeTimes.push_back(m_trackDuration);
 
     // Remove duplicates
+=======
+    // add start and end
+    changeTimes.insert(changeTimes.begin(), 0.0);
+    changeTimes.push_back(m_trackDuration);
+
+    // duplicates remove
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     std::sort(changeTimes.begin(), changeTimes.end());
     changeTimes.erase(
             std::unique(changeTimes.begin(),
@@ -395,7 +483,37 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
                     [](double a, double b) { return std::abs(a - b) < 1.0; }),
             changeTimes.end());
 
+<<<<<<< HEAD
     // Create segments between change points
+=======
+    // get BPM at a specific time
+    auto getBpmAtTime = [&](double time) -> double {
+        if (bpmTimes.empty())
+            return 120.0;
+        if (time <= bpmTimes[0])
+            return bpmSmooth[0];
+        if (time >= bpmTimes.back())
+            return bpmSmooth.back();
+
+        for (size_t i = 1; i < bpmTimes.size(); ++i) {
+            if (time <= bpmTimes[i]) {
+                double t1 = bpmTimes[i - 1];
+                double t2 = bpmTimes[i];
+                double b1 = bpmSmooth[i - 1];
+                double b2 = bpmSmooth[i];
+
+                if (t2 > t1) {
+                    double ratio = (time - t1) / (t2 - t1);
+                    return b1 + ratio * (b2 - b1);
+                }
+                return b1;
+            }
+        }
+        return bpmSmooth.back();
+    };
+
+    // creating segments between change points
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     m_bpmSegments.clear();
 
     for (size_t idx = 0; idx < changeTimes.size() - 1; ++idx) {
@@ -403,6 +521,7 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
         double endTime = changeTimes[idx + 1];
         double duration = endTime - startTime;
 
+<<<<<<< HEAD
         if (duration < 1.0) {
             continue;
         }
@@ -416,6 +535,23 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
         QString type;
 
         if (percentPerMinute < kStablePercentPerMinute) {
+=======
+        if (duration < 1.0)
+            continue;
+
+        double startBpm = getBpmAtTime(startTime);
+        double endBpm = getBpmAtTime(endTime);
+
+        // calc rate of change per second for this segment
+        double totalChange = endBpm - startBpm;
+        double ratePerSec = std::abs(totalChange) / duration;
+
+        // segment type ?
+        QString type;
+
+        // rate is very low: < 0.05 BPM/sec -> STABLE
+        if (ratePerSec < 0.05) {
+>>>>>>> b48e47df9c (BPMCURVE TEST)
             type = "STABLE";
             double avgBpm = (startBpm + endBpm) / 2.0;
             startBpm = avgBpm;
@@ -426,17 +562,26 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
             type = "DECREASE";
         }
 
+<<<<<<< HEAD
         AnalysisBPMSegment seg;
+=======
+        BPMSegment seg;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         seg.startTime = startTime;
         seg.endTime = endTime;
         seg.duration = duration;
         seg.type = type;
         seg.startBPM = startBpm;
         seg.endBPM = endBpm;
+<<<<<<< HEAD
+=======
+        seg.changeAmount = totalChange;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
         m_bpmSegments.append(seg);
     }
 
+<<<<<<< HEAD
     // Merge adjacent stable segments with similar BPM
     if (m_bpmSegments.size() > 1) {
         QVector<AnalysisBPMSegment> merged;
@@ -444,6 +589,15 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
 
         for (int i = 1; i < m_bpmSegments.size(); ++i) {
             const AnalysisBPMSegment& next = m_bpmSegments[i];
+=======
+    // adjacent stable segments? -> merge
+    if (m_bpmSegments.size() > 1) {
+        QVector<BPMSegment> merged;
+        BPMSegment current = m_bpmSegments[0];
+
+        for (int i = 1; i < m_bpmSegments.size(); ++i) {
+            const BPMSegment& next = m_bpmSegments[i];
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
             if (current.type == "STABLE" && next.type == "STABLE" &&
                     std::abs(current.startBPM - next.startBPM) < 1.5) {
@@ -461,6 +615,7 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
         m_bpmSegments = merged;
     }
 
+<<<<<<< HEAD
     // Snap to beats
     snapSegmentsToBeats();
 
@@ -468,12 +623,23 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
     for (const auto& seg : std::as_const(m_bpmSegments)) {
         qDebug() << "  " << seg.type << ":" << seg.startTime << "-" << seg.endTime
                  << "BPM:" << seg.startBPM << "->" << seg.endBPM;
+=======
+    qDebug() << "[QueenMaryBeatsExtended] Created" << m_bpmSegments.size() << "segments";
+    for (const auto& seg : std::as_const(m_bpmSegments)) {
+        qDebug() << "  " << seg.type << ":" << seg.startTime << "-" << seg.endTime
+                 << "BPM:" << seg.startBPM << "->" << seg.endBPM
+                 << "rate:" << std::abs(seg.changeAmount) / seg.duration;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     }
 }
 
 bool AnalyzerQueenMaryBeatsExtended::finalize() {
     m_helper.finalize();
 
+<<<<<<< HEAD
+=======
+    // original TempoTrackV2 -> beats
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     size_t nonZeroCount = m_detectionResults.size();
     while (nonZeroCount > 0 && m_detectionResults.at(nonZeroCount - 1) <= 0.0) {
         --nonZeroCount;
@@ -502,6 +668,10 @@ bool AnalyzerQueenMaryBeatsExtended::finalize() {
         m_resultBeats.push_back(result);
     }
 
+<<<<<<< HEAD
+=======
+    // analyze BPM changes -> create segments
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     analyzeBpmChanges();
 
     m_pDetectionFunction.reset();
@@ -512,13 +682,19 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
     QJsonArray segmentsArray;
     int segmentId = 1;
 
+<<<<<<< HEAD
     for (const auto& seg : std::as_const(m_bpmSegments)) {
         if (seg.duration < 0.001) {
+=======
+    for (const auto& segment : m_bpmSegments) {
+        if (segment.duration < 0.001) {
+>>>>>>> b48e47df9c (BPMCURVE TEST)
             continue;
         }
 
         QJsonObject segmentObj;
         segmentObj["id"] = segmentId++;
+<<<<<<< HEAD
         segmentObj["type"] = seg.type;
         segmentObj["position"] = seg.startTime;
         segmentObj["duration"] = seg.duration;
@@ -526,6 +702,15 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
         segmentObj["bpm_end"] = seg.endBPM;
         segmentObj["range_start"] = seg.startTime;
         segmentObj["range_end"] = seg.endTime;
+=======
+        segmentObj["type"] = segment.type;
+        segmentObj["position"] = segment.startTime;
+        segmentObj["duration"] = segment.duration;
+        segmentObj["bpm_start"] = segment.startBPM;
+        segmentObj["bpm_end"] = segment.endBPM;
+        segmentObj["range_start"] = segment.startTime;
+        segmentObj["range_end"] = segment.endTime;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
         segmentsArray.append(segmentObj);
     }

@@ -45,6 +45,7 @@ struct OverviewBpmPoint {
     }
 };
 
+<<<<<<< HEAD
 struct OverviewKeyPoint {
     double position;
     double duration;
@@ -54,6 +55,8 @@ struct OverviewKeyPoint {
     double confidence;
 };
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 class WOverview : public WWidget, public TrackDropTarget {
     Q_OBJECT
   public:
@@ -79,7 +82,10 @@ class WOverview : public WWidget, public TrackDropTarget {
     void trackDropped(const QString& filename, const QString& group) override;
     void cloneDeck(const QString& sourceGroup, const QString& targetGroup) override;
     void requestBeatsAnalysis(TrackPointer pTrack);
+<<<<<<< HEAD
     void requestKeyAnalysis(TrackPointer pTrack);
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 
   protected:
 
@@ -119,20 +125,26 @@ class WOverview : public WWidget, public TrackDropTarget {
     double m_yMinBpm;
     double m_yMaxBpm;
 
+<<<<<<< HEAD
     // KEY Markers
     QVector<OverviewKeyPoint> m_keyCurvePoints;
     bool m_showKeyMarkers;
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     void calculateBpmRange();
     double mapBpmToOverviewY(double bpm, double height);
     void drawBpmCurve(QPainter* painter, const QRect& widgetRect);
     void triggerAnalysisForTrack(TrackPointer pTrack);
     void checkAndRequestBpmCurve(TrackPointer pTrack);
 
+<<<<<<< HEAD
     void loadKeyCurveForTrack(TrackPointer pTrack);
     void checkAndRequestKeyCurve(TrackPointer pTrack);
     void drawKeyMarkers(QPainter* painter, const QRect& widgetRect);
 
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     // Append the waveform overview pixmap according to available data
     // in waveform
     bool drawNextPixmapPart();

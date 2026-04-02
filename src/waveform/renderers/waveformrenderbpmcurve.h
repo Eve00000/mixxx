@@ -1,12 +1,18 @@
 #pragma once
 
 #include <QColor>
+<<<<<<< HEAD
 #include <QDateTime>
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 #include <QFont>
 #include <QLineF>
 #include <QVector>
 
+<<<<<<< HEAD
 #include "control/controlproxy.h"
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 #include "waveform/renderers/waveformrendererabstract.h"
 
 struct SegmentPoint {
@@ -63,8 +69,12 @@ struct BpmCurveStyle {
         labelTextColor = QColor(255, 100, 100);
         labelBackgroundColor = QColor(0, 0, 0);
         labelBackgroundOpacity = 150;
+<<<<<<< HEAD
         // labelFontSize = 8;
         labelFontSize = 20;
+=======
+        labelFontSize = 8;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
         labelDecimalPlaces = 1;
         labelOffset = 5;
 
@@ -116,6 +126,7 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
     }
 
   private:
+<<<<<<< HEAD
     QVector<SegmentPoint> m_segments;
     BpmCurveStyle m_style;
     bool m_visible;
@@ -129,6 +140,8 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
 
     void initRateRatioControl();
     void onRateRatioChanged(double value);
+=======
+>>>>>>> b48e47df9c (BPMCURVE TEST)
     void loadBpmCurve();
     double getPositionWithOffset(double positionSeconds) const;
     double mapBpmToY(double bpm, double yMinBpm, double yMaxBpm, double height);
@@ -137,5 +150,17 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
             const QPointF& position,
             double bpm,
             Qt::Orientation orientation);
+<<<<<<< HEAD
     QDateTime m_lastLoadTime;
+=======
+
+    QVector<SegmentPoint> m_segments;
+    BpmCurveStyle m_style;
+    bool m_visible;
+    double m_minBpm;
+    double m_maxBpm;
+    double m_yMinBpm;
+    double m_yMaxBpm;
+    double m_offsetSeconds;
+>>>>>>> b48e47df9c (BPMCURVE TEST)
 };
