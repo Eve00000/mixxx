@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <QDateTime>
 #include <QFont>
 #include <QLineF>
 #include <QVector>
@@ -136,4 +137,5 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
             const QPointF& position,
             double bpm,
             Qt::Orientation orientation);
+    QDateTime m_lastLoadTime;
 };
