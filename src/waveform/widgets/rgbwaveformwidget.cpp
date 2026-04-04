@@ -24,10 +24,7 @@ RGBWaveformWidget::RGBWaveformWidget(const QString& group,
     addRenderer<WaveformRenderMarkRange>();
     addRenderer<WaveformRendererRGB>(options);
     m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
-<<<<<<< HEAD
     m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
-=======
->>>>>>> b48e47df9c (BPMCURVE TEST)
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 

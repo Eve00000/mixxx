@@ -303,21 +303,17 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     // BPM SEGMENTS -> JSON
     auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
     if (pExtendedPlugin) {
-<<<<<<< HEAD
         qDebug() << "[AnalyzerBeats] ========================================";
         qDebug() << "[AnalyzerBeats] Track:" << pTrack->getArtist() << "-" << pTrack->getTitle();
         qDebug() << "[AnalyzerBeats] Duration:" << pTrack->getDuration() << "seconds";
         qDebug() << "[AnalyzerBeats] ========================================";
-
-=======
->>>>>>> b48e47df9c (BPMCURVE TEST)
         QJsonArray segmentsArray = pExtendedPlugin->getBpmSegmentsJson();
 
         if (!segmentsArray.isEmpty()) {
             saveBpmSegmentsJson(pTrack, segmentsArray);
             // saveBpmSegments2DB(pTrack, segmentsArray);
         }
-<<<<<<< HEAD
+
         qDebug() << "[AnalyzerBeats] ========================================";
         qDebug() << "[AnalyzerBeats] Total segments:" << segmentsArray.size();
         qDebug() << "[AnalyzerBeats] ========================================";
@@ -374,11 +370,6 @@ bool AnalyzerBeats::exportBeatsToCsv(TrackPointer pTrack,
     return true;
 }
 
-=======
-    }
-}
-
->>>>>>> b48e47df9c (BPMCURVE TEST)
 // Save the segments to JSON
 bool AnalyzerBeats::saveBpmSegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray) {
     QString trackIdStr = pTrack->getId().toString();

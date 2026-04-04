@@ -30,12 +30,9 @@ class AnalyzerBeats : public Analyzer {
   private:
     bool saveBpmSegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray);
     // bool saveBpmSegments2DB(TrackPointer pTrack, const QJsonArray& segmentsArray);
-<<<<<<< HEAD
     bool exportBeatsToCsv(TrackPointer pTrack,
             const QVector<mixxx::audio::FramePos>& beats,
             double sampleRate);
-=======
->>>>>>> b48e47df9c (BPMCURVE TEST)
     bool shouldAnalyze(TrackPointer pTrack) const;
     static QHash<QString, QString> getExtraVersionInfo(
             const QString& pluginId, bool bPreferencesFastAnalysis);

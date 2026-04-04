@@ -1699,12 +1699,9 @@ add_library(
   src/waveform/renderers/waveformrenderbackground.cpp
   src/waveform/renderers/waveformrenderbeat.cpp
   src/waveform/renderers/waveformrenderbpmcurve.cpp
-<<<<<<< HEAD
   src/waveform/renderers/waveformrenderbpmcurvebase.cpp
   src/waveform/renderers/waveformrenderkeycurve.cpp
   src/waveform/renderers/waveformrenderkeycurvebase.cpp
-=======
->>>>>>> b48e47df9c (BPMCURVE TEST)
   src/waveform/renderers/waveformrendererabstract.cpp
   src/waveform/renderers/waveformrendererendoftrack.cpp
   src/waveform/renderers/waveformrendererfilteredsignal.cpp
