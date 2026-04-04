@@ -382,8 +382,9 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
     m_bpmCurvePoints.clear();
 
     for (const QJsonValue& val : std::as_const(bpmArray)) {
-        if (!val.isObject())
+        if (!val.isObject()) {
             continue;
+        }
 
         QJsonObject obj = val.toObject();
         OverviewBpmPoint pt;
@@ -414,8 +415,9 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
 }
 
 void WOverview::checkAndRequestBpmCurve(TrackPointer pTrack) {
-    if (!pTrack)
+    if (!pTrack) {
         return;
+    }
 
     // Get track ID
     if (!pTrack->getId().isValid()) {
@@ -475,8 +477,9 @@ void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
 
     for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
         // Skip invalid segments
-        if (seg.duration <= 0.001)
+        if (seg.duration <= 0.001) {
             continue;
+        }
 
         double startTime = seg.position;
         double endTime = seg.range_end;
@@ -485,8 +488,9 @@ void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
         startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
         endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
 
-        if (endTime <= startTime)
+        if (endTime <= startTime) {
             continue;
+        }
 
         double startBpm = seg.bpm_start;
         double endBpm = seg.bpm_end;
@@ -590,14 +594,18 @@ void WOverview::calculateBpmRange() {
     m_maxBpm = m_bpmCurvePoints[0].bpm_start;
 
     for (const auto& pt : std::as_const(m_bpmCurvePoints)) {
-        if (pt.bpm_start < m_minBpm)
+        if (pt.bpm_start < m_minBpm) {
             m_minBpm = pt.bpm_start;
-        if (pt.bpm_start > m_maxBpm)
+        }
+        if (pt.bpm_start > m_maxBpm) {
             m_maxBpm = pt.bpm_start;
-        if (pt.bpm_end < m_minBpm)
+        }
+        if (pt.bpm_end < m_minBpm) {
             m_minBpm = pt.bpm_end;
-        if (pt.bpm_end > m_maxBpm)
+        }
+        if (pt.bpm_end > m_maxBpm) {
             m_maxBpm = pt.bpm_end;
+        }
     }
 
     // Ensure minimum Y-axis range of 25 BPM
@@ -614,8 +622,9 @@ void WOverview::calculateBpmRange() {
     } else {
         // Add 10% padding for larger ranges
         double padding = bpmRange * 0.1;
-        if (padding < 0.5)
+        if (padding < 0.5) {
             padding = 0.5;
+        }
         m_yMinBpm = m_minBpm - padding;
         m_yMaxBpm = m_maxBpm + padding;
     }

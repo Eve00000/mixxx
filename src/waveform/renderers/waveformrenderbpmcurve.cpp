@@ -228,6 +228,9 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 }
 
 void WaveformRenderBpmCurve::loadBpmCurve() {
+    // clear bpmcurve
+
+    m_segments.clear();
     // current track from the renderer
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
 
@@ -332,6 +335,13 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 
 void WaveformRenderBpmCurve::onSetTrack() {
     qDebug() << "[WaveformRenderBpmCurve] onSetTrack called";
+
+    // clear old bpmcurve
+    m_segments.clear();
+    m_minBpm = 0;
+    m_maxBpm = 0;
+    m_yMinBpm = 0;
+    m_yMaxBpm = 0;
     loadBpmCurve();
     calculateBpmRange();
 }
@@ -460,6 +470,40 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
+    // Check for reload if bpmsegments changed -> once per second max
+    static int frameCount = 0;
+    if (++frameCount >= 60) { // Check every ~1 second at 60fps
+        frameCount = 0;
+
+        // Check if JSON file exists for current track
+        TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+        if (pTrack && pTrack->getId().isValid()) {
+            QString trackIdStr = pTrack->getId().toString();
+            QString bpmDir = QStandardPaths::writableLocation(
+                                     QStandardPaths::AppLocalDataLocation) +
+                    "/bpmcurve/";
+            QString jsonPath = bpmDir + trackIdStr + ".json";
+
+            QFileInfo fileInfo(jsonPath);
+            if (fileInfo.exists()) {
+                // Only reload if file is newer or segments are empty
+                if (m_segments.isEmpty() || fileInfo.lastModified() != m_lastLoadTime) {
+                    m_lastLoadTime = fileInfo.lastModified();
+                    loadBpmCurve();
+                    calculateBpmRange();
+                }
+            } else if (!m_segments.isEmpty()) {
+                // JSON was deleted, clear segments
+                m_segments.clear();
+                calculateBpmRange();
+            }
+        }
+    }
+
+    if (!m_visible || m_segments.isEmpty()) {
+        return;
+    }
+
     if (!m_visible || m_segments.isEmpty()) {
         return;
     }
