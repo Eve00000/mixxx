@@ -273,6 +273,10 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
 
     if (m_pPlugin->supportsBeatTracking()) {
         QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
+
+        // Export beats to CSV
+        exportBeatsToCsv(pTrack, beats, m_sampleRate);
+
         QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
                 m_pluginId, m_bPreferencesFastAnalysis);
         pBeats = BeatFactory::makePreferredBeats(
@@ -299,13 +303,71 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     // BPM SEGMENTS -> JSON
     auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
     if (pExtendedPlugin) {
+        qDebug() << "[AnalyzerBeats] ========================================";
+        qDebug() << "[AnalyzerBeats] Track:" << pTrack->getArtist() << "-" << pTrack->getTitle();
+        qDebug() << "[AnalyzerBeats] Duration:" << pTrack->getDuration() << "seconds";
+        qDebug() << "[AnalyzerBeats] ========================================";
+
         QJsonArray segmentsArray = pExtendedPlugin->getBpmSegmentsJson();
 
         if (!segmentsArray.isEmpty()) {
             saveBpmSegmentsJson(pTrack, segmentsArray);
             // saveBpmSegments2DB(pTrack, segmentsArray);
         }
+        qDebug() << "[AnalyzerBeats] ========================================";
+        qDebug() << "[AnalyzerBeats] Total segments:" << segmentsArray.size();
+        qDebug() << "[AnalyzerBeats] ========================================";
     }
+}
+
+bool AnalyzerBeats::exportBeatsToCsv(TrackPointer pTrack,
+        const QVector<mixxx::audio::FramePos>& beats,
+        double sampleRate) {
+    if (!pTrack) {
+        qDebug() << "[AnalyzerBeats] No track for CSV export";
+        return false;
+    }
+
+    if (beats.isEmpty()) {
+        qDebug() << "[AnalyzerBeats] No beats to export";
+        return false;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[AnalyzerBeats] No track ID for CSV export";
+        return false;
+    }
+
+    QString bpmDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/bpmcurve/";
+
+    QDir dir;
+    if (!dir.exists(bpmDir)) {
+        dir.mkpath(bpmDir);
+    }
+
+    QString csvPath = bpmDir + trackIdStr + "_beats.csv";
+
+    QFile file(csvPath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qDebug() << "[AnalyzerBeats] Cannot open CSV file:" << csvPath;
+        return false;
+    }
+
+    QTextStream stream(&file);
+    stream << "beat_index,time_seconds\n";
+
+    for (int i = 0; i < beats.size(); ++i) {
+        double timeSeconds = beats[i].value() / sampleRate;
+        stream << i + 1 << "," << QString::number(timeSeconds, 'f', 6) << "\n";
+    }
+
+    file.close();
+    qDebug() << "[AnalyzerBeats] Exported" << beats.size() << "beats to:" << csvPath;
+
+    return true;
 }
 
 // Save the segments to JSON

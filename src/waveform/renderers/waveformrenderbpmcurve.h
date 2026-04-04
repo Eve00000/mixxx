@@ -5,6 +5,7 @@
 #include <QLineF>
 #include <QVector>
 
+#include "control/controlproxy.h"
 #include "waveform/renderers/waveformrendererabstract.h"
 
 struct SegmentPoint {
@@ -61,7 +62,8 @@ struct BpmCurveStyle {
         labelTextColor = QColor(255, 100, 100);
         labelBackgroundColor = QColor(0, 0, 0);
         labelBackgroundOpacity = 150;
-        labelFontSize = 8;
+        // labelFontSize = 8;
+        labelFontSize = 20;
         labelDecimalPlaces = 1;
         labelOffset = 5;
 
@@ -113,15 +115,6 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
     }
 
   private:
-    void loadBpmCurve();
-    double getPositionWithOffset(double positionSeconds) const;
-    double mapBpmToY(double bpm, double yMinBpm, double yMaxBpm, double height);
-    void calculateBpmRange();
-    void drawLabel(QPainter* painter,
-            const QPointF& position,
-            double bpm,
-            Qt::Orientation orientation);
-
     QVector<SegmentPoint> m_segments;
     BpmCurveStyle m_style;
     bool m_visible;
@@ -130,4 +123,17 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
     double m_yMinBpm;
     double m_yMaxBpm;
     double m_offsetSeconds;
+    double m_currentRateRatio;
+    std::unique_ptr<ControlProxy> m_pRateRatioCO;
+
+    void initRateRatioControl();
+    void onRateRatioChanged(double value);
+    void loadBpmCurve();
+    double getPositionWithOffset(double positionSeconds) const;
+    double mapBpmToY(double bpm, double yMinBpm, double yMaxBpm, double height);
+    void calculateBpmRange();
+    void drawLabel(QPainter* painter,
+            const QPointF& position,
+            double bpm,
+            Qt::Orientation orientation);
 };

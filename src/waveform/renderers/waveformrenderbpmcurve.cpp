@@ -25,7 +25,39 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
           m_maxBpm(0),
           m_yMinBpm(0),
           m_yMaxBpm(0),
-          m_offsetSeconds(0.0) {
+          m_offsetSeconds(0.0),
+          m_currentRateRatio(1.0),
+          m_pRateRatioCO(nullptr) {
+    initRateRatioControl();
+}
+
+void WaveformRenderBpmCurve::initRateRatioControl() {
+    if (!m_waveformRenderer || m_waveformRenderer->getGroup().isEmpty()) {
+        qDebug() << "[WaveformRenderBpmCurve] Cannot init rate control - no group";
+        return;
+    }
+
+    qDebug() << "[WaveformRenderBpmCurve] Creating rate control for group:"
+             << m_waveformRenderer->getGroup();
+
+    m_pRateRatioCO = std::make_unique<ControlProxy>(
+            m_waveformRenderer->getGroup(), "rate_ratio");
+
+    m_currentRateRatio = m_pRateRatioCO->get();
+    qDebug() << "[WaveformRenderBpmCurve] Initial rate ratio:" << m_currentRateRatio;
+}
+
+void WaveformRenderBpmCurve::onRateRatioChanged(double value) {
+    qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed to:" << value;
+    m_currentRateRatio = value;
+
+    if (!m_segments.isEmpty()) {
+        qDebug() << "  First segment BPM original:" << m_segments[0].bpm_start;
+        qDebug() << "  First segment BPM adjusted:" << m_segments[0].bpm_start * m_currentRateRatio;
+    }
+
+    // Recalculate Y-axis range with new rate ratio
+    calculateBpmRange();
 }
 
 void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skinContext) {
@@ -191,10 +223,7 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
         m_offsetSeconds = offsetStr.toDouble();
     }
 
-    // BPM curve data
     loadBpmCurve();
-
-    // Calculate BPM range
     calculateBpmRange();
 }
 
@@ -316,30 +345,55 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
         return;
     }
 
-    m_minBpm = m_segments[0].bpm_start;
-    m_maxBpm = m_segments[0].bpm_start;
+    double minBpm = m_segments[0].bpm_start * m_currentRateRatio;
+    double maxBpm = m_segments[0].bpm_start * m_currentRateRatio;
 
     for (const auto& seg : std::as_const(m_segments)) {
-        if (seg.bpm_start < m_minBpm)
-            m_minBpm = seg.bpm_start;
-        if (seg.bpm_start > m_maxBpm)
-            m_maxBpm = seg.bpm_start;
-        if (seg.bpm_end < m_minBpm)
-            m_minBpm = seg.bpm_end;
-        if (seg.bpm_end > m_maxBpm)
-            m_maxBpm = seg.bpm_end;
+        double startBpmAdj = seg.bpm_start * m_currentRateRatio;
+        double endBpmAdj = seg.bpm_end * m_currentRateRatio;
+
+        if (startBpmAdj < minBpm)
+            minBpm = startBpmAdj;
+        if (startBpmAdj > maxBpm)
+            maxBpm = startBpmAdj;
+        if (endBpmAdj < minBpm)
+            minBpm = endBpmAdj;
+        if (endBpmAdj > maxBpm)
+            maxBpm = endBpmAdj;
     }
 
-    // 10% extra Y-axis
+    m_minBpm = minBpm;
+    m_maxBpm = maxBpm;
+
+    // Calculate BPM range
     double bpmRange = m_maxBpm - m_minBpm;
-    double padding = bpmRange * 0.1;
-    if (padding < 0.5)
-        padding = 0.5;
+    double minRange = 40.0; // Minimum 40 BPM on Y-axis
 
-    m_yMinBpm = m_minBpm - padding;
-    m_yMaxBpm = m_maxBpm + padding;
+    double yMin, yMax;
 
-    qDebug() << "[WaveformRenderBpmCurve] BPM range:" << m_minBpm << "-" << m_maxBpm;
+    if (bpmRange < minRange) {
+        // Center the range around the middle
+        double midBpm = (m_minBpm + m_maxBpm) / 2.0;
+        yMin = midBpm - (minRange / 2.0);
+        yMax = midBpm + (minRange / 2.0);
+    } else {
+        // Add 10% padding for larger ranges
+        double padding = bpmRange * 0.1;
+        if (padding < 0.5)
+            padding = 0.5;
+        yMin = m_minBpm - padding;
+        yMax = m_maxBpm + padding;
+    }
+
+    // Ensure no negative BPM
+    if (yMin < 0)
+        yMin = 0;
+
+    m_yMinBpm = yMin;
+    m_yMaxBpm = yMax;
+
+    qDebug() << "[WaveformRenderBpmCurve] BPM range (rate:" << m_currentRateRatio
+             << "):" << m_minBpm << "-" << m_maxBpm;
     qDebug() << "[WaveformRenderBpmCurve] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
 }
 
@@ -353,11 +407,15 @@ double WaveformRenderBpmCurve::getPositionWithOffset(double positionSeconds) con
 
 double WaveformRenderBpmCurve::mapBpmToY(
         double bpm, double yMinBpm, double yMaxBpm, double height) {
-    double bpmRange = yMaxBpm - yMinBpm;
-    if (bpmRange <= 0)
-        return height / 2;
+    // Apply rate ratio to BPM value
+    double adjustedBpm = bpm * m_currentRateRatio;
 
-    double normalized = (bpm - yMinBpm) / bpmRange;
+    double bpmRange = yMaxBpm - yMinBpm;
+    if (bpmRange <= 0.001) {
+        return height / 2;
+    }
+
+    double normalized = (adjustedBpm - yMinBpm) / bpmRange;
     normalized = qBound(0.0, normalized, 1.0);
     return height - (normalized * height);
 }
@@ -366,7 +424,10 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
         const QPointF& position,
         double bpm,
         Qt::Orientation orientation) {
-    QString labelText = QString::number(bpm, 'f', m_style.labelDecimalPlaces);
+    // Apply rate ratio to displayed BPM value
+    double adjustedBpm = bpm * m_currentRateRatio;
+    QString labelText = QString::number(adjustedBpm, 'f', m_style.labelDecimalPlaces);
+
     QRect textRect = painter->fontMetrics().boundingRect(labelText);
     int padding = 4;
 
@@ -406,6 +467,17 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     if (!pTrack) {
         return;
+    }
+
+    // Update rate ratio from control proxy each frame
+    if (m_pRateRatioCO) {
+        double newRate = m_pRateRatioCO->get();
+        if (std::abs(newRate - m_currentRateRatio) > 0.001) {
+            qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed (polled):"
+                     << m_currentRateRatio << "->" << newRate;
+            m_currentRateRatio = newRate;
+            calculateBpmRange();
+        }
     }
 
     double trackLengthSeconds = pTrack->getDuration();
@@ -449,8 +521,19 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     QVector<QLineF> curveLines;
 
     for (const auto& seg : std::as_const(m_segments)) {
+        // Skip invalid segments
+        if (seg.duration <= 0.001)
+            continue;
+
         double startTime = seg.position + m_offsetSeconds;
         double endTime = seg.range_end + m_offsetSeconds;
+
+        // Clamp times to track bounds
+        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+        endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
+
+        if (endTime <= startTime)
+            continue;
 
         double startBpm = seg.bpm_start;
         double endBpm = seg.bpm_end;
@@ -458,6 +541,10 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         // sample positions
         double startPos = startTime * (trackSamples / trackLengthSeconds);
         double endPos = endTime * (trackSamples / trackLengthSeconds);
+
+        // Clamp to valid sample range
+        startPos = qMax(0.0, qMin(startPos, trackSamples));
+        endPos = qMax(0.0, qMin(endPos, trackSamples));
 
         // outside visible range
         if (endPos < startSample || startPos > endSample) {
@@ -536,7 +623,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
         // draw labels
         if (m_style.showLabels) {
-            for (const auto& labelInfo : labelPositions) {
+            for (const auto& labelInfo : std::as_const(labelPositions)) {
                 drawLabel(painter, labelInfo.first, labelInfo.second, orientation);
             }
         }
@@ -549,17 +636,56 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
                 0.0, ::WaveformRendererAbstract::Play);
         if (trackStartX >= 0 && trackStartX <= rendererWidth) {
             if (orientation == Qt::Horizontal) {
-                // painter->drawLine(trackStartX, 0, trackStartX, rendererHeight);
                 painter->drawLine(static_cast<int>(trackStartX),
                         0,
                         static_cast<int>(trackStartX),
                         static_cast<int>(rendererHeight));
             } else {
-                // painter->drawLine(0, trackStartX, rendererWidth, trackStartX);
                 painter->drawLine(0,
                         static_cast<int>(trackStartX),
                         static_cast<int>(rendererWidth),
                         static_cast<int>(trackStartX));
+            }
+        }
+    }
+
+    // draw segment end marker with BPM label (at the end of the last segment)
+    if (m_style.showTrackStart && !m_segments.isEmpty()) {
+        painter->setPen(QPen(m_style.trackStartColor, m_style.trackStartWidth, Qt::SolidLine));
+
+        // Get the last segment
+        const auto& lastSegment = m_segments.last();
+        double endBpm = lastSegment.bpm_end;
+        double endTime = lastSegment.range_end + m_offsetSeconds;
+
+        // Convert to sample position
+        double endPos = endTime * (trackSamples / trackLengthSeconds);
+        double endX = m_waveformRenderer->transformSamplePositionInRendererWorld(
+                endPos, ::WaveformRendererAbstract::Play);
+
+        if (endX >= 0 && endX <= rendererWidth) {
+            if (orientation == Qt::Horizontal) {
+                painter->drawLine(static_cast<int>(endX),
+                        0,
+                        static_cast<int>(endX),
+                        static_cast<int>(rendererHeight));
+            } else {
+                painter->drawLine(0,
+                        static_cast<int>(endX),
+                        static_cast<int>(rendererWidth),
+                        static_cast<int>(endX));
+            }
+
+            // Draw BPM label at the end marker
+            if (m_style.showLabels) {
+                QPointF labelPos;
+                if (orientation == Qt::Horizontal) {
+                    labelPos = QPointF(endX - 30, m_style.labelOffset);
+                    drawLabel(painter, labelPos, endBpm, orientation);
+                } else {
+                    labelPos = QPointF(m_style.labelOffset, endX - 30);
+                    drawLabel(painter, labelPos, endBpm, orientation);
+                }
             }
         }
     }
@@ -575,13 +701,11 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
         if (offsetX >= 0 && offsetX <= rendererWidth) {
             if (orientation == Qt::Horizontal) {
-                // painter->drawLine(offsetX, 0, offsetX, rendererHeight);
                 painter->drawLine(static_cast<int>(offsetX),
                         0,
                         static_cast<int>(offsetX),
                         static_cast<int>(rendererHeight));
             } else {
-                // painter->drawLine(0, offsetX, rendererWidth, offsetX);
                 painter->drawLine(0,
                         static_cast<int>(offsetX),
                         static_cast<int>(rendererWidth),
