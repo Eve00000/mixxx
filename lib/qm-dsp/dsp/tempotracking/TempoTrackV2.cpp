@@ -183,10 +183,64 @@ TempoTrackV2::calculateBeatPeriod(const vector<double> &df,
     viterbi_decode(rcfmat,wv,beat_period);
 }
 
+// original
+//void
+//TempoTrackV2::get_rcf(const d_vec_t &dfframe_in, const d_vec_t &wv, d_vec_t &rcf)
+//{
+//    // calculate autocorrelation function
+//    // then rcf
+//    // just hard code for now... don't really need separate functions to do this
+//
+//    // make acf
+//
+//    d_vec_t dfframe(dfframe_in);
+//
+//    MathUtilities::adaptiveThreshold(dfframe);
+//
+//    int dfframe_len = int(dfframe.size());
+//    int rcf_len = int(rcf.size());
+//    
+//    d_vec_t acf(dfframe_len);
+//
+//    for (int lag = 0; lag < dfframe_len; lag++) {
+//        double sum = 0.;
+//        double tmp = 0.;
+//
+//        for (int n = 0; n < (dfframe_len - lag); n++) {
+//            tmp = dfframe[n] * dfframe[n + lag];
+//            sum += tmp;
+//        }
+//        acf[lag] = double(sum/ (dfframe_len - lag));
+//    }
+//
+//    // now apply comb filtering
+//    int numelem = 4;
+//
+//    for (int i = 2; i < rcf_len; i++) { // max beat period
+//        for (int a = 1; a <= numelem; a++) { // number of comb elements
+//            for (int b = 1-a; b <= a-1; b++) { // general state using normalisation of comb elements
+//                rcf[i-1] += ( acf[(a*i+b)-1]*wv[i-1] ) / (2.*a-1.);     // calculate value for comb filter row
+//            }
+//        }
+//    }
+//
+//    // apply adaptive threshold to rcf
+//    MathUtilities::adaptiveThreshold(rcf);
+//
+//    double rcfsum =0.;
+//    for (int i = 0; i < rcf_len; i++) {
+//        rcf[i] += EPS ;
+//        rcfsum += rcf[i];
+//    }
+//
+//    // normalise rcf to sum to unity
+//    for (int i = 0; i < rcf_len; i++) {
+//        rcf[i] /= (rcfsum + EPS);
+//    }
+//}
 
-void
-TempoTrackV2::get_rcf(const d_vec_t &dfframe_in, const d_vec_t &wv, d_vec_t &rcf)
-{
+// Daniel's #15137
+void TempoTrackV2::get_rcf(const d_vec_t& dfframe_in, const d_vec_t& wv, d_vec_t& rcf) {
     // calculate autocorrelation function
     // then rcf
     // just hard code for now... don't really need separate functions to do this
@@ -199,7 +253,7 @@ TempoTrackV2::get_rcf(const d_vec_t &dfframe_in, const d_vec_t &wv, d_vec_t &rcf
 
     int dfframe_len = int(dfframe.size());
     int rcf_len = int(rcf.size());
-    
+
     d_vec_t acf(dfframe_len);
 
     for (int lag = 0; lag < dfframe_len; lag++) {
@@ -210,26 +264,50 @@ TempoTrackV2::get_rcf(const d_vec_t &dfframe_in, const d_vec_t &wv, d_vec_t &rcf
             tmp = dfframe[n] * dfframe[n + lag];
             sum += tmp;
         }
-        acf[lag] = double(sum/ (dfframe_len - lag));
+        acf[lag] = double(sum / (dfframe_len - lag));
     }
 
-    // now apply comb filtering
-    int numelem = 4;
+    // Peaks in the autocorrelation function (acf) occur at lags corresponding
+    // to the beat period and on every integer multiples of that. In the next
+    // step we sum up four iterations of them.
 
-    for (int i = 2; i < rcf_len; i++) { // max beat period
-        for (int a = 1; a <= numelem; a++) { // number of comb elements
-            for (int b = 1-a; b <= a-1; b++) { // general state using normalisation of comb elements
-                rcf[i-1] += ( acf[(a*i+b)-1]*wv[i-1] ) / (2.*a-1.);     // calculate value for comb filter row
-            }
-        }
+    // Let's assume we have found a peak at 43, this means it is actually in the
+    // range of 42.5 .. 43.5 and can be also found at 85 .. 87, 127,5 .. 130,5 and
+    // 170 .. 174. So we need also consider the neigbours when looking for the harmonics.
+
+    rcf[0] = 0;
+    for (int i = 1; i < rcf_len; i++) { // max beat period
+        // First interval
+        rcf[i] = acf[i];
+
+        // Second interval. We use the two neigbours as half value only because they
+        // are between this and the pervious or next iteration. Summe of all is 1.
+        rcf[i] += acf[i * 2 - 1] / 4;
+        rcf[i] += acf[i * 2] / 2;
+        rcf[i] += acf[i * 2 + 1] / 4;
+
+        // Third interval. Neighbours fully belong to this interval
+        rcf[i] += acf[i * 3 - 1] / 3;
+        rcf[i] += acf[i * 3] / 3;
+        rcf[i] += acf[i * 3 + 1] / 3;
+
+        // Third interval. The outer neighbours are again on the border.
+        rcf[i] += acf[i * 4 - 2] / 8;
+        rcf[i] += acf[i * 4 - 1] / 4;
+        rcf[i] += acf[i * 4] / 4;
+        rcf[i] += acf[i * 4 + 1] / 4;
+        rcf[i] += acf[i * 4 + 2] / 8;
+
+        // Apply whigtening to prefered values around 120 bpm
+        rcf[i] *= wv[i];
     }
 
     // apply adaptive threshold to rcf
     MathUtilities::adaptiveThreshold(rcf);
 
-    double rcfsum =0.;
+    double rcfsum = 0.;
     for (int i = 0; i < rcf_len; i++) {
-        rcf[i] += EPS ;
+        rcf[i] += EPS;
         rcfsum += rcf[i];
     }
 

@@ -1,6 +1,12 @@
 #include "analyzer/analyzerbeats.h"
 
+#include <QDir>
+#include <QFile>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 #include <QString>
 #include <QVector>
 #include <QtDebug>
@@ -8,6 +14,7 @@
 #include "analyzer/analyzertrack.h"
 #include "analyzer/constants.h"
 #include "analyzer/plugins/analyzerqueenmarybeats.h"
+#include "analyzer/plugins/analyzerqueenmarybeatsextended.h"
 #include "analyzer/plugins/analyzersoundtouchbeats.h"
 #include "library/rekordbox/rekordboxconstants.h"
 #include "track/beatfactory.h"
@@ -17,6 +24,8 @@
 QList<mixxx::AnalyzerPluginInfo> AnalyzerBeats::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> plugins;
     // First one below is the default
+    // eve added extended as default
+    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
     plugins.append(mixxx::AnalyzerQueenMaryBeats::pluginInfo());
     plugins.append(mixxx::AnalyzerSoundTouchBeats::pluginInfo());
     return plugins;
@@ -103,7 +112,10 @@ bool AnalyzerBeats::initialize(const AnalyzerTrack& track,
 
     DEBUG_ASSERT(!m_pPlugin);
     if (bShouldAnalyze) {
-        if (m_pluginId == mixxx::AnalyzerQueenMaryBeats::pluginInfo().id()) {
+        // Eve for BPM segments -> extended QM
+        if (m_pluginId == mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo().id()) {
+            m_pPlugin = std::make_unique<mixxx::AnalyzerQueenMaryBeatsExtended>();
+        } else if (m_pluginId == mixxx::AnalyzerQueenMaryBeats::pluginInfo().id()) {
             m_pPlugin = std::make_unique<mixxx::AnalyzerQueenMaryBeats>();
         } else if (m_pluginId == mixxx::AnalyzerSoundTouchBeats::pluginInfo().id()) {
             m_pPlugin = std::make_unique<mixxx::AnalyzerSoundTouchBeats>();
@@ -258,8 +270,13 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     }
 
     mixxx::BeatsPointer pBeats;
+
     if (m_pPlugin->supportsBeatTracking()) {
         QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
+
+        // Export beats to CSV
+        exportBeatsToCsv(pTrack, beats, m_sampleRate);
+
         QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
                 m_pluginId, m_bPreferencesFastAnalysis);
         pBeats = BeatFactory::makePreferredBeats(
@@ -282,6 +299,120 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     }
 
     pTrack->trySetBeats(pBeats);
+
+    // BPM SEGMENTS -> JSON
+    auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
+    if (pExtendedPlugin) {
+        qDebug() << "[AnalyzerBeats] ========================================";
+        qDebug() << "[AnalyzerBeats] Track:" << pTrack->getArtist() << "-" << pTrack->getTitle();
+        qDebug() << "[AnalyzerBeats] Duration:" << pTrack->getDuration() << "seconds";
+        qDebug() << "[AnalyzerBeats] ========================================";
+
+        QJsonArray segmentsArray = pExtendedPlugin->getBpmSegmentsJson();
+
+        if (!segmentsArray.isEmpty()) {
+            saveBpmSegmentsJson(pTrack, segmentsArray);
+            // saveBpmSegments2DB(pTrack, segmentsArray);
+        }
+        qDebug() << "[AnalyzerBeats] ========================================";
+        qDebug() << "[AnalyzerBeats] Total segments:" << segmentsArray.size();
+        qDebug() << "[AnalyzerBeats] ========================================";
+    }
+}
+
+bool AnalyzerBeats::exportBeatsToCsv(TrackPointer pTrack,
+        const QVector<mixxx::audio::FramePos>& beats,
+        double sampleRate) {
+    if (!pTrack) {
+        qDebug() << "[AnalyzerBeats] No track for CSV export";
+        return false;
+    }
+
+    if (beats.isEmpty()) {
+        qDebug() << "[AnalyzerBeats] No beats to export";
+        return false;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[AnalyzerBeats] No track ID for CSV export";
+        return false;
+    }
+
+    QString bpmDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/bpmcurve/";
+
+    QDir dir;
+    if (!dir.exists(bpmDir)) {
+        dir.mkpath(bpmDir);
+    }
+
+    QString csvPath = bpmDir + trackIdStr + "_beats.csv";
+
+    QFile file(csvPath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qDebug() << "[AnalyzerBeats] Cannot open CSV file:" << csvPath;
+        return false;
+    }
+
+    QTextStream stream(&file);
+    stream << "beat_index,time_seconds\n";
+
+    for (int i = 0; i < beats.size(); ++i) {
+        double timeSeconds = beats[i].value() / sampleRate;
+        stream << i + 1 << "," << QString::number(timeSeconds, 'f', 6) << "\n";
+    }
+
+    file.close();
+    qDebug() << "[AnalyzerBeats] Exported" << beats.size() << "beats to:" << csvPath;
+
+    return true;
+}
+
+// Save the segments to JSON
+bool AnalyzerBeats::saveBpmSegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray) {
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[AnalyzerBeats] No valid track ID, skipping JSON save";
+        return false;
+    }
+
+    QJsonObject root;
+    root["bpm_curve"] = segmentsArray;
+
+    QJsonObject trackInfo;
+    trackInfo["title"] = pTrack->getTitle();
+    trackInfo["artist"] = pTrack->getArtist();
+    trackInfo["album"] = pTrack->getAlbum();
+    trackInfo["duration_seconds"] = pTrack->getDuration();
+    trackInfo["offset_seconds"] = 0.0;
+    trackInfo["track_id"] = trackIdStr;
+
+    root["track"] = trackInfo;
+
+    QString bpmDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/bpmcurve/";
+
+    QDir dir;
+    if (!dir.exists(bpmDir)) {
+        dir.mkpath(bpmDir);
+    }
+
+    QString jsonPath = bpmDir + trackIdStr + ".json";
+
+    QFile file(jsonPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+        file.close();
+        qDebug() << "[AnalyzerBeats] Saved BPM curve JSON to:" << jsonPath;
+        qDebug() << "[AnalyzerBeats] Segments:" << segmentsArray.size();
+        return true;
+    } else {
+        qDebug() << "[AnalyzerBeats] Failed to save BPM curve JSON to:" << jsonPath;
+        return false;
+    }
 }
 
 // static
@@ -294,3 +425,57 @@ QHash<QString, QString> AnalyzerBeats::getExtraVersionInfo(
     }
     return extraVersionInfo;
 }
+
+// bool AnalyzerBeats::saveBpmSegments2DB(TrackPointer pTrack, const QJsonArray&
+// segmentsArray) {
+//     if (!pTrack) {
+//         qDebug() << "[AnalyzerBeats] No track to save BPM segments to
+//         database"; return false;
+//     }
+//
+//     TrackId trackId = pTrack->getId();
+//     if (!trackId.isValid()) {
+//         qDebug() << "[AnalyzerBeats] No valid track ID";
+//         return false;
+//     }
+//
+//     if (segmentsArray.isEmpty()) {
+//         qDebug() << "[AnalyzerBeats] No segments to save";
+//         return false;
+//     }
+//
+//     qDebug() << "[AnalyzerBeats] Saving" << segmentsArray.size() << "BPM
+//     segments to database for track:" << pTrack->getTitle();
+//
+//     // Convert JSON to BPMSegmentData list (for database)
+//     QVector<mixxx::BPMSegmentData> dbSegments;
+//     double sampleRate = m_sampleRate;
+//
+//     for (const QJsonValue& val : segmentsArray) {
+//         if (!val.isObject())
+//             continue;
+//
+//         QJsonObject obj = val.toObject();
+//
+//         mixxx::BPMSegmentData seg;
+//         seg.startPosition = mixxx::audio::FramePos(obj["position"].toDouble()
+//         * sampleRate); seg.endPosition =
+//         mixxx::audio::FramePos(obj["range_end"].toDouble() * sampleRate);
+//         seg.startBpm = obj["bpm_start"].toDouble();
+//         seg.endBpm = obj["bpm_end"].toDouble();
+//         seg.type = obj["type"].toString();
+//
+//         dbSegments.append(seg);
+//     }
+//
+//     // TODO: Save to database via TrackCollection
+//     // When we have access to TrackCollection, we'll do:
+//     // TrackCollection* pCollection = ...; // Get from somewhere
+//     // BPMSegmentDAO& dao = pCollection->getBPMSegmentDAO();
+//     // dao.saveTrackSegments(trackId, dbSegments);
+//
+//     qDebug() << "[AnalyzerBeats] Converted" << dbSegments.size() << "segments
+//     for database storage";
+//
+//     return true;
+// }
