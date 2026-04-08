@@ -27,18 +27,29 @@ constexpr int NUM_SLICES = 12;
 
 WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
         : WaveformRendererAbstract(renderer),
-          m_visible(true),
-          m_trackLengthSeconds(0.0),
+          m_pRateRatioCO(nullptr),
+          m_pKeyControlCO(nullptr),
+          m_pPlayPositionCO(nullptr),
+          m_pKeylockCO(nullptr),
+          m_segments(),
+          m_lancelotLayout(),
+          m_style(),
+          m_baseLancelot(),
+          m_transposedLancelot(),
+          m_transposedMusicalKey(),
+          m_transposedWheelKey(),
+          m_currentWheelKey(),
+          m_lastLoadTime(),
+          m_animationTimer(),
           m_currentRateRatio(1.0),
           m_currentKeyShift(0.0),
           m_currentPlayPosition(0.0),
+          m_trackLengthSeconds(0.0),
           m_wheelSize(120),
           m_wheelMargin(10),
-          m_pPlayPositionCO(nullptr),
-          m_pRateRatioCO(nullptr),
-          m_pKeyControlCO(nullptr),
-          m_keylockEnabled(false),
-          m_currentTotalOffset(0) {
+          m_currentTotalOffset(0),
+          m_visible(true),
+          m_keylockEnabled(false) {
     m_animationTimer.start();
     initLancelotLayout();
 }
@@ -227,7 +238,7 @@ void WaveformRenderKeyCurve::updateCurrentWheelKey() {
 
     double positionSeconds = m_currentPlayPosition * m_trackLengthSeconds;
 
-    for (const auto& seg : m_segments) {
+    for (const auto& seg : std::as_const(m_segments)) {
         if (positionSeconds >= seg.startTime && positionSeconds <= seg.endTime) {
             if (m_currentWheelKey != seg.key) {
                 m_currentWheelKey = seg.key;
@@ -265,7 +276,8 @@ void WaveformRenderKeyCurve::updateTransposedKey() {
         wheelSteps += 12;
 
     // Apply to Lancelot number
-    int currentNumber = m_baseLancelot.left(m_baseLancelot.length() - 1).toInt();
+    // int currentNumber = m_baseLancelot.left(m_baseLancelot.length() - 1).toInt();
+    int currentNumber = QStringView(m_baseLancelot).left(m_baseLancelot.length() - 1).toInt();
     bool isMinor = m_baseLancelot.endsWith("A");
 
     int newNumber = currentNumber + wheelSteps;
@@ -545,6 +557,8 @@ void WaveformRenderKeyCurve::drawWheelSlice(QPainter* painter,
         double endAngle,
         const QString& lancelot,
         bool isMinor) {
+    Q_UNUSED(lancelot);
+    Q_UNUSED(isMinor);
     double spanAngle = endAngle - startAngle;
     if (spanAngle <= 0)
         return;
@@ -564,7 +578,7 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(QPainter* painter,
     if (lancelot.isEmpty())
         return;
 
-    for (const auto& key : m_lancelotLayout) {
+    for (const auto& key : std::as_const(m_lancelotLayout)) {
         if (key.lancelot == lancelot) {
             double startAngle = key.angle;
             int start = static_cast<int>(startAngle * 16);
@@ -589,7 +603,7 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
     if (m_segments.isEmpty())
         return;
 
-    m_wheelSize = m_waveformRenderer->getHeight() * 0.7;
+    m_wheelSize = static_cast<int>(m_waveformRenderer->getHeight() * 0.7);
 
     int x = m_waveformRenderer->getWidth() - m_wheelSize - m_wheelMargin;
     int y = m_wheelMargin;
@@ -611,14 +625,14 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
     painter->drawEllipse(innerRect);
 
     // Draw outer slices (Majors)
-    for (const auto& key : m_lancelotLayout) {
+    for (const auto& key : std::as_const(m_lancelotLayout)) {
         if (!key.isMinor) {
             drawWheelSlice(painter, rect, key.angle, key.angle + 30, key.lancelot, false);
         }
     }
 
     // Draw inner slices (Minors)
-    for (const auto& key : m_lancelotLayout) {
+    for (const auto& key : std::as_const(m_lancelotLayout)) {
         if (key.isMinor) {
             drawWheelSlice(painter, innerRect, key.angle, key.angle + 30, key.lancelot, true);
         }
@@ -641,7 +655,7 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
     }
 
     QFont font = painter->font();
-    font.setPointSize(m_waveformRenderer->getHeight() * 0.1);
+    font.setPointSize(static_cast<int>(m_waveformRenderer->getHeight() * 0.1));
     painter->setFont(font);
     painter->setPen(QPen(QColor(255, 255, 255, 200), 1));
     painter->drawText(QRect(x, y + m_wheelSize + 5, m_wheelSize, 20),
@@ -707,6 +721,7 @@ void WaveformRenderKeyCurve::drawKeyChangeLabel(QPainter* painter,
         const QString& previousKey,
         const QString& currentKey,
         Qt::Orientation orientation) {
+    Q_UNUSED(previousKey);
     drawKeyLabel(painter, position, currentKey, orientation);
 }
 
@@ -795,8 +810,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     // Draw key markers
     if (m_style.showMarkers) {
         painter->setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
-
-        for (const auto& seg : m_segments) {
+        for (const auto& seg : std::as_const(m_segments)) {
             double startTime = seg.startTime;
             double startPos = startTime * (trackSamples / trackLengthSeconds);
 
