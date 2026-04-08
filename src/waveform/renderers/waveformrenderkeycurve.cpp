@@ -19,11 +19,10 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// Constants for Lancelot/Camelot wheel
 namespace {
-constexpr double WHEEL_START_ANGLE = 45.0; // Slice 1 starts at 45° (Qt counter-clockwise)
-constexpr double SLICE_ANGLE = 30.0;       // 30 degrees per slice
-constexpr int NUM_SLICES = 12;             // 12 slices for the wheel
+constexpr double WHEEL_START_ANGLE = 45.0;
+constexpr double SLICE_ANGLE = 30.0;
+constexpr int NUM_SLICES = 12;
 } // namespace
 
 WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
@@ -31,10 +30,15 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_visible(true),
           m_trackLengthSeconds(0.0),
           m_currentRateRatio(1.0),
+          m_currentKeyShift(0.0),
           m_currentPlayPosition(0.0),
           m_wheelSize(120),
           m_wheelMargin(10),
-          m_pPlayPositionCO(nullptr) {
+          m_pPlayPositionCO(nullptr),
+          m_pRateRatioCO(nullptr),
+          m_pKeyControlCO(nullptr),
+          m_keylockEnabled(false),
+          m_currentTotalOffset(0) {
     m_animationTimer.start();
     initLancelotLayout();
 }
@@ -52,7 +56,55 @@ void WaveformRenderKeyCurve::initPlayPositionControl() {
             m_waveformRenderer->getGroup(), "playposition");
 
     m_currentPlayPosition = m_pPlayPositionCO->get();
-    qDebug() << "[WaveformRenderBpmCurve] Initial playposition:" << m_currentPlayPosition;
+    qDebug() << "[WaveformRenderKeyCurve] Initial playposition:" << m_currentPlayPosition;
+}
+
+void WaveformRenderKeyCurve::initKeylockControl() {
+    if (!m_waveformRenderer || m_waveformRenderer->getGroup().isEmpty()) {
+        qDebug() << "[WaveformRenderKeyCurve] Cannot init keylock control - no group";
+        return;
+    }
+
+    qDebug() << "[WaveformRenderKeyCurve] Creating keylock control for group:"
+             << m_waveformRenderer->getGroup();
+
+    m_pKeylockCO = std::make_unique<ControlProxy>(
+            m_waveformRenderer->getGroup(), "keylock");
+
+    m_keylockEnabled = (m_pKeylockCO->get() > 0.5);
+    qDebug() << "[WaveformRenderKeyCurve] Initial keylock:" << m_keylockEnabled;
+}
+
+void WaveformRenderKeyCurve::initRateRatioControl() {
+    if (!m_waveformRenderer || m_waveformRenderer->getGroup().isEmpty()) {
+        qDebug() << "[WaveformRenderKeyCurve] Cannot init rate control - no group";
+        return;
+    }
+
+    qDebug() << "[WaveformRenderKeyCurve] Creating rate ratio control for group:"
+             << m_waveformRenderer->getGroup();
+
+    m_pRateRatioCO = std::make_unique<ControlProxy>(
+            m_waveformRenderer->getGroup(), "rate_ratio");
+
+    m_currentRateRatio = m_pRateRatioCO->get();
+    qDebug() << "[WaveformRenderKeyCurve] Initial rate ratio:" << m_currentRateRatio;
+}
+
+void WaveformRenderKeyCurve::initKeyControl() {
+    if (!m_waveformRenderer || m_waveformRenderer->getGroup().isEmpty()) {
+        qDebug() << "[WaveformRenderKeyCurve] Cannot init key control - no group";
+        return;
+    }
+
+    qDebug() << "[WaveformRenderKeyCurve] Creating key control for group:"
+             << m_waveformRenderer->getGroup();
+
+    m_pKeyControlCO = std::make_unique<ControlProxy>(
+            m_waveformRenderer->getGroup(), "pitch");
+
+    m_currentKeyShift = m_pKeyControlCO->get();
+    qDebug() << "[WaveformRenderKeyCurve] Initial key shift:" << m_currentKeyShift;
 }
 
 void WaveformRenderKeyCurve::setup(const QDomNode& node, const SkinContext& skinContext) {
@@ -136,15 +188,10 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
             "11A",
             "12A"};
 
-    constexpr double START_ANGLE = 45.0; // Start of Slice 1
-    constexpr double SLICE_WIDTH = 30.0; // Each slice is 30 degrees
-
     for (int i = 0; i < NUM_SLICES; ++i) {
         LancelotKey key;
         key.lancelot = majorLancelots[i];
-        // Decrease angle for clockwise numbering
-        double angle = START_ANGLE - (i * SLICE_WIDTH);
-        // Normalize to 0-360 degrees
+        double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
         while (angle < 0.0)
             angle += 360.0;
         while (angle >= 360.0)
@@ -157,8 +204,7 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
     for (int i = 0; i < NUM_SLICES; ++i) {
         LancelotKey key;
         key.lancelot = minorLancelots[i];
-        double angle = START_ANGLE - (i * SLICE_WIDTH);
-        // Normalize to 0-360 degrees
+        double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
         while (angle < 0.0)
             angle += 360.0;
         while (angle >= 360.0)
@@ -167,13 +213,6 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
         key.isMinor = true;
         m_lancelotLayout.append(key);
     }
-
-    // qDebug() << "[WaveformRenderKeyCurve] Lancelot layout initialized:";
-    // for (int i = 0; i < m_lancelotLayout.size(); ++i) {
-    // qDebug() << "  Index" << i << ":" << m_lancelotLayout[i].lancelot
-    //         << "angle:" << m_lancelotLayout[i].angle
-    //         << "isMinor:" << m_lancelotLayout[i].isMinor;
-    //}
 }
 
 void WaveformRenderKeyCurve::onPlayPositionChanged(double value) {
@@ -192,16 +231,147 @@ void WaveformRenderKeyCurve::updateCurrentWheelKey() {
         if (positionSeconds >= seg.startTime && positionSeconds <= seg.endTime) {
             if (m_currentWheelKey != seg.key) {
                 m_currentWheelKey = seg.key;
+                m_baseLancelot = keyToLancelot(m_currentWheelKey);
+                updateTransposedKey();
             }
             break;
         }
     }
 }
 
+void WaveformRenderKeyCurve::updateTransposedKey() {
+    if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty()) {
+        qDebug() << "[WaveformRenderKeyCurve] updateTransposedKey - missing data";
+        return;
+    }
+
+    // Poll keylock status
+    if (m_pKeylockCO) {
+        m_keylockEnabled = (m_pKeylockCO->get() > 0.5);
+    }
+
+    // Calculate semitone offset from rate ratio (only if keylock is OFF)
+    double pitchSemitones = 0.0;
+    if (!m_keylockEnabled) {
+        pitchSemitones = 12.0 * log2(m_currentRateRatio);
+    }
+
+    int totalSemitones = static_cast<int>(std::round(pitchSemitones + m_currentKeyShift));
+    m_currentTotalOffset = totalSemitones;
+
+    // Convert semitones to Camelot wheel steps
+    int wheelSteps = (totalSemitones * 7) % 12;
+    if (wheelSteps < 0)
+        wheelSteps += 12;
+
+    // Apply to Lancelot number
+    int currentNumber = m_baseLancelot.left(m_baseLancelot.length() - 1).toInt();
+    bool isMinor = m_baseLancelot.endsWith("A");
+
+    int newNumber = currentNumber + wheelSteps;
+    while (newNumber < 1)
+        newNumber += 12;
+    while (newNumber > 12)
+        newNumber -= 12;
+
+    m_transposedLancelot = QString::number(newNumber) + (isMinor ? "A" : "B");
+
+    // Transpose the musical key by totalSemitones (chromatic)
+    qDebug() << "[WaveformRenderKeyCurve] Before transpose - key:" << m_currentWheelKey
+             << "semitones:" << totalSemitones;
+
+    m_transposedMusicalKey = transposeKey(m_currentWheelKey, totalSemitones);
+
+    qDebug() << "[WaveformRenderKeyCurve] After transpose - result:" << m_transposedMusicalKey;
+
+    // Convert back to preferred spelling
+    if (m_transposedMusicalKey == "A#m")
+        m_transposedMusicalKey = "Bbm";
+    if (m_transposedMusicalKey == "D#m")
+        m_transposedMusicalKey = "Ebm";
+    if (m_transposedMusicalKey == "G#m")
+        m_transposedMusicalKey = "Abm";
+    if (m_transposedMusicalKey == "C#")
+        m_transposedMusicalKey = "Db";
+    if (m_transposedMusicalKey == "F#")
+        m_transposedMusicalKey = "Gb";
+    if (m_transposedMusicalKey == "A#")
+        m_transposedMusicalKey = "Bb";
+    if (m_transposedMusicalKey == "D#")
+        m_transposedMusicalKey = "Eb";
+    if (m_transposedMusicalKey == "G#")
+        m_transposedMusicalKey = "Ab";
+
+    qDebug() << "[WaveformRenderKeyCurve] Keylock:" << m_keylockEnabled
+             << "Semitones:" << totalSemitones
+             << "Wheel steps:" << wheelSteps
+             << "Original:" << m_currentWheelKey << "(" << m_baseLancelot << ")"
+             << "-> Flashing:" << m_transposedLancelot
+             << "Display:" << m_transposedMusicalKey;
+}
+
+QString WaveformRenderKeyCurve::transposeKey(const QString& key, int semitones) const {
+    static QStringList majorKeys = {
+            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    static QStringList minorKeys = {"Cm",
+            "C#m",
+            "Dm",
+            "D#m",
+            "Em",
+            "Fm",
+            "F#m",
+            "Gm",
+            "G#m",
+            "Am",
+            "A#m",
+            "Bm"};
+
+    // Normalize enharmonic equivalents
+    QString normalizedKey = key;
+    if (normalizedKey == "Bbm")
+        normalizedKey = "A#m";
+    if (normalizedKey == "Ebm")
+        normalizedKey = "D#m";
+    if (normalizedKey == "Abm")
+        normalizedKey = "G#m";
+    if (normalizedKey == "Db")
+        normalizedKey = "C#";
+    if (normalizedKey == "Gb")
+        normalizedKey = "F#";
+    if (normalizedKey == "Bb")
+        normalizedKey = "A#";
+    if (normalizedKey == "Eb")
+        normalizedKey = "D#";
+    if (normalizedKey == "Ab")
+        normalizedKey = "G#";
+
+    bool isMinor = normalizedKey.contains('m');
+    const QStringList& keys = isMinor ? minorKeys : majorKeys;
+
+    int index = keys.indexOf(normalizedKey);
+    if (index == -1) {
+        qDebug() << "[WaveformRenderKeyCurve] transposeKey - key not found:" << normalizedKey;
+        return key;
+    }
+
+    int newIndex = (index + semitones) % 12;
+    if (newIndex < 0)
+        newIndex += 12;
+
+    QString result = keys[newIndex];
+    qDebug() << "[WaveformRenderKeyCurve] transposeKey:" << normalizedKey
+             << "+" << semitones << "=" << result;
+
+    return result;
+}
+
 void WaveformRenderKeyCurve::onSetTrack() {
     m_segments.clear();
     loadKeyCurve();
     initPlayPositionControl();
+    initRateRatioControl();
+    initKeyControl();
+    initKeylockControl();
 }
 
 void WaveformRenderKeyCurve::loadKeyCurve() {
@@ -243,9 +413,8 @@ void WaveformRenderKeyCurve::loadKeyCurve() {
     }
 
     for (const QJsonValue& val : std::as_const(keyArray)) {
-        if (!val.isObject()) {
+        if (!val.isObject())
             continue;
-        }
 
         QJsonObject obj = val.toObject();
         KeySegment seg;
@@ -263,6 +432,8 @@ void WaveformRenderKeyCurve::loadKeyCurve() {
     // Set initial wheel key
     if (!m_segments.isEmpty()) {
         m_currentWheelKey = m_segments[0].key;
+        m_baseLancelot = keyToLancelot(m_currentWheelKey);
+        updateTransposedKey();
     }
 }
 
@@ -284,8 +455,7 @@ QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
 
     if (m_style.wheelType == KeyCurveStyle::WHEEL_MIXXX) {
         // Mixxx keywheel mapping
-        static QMap<QString, QString> majorToLancelot = {
-                {"C", "12B"},
+        static QMap<QString, QString> majorToLancelot = {{"C", "12B"},
                 {"G", "1B"},
                 {"D", "2B"},
                 {"A", "3B"},
@@ -299,8 +469,7 @@ QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
                 {"Bb", "10B"},
                 {"F", "11B"}};
 
-        static QMap<QString, QString> minorToLancelot = {
-                {"Am", "12A"},
+        static QMap<QString, QString> minorToLancelot = {{"Am", "12A"},
                 {"Em", "1A"},
                 {"Bm", "2A"},
                 {"F#m", "3A"},
@@ -321,8 +490,7 @@ QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
         }
     } else {
         // Standard Camelot wheel mapping
-        static QMap<QString, QString> majorToLancelot = {
-                {"B", "1B"},
+        static QMap<QString, QString> majorToLancelot = {{"B", "1B"},
                 {"F#", "2B"},
                 {"Gb", "2B"},
                 {"C#", "3B"},
@@ -366,44 +534,35 @@ QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
 
 QString WaveformRenderKeyCurve::normalizeKeyDisplay(const QString& key) const {
     QString normalized = key;
-    // Unicode flat to ASCII b
     normalized.replace(QChar(0x266D), 'b');
-    // Unicode sharp to ASCII #
     normalized.replace(QChar(0x266F), '#');
     return normalized;
 }
 
-void WaveformRenderKeyCurve::drawWheelSlice(
-        QPainter* painter,
+void WaveformRenderKeyCurve::drawWheelSlice(QPainter* painter,
         const QRectF& rect,
         double startAngle,
         double endAngle,
         const QString& lancelot,
         bool isMinor) {
     double spanAngle = endAngle - startAngle;
-    if (spanAngle <= 0) {
+    if (spanAngle <= 0)
         return;
-    }
 
     int start = static_cast<int>(startAngle * 16);
     int span = static_cast<int>(spanAngle * 16);
 
-    // outline
     painter->setPen(QPen(QColor(200, 200, 200, 150), 1));
     painter->setBrush(Qt::NoBrush);
     painter->drawPie(rect, start, span);
 }
 
-void WaveformRenderKeyCurve::drawHighlightedWheelKey(
-        QPainter* painter,
+void WaveformRenderKeyCurve::drawHighlightedWheelKey(QPainter* painter,
         const QRectF& outerRect,
         const QRectF& innerRect,
         const QString& lancelot) {
-    if (lancelot.isEmpty()) {
+    if (lancelot.isEmpty())
         return;
-    }
-
-    // qDebug() << "[WaveformRenderKeyCurve-Wheel] Looking for slice:" << lancelot;
 
     for (const auto& key : m_lancelotLayout) {
         if (key.lancelot == lancelot) {
@@ -411,10 +570,8 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(
             int start = static_cast<int>(startAngle * 16);
             int span = static_cast<int>(30 * 16);
 
-            // Choose correct rectangle
             QRectF drawRect = key.isMinor ? innerRect : outerRect;
 
-            // Flashing white fill
             double time = m_animationTimer.elapsed() / 1000.0;
             int alpha = 100 + static_cast<int>(155 * sin(time * 8));
 
@@ -427,12 +584,10 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(
 }
 
 void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
-    if (!m_style.showLancelotWheel) {
+    if (!m_style.showLancelotWheel)
         return;
-    }
-    if (m_segments.isEmpty()) {
+    if (m_segments.isEmpty())
         return;
-    }
 
     m_wheelSize = m_waveformRenderer->getHeight() * 0.7;
 
@@ -446,8 +601,7 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
     painter->setBrush(Qt::NoBrush);
     painter->drawEllipse(rect);
 
-    // Draw inner circle (smaller)
-    // with 0.45 the outer parts are a bit small
+    // Draw inner circle
     double innerRadius = rect.width() * 0.35;
     QRectF innerRect(center.x() - innerRadius,
             center.y() - innerRadius,
@@ -456,34 +610,37 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
     painter->setPen(QPen(QColor(150, 150, 150, 150), 1, Qt::DashLine));
     painter->drawEllipse(innerRect);
 
-    // draw outer slices = Majors
+    // Draw outer slices (Majors)
     for (const auto& key : m_lancelotLayout) {
         if (!key.isMinor) {
             drawWheelSlice(painter, rect, key.angle, key.angle + 30, key.lancelot, false);
         }
     }
 
-    // draw inner slices = Minors
+    // Draw inner slices (Minors)
     for (const auto& key : m_lancelotLayout) {
         if (key.isMinor) {
             drawWheelSlice(painter, innerRect, key.angle, key.angle + 30, key.lancelot, true);
         }
     }
 
-    // draw highlighted key as flashing white slice
-    QString currentLancelot = keyToLancelot(m_currentWheelKey);
-    if (!currentLancelot.isEmpty()) {
-        drawHighlightedWheelKey(painter, rect, innerRect, currentLancelot);
+    // Draw highlighted key using transposed Lancelot
+    if (!m_transposedLancelot.isEmpty()) {
+        drawHighlightedWheelKey(painter, rect, innerRect, m_transposedLancelot);
+    } else if (!m_baseLancelot.isEmpty()) {
+        drawHighlightedWheelKey(painter, rect, innerRect, m_baseLancelot);
     }
 
-    QString displayKey = normalizeKeyDisplay(m_currentWheelKey);
-    if (!currentLancelot.isEmpty()) {
-        displayKey += " (" + currentLancelot + ")";
+    // Display transposed musical key with its Lancelot number
+    QString displayKey;
+    if (!m_transposedMusicalKey.isEmpty() && !m_transposedLancelot.isEmpty()) {
+        displayKey = normalizeKeyDisplay(m_transposedMusicalKey) + " (" +
+                m_transposedLancelot + ")";
+    } else if (!m_currentWheelKey.isEmpty() && !m_baseLancelot.isEmpty()) {
+        displayKey = normalizeKeyDisplay(m_currentWheelKey) + " (" + m_baseLancelot + ")";
     }
 
     QFont font = painter->font();
-    // font.setPointSize(15);
-    // adapt to height
     font.setPointSize(m_waveformRenderer->getHeight() * 0.1);
     painter->setFont(font);
     painter->setPen(QPen(QColor(255, 255, 255, 200), 1));
@@ -500,8 +657,7 @@ QColor WaveformRenderKeyCurve::getColorForKey(const QString& key) const {
     return QColor::fromHsv(hash % 360, 200, 200);
 }
 
-void WaveformRenderKeyCurve::drawKeyLabel(
-        QPainter* painter,
+void WaveformRenderKeyCurve::drawKeyLabel(QPainter* painter,
         const QPointF& position,
         const QString& key,
         Qt::Orientation orientation) {
@@ -546,8 +702,7 @@ void WaveformRenderKeyCurve::drawKeyLabel(
     }
 }
 
-void WaveformRenderKeyCurve::drawKeyChangeLabel(
-        QPainter* painter,
+void WaveformRenderKeyCurve::drawKeyChangeLabel(QPainter* painter,
         const QPointF& position,
         const QString& previousKey,
         const QString& currentKey,
@@ -567,13 +722,41 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         return;
     }
 
+    // Poll play position
     if (m_pPlayPositionCO) {
         double newPlayPosition = m_pPlayPositionCO->get();
         if (std::abs(newPlayPosition - m_currentPlayPosition) > 0.001) {
-            qDebug() << "[WaveformRenderKeyCurve] PlayPosition changed (polled):"
-                     << m_currentPlayPosition << "->" << newPlayPosition;
             m_currentPlayPosition = newPlayPosition;
             onPlayPositionChanged(m_currentPlayPosition);
+        }
+    }
+
+    // Poll rate ratio
+    if (m_pRateRatioCO) {
+        double newRate = m_pRateRatioCO->get();
+        if (std::abs(newRate - m_currentRateRatio) > 0.001) {
+            m_currentRateRatio = newRate;
+            updateTransposedKey();
+        }
+    }
+
+    // Poll key shift
+    if (m_pKeyControlCO) {
+        double newShift = m_pKeyControlCO->get();
+        if (std::abs(newShift - m_currentKeyShift) > 0.001) {
+            m_currentKeyShift = newShift;
+            updateTransposedKey();
+        }
+    }
+
+    // Poll keylock
+    if (m_pKeylockCO) {
+        double newKeylock = m_pKeylockCO->get();
+        bool newEnabled = (newKeylock > 0.5);
+        if (m_keylockEnabled != newEnabled) {
+            m_keylockEnabled = newEnabled;
+            qDebug() << "[WaveformRenderKeyCurve] Keylock changed to:" << m_keylockEnabled;
+            updateTransposedKey();
         }
     }
 
@@ -609,7 +792,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     const double labelY = 5;
     const double minLabelSpacing = 400;
 
-    // draw key markers and labels
+    // Draw key markers
     if (m_style.showMarkers) {
         painter->setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
 
@@ -629,6 +812,8 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
             }
         }
     }
+
+    int totalOffset = m_currentTotalOffset;
 
     if (m_style.showLabels) {
         QFont labelFont = painter->font();
@@ -658,13 +843,34 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
             if (x >= 0 && x <= rendererWidth) {
                 if (x - lastLabelX >= minLabelSpacing) {
                     if (orientation == Qt::Horizontal) {
-                        drawKeyLabel(painter, QPointF(x, labelY), seg.key, orientation);
+                        // Calculate transposed key for this segment
+                        QString originalKey = seg.key;
+                        QString transposedKey = transposeKey(originalKey, totalOffset);
+
+                        // Also convert to preferred spelling if needed
+                        if (transposedKey == "A#m")
+                            transposedKey = "Bbm";
+                        if (transposedKey == "D#m")
+                            transposedKey = "Ebm";
+                        if (transposedKey == "G#m")
+                            transposedKey = "Abm";
+                        if (transposedKey == "C#")
+                            transposedKey = "Db";
+                        if (transposedKey == "F#")
+                            transposedKey = "Gb";
+                        if (transposedKey == "A#")
+                            transposedKey = "Bb";
+                        if (transposedKey == "D#")
+                            transposedKey = "Eb";
+                        if (transposedKey == "G#")
+                            transposedKey = "Ab";
+
+                        drawKeyLabel(painter, QPointF(x, labelY), transposedKey, orientation);
                         lastLabelX = x;
                     }
                 }
             }
         }
     }
-
     drawLancelotWheel(painter);
 }

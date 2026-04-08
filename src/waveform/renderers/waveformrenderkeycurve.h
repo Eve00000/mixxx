@@ -89,6 +89,12 @@ struct KeyCurveStyle {
     }
 };
 
+struct LancelotKey {
+    QString lancelot;
+    double angle;
+    bool isMinor;
+};
+
 class WaveformRenderKeyCurve : public WaveformRendererAbstract {
   public:
     explicit WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer);
@@ -100,6 +106,7 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
 
   private slots:
     void onPlayPositionChanged(double value);
+    void onRateRatioChanged(double value);
 
   private:
     void loadKeyCurve();
@@ -126,32 +133,46 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
             const QRectF& outerRect,
             const QRectF& innerRect,
             const QString& lancelot);
-    QString keyToLancelot(const QString& key) const;
-    QString normalizeKeyDisplay(const QString& key) const;
     void updateCurrentWheelKey();
     void initPlayPositionControl();
     void initLancelotLayout();
+    void initRateRatioControl();
+    void initKeyControl();
+    void initKeylockControl();
+    void updateTransposedKey();
 
-    QVector<KeySegment> m_segments;
-    KeyCurveStyle m_style;
-    bool m_visible;
-    double m_trackLengthSeconds;
-    QDateTime m_lastLoadTime;
+    QString keyToLancelot(const QString& key) const;
+    QString normalizeKeyDisplay(const QString& key) const;
+    QString transposeKey(const QString& key, int semitones) const;
 
     std::unique_ptr<ControlProxy> m_pRateRatioCO;
+    std::unique_ptr<ControlProxy> m_pKeyControlCO;
     std::unique_ptr<ControlProxy> m_pPlayPositionCO;
-    double m_currentRateRatio;
-    double m_currentPlayPosition;
+    std::unique_ptr<ControlProxy> m_pKeylockCO;
+
+    QVector<KeySegment> m_segments;
+    QVector<LancelotKey> m_lancelotLayout;
+
+    KeyCurveStyle m_style;
+
+    QString m_baseLancelot;
+    QString m_transposedLancelot;
+    QString m_transposedMusicalKey;
+    QString m_transposedWheelKey;
     QString m_currentWheelKey;
+
+    QDateTime m_lastLoadTime;
     QElapsedTimer m_animationTimer;
+
+    double m_currentRateRatio;
+    double m_currentKeyShift;
+    double m_currentPlayPosition;
+    double m_trackLengthSeconds;
 
     int m_wheelSize;
     int m_wheelMargin;
+    int m_currentTotalOffset;
 
-    struct LancelotKey {
-        QString lancelot;
-        double angle;
-        bool isMinor;
-    };
-    QVector<LancelotKey> m_lancelotLayout;
+    bool m_visible;
+    bool m_keylockEnabled;
 };
