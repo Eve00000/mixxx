@@ -1171,6 +1171,7 @@ add_library(
   src/analyzer/plugins/analyzerqueenmarybeats.cpp
   src/analyzer/plugins/analyzerqueenmarybeatsextended.cpp
   src/analyzer/plugins/analyzerqueenmarykey.cpp
+  src/analyzer/plugins/analyzerqueenmarykeyextended.cpp
   src/analyzer/plugins/analyzersoundtouchbeats.cpp
   src/analyzer/plugins/buffering_utils.cpp
   src/analyzer/trackanalysisscheduler.cpp
@@ -1698,6 +1699,7 @@ add_library(
   src/waveform/renderers/waveformrenderbackground.cpp
   src/waveform/renderers/waveformrenderbeat.cpp
   src/waveform/renderers/waveformrenderbpmcurve.cpp
+  src/waveform/renderers/waveformrenderkeycurve.cpp
   src/waveform/renderers/waveformrendererabstract.cpp
   src/waveform/renderers/waveformrendererendoftrack.cpp
   src/waveform/renderers/waveformrendererfilteredsignal.cpp

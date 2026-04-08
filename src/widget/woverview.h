@@ -45,6 +45,15 @@ struct OverviewBpmPoint {
     }
 };
 
+struct OverviewKeyPoint {
+    double position;
+    double duration;
+    double range_start;
+    double range_end;
+    QString type;
+    double confidence;
+};
+
 class WOverview : public WWidget, public TrackDropTarget {
     Q_OBJECT
   public:
@@ -70,6 +79,7 @@ class WOverview : public WWidget, public TrackDropTarget {
     void trackDropped(const QString& filename, const QString& group) override;
     void cloneDeck(const QString& sourceGroup, const QString& targetGroup) override;
     void requestBeatsAnalysis(TrackPointer pTrack);
+    void requestKeyAnalysis(TrackPointer pTrack);
 
   protected:
 
@@ -109,11 +119,19 @@ class WOverview : public WWidget, public TrackDropTarget {
     double m_yMinBpm;
     double m_yMaxBpm;
 
+    // KEY Markers
+    QVector<OverviewKeyPoint> m_keyCurvePoints;
+    bool m_showKeyMarkers;
+
     void calculateBpmRange();
     double mapBpmToOverviewY(double bpm, double height);
     void drawBpmCurve(QPainter* painter, const QRect& widgetRect);
     void triggerAnalysisForTrack(TrackPointer pTrack);
     void checkAndRequestBpmCurve(TrackPointer pTrack);
+
+    void loadKeyCurveForTrack(TrackPointer pTrack);
+    void checkAndRequestKeyCurve(TrackPointer pTrack);
+    void drawKeyMarkers(QPainter* painter, const QRect& widgetRect);
 
     // Append the waveform overview pixmap according to available data
     // in waveform

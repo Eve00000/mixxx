@@ -448,6 +448,7 @@ void WOverview::checkAndRequestBpmCurve(TrackPointer pTrack) {
 }
 
 void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
+    m_showBpmCurve = true;
     if (!m_showBpmCurve || m_bpmCurvePoints.isEmpty()) {
         return;
     }
@@ -645,6 +646,205 @@ double WOverview::mapBpmToOverviewY(double bpm, double height) {
     return height - (normalized * height);
 }
 
+void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
+    qDebug() << "[WOverview-KEY] loadKeyCurveForTrack called";
+
+    if (!pTrack) {
+        qDebug() << "[WOverview-KEY] No track pointer";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    if (!pTrack->getId().isValid()) {
+        qDebug() << "[WOverview-KEY] Track has no valid ID";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[WOverview-KEY] Track ID string is empty";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    QString trackTitle = pTrack->getTitle();
+    qDebug() << "[WOverview-KEY] Loading key curve for track:" << trackTitle << "ID:" << trackIdStr;
+
+    QString keyDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/keycurve/";
+    QString jsonPath = keyDir + trackIdStr + ".json";
+
+    qDebug() << "[WOverview-KEY] jsonPath:" << jsonPath;
+
+    QFile file(jsonPath);
+    int maxRetries = 5;
+    int retryDelay = 200;
+
+    for (int retry = 0; retry < maxRetries; ++retry) {
+        if (file.open(QIODevice::ReadOnly)) {
+            break;
+        }
+
+        if (file.exists()) {
+            qDebug() << "[WOverview-KEY] JSON exists but cannot open (retry "
+                     << retry + 1 << "/" << maxRetries << ")";
+            QThread::msleep(retryDelay);
+            retryDelay *= 2;
+        } else {
+            qDebug() << "[WOverview-KEY] Cannot open key JSON:" << jsonPath;
+            m_keyCurvePoints.clear();
+            return;
+        }
+    }
+
+    if (!file.isOpen()) {
+        qDebug() << "[WOverview-KEY] Failed to open JSON after " << maxRetries << " retries";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+    if (doc.isNull() || !doc.isObject()) {
+        qDebug() << "[WOverview-KEY] Invalid JSON document";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    QJsonObject rootObj = doc.object();
+    QJsonArray keyArray;
+
+    if (rootObj.contains("key_curve") && rootObj["key_curve"].isArray()) {
+        keyArray = rootObj["key_curve"].toArray();
+    } else {
+        qDebug() << "[WOverview-KEY] No key_curve array found";
+        m_keyCurvePoints.clear();
+        return;
+    }
+
+    m_keyCurvePoints.clear();
+
+    for (const QJsonValue& val : std::as_const(keyArray)) {
+        if (!val.isObject()) {
+            continue;
+        }
+
+        QJsonObject obj = val.toObject();
+        OverviewKeyPoint pt;
+
+        pt.position = obj["position"].toDouble();
+        pt.duration = obj["duration"].toDouble();
+        pt.range_start = obj["range_start"].toDouble();
+        pt.range_end = obj["range_end"].toDouble();
+        pt.type = obj["type"].toString();
+        pt.confidence = obj["confidence"].toDouble();
+
+        m_keyCurvePoints.append(pt);
+    }
+
+    qDebug() << "[WOverview-KEY] Loaded" << m_keyCurvePoints.size() << "key segments for track:"
+             << trackTitle << "(" << trackIdStr << ")";
+
+    update();
+}
+
+void WOverview::checkAndRequestKeyCurve(TrackPointer pTrack) {
+    if (!pTrack || !pTrack->getId().isValid()) {
+        return;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        return;
+    }
+
+    QString keyDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/keycurve/";
+    QString jsonPath = keyDir + trackIdStr + ".json";
+
+    QFile file(jsonPath);
+    if (file.exists()) {
+        qDebug() << "[WOverview-KEY] JSON exists for track:" << pTrack->getTitle();
+        return;
+    }
+
+    qDebug() << "[WOverview-KEY] No JSON for track:" << pTrack->getTitle()
+             << "- requesting analysis";
+    emit requestKeyAnalysis(pTrack);
+}
+
+void WOverview::drawKeyMarkers(QPainter* painter, const QRect& widgetRect) {
+    if (!m_showKeyMarkers || m_keyCurvePoints.isEmpty()) {
+        return;
+    }
+
+    ControlProxy trackSamplesControl(m_group, "track_samples");
+    ControlProxy trackSampleRateControl(m_group, "track_samplerate");
+
+    double totalTrackSamples = trackSamplesControl.get() / 2;
+    double sampleRate = trackSampleRateControl.get();
+
+    if (totalTrackSamples <= 0 || sampleRate <= 0) {
+        return;
+    }
+
+    double trackLengthSeconds = totalTrackSamples / sampleRate;
+    const int width = widgetRect.width();
+    const int height = widgetRect.height();
+
+    PainterScope scope(painter);
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // Draw markers at key change points (orange)
+    painter->setPen(QPen(QColor(255, 165, 0, 150), 1, Qt::DashLine));
+
+    for (const OverviewKeyPoint& seg : std::as_const(m_keyCurvePoints)) {
+        double startTime = seg.position;
+        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+        double x = (startTime / trackLengthSeconds) * width;
+
+        if (x >= 0 && x <= width) {
+            painter->drawLine(QLineF(x, 0, x, height));
+        }
+    }
+
+    // Draw diamonds at key change points (orange)
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 165, 0, 200));
+
+    for (const OverviewKeyPoint& seg : std::as_const(m_keyCurvePoints)) {
+        double startTime = seg.position;
+        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+        double x = (startTime / trackLengthSeconds) * width;
+
+        if (x >= 0 && x <= width) {
+            QPolygonF diamond;
+            diamond << QPointF(x, 0) << QPointF(x + 3, 4)
+                    << QPointF(x, 8) << QPointF(x - 3, 4);
+            painter->drawPolygon(diamond);
+        }
+    }
+
+    // Draw diamond at end of last segment
+    if (!m_keyCurvePoints.isEmpty()) {
+        const OverviewKeyPoint& lastSeg = m_keyCurvePoints.last();
+        double endTime = lastSeg.range_end;
+        double x = (endTime / trackLengthSeconds) * width;
+
+        if (x >= 0 && x <= width) {
+            QPolygonF diamond;
+            diamond << QPointF(x, 0) << QPointF(x + 4, 6)
+                    << QPointF(x, 12) << QPointF(x - 4, 6);
+            painter->drawPolygon(diamond);
+        }
+    }
+}
+
 void WOverview::onConnectedControlChanged(double dParameter, double dValue) {
     // this is connected via skin to "playposition"
     Q_UNUSED(dValue);
@@ -722,6 +922,7 @@ void WOverview::onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyz
         if (analyzerProgress > 0.95) {
             QTimer::singleShot(500, this, [this]() {
                 loadBpmCurveForTrack(m_pCurrentTrack);
+                loadKeyCurveForTrack(m_pCurrentTrack);
             });
         }
     }
@@ -738,8 +939,10 @@ void WOverview::slotTrackLoaded(TrackPointer pTrack) {
 
     if (pTrack) {
         loadBpmCurveForTrack(pTrack);
+        loadKeyCurveForTrack(pTrack);
     } else {
         m_bpmCurvePoints.clear();
+        m_keyCurvePoints.clear();
     }
 
     update();
@@ -783,8 +986,11 @@ void WOverview::slotLoadingTrack(TrackPointer pNewTrack, TrackPointer pOldTrack)
         connect(pNewTrack.get(), &Track::cuesUpdated, this, &WOverview::receiveCuesUpdated);
 
         m_bpmCurvePoints.clear();
+        m_keyCurvePoints.clear();
         // JSON for BPM curve? -> if not reanalysis
         checkAndRequestBpmCurve(pNewTrack);
+        // JSON for key curve? -> if not reanalysis
+        checkAndRequestKeyCurve(pNewTrack);
     } else {
         m_pCurrentTrack.reset();
         m_pWaveform.clear();
@@ -1095,6 +1301,8 @@ void WOverview::paintEvent(QPaintEvent* pEvent) {
         drawMinuteMarkers(&painter);
         // BPM curve
         drawBpmCurve(&painter, rect());
+        // KEY Markers
+        drawKeyMarkers(&painter, rect());
         drawPlayPosition(&painter);
         drawEndOfTrackFrame(&painter);
         drawAnalyzerProgress(&painter);

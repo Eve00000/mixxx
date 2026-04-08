@@ -44,4 +44,6 @@ class AnalyzerKey : public Analyzer {
     bool m_bPreferencesKeyDetectionEnabled;
     bool m_bPreferencesFastAnalysisEnabled;
     bool m_bPreferencesReanalyzeEnabled;
+
+    bool saveKeySegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray);
 };

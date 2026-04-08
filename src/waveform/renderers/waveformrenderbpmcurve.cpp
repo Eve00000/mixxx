@@ -99,14 +99,15 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 
     QString markerLineStyleStr = skinContext.selectString(node, QStringLiteral("MarkerLineStyle"));
     if (!markerLineStyleStr.isEmpty()) {
-        if (markerLineStyleStr == "solid")
+        if (markerLineStyleStr == "solid") {
             m_style.markerLineStyle = Qt::SolidLine;
-        else if (markerLineStyleStr == "dash")
+        } else if (markerLineStyleStr == "dash") {
             m_style.markerLineStyle = Qt::DashLine;
-        else if (markerLineStyleStr == "dot")
+        } else if (markerLineStyleStr == "dot") {
             m_style.markerLineStyle = Qt::DotLine;
-        else if (markerLineStyleStr == "dashdot")
+        } else if (markerLineStyleStr == "dashdot") {
             m_style.markerLineStyle = Qt::DashDotLine;
+        }
     }
 
     // label styling
@@ -174,14 +175,15 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 
     QString offsetLineStyleStr = skinContext.selectString(node, QStringLiteral("OffsetLineStyle"));
     if (!offsetLineStyleStr.isEmpty()) {
-        if (offsetLineStyleStr == "solid")
+        if (offsetLineStyleStr == "solid") {
             m_style.offsetLineStyle = Qt::SolidLine;
-        else if (offsetLineStyleStr == "dash")
+        } else if (offsetLineStyleStr == "dash") {
             m_style.offsetLineStyle = Qt::DashLine;
-        else if (offsetLineStyleStr == "dot")
+        } else if (offsetLineStyleStr == "dot") {
             m_style.offsetLineStyle = Qt::DotLine;
-        else if (offsetLineStyleStr == "dashdot")
+        } else if (offsetLineStyleStr == "dashdot") {
             m_style.offsetLineStyle = Qt::DashDotLine;
+        }
     }
 
     // visibility -> future
@@ -301,8 +303,9 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
     if (isSegmentFormat) {
         // Load as segments directly
         for (const QJsonValue& val : std::as_const(bpmArray)) {
-            if (!val.isObject())
+            if (!val.isObject()) {
                 continue;
+            }
 
             QJsonObject obj = val.toObject();
             SegmentPoint seg;
@@ -362,14 +365,18 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
         double startBpmAdj = seg.bpm_start * m_currentRateRatio;
         double endBpmAdj = seg.bpm_end * m_currentRateRatio;
 
-        if (startBpmAdj < minBpm)
+        if (startBpmAdj < minBpm) {
             minBpm = startBpmAdj;
-        if (startBpmAdj > maxBpm)
+        }
+        if (startBpmAdj > maxBpm) {
             maxBpm = startBpmAdj;
-        if (endBpmAdj < minBpm)
+        }
+        if (endBpmAdj < minBpm) {
             minBpm = endBpmAdj;
-        if (endBpmAdj > maxBpm)
+        }
+        if (endBpmAdj > maxBpm) {
             maxBpm = endBpmAdj;
+        }
     }
 
     m_minBpm = minBpm;
@@ -389,15 +396,17 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
     } else {
         // Add 10% padding for larger ranges
         double padding = bpmRange * 0.1;
-        if (padding < 0.5)
+        if (padding < 0.5) {
             padding = 0.5;
+        }
         yMin = m_minBpm - padding;
         yMax = m_maxBpm + padding;
     }
 
     // Ensure no negative BPM
-    if (yMin < 0)
+    if (yMin < 0) {
         yMin = 0;
+    }
 
     m_yMinBpm = yMin;
     m_yMaxBpm = yMax;
@@ -566,8 +575,9 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
     for (const auto& seg : std::as_const(m_segments)) {
         // Skip invalid segments
-        if (seg.duration <= 0.001)
+        if (seg.duration <= 0.001) {
             continue;
+        }
 
         double startTime = seg.position + m_offsetSeconds;
         double endTime = seg.range_end + m_offsetSeconds;
@@ -576,8 +586,9 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
         endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
 
-        if (endTime <= startTime)
+        if (endTime <= startTime) {
             continue;
+        }
 
         double startBpm = seg.bpm_start;
         double endBpm = seg.bpm_end;

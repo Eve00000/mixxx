@@ -648,7 +648,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
 ////    if (m_resultBeats.size() < 12) {
 ////        qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM
-/// analysis"; /        return; /    }
+// analysis"; /        return; /    }
 ////
 ////    // Convert beat positions from frames to seconds
 ////    m_beatTimes.clear();
@@ -686,9 +686,9 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////        for (size_t i = 0; i < bpmSmooth.size(); ++i) {
 ////            int start = std::max(0, static_cast<int>(i) - 2);
 ////            int end = std::min(static_cast<int>(bpmSmooth.size()) - 1,
-/// static_cast<int>(i) + 2); /            double sum = 0; /            int count
-///= 0; /            for (int j = start; j <= end; ++j) { /                sum
-///+= bpmSmooth[j]; /                count++; /            } / smoothed[i] = sum
+// static_cast<int>(i) + 2); /            double sum = 0; /            int count
+//= 0; /            for (int j = start; j <= end; ++j) { /                sum
+//+= bpmSmooth[j]; /                count++; /            } / smoothed[i] = sum
 //// count; /        } /        bpmSmooth = smoothed; /    }
 ////
 ////    // Detect change points based on rate of change (BPM per second)
@@ -722,7 +722,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////            std::unique(changeTimes.begin(),
 ////                    changeTimes.end(),
 ////                    [](double a, double b) { return std::abs(a - b) < 1.0;
-///}), /            changeTimes.end());
+//}), /            changeTimes.end());
 ////
 ////    // get BPM at a specific time
 ////    auto getBpmAtTime = [&](double time) -> double {
@@ -820,28 +820,28 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    }
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Created" << m_bpmSegments.size()
-///<< "segments before snapping them to beats"; /    for (const auto& seg :
-/// std::as_const(m_bpmSegments)) { /        qDebug() << "  " << seg.type << ":"
-///<< seg.startTime << "-" << seg.endTime /                 << "BPM:" <<
-/// seg.startBPM << "->" << seg.endBPM /                 << "rate:" <<
-/// std::abs(seg.changeAmount) / seg.duration; /    }
+//<< "segments before snapping them to beats"; /    for (const auto& seg :
+// std::as_const(m_bpmSegments)) { /        qDebug() << "  " << seg.type << ":"
+//<< seg.startTime << "-" << seg.endTime /                 << "BPM:" <<
+// seg.startBPM << "->" << seg.endBPM /                 << "rate:" <<
+// std::abs(seg.changeAmount) / seg.duration; /    }
 ////
 ////
 ////    // snap segment boundaries to nearest beats
 ////    snapSegmentsToBeats();
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Created" << m_bpmSegments.size()
-///<< "segments after snapping to beats"; /    for (const auto& seg :
-/// std::as_const(m_bpmSegments)) { /        qDebug() << "  " << seg.type << ":"
-///<< seg.startTime << "-" << seg.endTime /                 << "BPM:" <<
-/// seg.startBPM << "->" << seg.endBPM /                 << "rate:" <<
-/// std::abs(seg.changeAmount) / seg.duration; /    }
+//<< "segments after snapping to beats"; /    for (const auto& seg :
+// std::as_const(m_bpmSegments)) { /        qDebug() << "  " << seg.type << ":"
+//<< seg.startTime << "-" << seg.endTime /                 << "BPM:" <<
+// seg.startBPM << "->" << seg.endBPM /                 << "rate:" <<
+// std::abs(seg.changeAmount) / seg.duration; /    }
 ////}
 //
 ////void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
 ////    if (m_resultBeats.size() < kWindowSizeBeats) {
 ////        qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM
-/// analysis"; /        return; /    }
+// analysis"; /        return; /    }
 ////
 ////    // Convert beat positions from frames to seconds
 ////    m_beatTimes.clear();
@@ -856,10 +856,10 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    std::vector<double> bpmValues;
 ////
 ////    for (size_t i = 0; i + kWindowSizeBeats <= m_beatTimes.size(); i +=
-/// kStepSizeBeats) { /        double totalInterval = m_beatTimes[i +
-/// kWindowSizeBeats] - m_beatTimes[i]; /        double avgInterval =
-/// totalInterval / kWindowSizeBeats; /        double localBpm = 60.0 /
-/// avgInterval;
+// kStepSizeBeats) { /        double totalInterval = m_beatTimes[i +
+// kWindowSizeBeats] - m_beatTimes[i]; /        double avgInterval =
+// totalInterval / kWindowSizeBeats; /        double localBpm = 60.0 /
+// avgInterval;
 ////
 ////        if (localBpm > 50 && localBpm < 250) {
 ////            size_t windowCenter = i + kWindowSizeBeats / 2;
@@ -903,7 +903,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    std::sort(changeTimes.begin(), changeTimes.end());
 ////    changeTimes.erase(
 ////            std::unique(changeTimes.begin(), changeTimes.end(), [](double a,
-/// double b) { return std::abs(a - b) < 1.0; }), / changeTimes.end());
+// double b) { return std::abs(a - b) < 1.0; }), / changeTimes.end());
 ////
 ////    // Helper function to get BPM at a specific time
 ////    auto getBpmAtTime = [&](double time) -> double {
@@ -937,7 +937,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////
 ////        while (windowStart < endTime) {
 ////            double windowEnd = std::min(windowStart + kStableWindowSeconds,
-/// endTime);
+// endTime);
 ////
 ////            // Find min and max BPM within this window
 ////            double minBpm = 1e9;
@@ -946,9 +946,9 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////
 ////            for (size_t j = 0; j < bpmTimes.size(); ++j) {
 ////                if (bpmTimes[j] >= windowStart && bpmTimes[j] <= windowEnd)
-///{ /                    hasData = true; /                    if (bpmSmooth[j]
-///< minBpm) /                        minBpm = bpmSmooth[j]; / if (bpmSmooth[j]
-///> maxBpm) /                        maxBpm = bpmSmooth[j]; /                }
+//{ /                    hasData = true; /                    if (bpmSmooth[j]
+//< minBpm) /                        minBpm = bpmSmooth[j]; / if (bpmSmooth[j]
+//> maxBpm) /                        maxBpm = bpmSmooth[j]; /                }
 ////            }
 ////
 ////            if (hasData && (maxBpm - minBpm) > kStableMaxRange) {
@@ -995,8 +995,8 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////            }
 ////            double avgBpm = (count > 0) ? sum / count : (startBpm + endBpm)
 //// 2.0; /            startBpm = avgBpm; /            endBpm = avgBpm; / } else
-/// if (totalChange > 0) { /            type = "INCREASE"; /        } else { /
-/// type = "DECREASE"; /        }
+// if (totalChange > 0) { /            type = "INCREASE"; /        } else { /
+// type = "DECREASE"; /        }
 ////
 ////        BPMSegment seg;
 ////        seg.startTime = startTime;
@@ -1038,10 +1038,10 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    snapSegmentsToBeats();
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Created" << m_bpmSegments.size()
-///<< "segments"; /    for (const auto& seg : std::as_const(m_bpmSegments)) { /
-/// qDebug() << "  " << seg.type << ":" << seg.startTime << "-" << seg.endTime /
-///<< "BPM:" << seg.startBPM << "->" << seg.endBPM /                 << "rate:"
-///<< std::abs(seg.changeAmount) / seg.duration; /    }
+//<< "segments"; /    for (const auto& seg : std::as_const(m_bpmSegments)) { /
+// qDebug() << "  " << seg.type << ":" << seg.startTime << "-" << seg.endTime /
+//<< "BPM:" << seg.startBPM << "->" << seg.endBPM /                 << "rate:"
+//<< std::abs(seg.changeAmount) / seg.duration; /    }
 ////}
 //
 // void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
@@ -1259,7 +1259,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
 ////    if (m_resultBeats.size() < 12) {
 ////        qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM
-/// analysis"; /        return; /    }
+// analysis"; /        return; /    }
 ////
 ////    // Convert beat positions from frames to seconds
 ////    m_beatTimes.clear();
@@ -1274,7 +1274,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    std::vector<double> bpmValues;
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Calculating average BPM with" <<
-/// kBpmWindowSeconds << "second window";
+// kBpmWindowSeconds << "second window";
 ////
 ////    for (size_t i = 0; i < m_beatTimes.size(); ++i) {
 ////        double currentTime = m_beatTimes[i];
@@ -1287,13 +1287,13 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////        std::vector<double> intervals;
 ////        for (size_t j = 0; j < m_beatTimes.size() - 1; ++j) {
 ////            if (m_beatTimes[j] >= windowStart && m_beatTimes[j + 1] <=
-/// windowEnd) { /                intervals.push_back(m_beatTimes[j + 1] -
-/// m_beatTimes[j]); /            } /        }
+// windowEnd) { /                intervals.push_back(m_beatTimes[j + 1] -
+// m_beatTimes[j]); /            } /        }
 ////
 ////        if (intervals.size() >= 3) {
 ////            double sum = std::accumulate(intervals.begin(), intervals.end(),
-/// 0.0); /            double avgInterval = sum / intervals.size(); / double
-/// avgBpm = 60.0 / avgInterval;
+// 0.0); /            double avgInterval = sum / intervals.size(); / double
+// avgBpm = 60.0 / avgInterval;
 ////
 ////            bpmTimes.push_back(currentTime);
 ////            bpmValues.push_back(avgBpm);
@@ -1306,7 +1306,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    }
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Calculated" << bpmValues.size() <<
-///"average BPM points";
+//"average BPM points";
 ////
 ////    // Smooth the average BPM values
 ////    std::vector<double> bpmSmooth = bpmValues;
@@ -1331,7 +1331,7 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////            m_bpmSegments.append(seg);
 ////
 ////            qDebug() << "  Segment:" << seg.startTime << "-" << seg.endTime
-///<< "BPM:" << seg.startBPM;
+//<< "BPM:" << seg.startBPM;
 ////
 ////            // Start new segment
 ////            segmentStart = bpmTimes[i - 1];
@@ -1350,15 +1350,15 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////    m_bpmSegments.append(finalSeg);
 ////
 ////    qDebug() << "[QueenMaryBeatsExtended] Created" << m_bpmSegments.size()
-///<< "segments";
+//<< "segments";
 ////
 ////    // Snap to beats
 ////    snapSegmentsToBeats();
 ////
 ////    for (const auto& seg : std::as_const(m_bpmSegments)) {
 ////        qDebug() << "  " << seg.type << ":" << seg.startTime << "-" <<
-/// seg.endTime /                 << "BPM:" << seg.startBPM << "->" <<
-/// seg.endBPM; /    }
+// seg.endTime /                 << "BPM:" << seg.startBPM << "->" <<
+// seg.endBPM; /    }
 ////}
 //
 // bool AnalyzerQueenMaryBeatsExtended::finalize() {
@@ -1456,10 +1456,10 @@ QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
 ////
 ////    for (auto& seg : m_bpmSegments) {
 ////        // For start time: snap to the beat that is at or before the current
-/// time /        // This ensures segments start exactly on a beat / double
-/// snappedStart = 0.0; /        for (double beat : m_beatTimes) { / if (beat <=
-/// seg.startTime + 0.001) { // beat at or before startTime / snappedStart =
-/// beat; /            } else { /                break; /            } /        }
+// time /        // This ensures segments start exactly on a beat / double
+// snappedStart = 0.0; /        for (double beat : m_beatTimes) { / if (beat <=
+// seg.startTime + 0.001) { // beat at or before startTime / snappedStart =
+// beat; /            } else { /                break; /            } /        }
 ////
 ////        // Only snap if within reasonable distance (100ms)
 ////        if (std::abs(snappedStart - seg.startTime) < 0.1) {
