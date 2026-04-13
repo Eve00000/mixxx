@@ -64,16 +64,12 @@ bool AnalyzerQueenMaryKeyExtended::initialize(mixxx::audio::SampleRate sampleRat
     return m_helper.initialize(
             windowSize, stepSize, [this](double* pWindow, size_t) {
                 int iKey = m_pKeyMode->process(pWindow);
-<<<<<<< HEAD
 
                 // Validate iKey range (0-23)
                 if (iKey < 0 || iKey >= 24) {
                     qWarning() << "[QueenMaryKeyExtended] Invalid iKey from detector:" << iKey;
                     return true; // Skip this frame
                 }
-=======
-                Q_UNUSED(iKey);
->>>>>>> aa1f731ca9 (fix: ci errors)
 
                 double* keyStrengths = m_pKeyMode->getKeyStrengths();
 
@@ -90,7 +86,7 @@ bool AnalyzerQueenMaryKeyExtended::initialize(mixxx::audio::SampleRate sampleRat
                 ChromaticKey key = static_cast<ChromaticKey>(iKey);
                 double timeSeconds = static_cast<double>(m_currentFrame) / m_sampleRate;
 
-                // Calculate confidence with bestKeyIndex
+                // Calculate confidence using original key strengths
                 double confidence = calculateConfidence(keyStrengths, bestKeyIndex);
 
                 // Store result
@@ -371,8 +367,4 @@ QJsonArray AnalyzerQueenMaryKeyExtended::getKeySegmentsJson() const {
     return segmentsArray;
 }
 
-<<<<<<< HEAD
 } // namespace mixxx
-=======
-} // namespace mixxx
->>>>>>> aa1f731ca9 (fix: ci errors)
