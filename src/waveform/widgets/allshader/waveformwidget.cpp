@@ -15,6 +15,7 @@
 #include "waveform/renderers/allshader/waveformrendererslipmode.h"
 #include "waveform/renderers/allshader/waveformrendererstem.h"
 #include "waveform/renderers/allshader/waveformrenderertextured.h"
+#include "waveform/renderers/allshader/waveformrenderkeycurve.h"
 #include "waveform/renderers/allshader/waveformrendermark.h"
 #include "waveform/renderers/allshader/waveformrendermarkrange.h"
 #include "waveform/waveformwidgetfactory.h"
@@ -58,6 +59,8 @@ WaveformWidget::WaveformWidget(QWidget* parent,
         pOpacityNode->appendChildNode(std::unique_ptr<rendergraph::BaseNode>(pNode));
     }
     pOpacityNode->appendChildNode(addRendererNode<WaveformRenderBeat>());
+    m_pWaveformRenderKeyCurve = pOpacityNode->appendChildNode(
+            addRendererNode<WaveformRenderKeyCurve>());
     m_pWaveformRenderMark = pOpacityNode->appendChildNode(addRendererNode<WaveformRenderMark>());
 
     // if the added signal renderer supports slip, we add it again, now for
@@ -153,6 +156,7 @@ void WaveformWidget::paintGL() {
     m_pOpacityNode->setOpacity(shouldOnlyDrawBackground() ? 0.f : 1.f);
 
     m_pWaveformRenderMark->update();
+    m_pWaveformRenderKeyCurve->update();
     m_pWaveformRenderMarkRange->update();
     if (m_pWaveformRenderMarkSlip) {
         m_pWaveformRenderMarkSlip->update();

@@ -11,6 +11,7 @@ namespace allshader {
 class WaveformWidget;
 class WaveformRenderMark;
 class WaveformRenderMarkRange;
+class WaveformRenderKeyCurve;
 }
 
 class allshader::WaveformWidget final : public ::WGLWidget,
@@ -69,6 +70,7 @@ class allshader::WaveformWidget final : public ::WGLWidget,
     std::unique_ptr<rendergraph::Engine> m_pEngine;
     rendergraph::OpacityNode* m_pOpacityNode;
     WaveformRenderMark* m_pWaveformRenderMark;
+    WaveformRenderKeyCurve* m_pWaveformRenderKeyCurve;
     WaveformRenderMarkRange* m_pWaveformRenderMarkRange;
     WaveformRenderMark* m_pWaveformRenderMarkSlip;
 
