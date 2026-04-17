@@ -1,6 +1,7 @@
 
 #include "waveform/renderers/allshader/waveformrenderkeycurve.h"
 
+#include <QElapsedTimer>
 #include <QFile>
 #include <QImage>
 #include <QJsonArray>
@@ -81,6 +82,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
           m_lancelotLayout(),
           m_style(),
           m_animationTimer(),
+          m_lastTrackId(),
           m_currentKey(),
           m_currentLancelot(),
           m_baseLancelot(),
@@ -105,8 +107,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
           m_visible(true),
           m_keylockEnabled(false),
           m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip),
-          m_textureReady(false),
-          m_lastTrackId() {
+          m_textureReady(false) {
     m_animationTimer.start();
     m_style = KeyCurveStyle();
 
@@ -332,7 +333,7 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
                 QJsonObject rootObj = doc.object();
                 QJsonArray keyArray = rootObj["key_curve"].toArray();
 
-                for (const QJsonValue& val : keyArray) {
+                for (const QJsonValue& val : std::as_const(keyArray)) {
                     if (!val.isObject()) {
                         continue;
                     }
@@ -564,6 +565,7 @@ void WaveformRenderKeyCurve::drawKeyMarkers(QPainter& painter, float width, floa
 }
 
 void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float height) {
+    Q_UNUSED(height);
     if (!m_style.showLabels)
         return;
     if (m_segments.isEmpty())
@@ -631,7 +633,6 @@ void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float
             }
 
             QRect textRect = painter.fontMetrics().boundingRect(transposedKey);
-            int padding = 4;
 
             painter.setPen(QPen(getColorForKey(transposedKey), 1));
             painter.drawText(static_cast<int>(x + 5),

@@ -66,7 +66,9 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(
         WaveformWidgetRenderer* waveformWidget,
         ::WaveformRendererAbstract::PositionSource type)
         : WaveformRenderBpmCurveBase(waveformWidget, false),
-          m_visible(true),
+          m_lastTrackId(),
+          m_pBpmCurveNode(nullptr),
+          m_pBpmCurveNodesParent(nullptr),
           m_minBpm(0),
           m_maxBpm(0),
           m_yMinBpm(0),
@@ -75,13 +77,11 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(
           m_currentRateRatio(1.0),
           m_trackLengthSeconds(0.0),
           m_trackSamples(0.0),
-          m_pBpmCurveNode(nullptr),
-          m_pBpmCurveNodesParent(nullptr),
           m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip),
           m_textureReady(false),
+          m_visible(true),
           m_needsTextureUpdate(true),
-          m_needsRangeRecalculation(true),
-          m_lastTrackId() {
+          m_needsRangeRecalculation(true) {
     auto pNode = std::make_unique<rendergraph::Node>();
     m_pBpmCurveNodesParent = pNode.get();
     appendChildNode(std::move(pNode));
@@ -407,15 +407,15 @@ QImage WaveformRenderBpmCurve::drawBpmTexture() {
                         QString labelText = QString::number(
                                 adjustedBpm, 'f', m_style.labelDecimalPlaces);
                         QRect textRect = painter.fontMetrics().boundingRect(labelText);
-                        int padding = 4;
+                        // int padding = 4;
                         int labelX = static_cast<int>(x + m_style.labelOffset);
                         int labelYint = static_cast<int>(labelY);
 
-                        QRect bgRect(labelX - padding,
-                                labelYint - padding,
-                                textRect.width() + padding * 2,
-                                textRect.height() + padding * 2);
                         // if background rectangle needed
+                        // QRect bgRect(labelX - padding,
+                        //        labelYint - padding,
+                        //        textRect.width() + padding * 2,
+                        //        textRect.height() + padding * 2);
                         // painter.fillRect(bgRect, m_style.labelBackgroundColor);
                         painter.setPen(QPen(m_style.labelTextColor, 1));
                         painter.drawText(labelX, labelYint + textRect.height(), labelText);

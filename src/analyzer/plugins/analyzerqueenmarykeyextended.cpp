@@ -99,40 +99,6 @@ bool AnalyzerQueenMaryKeyExtended::initialize(mixxx::audio::SampleRate sampleRat
 
                 return true;
             });
-
-    // return m_helper.initialize(
-    //         windowSize, stepSize, [this](double* pWindow, size_t) {
-    //             int iKey = m_pKeyMode->process(pWindow);
-    //             Q_UNUSED(iKey);
-
-    //            double* keyStrengths = m_pKeyMode->getKeyStrengths();
-
-    //            // Find the key with the highest strength
-    //            int bestKeyIndex = 0;
-    //            double bestStrength = keyStrengths[0];
-    //            for (int j = 1; j < 24; ++j) {
-    //                if (keyStrengths[j] > bestStrength) {
-    //                    bestStrength = keyStrengths[j];
-    //                    bestKeyIndex = j;
-    //                }
-    //            }
-
-    //            ChromaticKey key = static_cast<ChromaticKey>(iKey);
-    //            double timeSeconds = static_cast<double>(m_currentFrame) / m_sampleRate;
-
-    //            // Calculate confidence with bestKeyIndex
-    //            double confidence = calculateConfidence(keyStrengths, bestKeyIndex);
-
-    //            // Store result
-    //            KeyDetectionResult result;
-    //            result.key = key;
-    //            result.timeSeconds = timeSeconds;
-    //            result.confidence = confidence;
-    //            m_keyResults.push_back(result);
-    //            m_resultKeys.push_back(qMakePair(key, static_cast<double>(m_currentFrame)));
-
-    //            return true;
-    //        });
 }
 
 bool AnalyzerQueenMaryKeyExtended::processSamples(const CSAMPLE* pIn, SINT iLen) {

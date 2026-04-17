@@ -710,7 +710,8 @@ void WaveformRenderKeyCurve::drawKeyLabel(QPainter* painter,
     painter->setFont(labelFont);
 
     QRect textRect = painter->fontMetrics().boundingRect(key);
-    int padding = 4;
+    // if background needed
+    // int padding = 4;
     int labelHeight = textRect.height();
 
     QPointF labelPos;
@@ -726,13 +727,14 @@ void WaveformRenderKeyCurve::drawKeyLabel(QPainter* painter,
         }
 
         if (m_style.showBackground) {
-            QRect bgRect(static_cast<int>(labelPos.x() - padding),
-                    static_cast<int>(labelPos.y() - padding),
-                    textRect.width() + padding * 2,
-                    labelHeight + padding * 2);
-            painter->setPen(Qt::NoPen);
-            painter->setBrush(m_style.backgroundColor);
             // if background needed
+            // QRect bgRect(static_cast<int>(labelPos.x() - padding),
+            //         static_cast<int>(labelPos.y() - padding),
+            //         textRect.width() + padding * 2,
+            //         labelHeight + padding * 2);
+            // painter->setPen(Qt::NoPen);
+            // painter->setBrush(m_style.backgroundColor);
+
             // painter->drawRoundedRect(bgRect, 3, 3);
         }
 

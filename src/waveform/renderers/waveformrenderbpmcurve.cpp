@@ -496,13 +496,13 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
         }
 
         // Draw background if needed
-        QRect bgRect(static_cast<int>(labelPos.x() - padding),
-                static_cast<int>(labelPos.y() - padding),
-                textRect.width() + padding * 2,
-                textRect.height() + padding * 2);
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(m_style.labelBackgroundColor);
         // if background rectangle is needed
+        // QRect bgRect(static_cast<int>(labelPos.x() - padding),
+        //        static_cast<int>(labelPos.y() - padding),
+        //        textRect.width() + padding * 2,
+        //        textRect.height() + padding * 2);
+        // painter->setPen(Qt::NoPen);
+        // painter->setBrush(m_style.labelBackgroundColor);
         // painter->drawRoundedRect(bgRect, 3, 3);
 
         // Draw textlabels

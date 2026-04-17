@@ -108,8 +108,6 @@ class allshader::WaveformRenderBpmCurve : public WaveformRenderBpmCurveBase,
     double m_currentRateRatio;
     double m_trackLengthSeconds;
     double m_trackSamples;
-    double m_lastFullWidth;
-    double m_lastHeight;
 
     bool m_isSlipRenderer;
     bool m_textureReady;
