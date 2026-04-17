@@ -312,7 +312,6 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
     }
 
     // Load key curve if not loaded yet
-    // if (m_segments.isEmpty()) {
     if (!m_segmentsLoaded && m_segments.isEmpty()) {
         if (showDebugAllshaderWaveformRenderKeyCurve) {
             qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key curve...";

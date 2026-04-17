@@ -132,7 +132,7 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         return;
     }
     if (showDebugAllshaderWaveformRenderBPMCurve) {
-        qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key curve...";
+        qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading BPM curve...";
     }
 
     m_trackLengthSeconds = pTrack->getDuration();

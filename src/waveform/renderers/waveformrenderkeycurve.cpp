@@ -208,10 +208,12 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
         LancelotKey key;
         key.lancelot = majorLancelots[i];
         double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
-        while (angle < 0.0)
+        while (angle < 0.0) {
             angle += 360.0;
-        while (angle >= 360.0)
+        }
+        while (angle >= 360.0) {
             angle -= 360.0;
+        }
         key.angle = angle;
         key.isMinor = false;
         m_lancelotLayout.append(key);
@@ -221,10 +223,12 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
         LancelotKey key;
         key.lancelot = minorLancelots[i];
         double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
-        while (angle < 0.0)
+        while (angle < 0.0) {
             angle += 360.0;
-        while (angle >= 360.0)
+        }
+        while (angle >= 360.0) {
             angle -= 360.0;
+        }
         key.angle = angle;
         key.isMinor = true;
         m_lancelotLayout.append(key);
@@ -278,18 +282,21 @@ void WaveformRenderKeyCurve::updateTransposedKey() {
 
     // Convert semitones to Camelot wheel steps
     int wheelSteps = (totalSemitones * 7) % 12;
-    if (wheelSteps < 0)
+    if (wheelSteps < 0) {
         wheelSteps += 12;
+    }
 
     // Apply to Lancelot number
     int currentNumber = QStringView(m_baseLancelot).left(m_baseLancelot.length() - 1).toInt();
     bool isMinor = m_baseLancelot.endsWith("A");
 
     int newNumber = currentNumber + wheelSteps;
-    while (newNumber < 1)
+    while (newNumber < 1) {
         newNumber += 12;
-    while (newNumber > 12)
+    }
+    while (newNumber > 12) {
         newNumber -= 12;
+    }
 
     m_transposedLancelot = QString::number(newNumber) + (isMinor ? "A" : "B");
 
