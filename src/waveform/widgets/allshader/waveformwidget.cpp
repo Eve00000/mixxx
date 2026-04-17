@@ -60,8 +60,6 @@ WaveformWidget::WaveformWidget(QWidget* parent,
         pOpacityNode->appendChildNode(std::unique_ptr<rendergraph::BaseNode>(pNode));
     }
     pOpacityNode->appendChildNode(addRendererNode<WaveformRenderBeat>());
-    m_pWaveformRenderKeyCurve = pOpacityNode->appendChildNode(
-            addRendererNode<WaveformRenderKeyCurve>());
     m_pWaveformRenderMark = pOpacityNode->appendChildNode(addRendererNode<WaveformRenderMark>());
 
     // adding the curves here makes them split when using slip -> moved to slip
