@@ -18,6 +18,8 @@
 #include "waveform/renderers/waveformwidgetrenderer.h"
 #include "widget/wskincolor.h"
 
+constexpr bool showDebugWaveformRenderBpmCurve = false;
+
 WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
         : WaveformRendererAbstract(renderer),
           m_visible(true),
@@ -33,27 +35,38 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
 
 void WaveformRenderBpmCurve::initRateRatioControl() {
     if (!m_waveformRenderer || m_waveformRenderer->getGroup().isEmpty()) {
-        qDebug() << "[WaveformRenderBpmCurve] Cannot init rate control - no group";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Cannot init rate control - no group";
+        }
         return;
     }
 
-    qDebug() << "[WaveformRenderBpmCurve] Creating rate control for group:"
-             << m_waveformRenderer->getGroup();
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] Creating rate control for group:"
+                 << m_waveformRenderer->getGroup();
+    }
 
     m_pRateRatioCO = std::make_unique<ControlProxy>(
             m_waveformRenderer->getGroup(), "rate_ratio");
 
     m_currentRateRatio = m_pRateRatioCO->get();
-    qDebug() << "[WaveformRenderBpmCurve] Initial rate ratio:" << m_currentRateRatio;
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] Initial rate ratio:" << m_currentRateRatio;
+    }
 }
 
 void WaveformRenderBpmCurve::onRateRatioChanged(double value) {
-    qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed to:" << value;
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed to:" << value;
+    }
     m_currentRateRatio = value;
 
     if (!m_segments.isEmpty()) {
-        qDebug() << "  First segment BPM original:" << m_segments[0].bpm_start;
-        qDebug() << "  First segment BPM adjusted:" << m_segments[0].bpm_start * m_currentRateRatio;
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "  First segment BPM original:" << m_segments[0].bpm_start;
+            qDebug() << "  First segment BPM adjusted:"
+                     << m_segments[0].bpm_start * m_currentRateRatio;
+        }
     }
 
     // Recalculate Y-axis range with new rate ratio
@@ -230,26 +243,29 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
 }
 
 void WaveformRenderBpmCurve::loadBpmCurve() {
-    // clear bpmcurve
-
     m_segments.clear();
-    // current track from the renderer
+
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
 
     if (!pTrack) {
-        qDebug() << "[WaveformRenderBpmCurve] No track loaded";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] No track loaded";
+        }
         return;
     }
 
-    // track ID
     if (!pTrack->getId().isValid()) {
-        qDebug() << "[WaveformRenderBpmCurve] Track has no valid ID";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Track has no valid ID";
+        }
         return;
     }
 
     QString trackIdStr = pTrack->getId().toString();
     if (trackIdStr.isEmpty()) {
-        qDebug() << "[WaveformRenderBpmCurve] Track ID string is empty";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Track ID string is empty";
+        }
         return;
     }
 
@@ -259,11 +275,15 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
             "/bpmcurve/";
     QString jsonPath = bpmDir + trackIdStr + ".json";
 
+    // if (showDebugWaveformRenderBpmCurve) {
     qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve from:" << jsonPath;
+    //}
 
     QFile file(jsonPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "[WaveformRenderBpmCurve] Cannot open BPM JSON:" << jsonPath;
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Cannot open BPM JSON:" << jsonPath;
+        }
         return;
     }
 
@@ -272,12 +292,16 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull()) {
-        qDebug() << "[WaveformRenderBpmCurve] Invalid JSON document";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Invalid JSON document";
+        }
         return;
     }
 
     if (!doc.isObject()) {
-        qDebug() << "[WaveformRenderBpmCurve] JSON is not an object";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] JSON is not an object";
+        }
         return;
     }
 
@@ -287,7 +311,9 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
     if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
         bpmArray = rootObj["bpm_curve"].toArray();
     } else {
-        qDebug() << "[WaveformRenderBpmCurve] No BPM array found in JSON";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] No BPM array found in JSON";
+        }
         return;
     }
 
@@ -320,7 +346,9 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 
             m_segments.append(seg);
         }
-        qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size() << "BPM segments";
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size() << "BPM segments";
+        }
     }
 
     // offset from JSON if present
@@ -328,8 +356,10 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         QJsonObject trackObj = rootObj["track"].toObject();
         if (trackObj.contains("offset_seconds")) {
             m_offsetSeconds = trackObj["offset_seconds"].toDouble();
-            qDebug() << "[WaveformRenderBpmCurve] Loaded offset from JSON:"
-                     << m_offsetSeconds << "s";
+            if (showDebugWaveformRenderBpmCurve) {
+                qDebug() << "[WaveformRenderBpmCurve] Loaded offset from JSON:"
+                         << m_offsetSeconds << "s";
+            }
         }
     }
 
@@ -337,7 +367,9 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
 }
 
 void WaveformRenderBpmCurve::onSetTrack() {
-    qDebug() << "[WaveformRenderBpmCurve] onSetTrack called";
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] onSetTrack called";
+    }
 
     // clear old bpmcurve
     m_segments.clear();
@@ -403,7 +435,7 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
         yMax = m_maxBpm + padding;
     }
 
-    // Ensure no negative BPM
+    // no negative BPM
     if (yMin < 0) {
         yMin = 0;
     }
@@ -411,9 +443,11 @@ void WaveformRenderBpmCurve::calculateBpmRange() {
     m_yMinBpm = yMin;
     m_yMaxBpm = yMax;
 
-    qDebug() << "[WaveformRenderBpmCurve] BPM range (rate:" << m_currentRateRatio
-             << "):" << m_minBpm << "-" << m_maxBpm;
-    qDebug() << "[WaveformRenderBpmCurve] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] BPM range (rate:" << m_currentRateRatio
+                 << "):" << m_minBpm << "-" << m_maxBpm;
+        qDebug() << "[WaveformRenderBpmCurve] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+    }
 }
 
 void WaveformRenderBpmCurve::setOffset(double offsetSeconds) {
@@ -461,16 +495,17 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
             labelPos.setX(painter->device()->width() - textRect.width() - padding * 2);
         }
 
-        // Draw background - explicit int casts
+        // Draw background if needed
         QRect bgRect(static_cast<int>(labelPos.x() - padding),
                 static_cast<int>(labelPos.y() - padding),
                 textRect.width() + padding * 2,
                 textRect.height() + padding * 2);
         painter->setPen(Qt::NoPen);
         painter->setBrush(m_style.labelBackgroundColor);
-        painter->drawRoundedRect(bgRect, 3, 3);
+        // if background rectangle is needed
+        // painter->drawRoundedRect(bgRect, 3, 3);
 
-        // Draw text - explicit int casts
+        // Draw textlabels
         painter->setPen(QPen(m_style.labelTextColor, 1));
         painter->drawText(static_cast<int>(labelPos.x()),
                 static_cast<int>(labelPos.y() + textRect.height()),
@@ -479,35 +514,36 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
-    // Check for reload if bpmsegments changed -> once per second max
-    static int frameCount = 0;
-    if (++frameCount >= 60) { // Check every ~1 second at 60fps
-        frameCount = 0;
+    // if segments would change like with re-analyze
+    // check for reload -> once per second max
+    // static int frameCount = 0;
+    // if (++frameCount >= 60) { // Check every ~1 second at 60fps
+    //    frameCount = 0;
 
-        // Check if JSON file exists for current track
-        TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-        if (pTrack && pTrack->getId().isValid()) {
-            QString trackIdStr = pTrack->getId().toString();
-            QString bpmDir = QStandardPaths::writableLocation(
-                                     QStandardPaths::AppLocalDataLocation) +
-                    "/bpmcurve/";
-            QString jsonPath = bpmDir + trackIdStr + ".json";
+    //// Check if JSON file exists for current track
+    // TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+    // if (pTrack && pTrack->getId().isValid()) {
+    //     QString trackIdStr = pTrack->getId().toString();
+    //     QString bpmDir = QStandardPaths::writableLocation(
+    //                              QStandardPaths::AppLocalDataLocation) +
+    //             "/bpmcurve/";
+    //     QString jsonPath = bpmDir + trackIdStr + ".json";
 
-            QFileInfo fileInfo(jsonPath);
-            if (fileInfo.exists()) {
-                // Only reload if file is newer or segments are empty
-                if (m_segments.isEmpty() || fileInfo.lastModified() != m_lastLoadTime) {
-                    m_lastLoadTime = fileInfo.lastModified();
-                    loadBpmCurve();
-                    calculateBpmRange();
-                }
-            } else if (!m_segments.isEmpty()) {
-                // JSON was deleted, clear segments
-                m_segments.clear();
-                calculateBpmRange();
-            }
-        }
-    }
+    //    QFileInfo fileInfo(jsonPath);
+    //    if (fileInfo.exists()) {
+    //        // Only reload if file is newer or segments are empty
+    //        if (m_segments.isEmpty() || fileInfo.lastModified() != m_lastLoadTime) {
+    //            m_lastLoadTime = fileInfo.lastModified();
+    //            //loadBpmCurve();
+    //            calculateBpmRange();
+    //        }
+    //    } else if (!m_segments.isEmpty()) {
+    //        // JSON was deleted, clear segments
+    //        m_segments.clear();
+    //        calculateBpmRange();
+    //    }
+    //}
+    //}
 
     if (!m_visible || m_segments.isEmpty()) {
         return;
@@ -522,12 +558,14 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         return;
     }
 
-    // Update rate ratio from control proxy each frame
+    // Update rate ratio from control proxy each frame atm
     if (m_pRateRatioCO) {
         double newRate = m_pRateRatioCO->get();
         if (std::abs(newRate - m_currentRateRatio) > 0.001) {
-            qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed (polled):"
-                     << m_currentRateRatio << "->" << newRate;
+            if (showDebugWaveformRenderBpmCurve) {
+                qDebug() << "[WaveformRenderBpmCurve] Rate ratio changed (polled):"
+                         << m_currentRateRatio << "->" << newRate;
+            }
             m_currentRateRatio = newRate;
             calculateBpmRange();
         }

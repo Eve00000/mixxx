@@ -7,6 +7,7 @@
 #include "control/controlproxy.h"
 #include "rendergraph/geometrynode.h"
 #include "rendergraph/node.h"
+#include "track/trackid.h"
 #include "waveform/renderers/waveformrenderkeycurvebase.h"
 
 class QDomNode;
@@ -40,52 +41,27 @@ struct LancelotKey {
 };
 
 struct KeyCurveStyle {
-    // Text styling
     QColor textColor;
     int fontSize;
     int fontOpacity;
-
-    // Background styling
     QColor backgroundColor;
     int backgroundOpacity;
-
-    // Marker styling
     QColor markerColor;
     int markerWidth;
     Qt::PenStyle markerLineStyle;
-
-    // Visibility
     bool showLabels;
     bool showMarkers;
     bool showBackground;
     bool showLancelotWheel;
+    bool showDiamonds;
 
-    // Wheel type
     enum WheelType {
-        WHEEL_MIXXX,   // Mixxx keywheel (C/Am at top)
-        WHEEL_LANCELOT // Standard Camelot / Lancelot (12B/12A at top & different mapping)
+        WHEEL_MIXXX,
+        WHEEL_LANCELOT
     };
     WheelType wheelType;
 
-    KeyCurveStyle() {
-        textColor = QColor(255, 255, 255);
-        fontSize = 20;
-        fontOpacity = 200;
-
-        backgroundColor = QColor(0, 0, 0);
-        backgroundOpacity = 150;
-
-        markerColor = QColor(255, 200, 100);
-        markerWidth = 1;
-        markerLineStyle = Qt::DashLine;
-
-        showLabels = true;
-        showMarkers = true;
-        showBackground = true;
-        showLancelotWheel = true;
-
-        wheelType = WHEEL_LANCELOT;
-    }
+    KeyCurveStyle();
 };
 
 class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
@@ -107,26 +83,40 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     void updateKeyTextures() override;
 
   private:
-    // void createNode();
     void createNode(const QImage& image);
     void updateNode();
     void initLancelotLayout();
     void updateTransposedKey();
-    QImage drawKeyCurveTexture();
+    void loadKeyCurve();
+    // Drawing procedures
+    void drawKeyMarkers(QPainter& painter, float width, float height);
+    void drawKeyLabels(QPainter& painter, float width, float height);
+    void drawCamelotWheelComponents(QPainter& painter, float width, float height);
+    void drawWheelSlices(QPainter& painter, const QRectF& rect, const QRectF& innerRect);
+    void drawHighlightedSlice(QPainter& painter, const QRectF& rect, const QRectF& innerRect);
+    void drawWheelText(QPainter& painter, int wheelX, int wheelY, int wheelSize);
+    QImage createFullImage();
+
+    // Helper to get visible range
+    void getVisibleRange(double& startSample, double& endSample, double& width, double& height);
+
+    // Update transposed values (used by both updateTransposedKey and updateNode)
+    void calculateTransposedValues(int totalSemitones);
+
+    // QImage drawKeyCurveTexture();
     QImage drawCamelotWheel();
     void updateCurrentKey();
     QString keyToLancelot(const QString& key) const;
     QString normalizeKeyDisplay(const QString& key) const;
     QString transposeKey(const QString& key, int semitones) const;
     QColor getColorForKey(const QString& key) const;
-    void drawCamelotWheelOnImage(QPainter& painter, float width, float height);
 
     QVector<KeySegment> m_segments;
     QVector<LancelotKey> m_lancelotLayout;
-
     KeyCurveStyle m_style;
-
     QElapsedTimer m_animationTimer;
+
+    TrackId m_lastTrackId;
 
     QString m_currentKey;
     QString m_currentLancelot;
@@ -136,8 +126,8 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     QString m_transposedWheelKey;
     QString m_currentWheelKey;
 
-    WaveformKeyCurveNode* m_pKeyCurveNode{};
-    rendergraph::Node* m_pKeyCurveNodesParent{};
+    WaveformKeyCurveNode* m_pKeyCurveNode;
+    rendergraph::Node* m_pKeyCurveNodesParent;
 
     std::unique_ptr<ControlProxy> m_pPlayPositionCO;
     std::unique_ptr<ControlProxy> m_pRateRatioCO;
@@ -157,7 +147,24 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     bool m_visible;
     bool m_keylockEnabled;
     bool m_isSlipRenderer;
-    bool m_textureReady{false};
+    bool m_textureReady;
+    bool m_segmentsLoaded{false};
     QImage m_pendingWheelImage;
-    bool m_waitingForContext{false};
 };
+
+inline KeyCurveStyle::KeyCurveStyle()
+        : textColor(255, 255, 255),
+          fontSize(20),
+          fontOpacity(200),
+          backgroundColor(0, 0, 0),
+          backgroundOpacity(150),
+          markerColor(255, 200, 100),
+          markerWidth(1),
+          markerLineStyle(Qt::DashLine),
+          showLabels(true),
+          showMarkers(true),
+          showBackground(true),
+          showLancelotWheel(true),
+          showDiamonds(true),
+          wheelType(WHEEL_LANCELOT) {
+}

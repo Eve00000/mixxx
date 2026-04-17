@@ -1699,6 +1699,7 @@ add_library(
   src/waveform/renderers/waveformrenderbackground.cpp
   src/waveform/renderers/waveformrenderbeat.cpp
   src/waveform/renderers/waveformrenderbpmcurve.cpp
+  src/waveform/renderers/waveformrenderbpmcurvebase.cpp
   src/waveform/renderers/waveformrenderkeycurve.cpp
   src/waveform/renderers/waveformrenderkeycurvebase.cpp
   src/waveform/renderers/waveformrendererabstract.cpp
@@ -2026,6 +2027,7 @@ if(QOPENGL)
       src/waveform/renderers/allshader/waveformrenderersignalbase.cpp
       src/waveform/renderers/allshader/waveformrenderersimple.cpp
       src/waveform/renderers/allshader/waveformrendermark.cpp
+      src/waveform/renderers/allshader/waveformrenderbpmcurve.cpp
       src/waveform/renderers/allshader/waveformrenderkeycurve.cpp
       src/waveform/renderers/allshader/waveformrendermarkrange.cpp
       src/waveform/widgets/allshader/waveformwidget.cpp
@@ -3928,6 +3930,7 @@ if(QML)
       src/waveform/renderers/allshader/waveformrendererpreroll.cpp
       src/waveform/renderers/allshader/waveformrendererrgb.cpp
       src/waveform/renderers/allshader/waveformrenderersignalbase.cpp
+      src/waveform/renderers/allshader/waveformrenderbpmcurve.cpp
       src/waveform/renderers/allshader/waveformrenderkeycurve.cpp
       src/waveform/renderers/allshader/waveformrendermark.cpp
       src/waveform/renderers/allshader/waveformrendermarkrange.cpp

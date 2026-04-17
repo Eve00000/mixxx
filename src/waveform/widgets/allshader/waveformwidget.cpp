@@ -6,6 +6,7 @@
 
 #include "waveform/renderers/allshader/waveformrenderbackground.h"
 #include "waveform/renderers/allshader/waveformrenderbeat.h"
+#include "waveform/renderers/allshader/waveformrenderbpmcurve.h"
 #include "waveform/renderers/allshader/waveformrendererendoftrack.h"
 #include "waveform/renderers/allshader/waveformrendererfiltered.h"
 #include "waveform/renderers/allshader/waveformrendererhsv.h"
@@ -59,9 +60,13 @@ WaveformWidget::WaveformWidget(QWidget* parent,
         pOpacityNode->appendChildNode(std::unique_ptr<rendergraph::BaseNode>(pNode));
     }
     pOpacityNode->appendChildNode(addRendererNode<WaveformRenderBeat>());
-    m_pWaveformRenderKeyCurve = pOpacityNode->appendChildNode(
-            addRendererNode<WaveformRenderKeyCurve>());
     m_pWaveformRenderMark = pOpacityNode->appendChildNode(addRendererNode<WaveformRenderMark>());
+
+    // adding the curves here makes them split when using slip -> moved to slip
+    // section below m_pWaveformRenderBpmCurve =
+    // pOpacityNode->appendChildNode(addRendererNode<WaveformRenderBpmCurve>());
+    // m_pWaveformRenderKeyCurve =
+    // pOpacityNode->appendChildNode(addRendererNode<WaveformRenderKeyCurve>());
 
     // if the added signal renderer supports slip, we add it again, now for
     // slip, together with the other slip renderers
@@ -87,6 +92,18 @@ WaveformWidget::WaveformWidget(QWidget* parent,
         m_pWaveformRenderMarkSlip = pOpacityNode->appendChildNode(
                 addRendererNode<WaveformRenderMark>(
                         ::WaveformRendererAbstract::Slip));
+        // adding the curves here makes them not split into parts when using slip
+        m_pWaveformRenderBpmCurve = pOpacityNode->appendChildNode(
+                addRendererNode<WaveformRenderBpmCurve>());
+        m_pWaveformRenderKeyCurve = pOpacityNode->appendChildNode(
+                addRendererNode<WaveformRenderKeyCurve>());
+
+    } else {
+        // adding the curves here for waveforms not supporting slip
+        m_pWaveformRenderBpmCurve = pOpacityNode->appendChildNode(
+                addRendererNode<WaveformRenderBpmCurve>());
+        m_pWaveformRenderKeyCurve = pOpacityNode->appendChildNode(
+                addRendererNode<WaveformRenderKeyCurve>());
     }
 
     m_initSuccess = init();
@@ -156,6 +173,7 @@ void WaveformWidget::paintGL() {
     m_pOpacityNode->setOpacity(shouldOnlyDrawBackground() ? 0.f : 1.f);
 
     m_pWaveformRenderMark->update();
+    m_pWaveformRenderBpmCurve->update();
     m_pWaveformRenderKeyCurve->update();
     m_pWaveformRenderMarkRange->update();
     if (m_pWaveformRenderMarkSlip) {

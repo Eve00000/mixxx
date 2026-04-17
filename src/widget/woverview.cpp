@@ -33,6 +33,7 @@ namespace {
 // Horizontal and vertical margin around the widget where we accept play pos dragging.
 constexpr int kDragOutsideLimitX = 100;
 constexpr int kDragOutsideLimitY = 50;
+constexpr bool showDebugWOverview = false;
 } // anonymous namespace
 
 // for mixxx::OverviewType
@@ -290,37 +291,51 @@ void WOverview::initWithTrack(TrackPointer pTrack) {
 }
 
 void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
-    qDebug() << "[WOverview-BPM] loadBpmCurveForTrack called";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-BPM] loadBpmCurveForTrack called for track:"
+                 << (pTrack ? pTrack->getTitle() : "null");
+    }
 
     if (!pTrack) {
-        qDebug() << "[WOverview-BPM] No track pointer";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] No track pointer";
+        }
         m_bpmCurvePoints.clear();
         return;
     }
 
     // Get track ID
     if (!pTrack->getId().isValid()) {
-        qDebug() << "[WOverview-BPM] Track has no valid ID";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] Track has no valid ID";
+        }
         m_bpmCurvePoints.clear();
         return;
     }
 
     QString trackIdStr = pTrack->getId().toString();
     if (trackIdStr.isEmpty()) {
-        qDebug() << "[WOverview-BPM] Track ID string is empty";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] Track ID string is empty";
+        }
         m_bpmCurvePoints.clear();
         return;
     }
 
     QString trackTitle = pTrack->getTitle();
-    qDebug() << "[WOverview-BPM] Loading BPM curve for track:" << trackTitle << "ID:" << trackIdStr;
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-BPM] Loading BPM curve for track:" << trackTitle
+                 << "ID:" << trackIdStr;
+    }
 
     QString bpmDir = QStandardPaths::writableLocation(
                              QStandardPaths::AppLocalDataLocation) +
             "/bpmcurve/";
     QString jsonPath = bpmDir + trackIdStr + ".json";
 
-    qDebug() << "[WOverview-BPM] jsonPath:" << jsonPath;
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-BPM] jsonPath:" << jsonPath;
+    }
 
     // retry logic to open JSON, sometime there is a race condition
     QFile file(jsonPath);
@@ -334,20 +349,26 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
 
         // file exists ? -> can't be opened
         if (file.exists()) {
-            qDebug() << "[WOverview-BPM] JSON exists but cannot open (retry "
-                     << retry + 1 << "/" << maxRetries << ")";
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview-BPM] JSON exists but cannot open (retry "
+                         << retry + 1 << "/" << maxRetries << ")";
+            }
             QThread::msleep(retryDelay);
             retryDelay *= 2;
         } else {
             // file does NOT exist
-            qDebug() << "[WOverview-BPM] Cannot open BPM JSON:" << jsonPath;
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview-BPM] Cannot open BPM JSON:" << jsonPath;
+            }
             m_bpmCurvePoints.clear();
             return;
         }
     }
 
     if (!file.isOpen()) {
-        qDebug() << "[WOverview-BPM] Failed to open JSON after " << maxRetries << " retries";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] Failed to open JSON after " << maxRetries << " retries";
+        }
         m_bpmCurvePoints.clear();
         return;
     }
@@ -357,13 +378,17 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull()) {
-        qDebug() << "[WOverview-BPM] Invalid JSON document:" << jsonPath;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] Invalid JSON document:" << jsonPath;
+        }
         m_bpmCurvePoints.clear();
         return;
     }
 
     if (!doc.isObject()) {
-        qDebug() << "[WOverview-BPM] JSON is not an object:" << jsonPath;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] JSON is not an object:" << jsonPath;
+        }
         m_bpmCurvePoints.clear();
         return;
     }
@@ -374,7 +399,9 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
     if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
         bpmArray = rootObj["bpm_curve"].toArray();
     } else {
-        qDebug() << "[WOverview-BPM] No BPM array found in JSON:" << jsonPath;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] No BPM array found in JSON:" << jsonPath;
+        }
         m_bpmCurvePoints.clear();
         return;
     }
@@ -401,15 +428,19 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
     }
 
     if (m_bpmCurvePoints.isEmpty()) {
-        qDebug() << "[WOverview-BPM] No valid BPM points in JSON:" << jsonPath;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] No valid BPM points in JSON:" << jsonPath;
+        }
         return;
     }
 
     // calculate BPM range for Y-axis
     calculateBpmRange();
 
-    qDebug() << "[WOverview-BPM] Loaded" << m_bpmCurvePoints.size() << "BPM segments for track:"
-             << trackTitle << "(" << trackIdStr << ")";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-BPM] Loaded" << m_bpmCurvePoints.size() << "BPM segments for track:"
+                 << trackTitle << "(" << trackIdStr << ")";
+    }
 
     update();
 }
@@ -437,13 +468,17 @@ void WOverview::checkAndRequestBpmCurve(TrackPointer pTrack) {
 
     QFile file(jsonPath);
     if (file.exists()) {
-        qDebug() << "[WOverview-BPM] JSON exists for track:" << pTrack->getTitle();
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] JSON exists for track:" << pTrack->getTitle();
+        }
         return;
     }
 
     // No JSON -> reanalysis
-    qDebug() << "[WOverview-BPM] No JSON for track:" << pTrack->getTitle()
-             << "- requesting analysis";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-BPM] No JSON for track:" << pTrack->getTitle()
+                 << "- requesting analysis";
+    }
     emit requestBeatsAnalysis(pTrack);
 }
 
@@ -544,7 +579,9 @@ void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
         startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
         double x = (startTime / trackLengthSeconds) * width;
 
-        // qDebug() << "[WOverview] Diamond at time:" << startTime << "s -> x:" << x;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview] Diamond at time:" << startTime << "s -> x:" << x;
+        }
 
         if (x >= 0 && x <= width) {
             QPolygonF diamond;
@@ -553,11 +590,15 @@ void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
             painter->drawPolygon(diamond);
             diamondCount++;
         } else {
-            qDebug() << "[WOverview] Diamond at x:" << x << "outside bounds";
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview] Diamond at x:" << x << "outside bounds";
+            }
         }
     }
-    qDebug() << "[WOverview] Drew" << diamondCount << "diamonds out of"
-             << m_bpmCurvePoints.size() << "segments";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview] Drew" << diamondCount << "diamonds out of"
+                 << m_bpmCurvePoints.size() << "segments";
+    }
 
     // diamond symbol at end of last segment
     if (!m_bpmCurvePoints.isEmpty()) {
@@ -630,14 +671,18 @@ void WOverview::calculateBpmRange() {
         m_yMaxBpm = m_maxBpm + padding;
     }
 
-    qDebug() << "[WOverview] BPM range:" << m_minBpm << "-" << m_maxBpm;
-    qDebug() << "[WOverview] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview] BPM range:" << m_minBpm << "-" << m_maxBpm;
+        qDebug() << "[WOverview] Y-axis range:" << m_yMinBpm << "-" << m_yMaxBpm;
+    }
 }
 
 double WOverview::mapBpmToOverviewY(double bpm, double height) {
     double bpmRange = m_yMaxBpm - m_yMinBpm;
     if (bpmRange <= 0.001) {
-        qDebug() << "[WOverview] Invalid BPM range:" << m_yMinBpm << "-" << m_yMaxBpm;
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview] Invalid BPM range:" << m_yMinBpm << "-" << m_yMaxBpm;
+        }
         return height / 2;
     }
 
@@ -647,36 +692,49 @@ double WOverview::mapBpmToOverviewY(double bpm, double height) {
 }
 
 void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
-    qDebug() << "[WOverview-KEY] loadKeyCurveForTrack called";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-KEY] loadKeyCurveForTrack called";
+    }
 
     if (!pTrack) {
-        qDebug() << "[WOverview-KEY] No track pointer";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] No track pointer";
+        }
         m_keyCurvePoints.clear();
         return;
     }
 
     if (!pTrack->getId().isValid()) {
-        qDebug() << "[WOverview-KEY] Track has no valid ID";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] Track has no valid ID";
+        }
         m_keyCurvePoints.clear();
         return;
     }
 
     QString trackIdStr = pTrack->getId().toString();
     if (trackIdStr.isEmpty()) {
-        qDebug() << "[WOverview-KEY] Track ID string is empty";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] Track ID string is empty";
+        }
         m_keyCurvePoints.clear();
         return;
     }
 
     QString trackTitle = pTrack->getTitle();
-    qDebug() << "[WOverview-KEY] Loading key curve for track:" << trackTitle << "ID:" << trackIdStr;
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-KEY] Loading key curve for track:" << trackTitle
+                 << "ID:" << trackIdStr;
+    }
 
     QString keyDir = QStandardPaths::writableLocation(
                              QStandardPaths::AppLocalDataLocation) +
             "/keycurve/";
     QString jsonPath = keyDir + trackIdStr + ".json";
 
-    qDebug() << "[WOverview-KEY] jsonPath:" << jsonPath;
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-KEY] jsonPath:" << jsonPath;
+    }
 
     QFile file(jsonPath);
     int maxRetries = 5;
@@ -688,19 +746,25 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
         }
 
         if (file.exists()) {
-            qDebug() << "[WOverview-KEY] JSON exists but cannot open (retry "
-                     << retry + 1 << "/" << maxRetries << ")";
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview-KEY] JSON exists but cannot open (retry "
+                         << retry + 1 << "/" << maxRetries << ")";
+            }
             QThread::msleep(retryDelay);
             retryDelay *= 2;
         } else {
-            qDebug() << "[WOverview-KEY] Cannot open key JSON:" << jsonPath;
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview-KEY] Cannot open key JSON:" << jsonPath;
+            }
             m_keyCurvePoints.clear();
             return;
         }
     }
 
     if (!file.isOpen()) {
-        qDebug() << "[WOverview-KEY] Failed to open JSON after " << maxRetries << " retries";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] Failed to open JSON after " << maxRetries << " retries";
+        }
         m_keyCurvePoints.clear();
         return;
     }
@@ -710,7 +774,9 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull() || !doc.isObject()) {
-        qDebug() << "[WOverview-KEY] Invalid JSON document";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] Invalid JSON document";
+        }
         m_keyCurvePoints.clear();
         return;
     }
@@ -721,7 +787,9 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
     if (rootObj.contains("key_curve") && rootObj["key_curve"].isArray()) {
         keyArray = rootObj["key_curve"].toArray();
     } else {
-        qDebug() << "[WOverview-KEY] No key_curve array found";
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] No key_curve array found";
+        }
         m_keyCurvePoints.clear();
         return;
     }
@@ -746,8 +814,10 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
         m_keyCurvePoints.append(pt);
     }
 
-    qDebug() << "[WOverview-KEY] Loaded" << m_keyCurvePoints.size() << "key segments for track:"
-             << trackTitle << "(" << trackIdStr << ")";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-KEY] Loaded" << m_keyCurvePoints.size() << "key segments for track:"
+                 << trackTitle << "(" << trackIdStr << ")";
+    }
 
     update();
 }
@@ -769,12 +839,16 @@ void WOverview::checkAndRequestKeyCurve(TrackPointer pTrack) {
 
     QFile file(jsonPath);
     if (file.exists()) {
-        qDebug() << "[WOverview-KEY] JSON exists for track:" << pTrack->getTitle();
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] JSON exists for track:" << pTrack->getTitle();
+        }
         return;
     }
 
-    qDebug() << "[WOverview-KEY] No JSON for track:" << pTrack->getTitle()
-             << "- requesting analysis";
+    if (showDebugWOverview) {
+        qDebug() << "[WOverview-KEY] No JSON for track:" << pTrack->getTitle()
+                 << "- requesting analysis";
+    }
     emit requestKeyAnalysis(pTrack);
 }
 
