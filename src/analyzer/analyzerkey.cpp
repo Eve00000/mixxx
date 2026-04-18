@@ -1,5 +1,13 @@
 #include "analyzer/analyzerkey.h"
 
+#include <QDir>
+#include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
+#include <QString>
+#include <QVector>
 #include <QtDebug>
 
 #include "analyzer/analyzertrack.h"
@@ -8,6 +16,7 @@
 #include "analyzer/plugins/analyzerkeyfinder.h"
 #endif
 #include "analyzer/plugins/analyzerqueenmarykey.h"
+#include "analyzer/plugins/analyzerqueenmarykeyextended.h"
 #include "proto/keys.pb.h"
 #include "track/keyfactory.h"
 #include "track/track.h"
@@ -20,6 +29,7 @@ constexpr int excludeFirstChannelMask = 0x1;
 QList<mixxx::AnalyzerPluginInfo> AnalyzerKey::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> analyzers;
     // First one below is the default
+    analyzers.push_back(mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo());
     analyzers.push_back(mixxx::AnalyzerQueenMaryKey::pluginInfo());
 #if defined __KEYFINDER__
     analyzers.push_back(mixxx::AnalyzerKeyFinder::pluginInfo());
@@ -94,9 +104,15 @@ bool AnalyzerKey::initialize(const AnalyzerTrack& track,
     // if we can't load a stored track reanalyze it
     bool bShouldAnalyze = shouldAnalyze(track.getTrack());
 
+    qDebug() << "[AnalyzerKey] initialize - Track:" << track.getTrack()->getTitle();
+    qDebug() << "[AnalyzerKey]   Plugin ID: %s", m_pluginId.toUtf8().constData();
+
     DEBUG_ASSERT(!m_pPlugin);
     if (bShouldAnalyze) {
-        if (m_pluginId == mixxx::AnalyzerQueenMaryKey::pluginInfo().id()) {
+        if (m_pluginId == mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo().id()) {
+            m_pPlugin = std::make_unique<mixxx::AnalyzerQueenMaryKeyExtended>();
+        } else if (m_pluginId == mixxx::AnalyzerQueenMaryKey::pluginInfo().id()) {
+            //        if (m_pluginId == mixxx::AnalyzerQueenMaryKey::pluginInfo().id()) {
             m_pPlugin = std::make_unique<mixxx::AnalyzerQueenMaryKey>();
 #if defined __KEYFINDER__
         } else if (m_pluginId == mixxx::AnalyzerKeyFinder::pluginInfo().id()) {
@@ -123,6 +139,42 @@ bool AnalyzerKey::initialize(const AnalyzerTrack& track,
     return bShouldAnalyze;
 }
 
+// bool AnalyzerKey::shouldAnalyze(TrackPointer pTrack) const {
+//     bool bPreferencesFastAnalysisEnabled = m_keySettings.getFastAnalysis();
+//     QString pluginID = m_keySettings.getKeyPluginId();
+//     if (pluginID.isEmpty()) {
+//         pluginID = defaultPlugin().id();
+//     }
+//
+//     const Keys keys = pTrack->getKeys();
+//     if (keys.getGlobalKey() != mixxx::track::io::key::INVALID) {
+//         QString version = keys.getVersion();
+//         QString subVersion = keys.getSubVersion();
+//
+//         QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
+//                 pluginID, bPreferencesFastAnalysisEnabled);
+//         QString newVersion = KeyFactory::getPreferredVersion();
+//         QString newSubVersion =
+//         KeyFactory::getPreferredSubVersion(extraVersionInfo);
+//
+//         if (version == newVersion && subVersion == newSubVersion) {
+//             // If the version and settings have not changed then if the world
+//             is
+//             // sane, re-analyzing will do nothing.
+//             qDebug() << "Keys version/sub-version unchanged since previous
+//             analysis. Not analyzing."; return false;
+//         }
+//         if (!m_bPreferencesReanalyzeEnabled) {
+//             qDebug() << "Track has previous key detection result that is not
+//             up"
+//                      << "to date with latest settings but user preferences"
+//                      << "indicate we should not re-analyze it.";
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
 bool AnalyzerKey::shouldAnalyze(TrackPointer pTrack) const {
     bool bPreferencesFastAnalysisEnabled = m_keySettings.getFastAnalysis();
     QString pluginID = m_keySettings.getKeyPluginId();
@@ -131,6 +183,12 @@ bool AnalyzerKey::shouldAnalyze(TrackPointer pTrack) const {
     }
 
     const Keys keys = pTrack->getKeys();
+
+    qDebug() << "[AnalyzerKey] shouldAnalyze - Track:" << pTrack->getTitle();
+    qDebug() << "[AnalyzerKey]   Current key:" << keys.getGlobalKey()
+             << "Version:" << keys.getVersion()
+             << "SubVersion:" << keys.getSubVersion();
+
     if (keys.getGlobalKey() != mixxx::track::io::key::INVALID) {
         QString version = keys.getVersion();
         QString subVersion = keys.getSubVersion();
@@ -140,19 +198,21 @@ bool AnalyzerKey::shouldAnalyze(TrackPointer pTrack) const {
         QString newVersion = KeyFactory::getPreferredVersion();
         QString newSubVersion = KeyFactory::getPreferredSubVersion(extraVersionInfo);
 
+        qDebug() << "[AnalyzerKey]   New version:" << newVersion
+                 << "New subVersion:" << newSubVersion;
+        qDebug() << "[AnalyzerKey]   Reanalyze enabled:" << m_bPreferencesReanalyzeEnabled;
+
         if (version == newVersion && subVersion == newSubVersion) {
-            // If the version and settings have not changed then if the world is
-            // sane, re-analyzing will do nothing.
-            qDebug() << "Keys version/sub-version unchanged since previous analysis. Not analyzing.";
+            qDebug() << "[AnalyzerKey] SKIP - version unchanged";
             return false;
         }
         if (!m_bPreferencesReanalyzeEnabled) {
-            qDebug() << "Track has previous key detection result that is not up"
-                     << "to date with latest settings but user preferences"
-                     << "indicate we should not re-analyze it.";
+            qDebug() << "[AnalyzerKey] SKIP - reanalyze disabled";
             return false;
         }
     }
+
+    qDebug() << "[AnalyzerKey] WILL ANALYZE";
     return true;
 }
 
@@ -212,7 +272,35 @@ void AnalyzerKey::cleanup() {
     m_pPlugin.reset();
 }
 
-void AnalyzerKey::storeResults(TrackPointer tio) {
+// void AnalyzerKey::storeResults(TrackPointer tio) {
+//     VERIFY_OR_DEBUG_ASSERT(m_pPlugin) {
+//         return;
+//     }
+//
+//     if (!m_pPlugin->finalize()) {
+//         qWarning() << "Key detection failed";
+//         return;
+//     }
+//
+//     KeyChangeList key_changes = m_pPlugin->getKeyChanges();
+//     QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
+//             m_pluginId, m_bPreferencesFastAnalysisEnabled);
+//     Keys track_keys = KeyFactory::makePreferredKeys(
+//             key_changes, extraVersionInfo, m_sampleRate, m_totalFrames);
+//     tio->setKeys(track_keys);
+//
+//     // ========== SAVE KEY SEGMENTS JSON ==========
+//     auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryKeyExtended*>(m_pPlugin.get());
+//     if (pExtendedPlugin) {
+//         QJsonArray segmentsArray = pExtendedPlugin->getKeySegmentsJson();
+//
+//         if (!segmentsArray.isEmpty()) {
+//             saveKeySegmentsJson(tio, segmentsArray);
+//         }
+//     }
+// }
+
+void AnalyzerKey::storeResults(TrackPointer pTrack) {
     VERIFY_OR_DEBUG_ASSERT(m_pPlugin) {
         return;
     }
@@ -227,7 +315,65 @@ void AnalyzerKey::storeResults(TrackPointer tio) {
             m_pluginId, m_bPreferencesFastAnalysisEnabled);
     Keys track_keys = KeyFactory::makePreferredKeys(
             key_changes, extraVersionInfo, m_sampleRate, m_totalFrames);
-    tio->setKeys(track_keys);
+    pTrack->setKeys(track_keys);
+
+    // ========== SAVE KEY SEGMENTS JSON ==========
+    auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryKeyExtended*>(m_pPlugin.get());
+    if (pExtendedPlugin) {
+        QJsonArray segmentsArray = pExtendedPlugin->getKeySegmentsJson();
+        if (!segmentsArray.isEmpty()) {
+            saveKeySegmentsJson(pTrack, segmentsArray);
+        }
+    }
+}
+
+bool AnalyzerKey::saveKeySegmentsJson(TrackPointer pTrack, const QJsonArray& segmentsArray) {
+    if (!pTrack) {
+        qDebug() << "[AnalyzerKey] No track to save key segments";
+        return false;
+    }
+
+    QString trackIdStr = pTrack->getId().toString();
+    if (trackIdStr.isEmpty()) {
+        qDebug() << "[AnalyzerKey] No valid track ID";
+        return false;
+    }
+
+    QJsonObject root;
+    root["key_curve"] = segmentsArray;
+
+    QJsonObject trackInfo;
+    trackInfo["title"] = pTrack->getTitle();
+    trackInfo["artist"] = pTrack->getArtist();
+    trackInfo["album"] = pTrack->getAlbum();
+    trackInfo["duration_seconds"] = pTrack->getDuration();
+    trackInfo["offset_seconds"] = 0.0;
+    trackInfo["track_id"] = trackIdStr;
+
+    root["track"] = trackInfo;
+
+    QString keyDir = QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation) +
+            "/keycurve/";
+
+    QDir dir;
+    if (!dir.exists(keyDir)) {
+        dir.mkpath(keyDir);
+    }
+
+    QString jsonPath = keyDir + trackIdStr + ".json";
+
+    QFile file(jsonPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+        file.close();
+        qDebug() << "[AnalyzerKey] Saved key curve JSON to:" << jsonPath;
+        qDebug() << "[AnalyzerKey] Segments:" << segmentsArray.size();
+        return true;
+    } else {
+        qDebug() << "[AnalyzerKey] Failed to save key curve JSON to:" << jsonPath;
+        return false;
+    }
 }
 
 // static
