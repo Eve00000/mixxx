@@ -3232,14 +3232,12 @@ if(LOCALECOMPARE)
     get_target_property(
       _sqlite3_location
       unofficial::sqlite3::sqlite3
-      # IMPORTED_LOCATION_RELEASE
       IMPORTED_IMPLIB_RELEASE
     )
     if(NOT _sqlite3_location)
       get_target_property(
         _sqlite3_location
         unofficial::sqlite3::sqlite3
-        #IMPORTED_LOCATION
         IMPORTED_IMPLIB
       )
     endif()
