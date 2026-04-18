@@ -21,10 +21,8 @@ using mixxx::track::io::key::ChromaticKey;
 
 namespace mixxx {
 namespace {
-
 constexpr int kTuningFrequencyHertz = 440;
-
-}
+} // namespace
 
 AnalyzerPluginInfo AnalyzerQueenMaryKeyExtended::pluginInfo() {
     return AnalyzerPluginInfo(
