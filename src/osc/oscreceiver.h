@@ -3,6 +3,9 @@
 #include <lo/lo.h>
 
 #include <QDateTime>
+#include <QMutex>
+#include <QReadWriteLock>
+#include <QString>
 #include <QThread>
 #include <memory>
 

@@ -2,6 +2,10 @@
 
 #include <stdio.h>
 
+#include <QDebug>
+#include <QList>
+#include <QMutexLocker>
+#include <QString>
 #include <QThread>
 #include <iostream>
 
@@ -332,8 +336,8 @@ int OscReceiver::startOscReceiver(int oscPortin) {
     std::string portStr = std::to_string(oscPortin);
     lo_server_thread st = lo_server_thread_new_with_proto(portStr.c_str(), LO_UDP, errorCallback);
     lo_server s = lo_server_thread_get_server(st);
-    lo_server_thread_add_method(st, "/quit", "", quit_handler, NULL);
-    lo_server_thread_add_method(st, NULL, NULL, messageCallback, s);
+    lo_server_thread_add_method(st, "/quit", "", quit_handler, nullptr);
+    lo_server_thread_add_method(st, nullptr, nullptr, messageCallback, s);
     lo_server_thread_start(st);
     if (sDebugOSC) {
         qDebug() << "[OSC] [OSCRECEIVER] -> Receiver started and awaiting messages...";
