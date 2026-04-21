@@ -2,11 +2,13 @@
 
 #include <QColor>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QFont>
 #include <QLineF>
 #include <QVector>
 
 #include "control/controlproxy.h"
+#include "track/bpmsegments.h"
 #include "waveform/renderers/waveformrendererabstract.h"
 
 struct SegmentPoint {
@@ -138,4 +140,5 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
             double bpm,
             Qt::Orientation orientation);
     QDateTime m_lastLoadTime;
+    QElapsedTimer m_reloadTimer;
 };

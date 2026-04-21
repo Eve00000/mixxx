@@ -1,9 +1,6 @@
 #pragma once
 
 #include <QColor>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QList>
 #include <QPixmap>
 #include <QVector>

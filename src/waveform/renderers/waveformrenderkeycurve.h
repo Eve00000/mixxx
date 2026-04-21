@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "control/controlproxy.h"
+#include "track/keysegments.h"
 #include "waveform/renderers/waveformrendererabstract.h"
 
 struct KeySegment {
@@ -63,8 +64,10 @@ struct KeyCurveStyle {
 
     // Wheel type
     enum WheelType {
-        WHEEL_MIXXX,   // Mixxx keywheel (C/Am at top)
-        WHEEL_LANCELOT // Standard Camelot / Lancelot (12B/12A at top & different mapping)
+        // Mixxx keywheel (C/Am at top)
+        WHEEL_MIXXX,
+        // Standard Camelot / Lancelot (12B/12A)
+        WHEEL_LANCELOT
     };
     WheelType wheelType;
 
@@ -121,7 +124,6 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
             Qt::Orientation orientation);
     QColor getColorForKey(const QString& key) const;
 
-    // Lancelot wheel
     void drawLancelotWheel(QPainter* painter);
     void drawWheelSlice(QPainter* painter,
             const QRectF& rect,
@@ -163,6 +165,7 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
 
     QDateTime m_lastLoadTime;
     QElapsedTimer m_animationTimer;
+    QElapsedTimer m_reloadTimer;
 
     double m_currentRateRatio;
     double m_currentKeyShift;

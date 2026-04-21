@@ -1,12 +1,7 @@
 #include "waveform/renderers/waveformrenderkeycurve.h"
 
 #include <QDebug>
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QPainter>
-#include <QStandardPaths>
 #include <cmath>
 
 #include "skin/legacy/skincontext.h"
@@ -24,6 +19,7 @@ constexpr double WHEEL_START_ANGLE = 45.0;
 constexpr double SLICE_ANGLE = 30.0;
 constexpr int NUM_SLICES = 12;
 constexpr bool showDebugWaveformRenderKeyCurve = false;
+static constexpr int kReloadCheckIntervalMs = 2000;
 } // namespace
 
 WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
@@ -42,6 +38,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_currentWheelKey(),
           m_lastLoadTime(),
           m_animationTimer(),
+          m_reloadTimer(),
           m_currentRateRatio(1.0),
           m_currentKeyShift(0.0),
           m_currentPlayPosition(0.0),
@@ -52,6 +49,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_visible(true),
           m_keylockEnabled(false) {
     m_animationTimer.start();
+    m_reloadTimer.start();
     initLancelotLayout();
 }
 
@@ -407,6 +405,7 @@ QString WaveformRenderKeyCurve::transposeKey(const QString& key, int semitones) 
 
 void WaveformRenderKeyCurve::onSetTrack() {
     m_segments.clear();
+    m_reloadTimer.restart();
     loadKeyCurve();
     initPlayPositionControl();
     initRateRatioControl();
@@ -414,64 +413,123 @@ void WaveformRenderKeyCurve::onSetTrack() {
     initKeylockControl();
 }
 
-void WaveformRenderKeyCurve::loadKeyCurve() {
-    m_segments.clear();
+// Load key curve data from DB for the current track
+// void WaveformRenderKeyCurve::loadKeyCurve() {
+//    m_segments.clear();
+//
+//    TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+//    if (!pTrack || !pTrack->getId().isValid()) {
+//        if (showDebugWaveformRenderKeyCurve) {
+//            qDebug() << "[WaveformRenderKeyCurve] No valid track";
+//        }
+//        return;
+//    }
+//
+//    m_trackLengthSeconds = pTrack->getDuration();
+//
+//    if (showDebugWaveformRenderKeyCurve) {
+//        qDebug() << "[WaveformRenderKeyCurve] Loading Key curve for track:"
+//                 << pTrack->getTitle()
+//                 << "ID:" << pTrack->getId().toString();
+//    }
+//
+//    // Load from database via Track object
+//    QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
+//
+//    if (segments.isEmpty()) {
+//        if (showDebugWaveformRenderKeyCurve) {
+//            qDebug() << "[WaveformRenderKeyCurve] No key segments in database for track:"
+//                     << pTrack->getTitle()
+//                     << "ID:" << pTrack->getId().toString();
+//        }
+//        return;
+//    }
+//
+//    // Convert KeySegments to KeySegment format
+//    for (const auto& pSegment : segments) {
+//        KeySegment seg;
+//
+//        seg.startTime = pSegment->getStartTime();
+//        seg.endTime = pSegment->getRangeEnd();
+//        seg.duration = pSegment->getDuration();
+//        seg.key = pSegment->getKey();
+//        seg.type = pSegment->getType();
+//        seg.confidence = pSegment->getConfidence();
+//
+//        m_segments.append(seg);
+//    }
+//
+//    if (showDebugWaveformRenderKeyCurve) {
+//        qDebug() << "[WaveformRenderKeyCurve] Loaded" << m_segments.size()
+//                 << "key segments from database for track:"
+//                 << pTrack->getTitle()
+//                 << "ID:" << pTrack->getId().toString();
+//    }
+//
+//    // Set initial wheel key
+//    if (!m_segments.isEmpty()) {
+//        m_currentWheelKey = m_segments[0].key;
+//        m_baseLancelot = keyToLancelot(m_currentWheelKey);
+//        updateTransposedKey();
+//    }
+//}
 
+// Load key curve data from DB for the current track
+void WaveformRenderKeyCurve::loadKeyCurve() {
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     if (!pTrack || !pTrack->getId().isValid()) {
+        if (showDebugWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve] No valid track";
+        }
         return;
     }
 
     m_trackLengthSeconds = pTrack->getDuration();
 
-    QString trackIdStr = pTrack->getId().toString();
-    QString keyDir = QStandardPaths::writableLocation(
-                             QStandardPaths::AppLocalDataLocation) +
-            "/keycurve/";
-    QString jsonPath = keyDir + trackIdStr + ".json";
-
-    QFile file(jsonPath);
-
     if (showDebugWaveformRenderKeyCurve) {
-        qDebug() << "[WaveformRenderKeyCurve] Loading Key curve from:" << jsonPath;
+        qDebug() << "[WaveformRenderKeyCurve] Loading Key curve for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
 
-    if (!file.open(QIODevice::ReadOnly)) {
+    // Load from database via Track object
+    QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
+
+    if (segments.isEmpty()) {
+        if (showDebugWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve] No key segments in database for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
+        }
+        // Clear existing segments if any (in case they were reloaded)
+        if (!m_segments.isEmpty()) {
+            m_segments.clear();
+            m_currentWheelKey.clear();
+            m_baseLancelot.clear();
+        }
         return;
     }
 
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull() || !doc.isObject()) {
-        return;
-    }
-
-    QJsonObject rootObj = doc.object();
-    QJsonArray keyArray;
-
-    if (rootObj.contains("key_curve") && rootObj["key_curve"].isArray()) {
-        keyArray = rootObj["key_curve"].toArray();
-    } else {
-        return;
-    }
-
-    for (const QJsonValue& val : std::as_const(keyArray)) {
-        if (!val.isObject())
-            continue;
-
-        QJsonObject obj = val.toObject();
+    // Convert KeySegments to KeySegment format
+    m_segments.clear();
+    for (const auto& pSegment : segments) {
         KeySegment seg;
 
-        seg.startTime = obj["position"].toDouble();
-        seg.endTime = obj["range_end"].toDouble();
-        seg.duration = obj["duration"].toDouble();
-        seg.key = obj["key"].toString();
-        seg.type = obj["type"].toString();
-        seg.confidence = obj["confidence"].toDouble();
+        seg.startTime = pSegment->getStartTime();
+        seg.endTime = pSegment->getRangeEnd();
+        seg.duration = pSegment->getDuration();
+        seg.key = pSegment->getKey();
+        seg.type = pSegment->getType();
+        seg.confidence = pSegment->getConfidence();
 
         m_segments.append(seg);
+    }
+
+    if (showDebugWaveformRenderKeyCurve) {
+        qDebug() << "[WaveformRenderKeyCurve] Loaded" << m_segments.size()
+                 << "key segments from database for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
 
     // Set initial wheel key
@@ -762,6 +820,21 @@ void WaveformRenderKeyCurve::drawKeyChangeLabel(QPainter* painter,
 }
 
 void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
+    // if track is loaded -> Update play position and current key
+    // if track had no keysegments on load -> wait while analyzing
+    // after 2 secs try loading segments again -> wheel will appear
+    // if track is not playing but maybe re-analyzed -> check every 2 secs
+    if (m_reloadTimer.hasExpired(kReloadCheckIntervalMs)) {
+        m_reloadTimer.restart();
+        // Only reload if we don't have segments or if track changed
+        if (m_segments.isEmpty()) {
+            if (showDebugWaveformRenderKeyCurve) {
+                qDebug() << "[WaveformRenderKeyCurve] Periodic reload check - loading segments";
+            }
+            loadKeyCurve();
+        }
+    }
+
     if (!m_visible || m_segments.isEmpty()) {
         drawLancelotWheel(painter);
         return;

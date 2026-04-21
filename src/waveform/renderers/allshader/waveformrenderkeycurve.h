@@ -8,6 +8,7 @@
 #include "control/controlproxy.h"
 #include "rendergraph/geometrynode.h"
 #include "rendergraph/node.h"
+#include "track/bpmsegments.h"
 #include "track/trackid.h"
 #include "waveform/renderers/waveformrenderkeycurvebase.h"
 
@@ -98,14 +99,8 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     void drawWheelText(QPainter& painter, int wheelX, int wheelY, int wheelSize);
     QImage createFullImage();
 
-    // Helper to get visible range
     void getVisibleRange(double& startSample, double& endSample, double& width, double& height);
-
-    // Update transposed values (used by both updateTransposedKey and updateNode)
     void calculateTransposedValues(int totalSemitones);
-
-    // QImage drawKeyCurveTexture();
-    QImage drawCamelotWheel();
     void updateCurrentKey();
     QString keyToLancelot(const QString& key) const;
     QString normalizeKeyDisplay(const QString& key) const;
@@ -116,6 +111,7 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     QVector<LancelotKey> m_lancelotLayout;
     KeyCurveStyle m_style;
     QElapsedTimer m_animationTimer;
+    QElapsedTimer m_reloadTimer;
 
     TrackId m_lastTrackId;
 

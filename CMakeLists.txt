@@ -1399,6 +1399,7 @@ add_library(
   src/library/dao/directorydao.cpp
   src/library/dao/libraryhashdao.cpp
   src/library/dao/playlistdao.cpp
+  src/library/dao/segmentsdao.cpp
   src/library/dao/settingsdao.cpp
   src/library/dao/trackdao.cpp
   src/library/dao/trackschema.cpp
@@ -1596,12 +1597,14 @@ add_library(
   src/track/beats.cpp
   src/track/beatutils.cpp
   src/track/bpm.cpp
+  src/track/bpmsegments.cpp
   src/track/cue.cpp
   src/track/cueinfo.cpp
   src/track/cueinfoimporter.cpp
   src/track/globaltrackcache.cpp
   src/track/keyfactory.cpp
   src/track/keys.cpp
+  src/track/keysegments.cpp
   src/track/keyutils.cpp
   src/track/playcounter.cpp
   src/track/replaygain.cpp

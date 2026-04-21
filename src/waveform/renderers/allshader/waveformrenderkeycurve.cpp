@@ -1,14 +1,8 @@
 
 #include "waveform/renderers/allshader/waveformrenderkeycurve.h"
 
-#include <QElapsedTimer>
-#include <QFile>
 #include <QImage>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QPainter>
-#include <QStandardPaths>
 #include <QStringView>
 #include <cmath>
 
@@ -73,6 +67,7 @@ constexpr double WHEEL_START_ANGLE = 45.0;
 constexpr double SLICE_ANGLE = 30.0;
 constexpr int NUM_SLICES = 12;
 constexpr bool showDebugAllshaderWaveformRenderKeyCurve = false;
+static constexpr int kReloadCheckIntervalMs = 2000;
 
 WaveformRenderKeyCurve::WaveformRenderKeyCurve(
         WaveformWidgetRenderer* waveformWidget,
@@ -82,6 +77,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
           m_lancelotLayout(),
           m_style(),
           m_animationTimer(),
+          m_reloadTimer(),
           m_lastTrackId(),
           m_currentKey(),
           m_currentLancelot(),
@@ -109,6 +105,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
           m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip),
           m_textureReady(false) {
     m_animationTimer.start();
+    m_reloadTimer.start();
     m_style = KeyCurveStyle();
 
     auto pNode = std::make_unique<rendergraph::Node>();
@@ -302,6 +299,7 @@ QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
     }
 }
 
+// Logic based on Loading KEY curve segments from DB
 void WaveformRenderKeyCurve::updateCurrentKey() {
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     if (!pTrack) {
@@ -312,49 +310,86 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
     }
 
     // Load key curve if not loaded yet
-    if (!m_segmentsLoaded && m_segments.isEmpty()) {
+    if (!m_segmentsLoaded) {
         if (showDebugAllshaderWaveformRenderKeyCurve) {
-            qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key curve...";
+            qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key curve from database...";
         }
-        QString trackIdStr = pTrack->getId().toString();
-        QString keyDir = QStandardPaths::writableLocation(
-                                 QStandardPaths::AppLocalDataLocation) +
-                "/keycurve/";
-        QString jsonPath = keyDir + trackIdStr + ".json";
 
-        QFile file(jsonPath);
-        if (file.open(QIODevice::ReadOnly)) {
-            QByteArray jsonData = file.readAll();
-            file.close();
+        // Load from database via Track object
+        QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
 
-            QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-            if (doc.isObject()) {
-                QJsonObject rootObj = doc.object();
-                QJsonArray keyArray = rootObj["key_curve"].toArray();
-
-                for (const QJsonValue& val : std::as_const(keyArray)) {
-                    if (!val.isObject()) {
-                        continue;
-                    }
-                    QJsonObject obj = val.toObject();
-                    KeySegment seg;
-                    seg.startTime = obj["position"].toDouble();
-                    seg.endTime = obj["range_end"].toDouble();
-                    seg.key = obj["key"].toString();
-                    seg.confidence = obj["confidence"].toDouble();
-                    m_segments.append(seg);
-                }
-                if (showDebugAllshaderWaveformRenderKeyCurve) {
-                    qDebug() << "[WaveformRenderKeyCurve - Allshader] Loaded"
-                             << m_segments.size() << "segments";
-                }
+        if (!segments.isEmpty()) {
+            for (const auto& pSegment : segments) {
+                KeySegment seg;
+                seg.startTime = pSegment->getStartTime();
+                seg.endTime = pSegment->getRangeEnd();
+                seg.duration = pSegment->getDuration();
+                seg.key = pSegment->getKey();
+                seg.type = pSegment->getType();
+                seg.confidence = pSegment->getConfidence();
+                m_segments.append(seg);
             }
+
+            // if (showDebugAllshaderWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve - Allshader] Loaded"
+                     << m_segments.size() << "key segments from database for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
+            //}
         } else {
-            if (showDebugAllshaderWaveformRenderKeyCurve) {
-                qDebug() << "[WaveformRenderKeyCurve - Allshader] Cannot open file:" << jsonPath;
-            }
+            // if (showDebugAllshaderWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve - Allshader] No key segments "
+                        "in database for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
+            //}
         }
         m_segmentsLoaded = true;
+    }
+
+    // If no segments present we will check again, may appear delayed by analyzer
+    // -> check again after 2 secs timer (in update)
+    if (m_segments.isEmpty() && m_segmentsLoaded) {
+        // Try to reload from database - maybe analysis just finished
+        QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
+
+        if (!segments.isEmpty()) {
+            qDebug() << "[WaveformRenderKeyCurve - Allshader] Reloaded"
+                     << segments.size() << "key segments after analysis for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
+
+            for (const auto& pSegment : segments) {
+                KeySegment seg;
+                seg.startTime = pSegment->getStartTime();
+                seg.endTime = pSegment->getRangeEnd();
+                seg.duration = pSegment->getDuration();
+                seg.key = pSegment->getKey();
+                seg.type = pSegment->getType();
+                seg.confidence = pSegment->getConfidence();
+                m_segments.append(seg);
+            }
+
+            // Force complete recreation of the wheel
+            // Clear the existing node
+            if (m_pKeyCurveNode) {
+                m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
+                m_pKeyCurveNode = nullptr;
+            }
+            m_pendingWheelImage = QImage();
+
+            // Set initial key values from first segment
+            if (!m_segments.isEmpty()) {
+                m_currentWheelKey = m_segments[0].key;
+                m_baseLancelot = keyToLancelot(m_currentWheelKey);
+                updateTransposedKey();
+            }
+        }
+    }
+
+    // If still no segments, just return
+    if (m_segments.isEmpty()) {
+        return;
     }
 
     // Update track duration
@@ -373,6 +408,7 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
 
     // Find current key based on play position
     double positionSeconds = m_playPosition * m_trackLengthSeconds;
+
     for (const auto& seg : std::as_const(m_segments)) {
         if (positionSeconds >= seg.startTime && positionSeconds <= seg.endTime) {
             if (m_currentKey != seg.key) {
@@ -934,35 +970,44 @@ void WaveformRenderKeyCurve::update() {
         m_transposedMusicalKey.clear();
         m_segmentsLoaded = false;
 
-        if (pTrack) {
-            // Force reload of new track's key curve
-            updateCurrentKey(); // This will reload segments and set initial key values
+        m_currentLancelot.clear();
+        m_transposedWheelKey.clear();
+        m_trackLengthSeconds = 0.0;
+        m_playPosition = 0.0;
+        m_currentTotalOffset = 0;
 
-            // Force immediate wheel update
-            if (m_pKeyCurveNode) {
-                // QImage wheelImage = drawCamelotWheel();
-                QImage wheelImage = createFullImage();
-                rendergraph::Context* pContext = m_waveformRenderer->getContext();
-                if (pContext) {
-                    m_pKeyCurveNode->updateTexture(pContext, wheelImage);
-                    m_pKeyCurveNode->markDirtyMaterial();
-                }
+        if (m_pKeyCurveNode) {
+            m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
+            m_pKeyCurveNode = nullptr;
+        }
+        m_pendingWheelImage = QImage();
+
+        if (pTrack && pTrack->getId().isValid()) {
+            if (showDebugAllshaderWaveformRenderKeyCurve) {
+                qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading new track";
             }
+            updateCurrentKey();
         }
     }
 
-    // Update play position and current key (only if track is loaded)
-    if (pTrack && !m_segments.isEmpty() && m_pPlayPositionCO) {
+    // if track is loaded -> Update play position and current key
+    // if track had nog keysegments on load -> wait while analyzing
+    // after 2 secs try loading segments again -> wheel will appear
+    // if track is not playing but maybe re-analyzed -> check every 2 secs
+
+    if (pTrack && m_pPlayPositionCO) {
         double newPosition = m_pPlayPositionCO->get();
         if (std::abs(newPosition - m_playPosition) > 0.001) {
             m_playPosition = newPosition;
+            updateCurrentKey();
+        } else if (m_reloadTimer.hasExpired(kReloadCheckIntervalMs)) {
+            m_reloadTimer.restart();
             updateCurrentKey();
         }
     }
 
     // Create initial pending image if needed
     if (!m_pKeyCurveNode && m_pendingWheelImage.isNull() && !m_segments.isEmpty()) {
-        // QImage wheelImage = drawCamelotWheel();
         QImage wheelImage = createFullImage();
         createNode(wheelImage);
     }

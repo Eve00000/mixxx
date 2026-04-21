@@ -1,11 +1,6 @@
 #include "waveform/renderers/allshader/waveformrenderbpmcurve.h"
 
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QPainter>
-#include <QStandardPaths>
 #include <cmath>
 
 #include "moc_waveformrenderbpmcurve.cpp"
@@ -124,71 +119,64 @@ double WaveformRenderBpmCurve::getOffset() const {
     return m_offsetSeconds;
 }
 
+// Load BPM curve data from DB file for the track
 void WaveformRenderBpmCurve::loadBpmCurve() {
     m_segments.clear();
 
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     if (!pTrack || !pTrack->getId().isValid()) {
+        if (showDebugAllshaderWaveformRenderBPMCurve) {
+            qDebug() << "[WaveformRenderBpmCurve - Allshader] No valid track";
+        }
         return;
     }
+
     if (showDebugAllshaderWaveformRenderBPMCurve) {
-        qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading BPM curve...";
+        qDebug() << "[WaveformRenderBpmCurve - Allshader] Loading BPM curve for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
 
     m_trackLengthSeconds = pTrack->getDuration();
     m_trackSamples = m_waveformRenderer->getTrackSamples();
 
-    QString trackIdStr = pTrack->getId().toString();
-    QString bpmDir = QStandardPaths::writableLocation(
-                             QStandardPaths::AppLocalDataLocation) +
-            "/bpmcurve/";
-    QString jsonPath = bpmDir + trackIdStr + ".json";
+    // Load from database via Track object
+    QList<BpmSegmentsPointer> segments = pTrack->getBpmSegments();
 
-    QFile file(jsonPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return;
-    }
-
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull() || !doc.isObject()) {
-        return;
-    }
-
-    QJsonObject rootObj = doc.object();
-    QJsonArray bpmArray;
-
-    if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
-        bpmArray = rootObj["bpm_curve"].toArray();
-    } else {
-        return;
-    }
-
-    for (const QJsonValue& val : std::as_const(bpmArray)) {
-        if (!val.isObject()) {
-            continue;
+    if (segments.isEmpty()) {
+        if (showDebugAllshaderWaveformRenderBPMCurve) {
+            qDebug() << "[WaveformRenderBpmCurve - Allshader] No BPM segments "
+                        "in database for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
         }
-        QJsonObject obj = val.toObject();
+        return;
+    }
+
+    // Convert BpmSegments to SegmentPoint format
+    for (const auto& pSegment : segments) {
         SegmentPoint seg;
-        seg.position = obj["position"].toDouble();
-        seg.duration = obj["duration"].toDouble();
-        seg.bpm_start = obj["bpm_start"].toDouble();
-        seg.bpm_end = obj["bpm_end"].toDouble();
-        seg.range_start = obj["range_start"].toDouble();
-        seg.range_end = obj["range_end"].toDouble();
-        seg.type = obj["type"].toString();
+
+        seg.position = pSegment->getStartTime();
+        seg.duration = pSegment->getDuration();
+        seg.bpm_start = pSegment->getBpmStart();
+        seg.bpm_end = pSegment->getBpmEnd();
+        seg.range_start = pSegment->getRangeStart();
+        seg.range_end = pSegment->getRangeEnd();
+        seg.type = pSegment->getType();
+
         m_segments.append(seg);
     }
 
-    // Load offset from JSON if present
-    if (rootObj.contains("track") && rootObj["track"].isObject()) {
-        QJsonObject trackObj = rootObj["track"].toObject();
-        if (trackObj.contains("offset_seconds")) {
-            m_offsetSeconds = trackObj["offset_seconds"].toDouble();
-        }
+    if (showDebugAllshaderWaveformRenderBPMCurve) {
+        qDebug() << "[WaveformRenderBpmCurve - Allshader] Loaded" << m_segments.size()
+                 << "BPM segments from database for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
+
+    // OFFSET STILL NEEDS TO BE ADDED IN DB
+    m_offsetSeconds = 0.0;
 
     m_needsRangeRecalculation = true;
     m_needsTextureUpdate = true;

@@ -2,14 +2,8 @@
 #include "waveform/renderers/waveformrenderbpmcurve.h"
 
 #include <QDebug>
-#include <QDir>
 #include <QDomNode>
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QPainter>
-#include <QStandardPaths>
 #include <algorithm>
 
 #include "skin/legacy/skincontext.h"
@@ -19,6 +13,7 @@
 #include "widget/wskincolor.h"
 
 constexpr bool showDebugWaveformRenderBpmCurve = false;
+static constexpr int kReloadCheckIntervalMs = 2000;
 
 WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
         : WaveformRendererAbstract(renderer),
@@ -29,8 +24,10 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
           m_yMaxBpm(0),
           m_offsetSeconds(0.0),
           m_currentRateRatio(1.0),
-          m_pRateRatioCO(nullptr) {
+          m_pRateRatioCO(nullptr),
+          m_reloadTimer() {
     initRateRatioControl();
+    m_reloadTimer.start();
 }
 
 void WaveformRenderBpmCurve::initRateRatioControl() {
@@ -242,9 +239,75 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
     calculateBpmRange();
 }
 
-void WaveformRenderBpmCurve::loadBpmCurve() {
-    m_segments.clear();
+// Load BPM curve data from DB for the current track
+// void WaveformRenderBpmCurve::loadBpmCurve() {
+//    m_segments.clear();
+//
+//    TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+//
+//    if (!pTrack) {
+//        if (showDebugWaveformRenderBpmCurve) {
+//            qDebug() << "[WaveformRenderBpmCurve] No track loaded";
+//        }
+//        return;
+//    }
+//
+//    if (!pTrack->getId().isValid()) {
+//        if (showDebugWaveformRenderBpmCurve) {
+//            qDebug() << "[WaveformRenderBpmCurve] Track has no valid ID";
+//        }
+//        return;
+//    }
+//
+//    if (showDebugWaveformRenderBpmCurve) {
+//        qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve for track:"
+//                 << pTrack->getTitle()
+//                 << "ID:" << pTrack->getId().toString();
+//    }
+//
+//    // Load from database via Track object
+//    QList<BpmSegmentsPointer> segments = pTrack->getBpmSegments();
+//
+//    if (segments.isEmpty()) {
+//        if (showDebugWaveformRenderBpmCurve) {
+//            qDebug() << "[WaveformRenderBpmCurve] No BPM segments in database for track:"
+//                     << pTrack->getTitle()
+//                     << "ID:" << pTrack->getId().toString();
+//        }
+//        return;
+//    }
+//
+//    m_segments.clear();
+//
+//    // Convert BpmSegments to SegmentPoint format
+//    for (const auto& pSegment : segments) {
+//        SegmentPoint seg;
+//
+//        seg.position = pSegment->getStartTime();
+//        seg.duration = pSegment->getDuration();
+//        seg.bpm_start = pSegment->getBpmStart();
+//        seg.bpm_end = pSegment->getBpmEnd();
+//        seg.range_start = pSegment->getRangeStart();
+//        seg.range_end = pSegment->getRangeEnd();
+//        seg.type = pSegment->getType();
+//
+//        m_segments.append(seg);
+//    }
+//
+//    if (showDebugWaveformRenderBpmCurve) {
+//        qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size()
+//                 << "BPM segments from database for track:"
+//                 << pTrack->getTitle()
+//                 << "ID:" << pTrack->getId().toString();
+//    }
+//
+//    // OFFSET STILL NEEDS TO BE ADDED IN DB
+//    m_offsetSeconds = 0.0;
+//    calculateBpmRange();
+//}
 
+// Load BPM curve data from DB for the current track
+void WaveformRenderBpmCurve::loadBpmCurve() {
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
 
     if (!pTrack) {
@@ -261,108 +324,54 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
         return;
     }
 
-    QString trackIdStr = pTrack->getId().toString();
-    if (trackIdStr.isEmpty()) {
-        if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] Track ID string is empty";
-        }
-        return;
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
 
-    // path to JSON file
-    QString bpmDir = QStandardPaths::writableLocation(
-                             QStandardPaths::AppLocalDataLocation) +
-            "/bpmcurve/";
-    QString jsonPath = bpmDir + trackIdStr + ".json";
+    // Load from database via Track object
+    QList<BpmSegmentsPointer> segments = pTrack->getBpmSegments();
 
-    // if (showDebugWaveformRenderBpmCurve) {
-    qDebug() << "[WaveformRenderBpmCurve] Loading BPM curve from:" << jsonPath;
-    //}
-
-    QFile file(jsonPath);
-    if (!file.open(QIODevice::ReadOnly)) {
+    if (segments.isEmpty()) {
         if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] Cannot open BPM JSON:" << jsonPath;
+            qDebug() << "[WaveformRenderBpmCurve] No BPM segments in database for track:"
+                     << pTrack->getTitle()
+                     << "ID:" << pTrack->getId().toString();
         }
-        return;
-    }
-
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull()) {
-        if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] Invalid JSON document";
-        }
-        return;
-    }
-
-    if (!doc.isObject()) {
-        if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] JSON is not an object";
-        }
-        return;
-    }
-
-    QJsonObject rootObj = doc.object();
-    QJsonArray bpmArray;
-
-    if (rootObj.contains("bpm_curve") && rootObj["bpm_curve"].isArray()) {
-        bpmArray = rootObj["bpm_curve"].toArray();
-    } else {
-        if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] No BPM array found in JSON";
+        // Clear existing segments if any (in case they were reloaded)
+        if (!m_segments.isEmpty()) {
+            m_segments.clear();
         }
         return;
     }
 
     m_segments.clear();
 
-    // 1st element: "bpm_start" or "bpm"
-    bool isSegmentFormat = false;
-    if (!bpmArray.isEmpty() && bpmArray[0].isObject()) {
-        QJsonObject firstObj = bpmArray[0].toObject();
-        isSegmentFormat = firstObj.contains("bpm_start") && firstObj.contains("bpm_end");
+    // Convert BpmSegments to SegmentPoint format
+    for (const auto& pSegment : segments) {
+        SegmentPoint seg;
+
+        seg.position = pSegment->getStartTime();
+        seg.duration = pSegment->getDuration();
+        seg.bpm_start = pSegment->getBpmStart();
+        seg.bpm_end = pSegment->getBpmEnd();
+        seg.range_start = pSegment->getRangeStart();
+        seg.range_end = pSegment->getRangeEnd();
+        seg.type = pSegment->getType();
+
+        m_segments.append(seg);
     }
 
-    if (isSegmentFormat) {
-        // Load as segments directly
-        for (const QJsonValue& val : std::as_const(bpmArray)) {
-            if (!val.isObject()) {
-                continue;
-            }
-
-            QJsonObject obj = val.toObject();
-            SegmentPoint seg;
-
-            seg.position = obj["position"].toDouble();
-            seg.duration = obj["duration"].toDouble();
-            seg.bpm_start = obj["bpm_start"].toDouble();
-            seg.bpm_end = obj["bpm_end"].toDouble();
-            seg.range_start = obj["range_start"].toDouble();
-            seg.range_end = obj["range_end"].toDouble();
-            seg.type = obj["type"].toString();
-
-            m_segments.append(seg);
-        }
-        if (showDebugWaveformRenderBpmCurve) {
-            qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size() << "BPM segments";
-        }
+    if (showDebugWaveformRenderBpmCurve) {
+        qDebug() << "[WaveformRenderBpmCurve] Loaded" << m_segments.size()
+                 << "BPM segments from database for track:"
+                 << pTrack->getTitle()
+                 << "ID:" << pTrack->getId().toString();
     }
 
-    // offset from JSON if present
-    if (rootObj.contains("track") && rootObj["track"].isObject()) {
-        QJsonObject trackObj = rootObj["track"].toObject();
-        if (trackObj.contains("offset_seconds")) {
-            m_offsetSeconds = trackObj["offset_seconds"].toDouble();
-            if (showDebugWaveformRenderBpmCurve) {
-                qDebug() << "[WaveformRenderBpmCurve] Loaded offset from JSON:"
-                         << m_offsetSeconds << "s";
-            }
-        }
-    }
-
+    // OFFSET STILL NEEDS TO BE ADDED IN DB
+    m_offsetSeconds = 0.0;
     calculateBpmRange();
 }
 
@@ -377,6 +386,7 @@ void WaveformRenderBpmCurve::onSetTrack() {
     m_maxBpm = 0;
     m_yMinBpm = 0;
     m_yMaxBpm = 0;
+    m_reloadTimer.restart();
     loadBpmCurve();
     calculateBpmRange();
 }
@@ -514,36 +524,26 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
-    // if segments would change like with re-analyze
-    // check for reload -> once per second max
-    // static int frameCount = 0;
-    // if (++frameCount >= 60) { // Check every ~1 second at 60fps
-    //    frameCount = 0;
+    // if track is loaded -> Update play position and current bpm
+    // if track had no bpmsegments on load -> wait while analyzing
+    // after 2 secs try loading segments again
+    // if track is not playing but maybe re-analyzed -> check every 2 secs
 
-    //// Check if JSON file exists for current track
-    // TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-    // if (pTrack && pTrack->getId().isValid()) {
-    //     QString trackIdStr = pTrack->getId().toString();
-    //     QString bpmDir = QStandardPaths::writableLocation(
-    //                              QStandardPaths::AppLocalDataLocation) +
-    //             "/bpmcurve/";
-    //     QString jsonPath = bpmDir + trackIdStr + ".json";
-
-    //    QFileInfo fileInfo(jsonPath);
-    //    if (fileInfo.exists()) {
-    //        // Only reload if file is newer or segments are empty
-    //        if (m_segments.isEmpty() || fileInfo.lastModified() != m_lastLoadTime) {
-    //            m_lastLoadTime = fileInfo.lastModified();
-    //            //loadBpmCurve();
-    //            calculateBpmRange();
-    //        }
-    //    } else if (!m_segments.isEmpty()) {
-    //        // JSON was deleted, clear segments
-    //        m_segments.clear();
-    //        calculateBpmRange();
-    //    }
-    //}
-    //}
+    if (m_reloadTimer.hasExpired(kReloadCheckIntervalMs)) {
+        m_reloadTimer.restart();
+        // Only reload if we don't have segments
+        if (m_segments.isEmpty()) {
+            if (showDebugWaveformRenderBpmCurve) {
+                qDebug() << "[WaveformRenderBpmCurve] Periodic reload check - loading segments";
+            }
+            loadBpmCurve();
+            // If we loaded segments now, we need to redraw
+            if (!m_segments.isEmpty()) {
+                update();
+                return;
+            }
+        }
+    }
 
     if (!m_visible || m_segments.isEmpty()) {
         return;

@@ -7,6 +7,7 @@
 #include "control/controlproxy.h"
 #include "rendergraph/geometrynode.h"
 #include "rendergraph/node.h"
+#include "track/bpmsegments.h"
 #include "track/trackid.h"
 #include "waveform/renderers/waveformrenderbpmcurvebase.h"
 
