@@ -158,10 +158,12 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
         LancelotKey key;
         key.lancelot = majorLancelots[i];
         double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
-        while (angle < 0.0)
+        while (angle < 0.0) {
             angle += 360.0;
-        while (angle >= 360.0)
+        }
+        while (angle >= 360.0) {
             angle -= 360.0;
+        }
         key.angle = angle;
         key.isMinor = false;
         m_lancelotLayout.append(key);
@@ -171,10 +173,12 @@ void WaveformRenderKeyCurve::initLancelotLayout() {
         LancelotKey key;
         key.lancelot = minorLancelots[i];
         double angle = WHEEL_START_ANGLE - (i * SLICE_ANGLE);
-        while (angle < 0.0)
+        while (angle < 0.0) {
             angle += 360.0;
-        while (angle >= 360.0)
+        }
+        while (angle >= 360.0) {
             angle -= 360.0;
+        }
         key.angle = angle;
         key.isMinor = true;
         m_lancelotLayout.append(key);
@@ -319,7 +323,7 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
         QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
 
         if (!segments.isEmpty()) {
-            for (const auto& pSegment : segments) {
+            for (const auto& pSegment : std::as_const(segments)) {
                 KeySegment seg;
                 seg.startTime = pSegment->getStartTime();
                 seg.endTime = pSegment->getRangeEnd();
@@ -359,7 +363,7 @@ void WaveformRenderKeyCurve::updateCurrentKey() {
                      << pTrack->getTitle()
                      << "ID:" << pTrack->getId().toString();
 
-            for (const auto& pSegment : segments) {
+            for (const auto& pSegment : std::as_const(segments)) {
                 KeySegment seg;
                 seg.startTime = pSegment->getStartTime();
                 seg.endTime = pSegment->getRangeEnd();
@@ -498,11 +502,12 @@ QString WaveformRenderKeyCurve::transposeKey(const QString& key, int semitones) 
 }
 
 void WaveformRenderKeyCurve::updateTransposedKey() {
-    if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty())
+    if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty()) {
         return;
-
-    if (m_pKeylockCO)
+    }
+    if (m_pKeylockCO) {
         m_keylockEnabled = (m_pKeylockCO->get() > 0.5);
+    }
 
     double pitchSemitones = m_keylockEnabled ? 0.0 : 12.0 * log2(m_currentRateRatio);
     int totalSemitones = static_cast<int>(std::round(pitchSemitones + m_currentKeyShift));
@@ -557,14 +562,17 @@ QImage WaveformRenderKeyCurve::createFullImage() {
 }
 
 void WaveformRenderKeyCurve::drawKeyMarkers(QPainter& painter, float width, float height) {
-    if (!m_style.showMarkers)
+    if (!m_style.showMarkers) {
         return;
-    if (m_segments.isEmpty())
+    }
+    if (m_segments.isEmpty()) {
         return;
+    }
 
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-    if (!pTrack)
+    if (!pTrack) {
         return;
+    }
 
     double trackLengthSeconds = pTrack->getDuration();
     double trackSamples = m_waveformRenderer->getTrackSamples();
@@ -601,14 +609,17 @@ void WaveformRenderKeyCurve::drawKeyMarkers(QPainter& painter, float width, floa
 
 void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float height) {
     Q_UNUSED(height);
-    if (!m_style.showLabels)
+    if (!m_style.showLabels) {
         return;
-    if (m_segments.isEmpty())
+    }
+    if (m_segments.isEmpty()) {
         return;
+    }
 
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-    if (!pTrack)
+    if (!pTrack) {
         return;
+    }
 
     double trackLengthSeconds = pTrack->getDuration();
     double trackSamples = m_waveformRenderer->getTrackSamples();
@@ -625,13 +636,15 @@ void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float
     const double labelY = 5;
 
     for (const auto& seg : std::as_const(m_segments)) {
-        if (seg.confidence < 50.0)
+        if (seg.confidence < 50.0) {
             continue;
+        }
 
         double startPos = seg.startTime * (trackSamples / trackLengthSeconds);
 
-        if (startPos < startSample || startPos > endSample)
+        if (startPos < startSample || startPos > endSample) {
             continue;
+        }
 
         double x = m_waveformRenderer->transformSamplePositionInRendererWorld(
                 startPos, ::WaveformRendererAbstract::Play);
@@ -717,8 +730,9 @@ void WaveformRenderKeyCurve::drawHighlightedSlice(
     QString currentLancelotForDisplay = m_transposedLancelot.isEmpty()
             ? m_baseLancelot
             : m_transposedLancelot;
-    if (currentLancelotForDisplay.isEmpty())
+    if (currentLancelotForDisplay.isEmpty()) {
         return;
+    }
 
     for (const auto& key : std::as_const(m_lancelotLayout)) {
         if (key.lancelot == currentLancelotForDisplay) {
@@ -776,8 +790,9 @@ void WaveformRenderKeyCurve::drawWheelText(
 void WaveformRenderKeyCurve::drawCamelotWheelComponents(
         QPainter& painter, float width, float height) {
     int wheelSize = static_cast<int>(height * 0.7);
-    if (wheelSize < 60)
+    if (wheelSize < 60) {
         wheelSize = 60;
+    }
 
     int wheelX = static_cast<int>(width - wheelSize - m_wheelMargin);
     int wheelY = m_wheelMargin;
@@ -805,23 +820,27 @@ void WaveformRenderKeyCurve::drawCamelotWheelComponents(
 }
 
 void WaveformRenderKeyCurve::calculateTransposedValues(int totalSemitones) {
-    if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty())
+    if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty()) {
         return;
+    }
 
     // Convert semitones to Camelot wheel steps
     int wheelSteps = (totalSemitones * 7) % 12;
-    if (wheelSteps < 0)
+    if (wheelSteps < 0) {
         wheelSteps += 12;
+    }
 
     // Apply to Lancelot number
     int currentNumber = QStringView(m_baseLancelot).left(m_baseLancelot.length() - 1).toInt();
     bool isMinor = m_baseLancelot.endsWith("A");
 
     int newNumber = currentNumber + wheelSteps;
-    while (newNumber < 1)
+    while (newNumber < 1) {
         newNumber += 12;
-    while (newNumber > 12)
+    }
+    while (newNumber > 12) {
         newNumber -= 12;
+    }
 
     m_transposedLancelot = QString::number(newNumber) + (isMinor ? "A" : "B");
     m_transposedMusicalKey = transposeKey(m_currentWheelKey, totalSemitones);
@@ -895,8 +914,9 @@ void WaveformRenderKeyCurve::updateNode() {
         m_pendingWheelImage = QImage();
     }
 
-    if (!m_pKeyCurveNode)
+    if (!m_pKeyCurveNode) {
         return;
+    }
 
     // Poll values
     if (m_pRateRatioCO) {
@@ -911,8 +931,9 @@ void WaveformRenderKeyCurve::updateNode() {
 
     float width = static_cast<float>(m_waveformRenderer->getWidth());
     float height = static_cast<float>(m_waveformRenderer->getBreadth());
-    if (width <= 0 || height <= 0)
+    if (width <= 0 || height <= 0) {
         return;
+    }
 
     // Calculate current offset
     double pitchSemitones = m_keylockEnabled ? 0.0 : 12.0 * log2(m_currentRateRatio);

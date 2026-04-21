@@ -349,8 +349,9 @@ QJsonArray AnalyzerQueenMaryKeyExtended::getKeySegmentsJson() const {
     QJsonArray segmentsArray;
     int segmentId = 1;
     for (const auto& seg : std::as_const(m_keySegments)) {
-        if (seg.duration < 0.001)
+        if (seg.duration < 0.001) {
             continue;
+        }
         QJsonObject segmentObj;
         segmentObj["id"] = segmentId++;
         segmentObj["type"] = seg.type;

@@ -1,5 +1,7 @@
 #include "track/bpmsegments.h"
 
+#include <QMutexLocker>
+
 #include "moc_bpmsegments.cpp"
 
 // static
@@ -53,133 +55,126 @@ BpmSegments::BpmSegments(
 }
 
 DbId BpmSegments::getId() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_dbId;
 }
 
 void BpmSegments::setId(DbId id) {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     m_dbId = id;
 }
 
 bool BpmSegments::isDirty() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_bDirty;
 }
 
 void BpmSegments::setDirty(bool dirty) {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     m_bDirty = dirty;
 }
 
 double BpmSegments::getStartTime() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_startTime;
 }
 
 void BpmSegments::setStartTime(double startTime) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_startTime == startTime) {
         return;
     }
     m_startTime = startTime;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 double BpmSegments::getDuration() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_duration;
 }
 
 void BpmSegments::setDuration(double duration) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_duration == duration) {
         return;
     }
     m_duration = duration;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 double BpmSegments::getBpmStart() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_bpmStart;
 }
 
 void BpmSegments::setBpmStart(double bpmStart) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_bpmStart == bpmStart) {
         return;
     }
     m_bpmStart = bpmStart;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 double BpmSegments::getBpmEnd() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_bpmEnd;
 }
 
 void BpmSegments::setBpmEnd(double bpmEnd) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_bpmEnd == bpmEnd) {
         return;
     }
     m_bpmEnd = bpmEnd;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 double BpmSegments::getRangeStart() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_rangeStart;
 }
 
 void BpmSegments::setRangeStart(double rangeStart) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_rangeStart == rangeStart) {
         return;
     }
     m_rangeStart = rangeStart;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 double BpmSegments::getRangeEnd() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_rangeEnd;
 }
 
 void BpmSegments::setRangeEnd(double rangeEnd) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_rangeEnd == rangeEnd) {
         return;
     }
     m_rangeEnd = rangeEnd;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }
 
 QString BpmSegments::getType() const {
-    const auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     return m_type;
 }
 
 void BpmSegments::setType(const QString& type) {
-    auto lock = lockMutex(&m_mutex);
+    QMutexLocker locker(&m_mutex);
     if (m_type == type) {
         return;
     }
     m_type = type;
     m_bDirty = true;
-    lock.unlock();
     emit updated();
 }

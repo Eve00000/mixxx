@@ -304,9 +304,10 @@ void AnalyzerKey::storeResults(TrackPointer pTrack) {
         if (!segmentsArray.isEmpty()) {
             QList<KeySegmentsPointer> dbSegments;
 
-            for (const QJsonValue& val : segmentsArray) {
-                if (!val.isObject())
+            for (const QJsonValue& val : std::as_const(segmentsArray)) {
+                if (!val.isObject()) {
                     continue;
+                }
 
                 QJsonObject obj = val.toObject();
 

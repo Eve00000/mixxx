@@ -512,7 +512,7 @@ void WaveformRenderKeyCurve::loadKeyCurve() {
 
     // Convert KeySegments to KeySegment format
     m_segments.clear();
-    for (const auto& pSegment : segments) {
+    for (const auto& pSegment : std::as_const(segments)) {
         KeySegment seg;
 
         seg.startTime = pSegment->getStartTime();

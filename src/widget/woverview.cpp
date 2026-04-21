@@ -335,7 +335,7 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
 
     m_bpmCurvePoints.clear();
 
-    for (const auto& pSegment : segments) {
+    for (const auto& pSegment : std::as_const(segments)) {
         OverviewBpmPoint pt;
 
         pt.position = pSegment->getStartTime();
@@ -659,7 +659,7 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
 
     m_keyCurvePoints.clear();
 
-    for (const auto& pSegment : segments) {
+    for (const auto& pSegment : std::as_const(segments)) {
         OverviewKeyPoint pt;
 
         pt.position = pSegment->getStartTime();

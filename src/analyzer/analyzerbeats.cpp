@@ -365,9 +365,10 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
         if (!segmentsArray.isEmpty()) {
             QList<BpmSegmentsPointer> dbSegments;
 
-            for (const QJsonValue& val : segmentsArray) {
-                if (!val.isObject())
+            for (const QJsonValue& val : std::as_const(segmentsArray)) {
+                if (!val.isObject()) {
                     continue;
+                }
 
                 QJsonObject obj = val.toObject();
 
@@ -434,7 +435,7 @@ bool AnalyzerBeats::exportBeatsToCsv(TrackPointer pTrack,
 
     QString bpmCurvePath = m_pConfig->getSettingsPath() + "/bpmcurve/";
     QDir saveLocation(bpmCurvePath);
-    QString bpmCurveFileLocation = bpmCurvePath + pTrack->getId().toString() + ".json";
+    // QString bpmCurveFileLocation = bpmCurvePath + pTrack->getId().toString() + ".json";
 
     if (!saveLocation.exists("bpmCurvePath")) {
         saveLocation.mkdir("bpmCurvePath");

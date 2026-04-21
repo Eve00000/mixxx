@@ -349,7 +349,7 @@ void WaveformRenderBpmCurve::loadBpmCurve() {
     m_segments.clear();
 
     // Convert BpmSegments to SegmentPoint format
-    for (const auto& pSegment : segments) {
+    for (const auto& pSegment : std::as_const(segments)) {
         SegmentPoint seg;
 
         seg.position = pSegment->getStartTime();
