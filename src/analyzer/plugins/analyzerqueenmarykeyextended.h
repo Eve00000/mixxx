@@ -26,7 +26,8 @@ struct AnalysisKeySegment {
     double startTime;
     double endTime;
     double duration;
-    QString key;
+    ChromaticKey keyId;
+    QString keyText;
     QString type;
     double confidence;
 
@@ -34,6 +35,7 @@ struct AnalysisKeySegment {
             : startTime(0),
               endTime(0),
               duration(0),
+              keyId(ChromaticKey::INVALID),
               confidence(0) {
     }
 };
@@ -58,7 +60,6 @@ class AnalyzerQueenMaryKeyExtended : public AnalyzerKeyPlugin {
     void buildKeySegments();
     void smoothKeyResults();
     QString keyToString(int key) const;
-    QString keyToStringRaw(int key) const; // For debugging only
     double calculateConfidence(double* keyStrengths, int detectedKeyIndex) const;
 
     std::unique_ptr<GetKeyMode> m_pKeyMode;

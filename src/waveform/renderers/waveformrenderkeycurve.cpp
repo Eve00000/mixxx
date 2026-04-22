@@ -4,11 +4,17 @@
 #include <QPainter>
 #include <cmath>
 
+#include "control/controlproxy.h"
+#include "library/library_prefs.h"
+#include "proto/keys.pb.h"
 #include "skin/legacy/skincontext.h"
+#include "track/keyutils.h"
 #include "track/track.h"
 #include "util/painterscope.h"
 #include "waveform/renderers/waveformwidgetrenderer.h"
 #include "widget/wskincolor.h"
+
+using mixxx::track::io::key::ChromaticKey;
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -28,6 +34,7 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_pKeyControlCO(nullptr),
           m_pPlayPositionCO(nullptr),
           m_pKeylockCO(nullptr),
+          m_pKeyNotationCO(nullptr),
           m_segments(),
           m_lancelotLayout(),
           m_style(),
@@ -46,11 +53,15 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_wheelSize(120),
           m_wheelMargin(10),
           m_currentTotalOffset(0),
+          m_currentKeyId(0),
           m_visible(true),
           m_keylockEnabled(false) {
     m_animationTimer.start();
     m_reloadTimer.start();
     initLancelotLayout();
+
+    m_pKeyNotationCO = std::make_unique<ControlProxy>(
+            mixxx::library::prefs::kKeyNotationConfigKey);
 }
 
 void WaveformRenderKeyCurve::initPlayPositionControl() {
@@ -238,30 +249,96 @@ void WaveformRenderKeyCurve::onPlayPositionChanged(double value) {
     updateCurrentWheelKey();
 }
 
+QString WaveformRenderKeyCurve::keyIdToLancelot(int keyId) const {
+    bool isMinor = (keyId >= 13);
+    int rootNote = (keyId - 1) % 12;
+
+    int lancelotNumber;
+    if (m_style.wheelType == KeyCurveStyle::WHEEL_MIXXX) {
+        static const int rootToOpenKey[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+        lancelotNumber = rootToOpenKey[rootNote];
+    } else {
+        static const int rootToCamelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
+        static const int rootToCamelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
+        lancelotNumber = isMinor ? rootToCamelotMinor[rootNote] : rootToCamelotMajor[rootNote];
+    }
+
+    return QString::number(lancelotNumber) + (isMinor ? "A" : "B");
+}
+
+void WaveformRenderKeyCurve::calculateTransposedValues(int totalSemitones) {
+    if (m_currentKeyId == 0) {
+        return;
+    }
+
+    int rootNote = (m_currentKeyId - 1) % 12;
+    bool isMinor = (m_currentKeyId >= 13);
+
+    int transposedRoot = (rootNote + totalSemitones) % 12;
+    if (transposedRoot < 0)
+        transposedRoot += 12;
+
+    int transposedKeyId = transposedRoot + 1;
+    if (isMinor)
+        transposedKeyId += 12;
+
+    // Get Lancelot for the transposed key
+    if (m_style.wheelType == KeyCurveStyle::WHEEL_MIXXX) {
+        static const int rootToOpenKey[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+        int openKeyNumber = rootToOpenKey[transposedRoot];
+        m_transposedLancelot = QString::number(openKeyNumber) + (isMinor ? "A" : "B");
+    } else {
+        static const int rootToCamelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
+        static const int rootToCamelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
+        int lancelotNumber = isMinor ? rootToCamelotMinor[transposedRoot]
+                                     : rootToCamelotMajor[transposedRoot];
+        m_transposedLancelot = QString::number(lancelotNumber) + (isMinor ? "A" : "B");
+    }
+
+    // Get display key in user's preferred notation
+    int notationValue = static_cast<int>(m_pKeyNotationCO->get());
+    KeyUtils::KeyNotation notation = KeyUtils::keyNotationFromNumericValue(notationValue);
+    m_transposedMusicalKey = KeyUtils::keyToString(
+            static_cast<ChromaticKey>(transposedKeyId), notation);
+}
+
+// Logic based on Loading KEY curve segments from DB
 void WaveformRenderKeyCurve::updateCurrentWheelKey() {
     if (m_segments.isEmpty() || m_trackLengthSeconds <= 0) {
         return;
     }
 
     double positionSeconds = m_currentPlayPosition * m_trackLengthSeconds;
+    int notationValue = static_cast<int>(m_pKeyNotationCO->get());
+    KeyUtils::KeyNotation notation = KeyUtils::keyNotationFromNumericValue(notationValue);
 
     for (const auto& seg : std::as_const(m_segments)) {
         if (positionSeconds >= seg.startTime && positionSeconds <= seg.endTime) {
-            if (m_currentWheelKey != seg.key) {
-                m_currentWheelKey = seg.key;
-                m_baseLancelot = keyToLancelot(m_currentWheelKey);
+            QString displayKey = KeyUtils::keyToString(
+                    static_cast<ChromaticKey>(seg.keyId), notation);
+            if (m_currentWheelKey != displayKey) {
+                m_currentWheelKey = displayKey;
+                m_currentKeyId = seg.keyId;
+                m_baseLancelot = keyIdToLancelot(seg.keyId);
                 updateTransposedKey();
             }
             break;
         }
     }
+
+    // set initial values if this is the first time
+    if (!m_segments.isEmpty() && m_currentWheelKey.isEmpty()) {
+        QString displayKey = KeyUtils::keyToString(
+                static_cast<ChromaticKey>(m_segments[0].keyId), notation);
+        m_currentWheelKey = displayKey;
+        m_currentKeyId = m_segments[0].keyId;
+        m_baseLancelot = keyIdToLancelot(m_segments[0].keyId);
+        updateTransposedKey();
+    }
 }
 
 void WaveformRenderKeyCurve::updateTransposedKey() {
     if (m_baseLancelot.isEmpty() || m_currentWheelKey.isEmpty()) {
-        if (showDebugWaveformRenderKeyCurve) {
-            qDebug() << "[WaveformRenderKeyCurve] updateTransposedKey - missing data";
-        }
         return;
     }
 
@@ -269,142 +346,30 @@ void WaveformRenderKeyCurve::updateTransposedKey() {
         m_keylockEnabled = (m_pKeylockCO->get() > 0.5);
     }
 
-    // Calculate semitone offset from rate ratio (only if keylock is OFF)
-    double pitchSemitones = 0.0;
-    if (!m_keylockEnabled) {
-        pitchSemitones = 12.0 * log2(m_currentRateRatio);
-    }
-
+    double pitchSemitones = m_keylockEnabled ? 0.0 : 12.0 * log2(m_currentRateRatio);
     int totalSemitones = static_cast<int>(std::round(pitchSemitones + m_currentKeyShift));
     m_currentTotalOffset = totalSemitones;
 
-    // Convert semitones to Camelot wheel steps
-    int wheelSteps = (totalSemitones * 7) % 12;
-    if (wheelSteps < 0) {
-        wheelSteps += 12;
-    }
-
-    // Apply to Lancelot number
-    int currentNumber = QStringView(m_baseLancelot).left(m_baseLancelot.length() - 1).toInt();
-    bool isMinor = m_baseLancelot.endsWith("A");
-
-    int newNumber = currentNumber + wheelSteps;
-    while (newNumber < 1) {
-        newNumber += 12;
-    }
-    while (newNumber > 12) {
-        newNumber -= 12;
-    }
-
-    m_transposedLancelot = QString::number(newNumber) + (isMinor ? "A" : "B");
-
-    // Transpose the musical key by totalSemitones (chromatic)
-    if (showDebugWaveformRenderKeyCurve) {
-        qDebug() << "[WaveformRenderKeyCurve] Before transpose - key:" << m_currentWheelKey
-                 << "semitones:" << totalSemitones;
-    }
-
-    m_transposedMusicalKey = transposeKey(m_currentWheelKey, totalSemitones);
-
-    if (showDebugWaveformRenderKeyCurve) {
-        qDebug() << "[WaveformRenderKeyCurve] After transpose - result:" << m_transposedMusicalKey;
-    }
-
-    // Convert back to preferred display
-    if (m_transposedMusicalKey == "A#m") {
-        m_transposedMusicalKey = "Bbm";
-    }
-    if (m_transposedMusicalKey == "D#m") {
-        m_transposedMusicalKey = "Ebm";
-    }
-    if (m_transposedMusicalKey == "G#m") {
-        m_transposedMusicalKey = "Abm";
-    }
-    if (m_transposedMusicalKey == "C#") {
-        m_transposedMusicalKey = "Db";
-    }
-    if (m_transposedMusicalKey == "F#") {
-        m_transposedMusicalKey = "Gb";
-    }
-    if (m_transposedMusicalKey == "A#") {
-        m_transposedMusicalKey = "Bb";
-    }
-    if (m_transposedMusicalKey == "D#") {
-        m_transposedMusicalKey = "Eb";
-    }
-    if (m_transposedMusicalKey == "G#") {
-        m_transposedMusicalKey = "Ab";
-    }
+    calculateTransposedValues(totalSemitones);
 
     if (showDebugWaveformRenderKeyCurve) {
         qDebug() << "[WaveformRenderKeyCurve] Keylock:" << m_keylockEnabled
                  << "Semitones:" << totalSemitones
-                 << "Wheel steps:" << wheelSteps
                  << "Original:" << m_currentWheelKey << "(" << m_baseLancelot << ")"
                  << "-> Flashing:" << m_transposedLancelot
                  << "Display:" << m_transposedMusicalKey;
     }
 }
 
-QString WaveformRenderKeyCurve::transposeKey(const QString& key, int semitones) const {
-    static QStringList majorKeys = {
-            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    static QStringList minorKeys = {
-            "Cm", "C#m", "Dm", "D#m", "Em", "Fm", "F#m", "Gm", "G#m", "Am", "A#m", "Bm"};
-
-    // Normalize enharmonic equivalents
-    QString normalizedKey = key;
-    if (normalizedKey == "Bbm") {
-        normalizedKey = "A#m";
-    }
-    if (normalizedKey == "Ebm") {
-        normalizedKey = "D#m";
-    }
-    if (normalizedKey == "Abm") {
-        normalizedKey = "G#m";
-    }
-    if (normalizedKey == "Db") {
-        normalizedKey = "C#";
-    }
-    if (normalizedKey == "Gb") {
-        normalizedKey = "F#";
-    }
-    if (normalizedKey == "Bb") {
-        normalizedKey = "A#";
-    }
-    if (normalizedKey == "Eb") {
-        normalizedKey = "D#";
-    }
-    if (normalizedKey == "Ab") {
-        normalizedKey = "G#";
-    }
-
-    bool isMinor = normalizedKey.contains('m');
-    const QStringList& keys = isMinor ? minorKeys : majorKeys;
-
-    int index = keys.indexOf(normalizedKey);
-    if (index == -1) {
-        if (showDebugWaveformRenderKeyCurve) {
-            qDebug() << "[WaveformRenderKeyCurve] transposeKey - key not found:" << normalizedKey;
-        }
-        return key;
-    }
-
-    int newIndex = (index + semitones) % 12;
-    if (newIndex < 0)
-        newIndex += 12;
-
-    QString result = keys[newIndex];
-    if (showDebugWaveformRenderKeyCurve) {
-        qDebug() << "[WaveformRenderKeyCurve] transposeKey:" << normalizedKey
-                 << "+" << semitones << "=" << result;
-    }
-
-    return result;
-}
 
 void WaveformRenderKeyCurve::onSetTrack() {
     m_segments.clear();
+    m_segmentsLoaded = false;
+    m_currentKeyId = 0;
+    m_currentWheelKey.clear();
+    m_baseLancelot.clear();
+    m_transposedLancelot.clear();
+    m_transposedMusicalKey.clear();
     m_reloadTimer.restart();
     loadKeyCurve();
     initPlayPositionControl();
@@ -412,67 +377,6 @@ void WaveformRenderKeyCurve::onSetTrack() {
     initKeyControl();
     initKeylockControl();
 }
-
-// Load key curve data from DB for the current track
-// void WaveformRenderKeyCurve::loadKeyCurve() {
-//    m_segments.clear();
-//
-//    TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-//    if (!pTrack || !pTrack->getId().isValid()) {
-//        if (showDebugWaveformRenderKeyCurve) {
-//            qDebug() << "[WaveformRenderKeyCurve] No valid track";
-//        }
-//        return;
-//    }
-//
-//    m_trackLengthSeconds = pTrack->getDuration();
-//
-//    if (showDebugWaveformRenderKeyCurve) {
-//        qDebug() << "[WaveformRenderKeyCurve] Loading Key curve for track:"
-//                 << pTrack->getTitle()
-//                 << "ID:" << pTrack->getId().toString();
-//    }
-//
-//    // Load from database via Track object
-//    QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
-//
-//    if (segments.isEmpty()) {
-//        if (showDebugWaveformRenderKeyCurve) {
-//            qDebug() << "[WaveformRenderKeyCurve] No key segments in database for track:"
-//                     << pTrack->getTitle()
-//                     << "ID:" << pTrack->getId().toString();
-//        }
-//        return;
-//    }
-//
-//    // Convert KeySegments to KeySegment format
-//    for (const auto& pSegment : segments) {
-//        KeySegment seg;
-//
-//        seg.startTime = pSegment->getStartTime();
-//        seg.endTime = pSegment->getRangeEnd();
-//        seg.duration = pSegment->getDuration();
-//        seg.key = pSegment->getKey();
-//        seg.type = pSegment->getType();
-//        seg.confidence = pSegment->getConfidence();
-//
-//        m_segments.append(seg);
-//    }
-//
-//    if (showDebugWaveformRenderKeyCurve) {
-//        qDebug() << "[WaveformRenderKeyCurve] Loaded" << m_segments.size()
-//                 << "key segments from database for track:"
-//                 << pTrack->getTitle()
-//                 << "ID:" << pTrack->getId().toString();
-//    }
-//
-//    // Set initial wheel key
-//    if (!m_segments.isEmpty()) {
-//        m_currentWheelKey = m_segments[0].key;
-//        m_baseLancelot = keyToLancelot(m_currentWheelKey);
-//        updateTransposedKey();
-//    }
-//}
 
 // Load key curve data from DB for the current track
 void WaveformRenderKeyCurve::loadKeyCurve() {
@@ -506,6 +410,7 @@ void WaveformRenderKeyCurve::loadKeyCurve() {
             m_segments.clear();
             m_currentWheelKey.clear();
             m_baseLancelot.clear();
+            m_currentKeyId = 0;
         }
         return;
     }
@@ -518,120 +423,37 @@ void WaveformRenderKeyCurve::loadKeyCurve() {
         seg.startTime = pSegment->getStartTime();
         seg.endTime = pSegment->getRangeEnd();
         seg.duration = pSegment->getDuration();
-        seg.key = pSegment->getKey();
+        seg.keyId = pSegment->getKeyId();
+        seg.key = pSegment->getKeyText();
         seg.type = pSegment->getType();
         seg.confidence = pSegment->getConfidence();
 
         m_segments.append(seg);
     }
 
+    m_segmentsLoaded = true;
+
     if (showDebugWaveformRenderKeyCurve) {
         qDebug() << "[WaveformRenderKeyCurve] Loaded" << m_segments.size()
                  << "key segments from database for track:"
                  << pTrack->getTitle()
                  << "ID:" << pTrack->getId().toString();
+        // 1st segment as check
+        if (!m_segments.isEmpty()) {
+            qDebug() << "[WaveformRenderKeyCurve] First segment - keyId:" << m_segments[0].keyId
+                     << "keyText:" << m_segments[0].key;
+        }
     }
 
     // Set initial wheel key
     if (!m_segments.isEmpty()) {
-        m_currentWheelKey = m_segments[0].key;
-        m_baseLancelot = keyToLancelot(m_currentWheelKey);
+        int notationValue = static_cast<int>(m_pKeyNotationCO->get());
+        KeyUtils::KeyNotation notation = KeyUtils::keyNotationFromNumericValue(notationValue);
+        m_currentWheelKey = KeyUtils::keyToString(
+                static_cast<ChromaticKey>(m_segments[0].keyId), notation);
+        m_currentKeyId = m_segments[0].keyId;
+        m_baseLancelot = keyIdToLancelot(m_segments[0].keyId);
         updateTransposedKey();
-    }
-}
-
-QString WaveformRenderKeyCurve::keyToLancelot(const QString& key) const {
-    QString normalizedKey = key;
-
-    // Handle compound keys (e.g., "D#m/Ebm") -> take first part
-    if (normalizedKey.contains('/')) {
-        QStringList parts = normalizedKey.split('/');
-        if (!parts.isEmpty()) {
-            normalizedKey = parts[0];
-        }
-    }
-
-    // Convert Unicode to ASCII
-    normalizedKey.replace(QChar(0x266D), 'b');
-    normalizedKey.replace(QChar(0x266F), '#');
-    normalizedKey.replace(QChar(0x266E), "");
-
-    if (m_style.wheelType == KeyCurveStyle::WHEEL_MIXXX) {
-        // Mixxx keywheel mapping
-        static QMap<QString, QString> majorToLancelot = {{"C", "12B"},
-                {"G", "1B"},
-                {"D", "2B"},
-                {"A", "3B"},
-                {"E", "4B"},
-                {"B", "5B"},
-                {"F#", "6B"},
-                {"Gb", "6B"},
-                {"Db", "7B"},
-                {"Ab", "8B"},
-                {"Eb", "9B"},
-                {"Bb", "10B"},
-                {"F", "11B"}};
-
-        static QMap<QString, QString> minorToLancelot = {{"Am", "12A"},
-                {"Em", "1A"},
-                {"Bm", "2A"},
-                {"F#m", "3A"},
-                {"C#m", "4A"},
-                {"G#m", "5A"},
-                {"D#m", "6A"},
-                {"Ebm", "6A"},
-                {"Bbm", "7A"},
-                {"Fm", "8A"},
-                {"Cm", "9A"},
-                {"Gm", "10A"},
-                {"Dm", "11A"}};
-
-        if (normalizedKey.contains('m')) {
-            return minorToLancelot.value(normalizedKey);
-        } else {
-            return majorToLancelot.value(normalizedKey);
-        }
-    } else {
-        // Standard Camelot wheel mapping
-        static QMap<QString, QString> majorToLancelot = {{"B", "1B"},
-                {"F#", "2B"},
-                {"Gb", "2B"},
-                {"C#", "3B"},
-                {"Db", "3B"},
-                {"Ab", "4B"},
-                {"G#", "4B"},
-                {"Eb", "5B"},
-                {"D#", "5B"},
-                {"Bb", "6B"},
-                {"A#", "6B"},
-                {"F", "7B"},
-                {"C", "8B"},
-                {"G", "9B"},
-                {"D", "10B"},
-                {"A", "11B"},
-                {"E", "12B"}};
-
-        static QMap<QString, QString> minorToLancelot = {{"G#m", "1A"},
-                {"Abm", "1A"},
-                {"D#m", "2A"},
-                {"Ebm", "2A"},
-                {"A#m", "3A"},
-                {"Bbm", "3A"},
-                {"Fm", "4A"},
-                {"Cm", "5A"},
-                {"Gm", "6A"},
-                {"Dm", "7A"},
-                {"Am", "8A"},
-                {"Em", "9A"},
-                {"Bm", "10A"},
-                {"F#m", "11A"},
-                {"C#m", "12A"}};
-
-        if (normalizedKey.contains('m')) {
-            return minorToLancelot.value(normalizedKey);
-        } else {
-            return majorToLancelot.value(normalizedKey);
-        }
     }
 }
 
@@ -651,8 +473,9 @@ void WaveformRenderKeyCurve::drawWheelSlice(QPainter* painter,
     Q_UNUSED(lancelot);
     Q_UNUSED(isMinor);
     double spanAngle = endAngle - startAngle;
-    if (spanAngle <= 0)
+    if (spanAngle <= 0) {
         return;
+    }
 
     int start = static_cast<int>(startAngle * 16);
     int span = static_cast<int>(spanAngle * 16);
@@ -695,6 +518,9 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
         return;
 
     m_wheelSize = static_cast<int>(m_waveformRenderer->getHeight() * 0.7);
+    if (m_wheelSize < 60) {
+        m_wheelSize = 60;
+    }
 
     int x = m_waveformRenderer->getWidth() - m_wheelSize - m_wheelMargin;
     int y = m_wheelMargin;
@@ -745,13 +571,29 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
         displayKey = normalizeKeyDisplay(m_currentWheelKey) + " (" + m_baseLancelot + ")";
     }
 
-    QFont font = painter->font();
-    font.setPointSize(static_cast<int>(m_waveformRenderer->getHeight() * 0.1));
-    painter->setFont(font);
-    painter->setPen(QPen(QColor(255, 255, 255, 200), 1));
-    painter->drawText(QRect(x, y + m_wheelSize + 5, m_wheelSize, 20),
-            Qt::AlignCenter,
-            displayKey);
+    if (!displayKey.isEmpty()) {
+        QFont font = painter->font();
+        int baseFontSize = static_cast<int>(m_waveformRenderer->getHeight() * 0.1);
+        if (baseFontSize < 8) {
+            baseFontSize = 8;
+        }
+
+        int fontSize = baseFontSize;
+        do {
+            font.setPointSize(fontSize);
+            painter->setFont(font);
+            QRect textRect = painter->fontMetrics().boundingRect(displayKey);
+            if (textRect.width() <= m_wheelSize || fontSize <= 6) {
+                break;
+            }
+            fontSize--;
+        } while (fontSize > 6);
+
+        painter->setPen(QPen(QColor(255, 255, 255, 255), 1));
+        painter->drawText(QRect(x, y + m_wheelSize + 3, m_wheelSize, 30),
+                Qt::AlignCenter,
+                displayKey);
+    }
 }
 
 QColor WaveformRenderKeyCurve::getColorForKey(const QString& key) const {
@@ -918,8 +760,8 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     if (m_style.showMarkers) {
         painter->setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
         for (const auto& seg : std::as_const(m_segments)) {
-            double startTime = seg.startTime;
-            double startPos = startTime * (trackSamples / trackLengthSeconds);
+            // double startTime = seg.startTime;
+            double startPos = seg.startTime * (trackSamples / trackLengthSeconds);
 
             if (startPos >= startSample && startPos <= endSample) {
                 double x = m_waveformRenderer->transformSamplePositionInRendererWorld(
@@ -934,8 +776,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         }
     }
 
-    int totalOffset = m_currentTotalOffset;
-
+    // Draw key labels
     if (m_style.showLabels) {
         QFont labelFont = painter->font();
         labelFont.setPointSize(m_style.fontSize);
@@ -943,63 +784,39 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         painter->setFont(labelFont);
 
         double lastLabelX = -minLabelSpacing;
+        int notationValue = static_cast<int>(m_pKeyNotationCO->get());
+        KeyUtils::KeyNotation notation = KeyUtils::keyNotationFromNumericValue(notationValue);
 
-        for (int i = 0; i < m_segments.size(); ++i) {
-            const auto& seg = m_segments[i];
-
-            if (seg.confidence < 50.0) {
+        for (const auto& seg : std::as_const(m_segments)) {
+            if (seg.confidence < 50.0)
                 continue;
-            }
 
-            double startTime = seg.startTime;
-            double startPos = startTime * (trackSamples / trackLengthSeconds);
+            double startPos = seg.startTime * (trackSamples / trackLengthSeconds);
 
-            if (startPos < startSample || startPos > endSample) {
+            if (startPos < startSample || startPos > endSample)
                 continue;
-            }
 
             double x = m_waveformRenderer->transformSamplePositionInRendererWorld(
                     startPos, ::WaveformRendererAbstract::Play);
 
-            if (x >= 0 && x <= rendererWidth) {
-                if (x - lastLabelX >= minLabelSpacing) {
-                    if (orientation == Qt::Horizontal) {
-                        // Calculate transposed key for this segment
-                        QString originalKey = seg.key;
-                        QString transposedKey = transposeKey(originalKey, totalOffset);
-
-                        // convert to preferred display
-                        if (transposedKey == "A#m") {
-                            transposedKey = "Bbm";
-                        }
-                        if (transposedKey == "D#m") {
-                            transposedKey = "Ebm";
-                        }
-                        if (transposedKey == "G#m") {
-                            transposedKey = "Abm";
-                        }
-                        if (transposedKey == "C#") {
-                            transposedKey = "Db";
-                        }
-                        if (transposedKey == "F#") {
-                            transposedKey = "Gb";
-                        }
-                        if (transposedKey == "A#") {
-                            transposedKey = "Bb";
-                        }
-                        if (transposedKey == "D#") {
-                            transposedKey = "Eb";
-                        }
-                        if (transposedKey == "G#") {
-                            transposedKey = "Ab";
-                        }
-
-                        drawKeyLabel(painter, QPointF(x, labelY), transposedKey, orientation);
-                        lastLabelX = x;
+            if (x >= 0 && x <= rendererWidth && (x - lastLabelX) >= minLabelSpacing) {
+                if (orientation == Qt::Horizontal) {
+                    // Use keyId for transposition
+                    ChromaticKey baseKey = static_cast<ChromaticKey>(seg.keyId);
+                    int transposedKeyId = (static_cast<int>(baseKey) + m_currentTotalOffset) % 12;
+                    if (baseKey >= 13) {
+                        transposedKeyId += 12;
                     }
+
+                    QString transposedKey = KeyUtils::keyToString(
+                            static_cast<ChromaticKey>(transposedKeyId),
+                            notation);
+                    drawKeyLabel(painter, QPointF(x, labelY), transposedKey, orientation);
+                    lastLabelX = x;
                 }
             }
         }
     }
+
     drawLancelotWheel(painter);
 }

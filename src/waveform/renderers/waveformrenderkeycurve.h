@@ -15,7 +15,8 @@ struct KeySegment {
     double startTime;
     double endTime;
     double duration;
-    QString key;
+    int keyId;
+    QString key;  // this is now keyText
     QString type; // "STABLE" or "MODULATION"
     double confidence;
 
@@ -23,18 +24,21 @@ struct KeySegment {
             : startTime(0),
               endTime(0),
               duration(0),
+              keyId(0),
               confidence(0.0) {
     }
 
     KeySegment(double start,
             double end,
             double dur,
+            int kid,
             const QString& k,
             const QString& t,
             double conf)
             : startTime(start),
               endTime(end),
               duration(dur),
+              keyId(kid),
               key(k),
               type(t),
               confidence(conf) {
@@ -142,15 +146,18 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
     void initKeyControl();
     void initKeylockControl();
     void updateTransposedKey();
+    void calculateTransposedValues(int totalSemitones);
 
-    QString keyToLancelot(const QString& key) const;
+    // QString keyToLancelot(const QString& key) const;
+    QString keyIdToLancelot(int keyId) const;
     QString normalizeKeyDisplay(const QString& key) const;
-    QString transposeKey(const QString& key, int semitones) const;
+    // QString transposeKey(const QString& key, int semitones) const;
 
     std::unique_ptr<ControlProxy> m_pRateRatioCO;
     std::unique_ptr<ControlProxy> m_pKeyControlCO;
     std::unique_ptr<ControlProxy> m_pPlayPositionCO;
     std::unique_ptr<ControlProxy> m_pKeylockCO;
+    std::unique_ptr<ControlProxy> m_pKeyNotationCO;
 
     QVector<KeySegment> m_segments;
     QVector<LancelotKey> m_lancelotLayout;
@@ -175,7 +182,9 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
     int m_wheelSize;
     int m_wheelMargin;
     int m_currentTotalOffset;
+    int m_currentKeyId;
 
     bool m_visible;
     bool m_keylockEnabled;
+    bool m_segmentsLoaded = false;
 };

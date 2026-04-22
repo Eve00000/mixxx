@@ -125,7 +125,7 @@ bool AnalyzerQueenMaryKeyExtended::finalize() {
     // Calculate key distribution
     std::map<QString, double> keyDuration;
     for (const auto& seg : std::as_const(m_keySegments)) {
-        keyDuration[seg.key] += seg.duration;
+        keyDuration[seg.keyText] += seg.duration;
     }
 
     if (!keyDuration.empty()) {
@@ -245,7 +245,8 @@ void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
             seg.startTime = lastTime;
             seg.endTime = currentTime;
             seg.duration = currentTime - lastTime;
-            seg.key = keyToString(static_cast<int>(lastKey));
+            seg.keyId = lastKey;
+            seg.keyText = keyToString(static_cast<int>(lastKey));
             seg.type = "STABLE";
             seg.confidence = confidenceSum / confidenceCount;
 
@@ -254,7 +255,9 @@ void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
                 m_keySegments.append(seg);
 
                 qDebug() << "[QueenMaryKeyExtended] Segment:" << seg.startTime << "-" << seg.endTime
-                         << "Key:" << seg.key << "Confidence:" << seg.confidence
+                         << "KeyId:" << static_cast<int>(seg.keyId)
+                         << "KeyText:" << seg.keyText
+                         << "Confidence:" << seg.confidence
                          << "Duration:" << seg.duration;
             }
 
@@ -275,14 +278,17 @@ void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
         seg.startTime = lastTime;
         seg.endTime = m_trackDuration;
         seg.duration = m_trackDuration - lastTime;
-        seg.key = keyToString(static_cast<int>(lastKey));
+        seg.keyId = lastKey;
+        seg.keyText = keyToString(static_cast<int>(lastKey));
         seg.type = "STABLE";
         seg.confidence = confidenceSum / confidenceCount;
 
         if (seg.duration > 0.1) {
             m_keySegments.append(seg);
             qDebug() << "[QueenMaryKeyExtended] Final segment:" << seg.startTime
-                     << "-" << seg.endTime << "Key:" << seg.key
+                     << "-" << seg.endTime
+                     << "KeyId:" << static_cast<int>(seg.keyId)
+                     << "KeyText:" << seg.keyText
                      << "Confidence:" << seg.confidence
                      << "Duration:" << seg.duration;
         }
@@ -307,40 +313,6 @@ QString AnalyzerQueenMaryKeyExtended::keyToString(int key) const {
     return result;
 }
 
-QString AnalyzerQueenMaryKeyExtended::keyToStringRaw(int key) const {
-    if (key < 0 || key >= 24) {
-        return QString("INVALID_%1").arg(key);
-    }
-
-    // Use ASCII 'b' and '#'
-    const char* rawKeyNames[24] = {"B",
-            "C",
-            "C#/Db",
-            "D",
-            "D#/Eb",
-            "E",
-            "F",
-            "F#/Gb",
-            "G",
-            "G#/Ab",
-            "A",
-            "A#/Bb",
-            "Bm",
-            "Cm",
-            "C#m/Dbm",
-            "Dm",
-            "D#m/Ebm",
-            "Em",
-            "Fm",
-            "F#m/Gbm",
-            "Gm",
-            "G#m/Abm",
-            "Am",
-            "A#m/Bbm"};
-
-    return QString(rawKeyNames[key]);
-}
-
 QVector<AnalysisKeySegment> AnalyzerQueenMaryKeyExtended::getKeySegments() const {
     return m_keySegments;
 }
@@ -357,7 +329,8 @@ QJsonArray AnalyzerQueenMaryKeyExtended::getKeySegmentsJson() const {
         segmentObj["type"] = seg.type;
         segmentObj["position"] = seg.startTime;
         segmentObj["duration"] = seg.duration;
-        segmentObj["key"] = seg.key;
+        segmentObj["keyId"] = static_cast<int>(seg.keyId);
+        segmentObj["keyText"] = seg.keyText;
         segmentObj["confidence"] = seg.confidence;
         segmentObj["range_start"] = seg.startTime;
         segmentObj["range_end"] = seg.endTime;

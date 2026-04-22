@@ -314,7 +314,8 @@ void AnalyzerKey::storeResults(TrackPointer pTrack) {
                 KeySegmentsPointer pSegment(new KeySegments(
                         obj["position"].toDouble(),
                         obj["duration"].toDouble(),
-                        obj["key"].toString(),
+                        obj["keyId"].toInt(),
+                        obj["keyText"].toString(),
                         obj["range_start"].toDouble(),
                         obj["range_end"].toDouble(),
                         obj["type"].toString(),

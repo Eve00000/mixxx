@@ -31,9 +31,18 @@ struct KeySegment {
     double startTime;
     double endTime;
     double duration;
+    int keyId;
     QString key;
     QString type;
     double confidence;
+
+    KeySegment()
+            : startTime(0),
+              endTime(0),
+              duration(0),
+              keyId(0),
+              confidence(0.0) {
+    }
 };
 
 struct LancelotKey {
@@ -102,10 +111,12 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     void getVisibleRange(double& startSample, double& endSample, double& width, double& height);
     void calculateTransposedValues(int totalSemitones);
     void updateCurrentKey();
-    QString keyToLancelot(const QString& key) const;
+    // QString keyToLancelot(const QString& key) const;
     QString normalizeKeyDisplay(const QString& key) const;
-    QString transposeKey(const QString& key, int semitones) const;
+    // QString transposeKey(const QString& key, int semitones) const;
     QColor getColorForKey(const QString& key) const;
+    QString keyIdToLancelot(int keyId) const;
+    int openKeyNumberToLancelotNumber(int openKeyNumber) const;
 
     QVector<KeySegment> m_segments;
     QVector<LancelotKey> m_lancelotLayout;
@@ -130,6 +141,7 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     std::unique_ptr<ControlProxy> m_pRateRatioCO;
     std::unique_ptr<ControlProxy> m_pKeyControlCO;
     std::unique_ptr<ControlProxy> m_pKeylockCO;
+    std::unique_ptr<ControlProxy> m_pKeyNotationCO;
 
     double m_playPosition;
     double m_currentRateRatio;
@@ -140,6 +152,7 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     int m_wheelSize;
     int m_wheelMargin;
     int m_currentTotalOffset;
+    int m_currentKeyId;
 
     bool m_visible;
     bool m_keylockEnabled;

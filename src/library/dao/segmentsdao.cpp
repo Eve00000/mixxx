@@ -37,7 +37,8 @@ KeySegmentsPointer KeySegmentFromRow(const QSqlRecord& row) {
     const auto id = DbId(row.value(row.indexOf("id")));
     double startTime = row.value(row.indexOf("position")).toDouble();
     double duration = row.value(row.indexOf("duration")).toDouble();
-    QString key = row.value(row.indexOf("key")).toString();
+    int keyId = row.value(row.indexOf("key_id")).toInt(); // Read keyId
+    QString keyText = row.value(row.indexOf("key_text")).toString();
     double rangeStart = row.value(row.indexOf("range_start")).toDouble();
     double rangeEnd = row.value(row.indexOf("range_end")).toDouble();
     QString type = row.value(row.indexOf("type")).toString();
@@ -47,7 +48,8 @@ KeySegmentsPointer KeySegmentFromRow(const QSqlRecord& row) {
             id,
             startTime,
             duration,
-            key,
+            keyId,
+            keyText,
             rangeStart,
             rangeEnd,
             type,
@@ -264,7 +266,8 @@ bool SegmentsDAO::saveKeySegment(TrackId trackId, KeySegments* pSegment) const {
                 "track_id=:track_id,"
                 "position=:position,"
                 "duration=:duration,"
-                "key=:key,"
+                "key_id=:key_id,"
+                "key_text=:key_text,"
                 "range_start=:range_start,"
                 "range_end=:range_end,"
                 "type=:type,"
@@ -275,16 +278,17 @@ bool SegmentsDAO::saveKeySegment(TrackId trackId, KeySegments* pSegment) const {
         query.prepare(
                 QStringLiteral(
                         "INSERT INTO " KEY_SEGMENTS_TABLE " "
-                        " (track_id, position, duration, key, range_start, "
+                        " (track_id, position, duration, key_id, key_text, range_start, "
                         "range_end, type, confidence)"
-                        " VALUES (:track_id, :position, :duration, :key, "
+                        " VALUES (:track_id, :position, :duration, :key_id, :key_text, "
                         ":range_start, :range_end, :type, :confidence)"));
     }
 
     query.bindValue(":track_id", trackId.toVariant());
     query.bindValue(":position", pSegment->getStartTime());
     query.bindValue(":duration", pSegment->getDuration());
-    query.bindValue(":key", pSegment->getKey());
+    query.bindValue(":key_id", pSegment->getKeyId());
+    query.bindValue(":key_text", pSegment->getKeyText());
     query.bindValue(":range_start", pSegment->getRangeStart());
     query.bindValue(":range_end", pSegment->getRangeEnd());
     query.bindValue(":type", pSegment->getType());

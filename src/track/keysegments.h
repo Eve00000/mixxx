@@ -22,7 +22,8 @@ class KeySegments : public QObject {
             DbId id,
             double startTime,
             double duration,
-            const QString& key,
+            int keyId,
+            const QString& keyText,
             double rangeStart,
             double rangeEnd,
             const QString& type,
@@ -32,7 +33,8 @@ class KeySegments : public QObject {
     KeySegments(
             double startTime,
             double duration,
-            const QString& key,
+            int keyId,
+            const QString& keyText,
             double rangeStart,
             double rangeEnd,
             const QString& type,
@@ -49,8 +51,11 @@ class KeySegments : public QObject {
     double getDuration() const;
     void setDuration(double duration);
 
-    QString getKey() const;
-    void setKey(const QString& key);
+    int getKeyId() const;
+    void setKeyId(int keyId);
+
+    QString getKeyText() const;
+    void setKeyText(const QString& keyText);
 
     double getRangeStart() const;
     void setRangeStart(double rangeStart);
@@ -77,7 +82,8 @@ class KeySegments : public QObject {
     DbId m_dbId;
     double m_startTime;
     double m_duration;
-    QString m_key;
+    int m_keyId;
+    QString m_keyText;
     double m_rangeStart;
     double m_rangeEnd;
     QString m_type;

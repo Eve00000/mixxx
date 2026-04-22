@@ -324,7 +324,8 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
         QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
 
         // Export beats to CSV
-        exportBeatsToCsv(pTrack, beats, m_sampleRate);
+        // uncomment to get the file created
+        // exportBeatsToCsv(pTrack, beats, m_sampleRate);
 
         QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
                 m_pluginId, m_bPreferencesFastAnalysis);
@@ -434,11 +435,12 @@ bool AnalyzerBeats::exportBeatsToCsv(TrackPointer pTrack,
     }
 
     QString bpmCurvePath = m_pConfig->getSettingsPath() + "/bpmcurve/";
-    QDir saveLocation(bpmCurvePath);
-    // QString bpmCurveFileLocation = bpmCurvePath + pTrack->getId().toString() + ".json";
+    QDir saveLocation;
 
-    if (!saveLocation.exists("bpmCurvePath")) {
-        saveLocation.mkdir("bpmCurvePath");
+    if (!saveLocation.mkpath(bpmCurvePath)) {
+        if (showDebugWAnalyzerBeats) {
+            qDebug() << "[AnalyzerBeats] Failed to create directory:" << bpmCurvePath;
+        }
     }
 
     QString csvFileLocation = bpmCurvePath + trackIdStr + "_beats.csv";

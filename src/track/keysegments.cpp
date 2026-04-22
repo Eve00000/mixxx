@@ -18,7 +18,8 @@ KeySegments::KeySegments(
         DbId id,
         double startTime,
         double duration,
-        const QString& key,
+        int keyId,
+        const QString& keyText,
         double rangeStart,
         double rangeEnd,
         const QString& type,
@@ -27,7 +28,8 @@ KeySegments::KeySegments(
           m_dbId(id),
           m_startTime(startTime),
           m_duration(duration),
-          m_key(key),
+          m_keyId(keyId),
+          m_keyText(keyText),
           m_rangeStart(rangeStart),
           m_rangeEnd(rangeEnd),
           m_type(type),
@@ -38,7 +40,8 @@ KeySegments::KeySegments(
 KeySegments::KeySegments(
         double startTime,
         double duration,
-        const QString& key,
+        int keyId,
+        const QString& keyText,
         double rangeStart,
         double rangeEnd,
         const QString& type,
@@ -46,7 +49,8 @@ KeySegments::KeySegments(
         : m_bDirty(true),
           m_startTime(startTime),
           m_duration(duration),
-          m_key(key),
+          m_keyId(keyId),
+          m_keyText(keyText),
           m_rangeStart(rangeStart),
           m_rangeEnd(rangeEnd),
           m_type(type),
@@ -85,6 +89,7 @@ void KeySegments::setStartTime(double startTime) {
     }
     m_startTime = startTime;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
@@ -100,21 +105,39 @@ void KeySegments::setDuration(double duration) {
     }
     m_duration = duration;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
-QString KeySegments::getKey() const {
+int KeySegments::getKeyId() const {
     QMutexLocker locker(&m_mutex);
-    return m_key;
+    return m_keyId;
 }
 
-void KeySegments::setKey(const QString& key) {
+void KeySegments::setKeyId(int keyId) {
     QMutexLocker locker(&m_mutex);
-    if (m_key == key) {
+    if (m_keyId == keyId) {
         return;
     }
-    m_key = key;
+    m_keyId = keyId;
     m_bDirty = true;
+    locker.unlock();
+    emit updated();
+}
+
+QString KeySegments::getKeyText() const {
+    QMutexLocker locker(&m_mutex);
+    return m_keyText;
+}
+
+void KeySegments::setKeyText(const QString& keyText) {
+    QMutexLocker locker(&m_mutex);
+    if (m_keyText == keyText) {
+        return;
+    }
+    m_keyText = keyText;
+    m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
@@ -130,6 +153,7 @@ void KeySegments::setRangeStart(double rangeStart) {
     }
     m_rangeStart = rangeStart;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
@@ -145,6 +169,7 @@ void KeySegments::setRangeEnd(double rangeEnd) {
     }
     m_rangeEnd = rangeEnd;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
@@ -160,6 +185,7 @@ void KeySegments::setType(const QString& type) {
     }
     m_type = type;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
 
@@ -175,5 +201,6 @@ void KeySegments::setConfidence(double confidence) {
     }
     m_confidence = confidence;
     m_bDirty = true;
+    locker.unlock();
     emit updated();
 }
