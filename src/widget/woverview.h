@@ -285,4 +285,7 @@ class WOverview : public WWidget, public TrackDropTarget {
     std::vector<WaveformMarkRange> m_markRanges;
     WaveformMarkLabel m_cuePositionLabel;
     WaveformMarkLabel m_cueTimeDistanceLabel;
+
+    bool m_bpmCurveLoaded = false;
+    bool m_keyCurveLoaded = false;
 };

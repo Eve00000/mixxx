@@ -378,7 +378,7 @@ QImage WaveformRenderBpmCurve::drawBpmTexture() {
             labelFont.setBold(true);
             painter.setFont(labelFont);
 
-            double minLabelSpacing = 400;
+            double minLabelSpacing = 100;
             double lastLabelX = -minLabelSpacing;
             double labelY = 5;
 

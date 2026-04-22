@@ -302,6 +302,7 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
             qDebug() << "[WOverview-BPM] No track pointer";
         }
         m_bpmCurvePoints.clear();
+        m_bpmCurveLoaded = false;
         return;
     }
 
@@ -311,6 +312,15 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
             qDebug() << "[WOverview-BPM] Track has no valid ID";
         }
         m_bpmCurvePoints.clear();
+        m_bpmCurveLoaded = false;
+        return;
+    }
+
+    // Skip if already loaded
+    if (m_bpmCurveLoaded && !m_bpmCurvePoints.isEmpty()) {
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-BPM] BPM curve already loaded, skipping";
+        }
         return;
     }
 
@@ -348,6 +358,8 @@ void WOverview::loadBpmCurveForTrack(TrackPointer pTrack) {
 
         m_bpmCurvePoints.append(pt);
     }
+
+    m_bpmCurveLoaded = true;
 
     if (m_bpmCurvePoints.isEmpty()) {
         if (showDebugWOverview) {
@@ -626,6 +638,7 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
             qDebug() << "[WOverview-KEY] No track pointer";
         }
         m_keyCurvePoints.clear();
+        m_keyCurveLoaded = false;
         return;
     }
 
@@ -635,6 +648,15 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
             qDebug() << "[WOverview-KEY] Track has no valid ID";
         }
         m_keyCurvePoints.clear();
+        m_keyCurveLoaded = false;
+        return;
+    }
+
+    // Skip if already loaded
+    if (m_keyCurveLoaded && !m_keyCurvePoints.isEmpty()) {
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview-KEY] Key curve already loaded, skipping";
+        }
         return;
     }
 
@@ -654,6 +676,7 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
                      << "ID:" << pTrack->getId().toString();
         }
         m_keyCurvePoints.clear();
+        m_keyCurveLoaded = false;
         return;
     }
 
@@ -671,6 +694,8 @@ void WOverview::loadKeyCurveForTrack(TrackPointer pTrack) {
 
         m_keyCurvePoints.append(pt);
     }
+
+    m_keyCurveLoaded = true;
 
     if (showDebugWOverview) {
         qDebug() << "[WOverview-KEY] Loaded" << m_keyCurvePoints.size()
@@ -859,7 +884,7 @@ void WOverview::onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyz
 
         // If progress is over 95%, try to load the curve (loadBpmCurveForTrack will retry)
         if (analyzerProgress > 0.95) {
-            QTimer::singleShot(500, this, [this]() {
+            QTimer::singleShot(3000, this, [this]() {
                 loadBpmCurveForTrack(m_pCurrentTrack);
                 loadKeyCurveForTrack(m_pCurrentTrack);
             });
@@ -875,6 +900,9 @@ void WOverview::slotTrackLoaded(TrackPointer pTrack) {
     if (m_pCurrentTrack) {
         updateCues(m_pCurrentTrack->getCuePoints());
     }
+
+    m_bpmCurveLoaded = false;
+    m_keyCurveLoaded = false;
 
     if (pTrack) {
         loadBpmCurveForTrack(pTrack);

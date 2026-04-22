@@ -361,7 +361,6 @@ void WaveformRenderKeyCurve::updateTransposedKey() {
     }
 }
 
-
 void WaveformRenderKeyCurve::onSetTrack() {
     m_segments.clear();
     m_segmentsLoaded = false;
@@ -754,7 +753,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     const double labelY = 5;
-    const double minLabelSpacing = 400;
+    const double minLabelSpacing = 100;
 
     // Draw key markers
     if (m_style.showMarkers) {

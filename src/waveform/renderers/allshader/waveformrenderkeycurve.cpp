@@ -871,7 +871,7 @@ void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float
     labelFont.setBold(true);
     painter.setFont(labelFont);
 
-    const double minLabelSpacing = 400;
+    const double minLabelSpacing = 100;
     double lastLabelX = -minLabelSpacing;
     const double labelY = 5;
 
