@@ -526,6 +526,10 @@ AutoDJProcessor::AutoDJError AutoDJProcessor::toggleAutoDJ(bool enable) {
             emitAutoDJStateChanged(m_eState);
             return ADJ_BOTH_DECKS_PLAYING;
         }
+//        std::cerr << "[DEBUG] toggleAutoDJ - Left deck index: " << pLeftDeck->index << std::endl;
+//        std::cerr << "[DEBUG] toggleAutoDJ - Left deck isPlaying: " << pLeftDeck->isPlaying() << std::endl;
+//        std::cerr << "[DEBUG] toggleAutoDJ - Right deck index: " << pRightDeck->index << std::endl;
+//        std::cerr << "[DEBUG] toggleAutoDJ - Right deck isPlaying: " << pRightDeck->isPlaying() << std::endl;
 
         if (pLeftDeck->isPlaying() && pRightDeck->isPlaying()) {
             emit autoDJError(ADJ_BOTH_DECKS_PLAYING);
