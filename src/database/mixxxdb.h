@@ -26,6 +26,10 @@ class MixxxDb : public QObject {
         return m_pDbConnectionPool;
     }
 
+    bool createSlimAiSnapshot(const QString& targetPath);
+
   private:
     mixxx::DbConnectionPoolPtr m_pDbConnectionPool;
+
+    UserSettingsPointer m_pConfig;
 };

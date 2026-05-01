@@ -116,6 +116,7 @@ class MixxxMainWindow : public QMainWindow {
 #ifndef __APPLE__
     void alwaysHideMenuBarDlg();
 #endif
+    void slotExportAiSnapshot();
 
     QDialog::DialogCode soundDeviceErrorDlg(
             const QString &title, const QString &text, bool* retryClicked);

@@ -25,6 +25,7 @@
 
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "coreservices.h"
+#include "database/mixxxdb.h"
 #include "defs_urls.h"
 #include "dialog/dlgabout.h"
 #include "dialog/dlgdevelopertools.h"
@@ -1016,6 +1017,11 @@ void MixxxMainWindow::connectMenuBar() {
             &mixxx::LibraryExporter::slotRequestExport,
             Qt::UniqueConnection);
 #endif
+    // Export Snapshot for AI
+    connect(m_pMenuBar,
+            &WMainMenuBar::exportAiSnapshot,
+            this,
+            &MixxxMainWindow::slotExportAiSnapshot);
 }
 
 /// Enable/disable listening to Alt key press for toggling the menubar.
@@ -1631,4 +1637,31 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+void MixxxMainWindow::slotExportAiSnapshot() {
+    QString saveLocation = m_pCoreServices->getSettings()->getSettingsPath();
+    QString targetPath = QFileDialog::getSaveFileName(
+            this,
+            tr("Export Snapshot for AI"),
+            saveLocation,
+            tr("SQLite Database (*.sqlite)"));
+
+    if (targetPath.isEmpty()) {
+        return;
+    }
+
+    // Get the MixxxDb instance from CoreServices
+    MixxxDb* mixxxDb = m_pCoreServices->getMixxxDb();
+
+    if (mixxxDb && mixxxDb->createSlimAiSnapshot(targetPath)) {
+        QMessageBox::information(this,
+                tr("Success"),
+                tr("snapshot for AI exported successfully to:\n%1\n\nFile "
+                   "size: %2 KB")
+                        .arg(targetPath)
+                        .arg(QFileInfo(targetPath).size() / 1024));
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to export snapshot for AI."));
+    }
 }
