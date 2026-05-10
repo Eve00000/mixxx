@@ -44,6 +44,8 @@
 #include "mixer/nowplaying.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
+#include "osc/oscfunctions.h"
+#include "osc/oscreceiver.cpp"
 #include "recording/recordingmanager.h"
 #include "skin/legacy/launchimage.h"
 #include "skin/skinloader.h"
@@ -66,11 +68,6 @@
 #ifdef __VINYLCONTROL__
 #include "vinylcontrol/vinylcontrolmanager.h"
 #endif
-
-//  EveOSC
-// #include "osc/oscfunctions.h"
-#include "osc/oscreceiver.cpp"
-//  EveOSC
 
 namespace {
 #ifdef __LINUX__
@@ -143,9 +140,7 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
-    // EveOSC
     oscEnable();
-    // EveOSC
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -533,7 +528,6 @@ MixxxMainWindow::~MixxxMainWindow() {
     delete m_pGuiTick;
     delete m_pVisualsManager;
 
-    // Eve OSC
     if (m_pOscReceiver) {
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> Stopping OSC Receiver before shutdown";
         m_pOscReceiver->stop();
@@ -547,10 +541,7 @@ MixxxMainWindow::~MixxxMainWindow() {
                 m_oscThread.wait();
             }
         }
-        // m_pOscReceiver->deleteLater();
-        // m_pOscReceiver.reset();
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> OSC Receiver stopped and cleaned up";
-        // Eve OSC
     }
 }
 

@@ -23,6 +23,7 @@
 #include "engine/sync/enginesync.h"
 #include "engine/sync/synccontrol.h"
 #include "moc_enginebuffer.cpp"
+#include "osc/oscfunctions.h"
 #include "preferences/usersettings.h"
 #include "track/track.h"
 #include "util/assert.h"
@@ -54,17 +55,7 @@ const QString kAppGroup = QStringLiteral("[App]");
 
 } // anonymous namespace
 
-// EveOSC
 extern std::atomic<bool> s_oscEnabled;
-void sendTrackInfoToOscClients(
-        const QString& oscGroup,
-        const QString& trackArtist,
-        const QString& trackTitle,
-        float track_loaded,
-        float duration,
-        float playposition);
-void sendNoTrackLoadedToOscClients(const QString& oscGroup);
-// EveOSC
 
 EngineBuffer::EngineBuffer(const QString& group,
         UserSettingsPointer pConfig,
@@ -827,17 +818,20 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackArtist_4->set(trackPartChar2CalculatedValue(CharArtist, 15));
     m_pTrackArtist_5->set(trackPartChar2CalculatedValue(CharArtist, 20));
 
-    //  EveOSC begin
+    // OSC send TrackInfo PseudoCOs to OSC-Clients
     if (s_oscEnabled.load()) {
-        sendTrackInfoToOscClients(
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendTrackInfoToOscClients(
                 getGroup(),
                 pTrack->getArtist(),
                 pTrack->getTitle(),
+                pTrack->getLocation(),
+                pTrack->getAlbum(),
+                (float)pTrack->getBpm(),
                 1,
                 (float)pTrack->getDuration(),
                 0);
     }
-    //  EveOSC end
 
     // Reset slip mode
     m_pSlipButton->set(0);
@@ -996,11 +990,11 @@ void EngineBuffer::ejectTrack() {
     //    m_pTrackTitle_39->set(0);
     //    m_pTrackTitle_40->set(0);
 
-    //  EveOSC begin
+    // OSC Send message for displaying no track is loaded on COS-Clients
     if (s_oscEnabled.load()) {
-        sendNoTrackLoadedToOscClients(getGroup());
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendNoTrackLoadedToOscClients(getGroup());
     }
-    //  EveOSC end
 
     m_playButton->set(0.0);
     m_playposSlider->set(0);
