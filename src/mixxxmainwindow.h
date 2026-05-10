@@ -5,6 +5,7 @@
 #include <QThread>
 #include <memory>
 
+#include "mixer/nowplaying.h"
 #include "preferences/constants.h"
 #include "soundio/sounddevicestatus.h"
 #include "track/track_decl.h"
@@ -72,8 +73,6 @@ class MixxxMainWindow : public QMainWindow {
     /// open the developer tools dialog.
     void slotDeveloperTools(bool enable);
     void slotDeveloperToolsClosed();
-
-    void slotUpdateWindowTitle(TrackPointer pTrack);
 
     /// warn the user when inputs are not configured.
     void slotNoMicrophoneInputConfigured();
@@ -160,6 +159,7 @@ class MixxxMainWindow : public QMainWindow {
     mixxx::preferences::ScreenSaver m_inhibitScreensaver;
 
     QSet<ControlObject*> m_skinCreatedControls;
+    std::unique_ptr<NowPlaying> m_pNowPlaying;
     QThread m_oscThread;
     std::unique_ptr<OscReceiver> m_pOscReceiver;
 };
