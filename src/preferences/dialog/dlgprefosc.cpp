@@ -9,7 +9,6 @@ DlgPrefOsc::DlgPrefOsc(QWidget* pParent,
     setupUi(this);
 
     // If OSC Receiver X is active -> OSC messages from Mixxx will be send to this receiver
-
     setScrollSafeGuardForAllInputWidgets(this);
 }
 
@@ -20,10 +19,6 @@ void DlgPrefOsc::slotUpdate() {
     OscPortIn->setValue(m_pConfig->getValue(ConfigKey("[OSC]", "OscPortIn"), 9000));
     OscPortOut->setValue(
             m_pConfig->getValue(ConfigKey("[OSC]", "OscPortOut"), 9001));
-    //    OscOutputBufferSize->setValue(m_pConfig->getValue(ConfigKey("[OSC]",
-    //    "OscOutputBufferSize"), 1024));
-    //    OscIpMtuSize->setValue(m_pConfig->getValue(ConfigKey("[OSC]",
-    //    "OscIpMtuSize"), 1536));
 
     OscReceiver1ActiveCheckBox->setChecked(m_pConfig->getValue(
             ConfigKey("[OSC]", "OscReceiver1Active"), false));
@@ -95,12 +90,6 @@ void DlgPrefOsc::slotApply() {
 
     m_pConfig->setValue(ConfigKey("[OSC]", "OscPortOut"),
             OscPortOut->value());
-
-    //    m_pConfig->setValue(ConfigKey("[OSC]", "OscOutputBufferSize"),
-    //            OscOutputBufferSize->value());
-
-    //    m_pConfig->setValue(ConfigKey("[OSC]", "OscIpMtuSize"),
-    //            OscIpMtuSize->value());
 
     QString OscReceiverIp, OscReceiverIpByte1, OscReceiverIpByte2,
             OscReceiverIpByte3, OscReceiverIpByte4;

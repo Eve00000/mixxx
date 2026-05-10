@@ -1324,6 +1324,7 @@ add_library(
   src/mixer/basetrackplayer.cpp
   src/mixer/deck.cpp
   src/mixer/microphone.cpp
+  src/mixer/nowplaying.cpp
   src/mixer/playerinfo.cpp
   src/mixer/playermanager.cpp
   src/mixer/previewdeck.cpp
@@ -1345,6 +1346,7 @@ add_library(
   src/network/jsonwebtask.cpp
   src/network/networktask.cpp
   src/network/webtask.cpp
+  src/osc/oscfunctions.cpp
   src/osc/oscreceiver.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp

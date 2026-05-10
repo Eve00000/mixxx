@@ -41,8 +41,11 @@
 #include "library/export/libraryexporter.h"
 #endif
 #include "library/trackcollectionmanager.h"
+#include "mixer/nowplaying.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
+#include "osc/oscfunctions.h"
+#include "osc/oscreceiver.cpp"
 #include "recording/recordingmanager.h"
 #include "skin/legacy/launchimage.h"
 #include "skin/skinloader.h"
@@ -65,11 +68,6 @@
 #ifdef __VINYLCONTROL__
 #include "vinylcontrol/vinylcontrolmanager.h"
 #endif
-
-//  EveOSC
-// #include "osc/oscfunctions.h"
-#include "osc/oscreceiver.cpp"
-//  EveOSC
 
 namespace {
 #ifdef __LINUX__
@@ -142,9 +140,7 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
-    // EveOSC
     oscEnable();
-    // EveOSC
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -430,11 +426,10 @@ void MixxxMainWindow::initialize() {
             &PlayerManager::noVinylControlInputConfigured,
             this,
             &MixxxMainWindow::slotNoVinylControlInputConfigured);
-
-    connect(&PlayerInfo::instance(),
-            &PlayerInfo::currentPlayingTrackChanged,
-            this,
-            &MixxxMainWindow::slotUpdateWindowTitle);
+    m_pNowPlaying = std::make_unique<NowPlaying>(
+            m_pCoreServices->getSettings(),
+            this);
+    m_pNowPlaying->initialize();
 
     // Start Auto DJ if the cmdline arg is passed.
     if (CmdlineArgs::Instance().getStartAutoDJ()) {
@@ -533,7 +528,6 @@ MixxxMainWindow::~MixxxMainWindow() {
     delete m_pGuiTick;
     delete m_pVisualsManager;
 
-    // Eve OSC
     if (m_pOscReceiver) {
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> Stopping OSC Receiver before shutdown";
         m_pOscReceiver->stop();
@@ -547,10 +541,7 @@ MixxxMainWindow::~MixxxMainWindow() {
                 m_oscThread.wait();
             }
         }
-        // m_pOscReceiver->deleteLater();
-        // m_pOscReceiver.reset();
         qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> OSC Receiver stopped and cleaned up";
-        // Eve OSC
     }
 }
 
@@ -583,7 +574,6 @@ void MixxxMainWindow::initializeWindow() {
                     .toUtf8()));
 
     setWindowIcon(QIcon(MIXXX_ICON_PATH));
-    slotUpdateWindowTitle(TrackPointer());
 }
 
 #ifndef __APPLE__
@@ -783,40 +773,6 @@ QDialog::DialogCode MixxxMainWindow::noOutputDlg(bool* continueClicked) {
             return QDialog::Rejected;
         }
     }
-}
-
-void MixxxMainWindow::slotUpdateWindowTitle(TrackPointer pTrack) {
-    QString appTitle = VersionStore::applicationName();
-    QString filePath;
-
-    // If we have a track, use getInfo() to format a summary string and prepend
-    // it to the title.
-    // TODO(rryan): Does this violate Mac App Store policies?
-    if (pTrack) {
-        QString trackInfo = pTrack->getInfo();
-        if (!trackInfo.isEmpty()) {
-            appTitle = QString("%1 | %2").arg(trackInfo, appTitle);
-            //  writing the artist & title of the playing track
-            //  not only to the windowtitle but also to a file
-            //  location and name for nowplayingfile
-            QString StatusNowPlayingFilePath = m_pCoreServices->getSettings()->getSettingsPath();
-            QString StatusNowPlayingFileLocation = StatusNowPlayingFilePath + "/NowPlaying.txt";
-            QFile StatusNowPlayingFile(StatusNowPlayingFileLocation);
-            //          remove previous nowplayingfile
-            StatusNowPlayingFile.remove();
-            StatusNowPlayingFile.open(QIODevice::ReadWrite);
-            QTextStream StatusNowPlayingTxt(&StatusNowPlayingFile);
-            //          write Artist - Trackname to nowplayingfile
-            StatusNowPlayingTxt << QString("%1").arg(trackInfo) << "\n";
-            StatusNowPlayingFile.close();
-        }
-        filePath = pTrack->getLocation();
-    }
-    setWindowTitle(appTitle);
-
-    // Display a draggable proxy icon for the track in the title bar on
-    // platforms that support it, e.g. macOS
-    setWindowFilePath(filePath);
 }
 
 void MixxxMainWindow::createMenuBar() {
