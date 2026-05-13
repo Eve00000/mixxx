@@ -102,6 +102,7 @@ LibraryScanner::LibraryScanner(
           m_trackDao(m_cueDao,
                   m_playlistDao,
                   m_analysisDao,
+                  m_segmentsDao,
                   m_libraryHashDao,
                   pConfig),
           m_stateSema(1), // only one transaction is possible at a time
