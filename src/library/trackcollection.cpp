@@ -2,9 +2,7 @@
 
 #include "library/basetrackcache.h"
 #include "library/trackset/crate/crate.h"
-// EVE
 #include "library/trackset/searchcrate/searchcrate.h"
-// EVE
 #include "moc_trackcollection.cpp"
 #include "track/globaltrackcache.h"
 #include "util/assert.h"
@@ -26,6 +24,7 @@ TrackCollection::TrackCollection(
           m_trackDao(m_cueDao,
                   m_playlistDao,
                   m_analysisDao,
+                  m_segmentsDao,
                   m_libraryHashDao,
                   pConfig) {
     // Forward signals from TrackDAO
@@ -90,6 +89,7 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_cueDao.initialize(database);
     m_directoryDao.initialize(database);
     m_analysisDao.initialize(database);
+    m_segmentsDao.initialize(database);
     m_libraryHashDao.initialize(database);
     m_crates.connectDatabase(database);
     // EVE
@@ -425,6 +425,8 @@ bool TrackCollection::purgeTracks(
     }
     // TODO(XXX): Move reversible actions inside transaction
     m_cueDao.deleteCuesForTracks(trackIds);
+    m_segmentsDao.deleteBpmSegmentsForTracks(trackIds);
+    m_segmentsDao.deleteKeySegmentsForTracks(trackIds);
     m_playlistDao.removeTracksFromPlaylists(trackIds, true);
     m_analysisDao.deleteAnalyses(trackIds);
 
