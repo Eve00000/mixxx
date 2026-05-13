@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "track/keysegments.h"
 #include "waveform/renderers/waveformrendererabstract.h"
 
@@ -61,10 +62,7 @@ struct KeyCurveStyle {
     Qt::PenStyle markerLineStyle;
 
     // Visibility
-    bool showLabels;
-    bool showMarkers;
     bool showBackground;
-    bool showLancelotWheel;
 
     // Wheel type
     enum WheelType {
@@ -87,10 +85,7 @@ struct KeyCurveStyle {
         markerWidth = 1;
         markerLineStyle = Qt::DashLine;
 
-        showLabels = true;
-        showMarkers = true;
         showBackground = true;
-        showLancelotWheel = true;
 
         wheelType = WHEEL_LANCELOT;
     }
@@ -187,4 +182,8 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
     bool m_visible;
     bool m_keylockEnabled;
     bool m_segmentsLoaded = false;
+
+    bool m_showLancelotWheel = true;
+    bool m_showKeyMarkers = true;
+    bool m_showKeyLabels = true;
 };

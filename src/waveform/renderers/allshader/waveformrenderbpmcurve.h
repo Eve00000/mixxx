@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "rendergraph/geometrynode.h"
 #include "rendergraph/node.h"
 #include "track/bpmsegments.h"
@@ -53,9 +54,6 @@ struct BpmCurveStyle {
     QColor offsetColor;
     int offsetWidth;
     Qt::PenStyle offsetLineStyle;
-    bool showCurve;
-    bool showMarkers;
-    bool showLabels;
     bool showTrackStart;
     bool showOffsetIndicator;
     bool showDiamonds;
@@ -115,6 +113,10 @@ class allshader::WaveformRenderBpmCurve : public WaveformRenderBpmCurveBase,
     bool m_visible;
     bool m_needsTextureUpdate{true};
     bool m_needsRangeRecalculation{true};
+
+    bool m_showBpmCurve = true;
+    bool m_showBpmMarkers = true;
+    bool m_showBpmLabels = true;
 };
 
 inline BpmCurveStyle::BpmCurveStyle()
@@ -136,9 +138,6 @@ inline BpmCurveStyle::BpmCurveStyle()
           offsetColor(255, 200, 100),
           offsetWidth(1),
           offsetLineStyle(Qt::DashDotLine),
-          showCurve(true),
-          showMarkers(true),
-          showLabels(true),
           showTrackStart(true),
           showOffsetIndicator(true),
           showDiamonds(true) {

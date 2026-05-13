@@ -133,6 +133,22 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
         m_pKeyControlCO = std::make_unique<ControlProxy>(
                 m_waveformRenderer->getGroup(), "pitch");
     }
+
+    PollingControlProxy proxyShowLancelotWheel(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_lancelot_wheel"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showLancelotWheel = proxyShowLancelotWheel.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowKeyMarkers(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_key_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showKeyMarkers = proxyShowKeyMarkers.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowKeyLabels(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_key_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showKeyLabels = proxyShowKeyLabels.get() > 0 ? true : false;
+
     initLancelotLayout();
 }
 
@@ -230,357 +246,21 @@ QString WaveformRenderKeyCurve::keyIdToLancelot(int keyId) const {
         static const int rootToOpenKey[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
         lancelotNumber = rootToOpenKey[rootNote];
     } else {
-        // Standard Camelot wheel mapping
-        // Major keys mapping (root to Camelot number)
-        static const int rootToCamelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
-        // Minor keys mapping (root to Camelot number)
-        static const int rootToCamelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
+        // Standard Lancelot wheel mapping
+        // Major keys mapping (root to Lancelot number)
+        static const int rootToLancelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
+        // Minor keys mapping (root to Lancelot number)
+        static const int rootToLancelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
 
         if (isMinor) {
-            lancelotNumber = rootToCamelotMinor[rootNote];
+            lancelotNumber = rootToLancelotMinor[rootNote];
         } else {
-            lancelotNumber = rootToCamelotMajor[rootNote];
+            lancelotNumber = rootToLancelotMajor[rootNote];
         }
     }
 
     return QString::number(lancelotNumber) + (isMinor ? "A" : "B");
 }
-
-// Logic based on Loading KEY curve segments from DB
-// void WaveformRenderKeyCurve::updateCurrentKey() {
-//    TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-//    if (!pTrack) {
-//        if (showDebugAllshaderWaveformRenderKeyCurve) {
-//            qDebug() << "[WaveformRenderKeyCurve - Allshader] No track info";
-//        }
-//        return;
-//    }
-//
-//    // Load key curve if not loaded yet
-//    if (!m_segmentsLoaded) {
-//        if (showDebugAllshaderWaveformRenderKeyCurve) {
-//            qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key
-//            curve from database...";
-//        }
-//
-//        // Load from database via Track object
-//        QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
-//
-//        if (!segments.isEmpty()) {
-//            for (const auto& pSegment : std::as_const(segments)) {
-//                KeySegment seg;
-//                seg.startTime = pSegment->getStartTime();
-//                seg.endTime = pSegment->getRangeEnd();
-//                seg.duration = pSegment->getDuration();
-//                seg.keyId = pSegment->getKeyId();
-//                seg.key = pSegment->getKeyText();
-//                seg.type = pSegment->getType();
-//                seg.confidence = pSegment->getConfidence();
-//                m_segments.append(seg);
-//            }
-//
-//            if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                qDebug() << "[WaveformRenderKeyCurve - Allshader] Loaded"
-//                         << m_segments.size() << "key segments from database
-//                         for track:"
-//                         << pTrack->getTitle()
-//                         << "ID:" << pTrack->getId().toString();
-//                // 1st segment as test
-//                if (!m_segments.isEmpty()) {
-//                    qDebug() << "[WaveformRenderKeyCurve - Allshader] First
-//                    segment - keyId:"
-//                             << m_segments[0].keyId << "keyText:" <<
-//                             m_segments[0].key;
-//                }
-//            }
-//        } else {
-//            if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                qDebug() << "[WaveformRenderKeyCurve - Allshader] No key
-//                segments "
-//                            "in database for track:"
-//                         << pTrack->getTitle()
-//                         << "ID:" << pTrack->getId().toString();
-//            }
-//        }
-//        m_segmentsLoaded = true;
-//    }
-//
-//    // If no segments present we will check again, may appear delayed by
-//    analyzer
-//    // -> check again after 2 secs timer (in update)
-//    if (m_segments.isEmpty() && m_segmentsLoaded) {
-//        // Try to reload from database - maybe analysis just finished
-//        QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
-//
-//        if (!segments.isEmpty()) {
-//            if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                qDebug() << "[WaveformRenderKeyCurve - Allshader] Reloaded"
-//                         << segments.size() << "key segments after analysis
-//                         for track:"
-//                         << pTrack->getTitle()
-//                         << "ID:" << pTrack->getId().toString();
-//            }
-//
-//            for (const auto& pSegment : std::as_const(segments)) {
-//                KeySegment seg;
-//                seg.startTime = pSegment->getStartTime();
-//                seg.endTime = pSegment->getRangeEnd();
-//                seg.duration = pSegment->getDuration();
-//                seg.keyId = pSegment->getKeyId();
-//                seg.key = pSegment->getKeyText();
-//                seg.type = pSegment->getType();
-//                seg.confidence = pSegment->getConfidence();
-//                m_segments.append(seg);
-//            }
-//
-//            // Force complete recreation of the wheel
-//            // Clear the existing node
-//            if (m_pKeyCurveNode) {
-//                m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
-//                m_pKeyCurveNode = nullptr;
-//            }
-//            m_pendingWheelImage = QImage();
-//
-//            if (!m_segments.isEmpty()) {
-//                // Use keyId with user preference instead of stored key text
-//                int notationValue = static_cast<int>(m_pKeyNotationCO->get());
-//                KeyUtils::KeyNotation notation =
-//                KeyUtils::keyNotationFromNumericValue(notationValue);
-//                m_currentWheelKey =
-//                KeyUtils::keyToString(static_cast<ChromaticKey>(m_segments[0].keyId),
-//                notation);
-//                //m_baseLancelot = keyToLancelot(m_currentWheelKey);
-//                m_baseLancelot = keyIdToLancelot(m_segments[0].keyId);
-//                updateTransposedKey();
-//            }
-//        }
-//    }
-//
-//    // If still no segments, just return
-//    if (m_segments.isEmpty()) {
-//        return;
-//    }
-//
-//    // Update track duration
-//    if (m_trackLengthSeconds == 0.0) {
-//        m_trackLengthSeconds = pTrack->getDuration();
-//        if (showDebugAllshaderWaveformRenderKeyCurve) {
-//            qDebug() << "[WaveformRenderKeyCurve - Allshader] Track duration:"
-//                     << m_trackLengthSeconds;
-//        }
-//    }
-//
-//    // Update play position
-//    if (m_pPlayPositionCO) {
-//        m_playPosition = m_pPlayPositionCO->get();
-//    }
-//
-//    // Find current key based on play position
-//    double positionSeconds = m_playPosition * m_trackLengthSeconds;
-//
-//    // Get current user notation preference
-//    int notationValue = static_cast<int>(m_pKeyNotationCO->get());
-//    KeyUtils::KeyNotation notation =
-//    KeyUtils::keyNotationFromNumericValue(notationValue);
-//
-//
-//    for (const auto& seg : std::as_const(m_segments)) {
-//        if (positionSeconds >= seg.startTime && positionSeconds <=
-//        seg.endTime) {
-//            QString displayKey =
-//            KeyUtils::keyToString(static_cast<ChromaticKey>(seg.keyId),
-//            notation); if (m_currentKey != displayKey) {
-//                if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                    qDebug() << "[WaveformRenderKeyCurve - Allshader] Key
-//                    changed from"
-//                             << m_currentKey << "to" << displayKey << "at"
-//                             << positionSeconds << "s";
-//                    }
-//                    m_currentKey = displayKey;
-//                    m_currentKeyId = seg.keyId; // Store the keyId
-//                    m_currentLancelot = keyIdToLancelot(seg.keyId);
-//                    m_currentWheelKey = displayKey;
-//                    m_baseLancelot = keyIdToLancelot(seg.keyId);
-//                    updateTransposedKey();
-//                }
-//            break;
-//        }
-//    }
-//
-//    // set initial values if this is the first time
-//    if (!m_segments.isEmpty() && m_currentWheelKey.isEmpty()) {
-//        QString displayKey =
-//        KeyUtils::keyToString(static_cast<ChromaticKey>(m_segments[0].keyId),
-//        notation); m_currentKey = displayKey; m_currentKeyId =
-//        m_segments[0].keyId; // Store the keyId m_currentWheelKey =
-//        displayKey; m_baseLancelot = keyIdToLancelot(m_segments[0].keyId);
-//        updateTransposedKey();
-//    }
-//}
-
-// void WaveformRenderKeyCurve::updateCurrentKey() {
-//     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
-//     if (!pTrack) {
-//         if (showDebugAllshaderWaveformRenderKeyCurve) {
-//             qDebug() << "[WaveformRenderKeyCurve - Allshader] No track info";
-//         }
-//         return;
-//     }
-//
-//     // Load key curve if not loaded yet (first time only)
-//     if (!m_segmentsLoaded) {
-//         if (showDebugAllshaderWaveformRenderKeyCurve) {
-//             qDebug() << "[WaveformRenderKeyCurve - Allshader] Loading key
-//             curve from database...";
-//         }
-//
-//         // Load from database via Track object
-//         QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
-//
-//         if (!segments.isEmpty()) {
-//             for (const auto& pSegment : std::as_const(segments)) {
-//                 KeySegment seg;
-//                 seg.startTime = pSegment->getStartTime();
-//                 seg.endTime = pSegment->getRangeEnd();
-//                 seg.duration = pSegment->getDuration();
-//                 seg.keyId = pSegment->getKeyId();
-//                 seg.key = pSegment->getKeyText();
-//                 seg.type = pSegment->getType();
-//                 seg.confidence = pSegment->getConfidence();
-//                 m_segments.append(seg);
-//             }
-//
-//             if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                 qDebug() << "[WaveformRenderKeyCurve - Allshader] Loaded"
-//                          << m_segments.size() << "key segments from database
-//                          for track:"
-//                          << pTrack->getTitle()
-//                          << "ID:" << pTrack->getId().toString();
-//                 if (!m_segments.isEmpty()) {
-//                     qDebug() << "[WaveformRenderKeyCurve - Allshader] First
-//                     segment - keyId:"
-//                              << m_segments[0].keyId << "keyText:" <<
-//                              m_segments[0].key;
-//                 }
-//             }
-//         } else {
-//             if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                 qDebug() << "[WaveformRenderKeyCurve - Allshader] No key
-//                 segments "
-//                             "in database for track:"
-//                          << pTrack->getTitle()
-//                          << "ID:" << pTrack->getId().toString();
-//             }
-//         }
-//         m_segmentsLoaded = true;
-//     }
-//
-//     // If no segments present, try to reload (may be analyzing)
-//     // This will run every time updateCurrentKey is called until segments are
-//     found if (m_segments.isEmpty()) {
-//         // Try to reload from database - maybe analysis just finished
-//         QList<KeySegmentsPointer> segments = pTrack->getKeySegments();
-//
-//         if (!segments.isEmpty()) {
-//             if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                 qDebug() << "[WaveformRenderKeyCurve - Allshader] Reloaded"
-//                          << segments.size() << "key segments after analysis
-//                          for track:"
-//                          << pTrack->getTitle()
-//                          << "ID:" << pTrack->getId().toString();
-//             }
-//
-//             for (const auto& pSegment : std::as_const(segments)) {
-//                 KeySegment seg;
-//                 seg.startTime = pSegment->getStartTime();
-//                 seg.endTime = pSegment->getRangeEnd();
-//                 seg.duration = pSegment->getDuration();
-//                 seg.keyId = pSegment->getKeyId();
-//                 seg.key = pSegment->getKeyText();
-//                 seg.type = pSegment->getType();
-//                 seg.confidence = pSegment->getConfidence();
-//                 m_segments.append(seg);
-//             }
-//
-//             // Force complete recreation of the wheel
-//             if (m_pKeyCurveNode) {
-//                 m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
-//                 m_pKeyCurveNode = nullptr;
-//             }
-//             m_pendingWheelImage = QImage();
-//
-//             if (!m_segments.isEmpty()) {
-//                 int notationValue =
-//                 static_cast<int>(m_pKeyNotationCO->get());
-//                 KeyUtils::KeyNotation notation =
-//                 KeyUtils::keyNotationFromNumericValue(notationValue);
-//                 m_currentWheelKey =
-//                 KeyUtils::keyToString(static_cast<ChromaticKey>(m_segments[0].keyId),
-//                 notation); m_baseLancelot =
-//                 keyIdToLancelot(m_segments[0].keyId); updateTransposedKey();
-//             }
-//         }
-//         // If still no segments, just return and try again next time
-//         if (m_segments.isEmpty()) {
-//             return;
-//         }
-//     }
-//
-//     // Update track duration
-//     if (m_trackLengthSeconds == 0.0) {
-//         m_trackLengthSeconds = pTrack->getDuration();
-//         if (showDebugAllshaderWaveformRenderKeyCurve) {
-//             qDebug() << "[WaveformRenderKeyCurve - Allshader] Track
-//             duration:"
-//                      << m_trackLengthSeconds;
-//         }
-//     }
-//
-//     // Update play position
-//     if (m_pPlayPositionCO) {
-//         m_playPosition = m_pPlayPositionCO->get();
-//     }
-//
-//     // Find current key based on play position
-//     double positionSeconds = m_playPosition * m_trackLengthSeconds;
-//
-//     // Get current user notation preference
-//     int notationValue = static_cast<int>(m_pKeyNotationCO->get());
-//     KeyUtils::KeyNotation notation =
-//     KeyUtils::keyNotationFromNumericValue(notationValue);
-//
-//     for (const auto& seg : std::as_const(m_segments)) {
-//         if (positionSeconds >= seg.startTime && positionSeconds <=
-//         seg.endTime) {
-//             QString displayKey =
-//             KeyUtils::keyToString(static_cast<ChromaticKey>(seg.keyId),
-//             notation); if (m_currentKey != displayKey) {
-//                 if (showDebugAllshaderWaveformRenderKeyCurve) {
-//                     qDebug() << "[WaveformRenderKeyCurve - Allshader] Key
-//                     changed from"
-//                              << m_currentKey << "to" << displayKey << "at"
-//                              << positionSeconds << "s";
-//                 }
-//                 m_currentKey = displayKey;
-//                 m_currentKeyId = seg.keyId;
-//                 m_currentLancelot = keyIdToLancelot(seg.keyId);
-//                 m_currentWheelKey = displayKey;
-//                 m_baseLancelot = keyIdToLancelot(seg.keyId);
-//                 updateTransposedKey();
-//             }
-//             break;
-//         }
-//     }
-//
-//     // set initial values if this is the first time
-//     if (!m_segments.isEmpty() && m_currentWheelKey.isEmpty()) {
-//         QString displayKey =
-//         KeyUtils::keyToString(static_cast<ChromaticKey>(m_segments[0].keyId),
-//         notation); m_currentKey = displayKey; m_currentKeyId =
-//         m_segments[0].keyId; m_currentWheelKey = displayKey; m_baseLancelot =
-//         keyIdToLancelot(m_segments[0].keyId); updateTransposedKey();
-//     }
-// }
 
 void WaveformRenderKeyCurve::updateCurrentKey() {
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
@@ -794,7 +474,7 @@ QImage WaveformRenderKeyCurve::createFullImage() {
 
     drawKeyMarkers(painter, width, height);
     drawKeyLabels(painter, width, height);
-    drawCamelotWheelComponents(painter, width, height);
+    drawLancelotWheelComponents(painter, width, height);
 
     painter.end();
 
@@ -802,7 +482,7 @@ QImage WaveformRenderKeyCurve::createFullImage() {
 }
 
 void WaveformRenderKeyCurve::drawKeyMarkers(QPainter& painter, float width, float height) {
-    if (!m_style.showMarkers) {
+    if (!m_showKeyMarkers) {
         return;
     }
     if (m_segments.isEmpty()) {
@@ -849,7 +529,7 @@ void WaveformRenderKeyCurve::drawKeyMarkers(QPainter& painter, float width, floa
 
 void WaveformRenderKeyCurve::drawKeyLabels(QPainter& painter, float width, float height) {
     Q_UNUSED(height);
-    if (!m_style.showLabels) {
+    if (!m_showKeyLabels) {
         return;
     }
     if (m_segments.isEmpty()) {
@@ -1017,8 +697,12 @@ void WaveformRenderKeyCurve::drawWheelText(
             displayKey);
 }
 
-void WaveformRenderKeyCurve::drawCamelotWheelComponents(
+void WaveformRenderKeyCurve::drawLancelotWheelComponents(
         QPainter& painter, float width, float height) {
+    if (!m_showLancelotWheel) {
+        return;
+    }
+
     int wheelSize = static_cast<int>(height * 0.7);
     if (wheelSize < 60) {
         wheelSize = 60;
@@ -1081,15 +765,15 @@ void WaveformRenderKeyCurve::calculateTransposedValues(int totalSemitones) {
         int openKeyNumber = rootToOpenKey[transposedRoot];
         m_transposedLancelot = QString::number(openKeyNumber) + (isMinor ? "A" : "B");
     } else {
-        // Standard Camelot wheel
-        static const int rootToCamelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
-        static const int rootToCamelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
+        // Standard Lancelot wheel
+        static const int rootToLancelotMajor[12] = {8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1};
+        static const int rootToLancelotMinor[12] = {5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10};
 
         int lancelotNumber;
         if (isMinor) {
-            lancelotNumber = rootToCamelotMinor[transposedRoot];
+            lancelotNumber = rootToLancelotMinor[transposedRoot];
         } else {
-            lancelotNumber = rootToCamelotMajor[transposedRoot];
+            lancelotNumber = rootToLancelotMajor[transposedRoot];
         }
         m_transposedLancelot = QString::number(lancelotNumber) + (isMinor ? "A" : "B");
     }
@@ -1190,7 +874,7 @@ void WaveformRenderKeyCurve::updateNode() {
 
     drawKeyMarkers(painter, width, height);
     drawKeyLabels(painter, width, height);
-    drawCamelotWheelComponents(painter, width, height);
+    drawLancelotWheelComponents(painter, width, height);
 
     painter.end();
 

@@ -8,6 +8,7 @@
 #include <QVector>
 
 #include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "track/bpmsegments.h"
 #include "waveform/renderers/waveformrendererabstract.h"
 
@@ -45,9 +46,6 @@ struct BpmCurveStyle {
     int offsetWidth;
     Qt::PenStyle offsetLineStyle;
 
-    bool showCurve;
-    bool showMarkers;
-    bool showLabels;
     bool showTrackStart;
     bool showOffsetIndicator;
     bool showDiamonds;
@@ -77,9 +75,6 @@ struct BpmCurveStyle {
         offsetWidth = 1;
         offsetLineStyle = Qt::DashDotLine;
 
-        showCurve = true;
-        showMarkers = true;
-        showLabels = true;
         showTrackStart = true;
         showOffsetIndicator = true;
         showDiamonds = true;
@@ -141,4 +136,8 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
             Qt::Orientation orientation);
     QDateTime m_lastLoadTime;
     QElapsedTimer m_reloadTimer;
+
+    bool m_showBpmCurve = true;
+    bool m_showBpmMarkers = true;
+    bool m_showBpmLabels = true;
 };

@@ -131,6 +131,21 @@ WOverview::WOverview(
     m_pReplayGainDefaultBoost = make_parented<ControlProxy>(
             QStringLiteral("[ReplayGain]"), QStringLiteral("DefaultBoost"), this);
 
+    m_pShowBpmCurve = make_parented<ControlProxy>(
+            QStringLiteral("[Waveform]"), QStringLiteral("overview_show_bpm_curve"), this);
+    m_pShowBpmCurve->connectValueChanged(this, &WOverview::slotShowBpmCurveChanged);
+    slotShowBpmCurveChanged(static_cast<bool>(m_pShowBpmCurve->get()));
+
+    m_pShowBpmMarkers = make_parented<ControlProxy>(
+            QStringLiteral("[Waveform]"), QStringLiteral("overview_show_bpm_markers"), this);
+    m_pShowBpmMarkers->connectValueChanged(this, &WOverview::slotShowBpmMarkersChanged);
+    slotShowBpmMarkersChanged(static_cast<bool>(m_pShowBpmMarkers->get()));
+
+    m_pShowKeyMarkers = make_parented<ControlProxy>(
+            QStringLiteral("[Waveform]"), QStringLiteral("overview_show_key_markers"), this);
+    m_pShowKeyMarkers->connectValueChanged(this, &WOverview::slotShowKeyMarkersChanged);
+    slotShowKeyMarkersChanged(static_cast<bool>(m_pShowKeyMarkers->get()));
+
     m_pReplayGain->connectValueChanged(this, &WOverview::slotScalingChanged);
     m_pReplayGainBoost->connectValueChanged(this, &WOverview::slotScalingChanged);
     m_pReplayGainEnabled->connectValueChanged(this, &WOverview::slotScalingChanged);
@@ -418,8 +433,7 @@ void WOverview::checkAndRequestBpmCurve(TrackPointer pTrack) {
 }
 
 void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
-    m_showBpmCurve = true;
-    if (!m_showBpmCurve || m_bpmCurvePoints.isEmpty()) {
+    if (m_bpmCurvePoints.isEmpty()) {
         return;
     }
 
@@ -442,121 +456,125 @@ void WOverview::drawBpmCurve(QPainter* painter, const QRect& widgetRect) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     // curve lines
-    painter->setPen(QPen(QColor(0, 255, 0, 180), 2));
+    if (m_showBpmCurve) {
+        painter->setPen(QPen(QColor(0, 255, 0, 180), 2));
 
-    QVector<QLineF> curveLines;
+        QVector<QLineF> curveLines;
 
-    for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
-        // Skip invalid segments
-        if (seg.duration <= 0.001) {
-            continue;
+        for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
+            // Skip invalid segments
+            if (seg.duration <= 0.001) {
+                continue;
+            }
+
+            double startTime = seg.position;
+            double endTime = seg.range_end;
+
+            // Clamp times to track bounds
+            startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+            endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
+
+            if (endTime <= startTime) {
+                continue;
+            }
+
+            double startBpm = seg.bpm_start;
+            double endBpm = seg.bpm_end;
+
+            // Calculate X positions
+            double x1 = (startTime / trackLengthSeconds) * width;
+            double x2 = (endTime / trackLengthSeconds) * width;
+            double y1 = mapBpmToOverviewY(startBpm, height);
+            double y2 = mapBpmToOverviewY(endBpm, height);
+
+            // Clamp to widget bounds
+            x1 = qBound(0.0, x1, (double)width);
+            x2 = qBound(0.0, x2, (double)width);
+            y1 = qBound(0.0, y1, (double)height);
+            y2 = qBound(0.0, y2, (double)height);
+
+            curveLines.append(QLineF(x1, y1, x2, y2));
         }
 
-        double startTime = seg.position;
-        double endTime = seg.range_end;
-
-        // Clamp times to track bounds
-        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
-        endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
-
-        if (endTime <= startTime) {
-            continue;
+        if (!curveLines.isEmpty()) {
+            painter->drawLines(curveLines);
         }
-
-        double startBpm = seg.bpm_start;
-        double endBpm = seg.bpm_end;
-
-        // Calculate X positions
-        double x1 = (startTime / trackLengthSeconds) * width;
-        double x2 = (endTime / trackLengthSeconds) * width;
-        double y1 = mapBpmToOverviewY(startBpm, height);
-        double y2 = mapBpmToOverviewY(endBpm, height);
-
-        // Clamp to widget bounds
-        x1 = qBound(0.0, x1, (double)width);
-        x2 = qBound(0.0, x2, (double)width);
-        y1 = qBound(0.0, y1, (double)height);
-        y2 = qBound(0.0, y2, (double)height);
-
-        curveLines.append(QLineF(x1, y1, x2, y2));
-    }
-
-    if (!curveLines.isEmpty()) {
-        painter->drawLines(curveLines);
     }
 
     // markers at segment bpmchangepoints
-    painter->setPen(QPen(QColor(255, 0, 0, 150), 1, Qt::DashLine));
+    if (m_showBpmMarkers) {
+        painter->setPen(QPen(QColor(255, 0, 0, 150), 1, Qt::DashLine));
 
-    QVector<QLineF> markerLines;
+        QVector<QLineF> markerLines;
 
-    for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
-        double startTime = seg.position;
-        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
-        double x = (startTime / trackLengthSeconds) * width;
+        for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
+            double startTime = seg.position;
+            startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+            double x = (startTime / trackLengthSeconds) * width;
 
-        if (x >= 0 && x <= width) {
-            markerLines.append(QLineF(x, 0, x, height));
-        }
-    }
-
-    if (!markerLines.isEmpty()) {
-        painter->drawLines(markerLines);
-    }
-
-    // diamond symbol at markers
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(255, 0, 0, 200));
-
-    int diamondCount = 0;
-    for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
-        double startTime = seg.position;
-        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
-        double x = (startTime / trackLengthSeconds) * width;
-
-        if (showDebugWOverview) {
-            qDebug() << "[WOverview] Diamond at time:" << startTime << "s -> x:" << x;
-        }
-
-        if (x >= 0 && x <= width) {
-            QPolygonF diamond;
-            diamond << QPointF(x, 0) << QPointF(x + 3, 4)
-                    << QPointF(x, 8) << QPointF(x - 3, 4);
-            painter->drawPolygon(diamond);
-            diamondCount++;
-        } else {
-            if (showDebugWOverview) {
-                qDebug() << "[WOverview] Diamond at x:" << x << "outside bounds";
+            if (x >= 0 && x <= width) {
+                markerLines.append(QLineF(x, 0, x, height));
             }
         }
-    }
-    if (showDebugWOverview) {
-        qDebug() << "[WOverview] Drew" << diamondCount << "diamonds out of"
-                 << m_bpmCurvePoints.size() << "segments";
-    }
 
-    // diamond symbol at end of last segment
-    if (!m_bpmCurvePoints.isEmpty()) {
-        const OverviewBpmPoint& lastSeg = m_bpmCurvePoints.last();
-        double endTime = lastSeg.range_end;
-        double x = (endTime / trackLengthSeconds) * width;
+        if (!markerLines.isEmpty()) {
+            painter->drawLines(markerLines);
+        }
 
-        if (x >= 0 && x <= width) {
-            painter->setPen(Qt::NoPen);
-            painter->setBrush(QColor(255, 0, 0, 200));
+        // diamond symbol at markers
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(255, 0, 0, 200));
 
-            QPolygonF diamond;
-            diamond << QPointF(x, 0) << QPointF(x + 4, 6)
-                    << QPointF(x, 12) << QPointF(x - 4, 6);
-            painter->drawPolygon(diamond);
+        int diamondCount = 0;
+        for (const OverviewBpmPoint& seg : std::as_const(m_bpmCurvePoints)) {
+            double startTime = seg.position;
+            startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+            double x = (startTime / trackLengthSeconds) * width;
 
-            // vertical line at the end of last segment
-            painter->setPen(QPen(QColor(255, 0, 0, 150), 1, Qt::DashLine));
-            // painter->drawLine(x, 0, x, height);
-            painter->drawLine(static_cast<int>(x),
-                    0,
-                    static_cast<int>(x),
-                    static_cast<int>(height));
+            if (showDebugWOverview) {
+                qDebug() << "[WOverview] Diamond at time:" << startTime << "s -> x:" << x;
+            }
+
+            if (x >= 0 && x <= width) {
+                QPolygonF diamond;
+                diamond << QPointF(x, 0) << QPointF(x + 3, 4)
+                        << QPointF(x, 8) << QPointF(x - 3, 4);
+                painter->drawPolygon(diamond);
+                diamondCount++;
+            } else {
+                if (showDebugWOverview) {
+                    qDebug() << "[WOverview] Diamond at x:" << x << "outside bounds";
+                }
+            }
+        }
+        if (showDebugWOverview) {
+            qDebug() << "[WOverview] Drew" << diamondCount << "diamonds out of"
+                     << m_bpmCurvePoints.size() << "segments";
+        }
+
+        // diamond symbol at end of last segment
+        if (!m_bpmCurvePoints.isEmpty()) {
+            const OverviewBpmPoint& lastSeg = m_bpmCurvePoints.last();
+            double endTime = lastSeg.range_end;
+            double x = (endTime / trackLengthSeconds) * width;
+
+            if (x >= 0 && x <= width) {
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(QColor(255, 0, 0, 200));
+
+                QPolygonF diamond;
+                diamond << QPointF(x, 0) << QPointF(x + 4, 6)
+                        << QPointF(x, 12) << QPointF(x - 4, 6);
+                painter->drawPolygon(diamond);
+
+                // vertical line at the end of last segment
+                painter->setPen(QPen(QColor(255, 0, 0, 150), 1, Qt::DashLine));
+                // painter->drawLine(x, 0, x, height);
+                painter->drawLine(static_cast<int>(x),
+                        0,
+                        static_cast<int>(x),
+                        static_cast<int>(height));
+            }
         }
     }
 }
@@ -1036,6 +1054,21 @@ void WOverview::slotMinuteMarkersChanged(bool /*unused*/) {
 }
 
 void WOverview::slotScalingChanged() {
+    update();
+}
+
+void WOverview::slotShowBpmCurveChanged(double value) {
+    m_showBpmCurve = value > 0.5;
+    update();
+}
+
+void WOverview::slotShowBpmMarkersChanged(double value) {
+    m_showBpmMarkers = value > 0.5;
+    update();
+}
+
+void WOverview::slotShowKeyMarkersChanged(double value) {
+    m_showKeyMarkers = value > 0.5;
     update();
 }
 

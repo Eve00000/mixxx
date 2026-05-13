@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "rendergraph/geometrynode.h"
 #include "rendergraph/node.h"
 #include "track/bpmsegments.h"
@@ -60,10 +61,7 @@ struct KeyCurveStyle {
     QColor markerColor;
     int markerWidth;
     Qt::PenStyle markerLineStyle;
-    bool showLabels;
-    bool showMarkers;
     bool showBackground;
-    bool showLancelotWheel;
     bool showDiamonds;
 
     enum WheelType {
@@ -102,7 +100,7 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     // Drawing procedures
     void drawKeyMarkers(QPainter& painter, float width, float height);
     void drawKeyLabels(QPainter& painter, float width, float height);
-    void drawCamelotWheelComponents(QPainter& painter, float width, float height);
+    void drawLancelotWheelComponents(QPainter& painter, float width, float height);
     void drawWheelSlices(QPainter& painter, const QRectF& rect, const QRectF& innerRect);
     void drawHighlightedSlice(QPainter& painter, const QRectF& rect, const QRectF& innerRect);
     void drawWheelText(QPainter& painter, int wheelX, int wheelY, int wheelSize);
@@ -160,6 +158,10 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     bool m_textureReady;
     bool m_segmentsLoaded{false};
     QImage m_pendingWheelImage;
+
+    bool m_showLancelotWheel = true;
+    bool m_showKeyMarkers = true;
+    bool m_showKeyLabels = true;
 };
 
 inline KeyCurveStyle::KeyCurveStyle()
@@ -171,10 +173,7 @@ inline KeyCurveStyle::KeyCurveStyle()
           markerColor(255, 200, 100),
           markerWidth(1),
           markerLineStyle(Qt::DashLine),
-          showLabels(true),
-          showMarkers(true),
           showBackground(true),
-          showLancelotWheel(true),
           showDiamonds(true),
           wheelType(WHEEL_LANCELOT) {
 }

@@ -106,11 +106,15 @@ class WOverview : public WWidget, public TrackDropTarget {
     void slotMinuteMarkersChanged(bool v);
     void slotScalingChanged();
 
+    void slotShowBpmCurveChanged(double value);
+    void slotShowBpmMarkersChanged(double value);
+    void slotShowKeyMarkersChanged(double value);
+
   private:
     // BPM curve
     PlayerManager* m_pPlayerManager;
     QVector<OverviewBpmPoint> m_bpmCurvePoints;
-    bool m_showBpmCurve;
+    bool m_showBpmCurve = true;
     double m_minBpm;
     double m_maxBpm;
     double m_yMinBpm;
@@ -118,7 +122,7 @@ class WOverview : public WWidget, public TrackDropTarget {
 
     // KEY Markers
     QVector<OverviewKeyPoint> m_keyCurvePoints;
-    bool m_showKeyMarkers;
+    bool m_showKeyMarkers = true;
 
     void calculateBpmRange();
     double mapBpmToOverviewY(double bpm, double height);
@@ -288,4 +292,14 @@ class WOverview : public WWidget, public TrackDropTarget {
 
     bool m_bpmCurveLoaded = false;
     bool m_keyCurveLoaded = false;
+
+    parented_ptr<ControlProxy> m_pShowBpmCurve;
+    parented_ptr<ControlProxy> m_pShowBpmMarkers;
+    parented_ptr<ControlProxy> m_pShowKeyMarkers;
+
+    bool m_showCurve = true;
+    bool m_showMarkers = true;
+    bool m_showLabels = true;
+
+    bool m_showBpmMarkers = true;
 };

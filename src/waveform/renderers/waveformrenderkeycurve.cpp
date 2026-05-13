@@ -62,6 +62,21 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
 
     m_pKeyNotationCO = std::make_unique<ControlProxy>(
             mixxx::library::prefs::kKeyNotationConfigKey);
+
+    PollingControlProxy proxyShowLancelotWheel(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_lancelot_wheel"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showLancelotWheel = proxyShowLancelotWheel.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowKeyMarkers(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_key_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showKeyMarkers = proxyShowKeyMarkers.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowKeyLabels(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_key_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showKeyLabels = proxyShowKeyLabels.get() > 0 ? true : false;
 }
 
 void WaveformRenderKeyCurve::initPlayPositionControl() {
@@ -194,10 +209,10 @@ void WaveformRenderKeyCurve::setup(const QDomNode& node, const SkinContext& skin
     }
 
     // Lancelot wheel visibility
-    QString showWheelStr = skinContext.selectString(node, QStringLiteral("ShowLancelotWheel"));
-    if (!showWheelStr.isEmpty()) {
-        m_style.showLancelotWheel = (showWheelStr.compare("true", Qt::CaseInsensitive) == 0);
-    }
+    // QString showWheelStr = skinContext.selectString(node, QStringLiteral("ShowLancelotWheel"));
+    // if (!showWheelStr.isEmpty()) {
+    //    m_style.showLancelotWheel = (showWheelStr.compare("true", Qt::CaseInsensitive) == 0);
+    //}
 
     QString wheelSizeStr = skinContext.selectString(node, QStringLiteral("LancelotWheelSize"));
     if (!wheelSizeStr.isEmpty()) {
@@ -511,7 +526,7 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(QPainter* painter,
 }
 
 void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
-    if (!m_style.showLancelotWheel)
+    if (!m_showLancelotWheel)
         return;
     if (m_segments.isEmpty())
         return;
@@ -756,7 +771,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     const double minLabelSpacing = 100;
 
     // Draw key markers
-    if (m_style.showMarkers) {
+    if (m_showKeyMarkers) {
         painter->setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
         for (const auto& seg : std::as_const(m_segments)) {
             // double startTime = seg.startTime;
@@ -776,7 +791,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     }
 
     // Draw key labels
-    if (m_style.showLabels) {
+    if (m_showKeyLabels) {
         QFont labelFont = painter->font();
         labelFont.setPointSize(m_style.fontSize);
         labelFont.setBold(true);
@@ -816,6 +831,7 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
             }
         }
     }
-
-    drawLancelotWheel(painter);
+    if (m_showLancelotWheel) {
+        drawLancelotWheel(painter);
+    }
 }

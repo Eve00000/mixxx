@@ -28,6 +28,21 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
           m_reloadTimer() {
     initRateRatioControl();
     m_reloadTimer.start();
+
+    PollingControlProxy proxyShowBpmCurve(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_curve"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmCurve = proxyShowBpmCurve.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowBpmMarkers(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmMarkers = proxyShowBpmMarkers.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowBpmLabels(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmLabels = proxyShowBpmLabels.get() > 0 ? true : false;
 }
 
 void WaveformRenderBpmCurve::initRateRatioControl() {
@@ -194,22 +209,6 @@ void WaveformRenderBpmCurve::setup(const QDomNode& node, const SkinContext& skin
         } else if (offsetLineStyleStr == "dashdot") {
             m_style.offsetLineStyle = Qt::DashDotLine;
         }
-    }
-
-    // visibility -> future
-    QString showCurveStr = skinContext.selectString(node, QStringLiteral("ShowCurve"));
-    if (!showCurveStr.isEmpty()) {
-        m_style.showCurve = (showCurveStr.compare("true", Qt::CaseInsensitive) == 0);
-    }
-
-    QString showMarkersStr = skinContext.selectString(node, QStringLiteral("ShowMarkers"));
-    if (!showMarkersStr.isEmpty()) {
-        m_style.showMarkers = (showMarkersStr.compare("true", Qt::CaseInsensitive) == 0);
-    }
-
-    QString showLabelsStr = skinContext.selectString(node, QStringLiteral("ShowLabels"));
-    if (!showLabelsStr.isEmpty()) {
-        m_style.showLabels = (showLabelsStr.compare("true", Qt::CaseInsensitive) == 0);
     }
 
     QString showTrackStartStr = skinContext.selectString(node, QStringLiteral("ShowTrackStart"));
@@ -540,69 +539,70 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     painter->setFont(labelFont);
 
     // draw curve STABLE / INCREASE / DECREASE
-    painter->setPen(QPen(m_style.curveColor, m_style.curveWidth));
+    if (m_showBpmCurve) {
+        painter->setPen(QPen(m_style.curveColor, m_style.curveWidth));
 
-    QVector<QLineF> curveLines;
+        QVector<QLineF> curveLines;
 
-    for (const auto& seg : std::as_const(m_segments)) {
-        // Skip invalid segments
-        if (seg.duration <= 0.001) {
-            continue;
+        for (const auto& seg : std::as_const(m_segments)) {
+            // Skip invalid segments
+            if (seg.duration <= 0.001) {
+                continue;
+            }
+
+            double startTime = seg.position + m_offsetSeconds;
+            double endTime = seg.range_end + m_offsetSeconds;
+
+            // Clamp times to track bounds
+            startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
+            endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
+
+            if (endTime <= startTime) {
+                continue;
+            }
+
+            double startBpm = seg.bpm_start;
+            double endBpm = seg.bpm_end;
+
+            // sample positions
+            double startPos = startTime * (trackSamples / trackLengthSeconds);
+            double endPos = endTime * (trackSamples / trackLengthSeconds);
+
+            // Clamp to valid sample range
+            startPos = qMax(0.0, qMin(startPos, trackSamples));
+            endPos = qMax(0.0, qMin(endPos, trackSamples));
+
+            // outside visible range
+            if (endPos < startSample || startPos > endSample) {
+                continue;
+            }
+
+            double x1 = m_waveformRenderer->transformSamplePositionInRendererWorld(
+                    startPos, ::WaveformRendererAbstract::Play);
+            double x2 = m_waveformRenderer->transformSamplePositionInRendererWorld(
+                    endPos, ::WaveformRendererAbstract::Play);
+            double y1 = mapBpmToY(startBpm, m_yMinBpm, m_yMaxBpm, rendererHeight);
+            double y2 = mapBpmToY(endBpm, m_yMinBpm, m_yMaxBpm, rendererHeight);
+
+            if (orientation == Qt::Vertical) {
+                std::swap(x1, y1);
+                std::swap(x2, y2);
+            }
+
+            x1 = qBound(0.0, x1, (double)rendererWidth);
+            x2 = qBound(0.0, x2, (double)rendererWidth);
+            y1 = qBound(0.0, y1, (double)rendererHeight);
+            y2 = qBound(0.0, y2, (double)rendererHeight);
+
+            curveLines.append(QLineF(x1, y1, x2, y2));
         }
 
-        double startTime = seg.position + m_offsetSeconds;
-        double endTime = seg.range_end + m_offsetSeconds;
-
-        // Clamp times to track bounds
-        startTime = qMax(0.0, qMin(startTime, trackLengthSeconds));
-        endTime = qMax(0.0, qMin(endTime, trackLengthSeconds));
-
-        if (endTime <= startTime) {
-            continue;
+        if (!curveLines.isEmpty()) {
+            painter->drawLines(curveLines);
         }
-
-        double startBpm = seg.bpm_start;
-        double endBpm = seg.bpm_end;
-
-        // sample positions
-        double startPos = startTime * (trackSamples / trackLengthSeconds);
-        double endPos = endTime * (trackSamples / trackLengthSeconds);
-
-        // Clamp to valid sample range
-        startPos = qMax(0.0, qMin(startPos, trackSamples));
-        endPos = qMax(0.0, qMin(endPos, trackSamples));
-
-        // outside visible range
-        if (endPos < startSample || startPos > endSample) {
-            continue;
-        }
-
-        double x1 = m_waveformRenderer->transformSamplePositionInRendererWorld(
-                startPos, ::WaveformRendererAbstract::Play);
-        double x2 = m_waveformRenderer->transformSamplePositionInRendererWorld(
-                endPos, ::WaveformRendererAbstract::Play);
-        double y1 = mapBpmToY(startBpm, m_yMinBpm, m_yMaxBpm, rendererHeight);
-        double y2 = mapBpmToY(endBpm, m_yMinBpm, m_yMaxBpm, rendererHeight);
-
-        if (orientation == Qt::Vertical) {
-            std::swap(x1, y1);
-            std::swap(x2, y2);
-        }
-
-        x1 = qBound(0.0, x1, (double)rendererWidth);
-        x2 = qBound(0.0, x2, (double)rendererWidth);
-        y1 = qBound(0.0, y1, (double)rendererHeight);
-        y2 = qBound(0.0, y2, (double)rendererHeight);
-
-        curveLines.append(QLineF(x1, y1, x2, y2));
     }
-
-    if (!curveLines.isEmpty()) {
-        painter->drawLines(curveLines);
-    }
-
     // draw markers
-    if (m_style.showMarkers) {
+    if (m_showBpmMarkers) {
         painter->setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
 
         QVector<QLineF> markerLines;
@@ -648,7 +648,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         }
 
         // draw labels
-        if (m_style.showLabels) {
+        if (m_showBpmLabels) {
             for (const auto& labelInfo : std::as_const(labelPositions)) {
                 drawLabel(painter, labelInfo.first, labelInfo.second, orientation);
             }
@@ -703,7 +703,7 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
             }
 
             // Draw BPM label at the end marker
-            if (m_style.showLabels) {
+            if (m_showBpmLabels) {
                 QPointF labelPos;
                 if (orientation == Qt::Horizontal) {
                     labelPos = QPointF(endX - 30, m_style.labelOffset);

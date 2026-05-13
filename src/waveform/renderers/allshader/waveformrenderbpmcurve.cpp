@@ -86,6 +86,21 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(
                 m_waveformRenderer->getGroup(), "rate_ratio");
         m_currentRateRatio = m_pRateRatioCO->get();
     }
+
+    PollingControlProxy proxyShowBpmCurve(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_curve"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmCurve = proxyShowBpmCurve.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowBpmMarkers(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmMarkers = proxyShowBpmMarkers.get() > 0 ? true : false;
+
+    PollingControlProxy proxyShowBpmLabels(QStringLiteral("[Waveform]"),
+            QStringLiteral("show_bpm_markers"),
+            ControlFlag::AllowMissingOrInvalid);
+    m_showBpmLabels = proxyShowBpmLabels.get() > 0 ? true : false;
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* event) {
@@ -296,7 +311,7 @@ QImage WaveformRenderBpmCurve::drawBpmTexture() {
         double endSample = lastDisplayedPosition * trackSamples;
 
         // Draw BPM curve
-        if (m_style.showCurve) {
+        if (m_showBpmCurve) {
             painter.setPen(QPen(m_style.curveColor, m_style.curveWidth));
 
             for (const auto& seg : std::as_const(m_segments)) {
@@ -344,7 +359,7 @@ QImage WaveformRenderBpmCurve::drawBpmTexture() {
         }
 
         // Draw markers
-        if (m_style.showMarkers) {
+        if (m_showBpmMarkers) {
             painter.setPen(QPen(m_style.markerColor, m_style.markerWidth, m_style.markerLineStyle));
 
             for (const auto& seg : std::as_const(m_segments)) {
@@ -372,7 +387,7 @@ QImage WaveformRenderBpmCurve::drawBpmTexture() {
         }
 
         // Draw markerlabels
-        if (m_style.showLabels) {
+        if (m_showBpmLabels) {
             QFont labelFont = painter.font();
             labelFont.setPointSize(m_style.labelFontSize);
             labelFont.setBold(true);
@@ -567,5 +582,20 @@ void WaveformRenderBpmCurve::update() {
 
     updateNode();
 }
+
+// void WaveformRenderBpmCurve::slotShowBpmCurveChanged(double value) {
+//     m_showBpmCurve = value > 0.5;
+//     update();
+// }
+//
+// void WaveformRenderBpmCurve::slotShowBpmLabelsChanged(double value) {
+//     m_showBpmLabels = value > 0.5;
+//     update();
+// }
+//
+// void WaveformRenderBpmCurve::slotShowBpmMarkersChanged(double value) {
+//     m_showBpmMarkers = value > 0.5;
+//     update();
+// }
 
 } // namespace allshader
