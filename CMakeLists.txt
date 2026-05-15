@@ -1374,6 +1374,10 @@ add_library(
   src/library/autodj/autodjprocessor.cpp
   src/library/autodj/dlgautodj.cpp
   src/library/autodj/dlgautodj.ui
+  src/library/autosuggestions/autosuggestionsfeature.cpp
+  src/library/autosuggestions/autosuggestionsprocessor.cpp
+  src/library/autosuggestions/dlgautosuggestions.cpp
+  src/library/autosuggestions/dlgautosuggestions.ui
   src/library/banshee/bansheedbconnection.cpp
   src/library/banshee/bansheefeature.cpp
   src/library/banshee/bansheeplaylistmodel.cpp
