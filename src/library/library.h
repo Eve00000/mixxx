@@ -19,6 +19,7 @@
 #include "util/parented_ptr.h"
 
 class AnalysisFeature;
+class AutoSuggestionsFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
@@ -116,6 +117,9 @@ class Library: public QObject {
     /// Triggers a new search in the internal track collection
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
+    void showAutoSuggestions();
+
+    static const QString kAutoSuggestionsViewName;
 
     bool requestAddDir(const QString& directory);
     bool requestRemoveDir(const QString& directory, LibraryRemovalType removalType);
@@ -229,6 +233,7 @@ class Library: public QObject {
     WLibraryPreparationWindow* m_pLibraryPreparationWindowWidget;
     MixxxLibraryFeature* m_pMixxxLibraryFeature;
     PlaylistFeature* m_pPlaylistFeature;
+    parented_ptr<AutoSuggestionsFeature> m_pAutoSuggestionsFeature;
     GroupedPlaylistsFeature* m_pGroupedPlaylistsFeature;
     CrateFeature* m_pCrateFeature;
     SearchCrateFeature* m_pSearchCrateFeature;

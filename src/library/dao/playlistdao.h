@@ -9,6 +9,7 @@
 #include "util/class.h"
 
 class AutoDJProcessor;
+class AutoSuggestionsProcessor;
 class QSqlDatabase;
 
 constexpr int kInvalidPlaylistId = -1;
@@ -21,7 +22,8 @@ class PlaylistDAO : public QObject, public virtual DAO {
         PLHT_AUTO_DJ = 1,
         PLHT_SET_LOG = 2,
         PLHT_SET_PREPARATION = 3,
-        PLHT_UNKNOWN = -1
+        PLHT_UNKNOWN = -1,
+        PLHT_AUTO_SUGGESTIONS = 4
     };
 
     enum class PreparationListSendLoc {
@@ -78,6 +80,7 @@ class PlaylistDAO : public QObject, public virtual DAO {
     // stored in the database.
     int getPlaylistId(const int index) const;
     QList<TrackId> getTrackIds(const int playlistId) const;
+    QList<TrackId> getAutoSuggestionsTrackIds() const;
     // Returns true if the playlist with playlistId is hidden
     bool isHidden(const int playlistId) const;
     // Returns the HiddenType of playlistId
@@ -98,6 +101,7 @@ class PlaylistDAO : public QObject, public virtual DAO {
     int insertTracksIntoPlaylist(const QList<TrackId>& trackIds, const int playlistId, int position);
     // Remove all tracks from the Auto-DJ Queue
     void clearAutoDJQueue();
+    void clearAutoSuggestionsQueue();
     // Add a playlist to the Auto-DJ Queue
     void addPlaylistToAutoDJQueue(const int playlistId, AutoDJSendLoc loc);
     // Add a list of tracks to the Auto-DJ Queue
@@ -126,6 +130,7 @@ class PlaylistDAO : public QObject, public virtual DAO {
     void getPlaylistsTrackIsIn(TrackId trackId, QSet<int>* playlistSet) const;
 
     void setAutoDJProcessor(AutoDJProcessor* pAutoDJProcessor);
+    void setAutoSuggestionsProcessor(AutoSuggestionsProcessor* pAutoSuggestionsProcessor);
 
   signals:
     void added(int playlistId);
@@ -158,5 +163,6 @@ class PlaylistDAO : public QObject, public virtual DAO {
 
     QMultiHash<TrackId, int> m_playlistsTrackIsIn;
     AutoDJProcessor* m_pAutoDJProcessor;
+    AutoSuggestionsProcessor* m_pAutoSuggestionsProcessor;
     DISALLOW_COPY_AND_ASSIGN(PlaylistDAO);
 };
