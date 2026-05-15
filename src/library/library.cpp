@@ -8,6 +8,7 @@
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/analysis/analysisfeature.h"
 #include "library/autodj/autodjfeature.h"
+#include "library/autosuggestions/autosuggestionsfeature.h"
 #include "library/banshee/bansheefeature.h"
 #include "library/browse/browsefeature.h"
 #ifdef __ENGINEPRIME__
@@ -60,6 +61,7 @@ using namespace mixxx::library::prefs;
 // This is the name which we use to register the WTrackTableView with the
 // WLibrary
 const QString Library::m_sTrackViewName = QString("WTrackTableView");
+const QString Library::kAutoSuggestionsViewName = QStringLiteral("AutoSuggestions");
 
 // The default row height of the library.
 const int Library::kDefaultRowHeightPx = 20;
@@ -113,6 +115,10 @@ Library::Library(
 #endif
 
     addFeature(new AutoDJFeature(this, m_pConfig, pPlayerManager));
+
+    m_pAutoSuggestionsFeature = make_parented<AutoSuggestionsFeature>(
+            this, m_pConfig);
+    addFeature(m_pAutoSuggestionsFeature);
 
     m_pPreparationFeature = new PreparationFeature(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPreparationFeature);
@@ -988,6 +994,13 @@ void Library::searchTracksInCollection(const QString& query) {
     m_pMixxxLibraryFeature->searchAndActivate(query);
     emit switchToView(m_sTrackViewName);
     m_pSidebarModel->activateDefaultSelection();
+}
+
+void Library::showAutoSuggestions() {
+    m_pAutoSuggestionsFeature->activate();
+    emit switchToView(kAutoSuggestionsViewName);
+    // Select it but don't scroll there
+    m_pSidebarModel->slotFeatureSelect(m_pAutoSuggestionsFeature, QModelIndex());
 }
 
 #ifdef __ENGINEPRIME__
