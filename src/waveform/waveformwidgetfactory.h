@@ -173,6 +173,11 @@ class WaveformWidgetFactory : public QObject,
     void setUntilMarkTextPointSize(int value);
     void setUntilMarkTextHeightLimit(float value);
 
+    void setUntilMarkHorizAlign(int align);
+    int getUntilMarkHorizAlign() const {
+        return m_untilMarkHorizAlign;
+    }
+
     void setStemReorderOnChange(bool value);
     void setStemOutlineOpacity(float value);
     void setStemOpacity(float value);
@@ -295,6 +300,7 @@ class WaveformWidgetFactory : public QObject,
     void untilMarkShowBeatsChanged(bool value);
     void untilMarkShowTimeChanged(bool value);
     void untilMarkAlignChanged(Qt::Alignment align);
+    void untilMarkHorizAlignChanged(int align);
     void untilMarkTextPointSizeChanged(int value);
     void untilMarkTextHeightLimitChanged(float value);
 
@@ -369,6 +375,7 @@ class WaveformWidgetFactory : public QObject,
     bool m_untilMarkShowBeats;
     bool m_untilMarkShowTime;
     Qt::Alignment m_untilMarkAlign;
+    int m_untilMarkHorizAlign;
     int m_untilMarkTextPointSize;
     float m_untilMarkTextHeightLimit;
 

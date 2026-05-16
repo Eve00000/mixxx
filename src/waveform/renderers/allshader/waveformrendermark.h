@@ -53,6 +53,9 @@ class allshader::WaveformRenderMark : public ::WaveformRenderMarkBase,
     void setUntilMarkAlign(Qt::Alignment untilMarkAlign) {
         m_untilMarkAlign = untilMarkAlign;
     }
+    void setUntilMarkHorizAlign(int untilMarkHorizAlign) {
+        m_untilMarkHorizAlign = untilMarkHorizAlign;
+    }
     void setUntilMarkTextSize(int untilMarkTextSize) {
         m_untilMarkTextSize = untilMarkTextSize;
     }
@@ -102,6 +105,7 @@ class allshader::WaveformRenderMark : public ::WaveformRenderMarkBase,
     bool m_untilMarkShowBeats;
     bool m_untilMarkShowTime;
     Qt::Alignment m_untilMarkAlign;
+    int m_untilMarkHorizAlign;
     int m_untilMarkTextSize;
     float m_untilMarkTextHeightLimit;
 

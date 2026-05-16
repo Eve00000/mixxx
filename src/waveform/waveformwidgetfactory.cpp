@@ -135,6 +135,7 @@ WaveformWidgetFactory::WaveformWidgetFactory()
           m_untilMarkShowBeats(false),
           m_untilMarkShowTime(false),
           m_untilMarkAlign(Qt::AlignVCenter),
+          m_untilMarkHorizAlign(2),
           m_untilMarkTextPointSize(24),
           m_untilMarkTextHeightLimit(toUntilMarkTextHeightLimit(0)),
           m_openGlAvailable(false),
@@ -466,6 +467,8 @@ bool WaveformWidgetFactory::setConfig(UserSettingsPointer config) {
     setUntilMarkAlign(toUntilMarkAlign(
             m_config->getValue(ConfigKey(kWaveformGroup, QStringLiteral("UntilMarkAlign")),
                     toUntilMarkAlignIndex(m_untilMarkAlign))));
+    setUntilMarkHorizAlign(m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("UntilMarkHorizAlign")), 2));
     setUntilMarkTextPointSize(m_config->getValue(
             ConfigKey(kWaveformGroup, QStringLiteral("UntilMarkTextPointSize")),
             m_untilMarkTextPointSize));
@@ -1489,6 +1492,17 @@ void WaveformWidgetFactory::setUntilMarkAlign(Qt::Alignment align) {
                 toUntilMarkAlignIndex(m_untilMarkAlign));
     }
     emit untilMarkAlignChanged(align);
+}
+
+void WaveformWidgetFactory::setUntilMarkHorizAlign(int align) {
+    if (m_untilMarkHorizAlign != align) {
+        m_untilMarkHorizAlign = align;
+        if (m_config) {
+            m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("UntilMarkHorizAlign")),
+                    m_untilMarkHorizAlign);
+        }
+        emit untilMarkHorizAlignChanged(align);
+    }
 }
 
 void WaveformWidgetFactory::setUntilMarkTextPointSize(int value) {

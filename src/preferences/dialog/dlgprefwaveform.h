@@ -58,6 +58,7 @@ class DlgPrefWaveform : public DlgPreferencePage, public Ui::DlgPrefWaveformDlg 
     void slotSetUntilMarkShowBeats(bool checked);
     void slotSetUntilMarkShowTime(bool checked);
     void slotSetUntilMarkAlign(int index);
+    void slotSetUntilMarkHorizAlign(int index);
     void slotSetUntilMarkTextPointSize(int value);
     void slotSetUntilMarkTextHeightLimit(int index);
     void slotStemOpacity(float value);
@@ -111,4 +112,7 @@ class DlgPrefWaveform : public DlgPreferencePage, public Ui::DlgPrefWaveformDlg 
 
     UserSettingsPointer m_pConfig;
     std::shared_ptr<Library> m_pLibrary;
+
+    QStringList m_listUntilMarkHorizAlign;
+    int m_iUntilMarkHorizAlign;
 };
