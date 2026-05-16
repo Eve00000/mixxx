@@ -9,6 +9,7 @@
 #include "track/track_decl.h"
 #include "track/trackid.h"
 #include "util/parented_ptr.h"
+#include "waveform/overviewtype.h"
 #include "waveform/renderers/waveformmarkrange.h"
 #include "waveform/renderers/waveformmarkset.h"
 #include "waveform/renderers/waveformsignalcolors.h"
@@ -64,13 +65,6 @@ class WOverview : public WWidget, public TrackDropTarget {
 
     void loadBpmCurveForTrack(TrackPointer pTrack);
 
-    enum class Type {
-        Filtered,
-        HSV,
-        RGB,
-    };
-    Q_ENUM(Type);
-
   public slots:
     void onConnectedControlChanged(double dParameter, double dValue) override;
     void slotTrackLoaded(TrackPointer pTrack);
@@ -85,7 +79,6 @@ class WOverview : public WWidget, public TrackDropTarget {
     void requestKeyAnalysis(TrackPointer pTrack);
 
   protected:
-
     void mouseMoveEvent(QMouseEvent* e) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
     void mousePressEvent(QMouseEvent* e) override;
@@ -108,8 +101,9 @@ class WOverview : public WWidget, public TrackDropTarget {
     void slotCueMenuPopupAboutToHide();
 
     void slotTypeControlChanged(double v);
+    void slotStereoControlChanged(double v);
     void slotMinuteMarkersChanged(bool v);
-    void slotNormalizeOrVisualGainChanged();
+    void slotScalingChanged();
 
     void slotShowBpmCurveChanged(double value);
     void slotShowBpmMarkersChanged(double value);
@@ -175,7 +169,7 @@ class WOverview : public WWidget, public TrackDropTarget {
         return static_cast<double>(position) / m_maxPixelPos;
     }
 
-    void updateCues(const QList<CuePointer> &loadedCues);
+    void updateCues(const QList<CuePointer>& loadedCues);
 
     inline int length() {
         return m_orientation == Qt::Horizontal ? width() : height();
@@ -213,7 +207,8 @@ class WOverview : public WWidget, public TrackDropTarget {
     const QString m_group;
     UserSettingsPointer m_pConfig;
 
-    Type m_type;
+    mixxx::OverviewType m_type;
+    bool m_stereo;
     int m_actualCompletion;
     bool m_pixmapDone;
     float m_waveformPeak;
@@ -262,13 +257,17 @@ class WOverview : public WWidget, public TrackDropTarget {
     PollingControlProxy m_playpositionControl;
     parented_ptr<ControlProxy> m_pPassthroughControl;
     parented_ptr<ControlProxy> m_pTypeControl;
+    parented_ptr<ControlProxy> m_pStereoControl;
     parented_ptr<ControlProxy> m_pMinuteMarkersControl;
+    // Controls to trigger update of amplitude scaling
     parented_ptr<ControlProxy> m_pReplayGain;
+    parented_ptr<ControlProxy> m_pReplayGainEnabled;
+    parented_ptr<ControlProxy> m_pReplayGainBoost;
+    parented_ptr<ControlProxy> m_pReplayGainDefaultBoost;
 
     QPointF m_timeRulerPos;
     WaveformMarkLabel m_timeRulerPositionLabel;
     WaveformMarkLabel m_timeRulerDistanceLabel;
-
 
     QPixmap m_backgroundPixmap;
     QString m_backgroundPixmapPath;

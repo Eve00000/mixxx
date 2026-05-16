@@ -1,22 +1,27 @@
 #pragma once
 
 #include "nonglwaveformwidgetabstract.h"
-#include "waveform/renderers/waveformrenderersignalbase.h"
 
 class QWidget;
 
-class RGBWaveformWidget : public NonGLWaveformWidgetAbstract {
+class SimpleSignalWaveformWidget : public NonGLWaveformWidgetAbstract {
     Q_OBJECT
   public:
-    virtual ~RGBWaveformWidget();
+    virtual ~SimpleSignalWaveformWidget();
 
     virtual WaveformWidgetType::Type getType() const {
         return WaveformWidgetType::RGB;
     }
 
-    static inline bool useOpenGl() { return false; }
-    static inline bool useOpenGles() { return false; }
-    static inline bool useOpenGLShaders() { return false; }
+    static inline bool useOpenGl() {
+        return false;
+    }
+    static inline bool useOpenGles() {
+        return false;
+    }
+    static inline bool useOpenGLShaders() {
+        return false;
+    }
     static inline bool useTextureForWaveform() {
         return false;
     }
@@ -29,8 +34,6 @@ class RGBWaveformWidget : public NonGLWaveformWidgetAbstract {
     virtual void paintEvent(QPaintEvent* event);
 
   private:
-    RGBWaveformWidget(const QString& group,
-            QWidget* parent,
-            WaveformRendererSignalBase::Options options);
+    SimpleSignalWaveformWidget(const QString& group, QWidget* parent);
     friend class WaveformWidgetFactory;
 };

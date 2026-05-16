@@ -24,7 +24,7 @@ constexpr double CUE_MODE_CUP = 5.0;
 /// This is the position of a fresh loaded tack without any seek
 constexpr int kNoHotCueNumber = 0;
 /// Used for a common tracking of the previewing Hotcue in m_currentlyPreviewingIndex
-constexpr int kMainCueIndex = NUM_HOT_CUES;
+// constexpr int kMainCueIndex = NUM_HOT_CUES;
 
 // Helper function to convert control values (i.e. doubles) into RgbColor
 // instances (or nullopt if value < 0). This happens by using the integer

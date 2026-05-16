@@ -1,23 +1,22 @@
-#include "waveformrendererrgb.h"
+#include "waveformrenderersimplesignal.h"
 
-#include "waveformwidgetrenderer.h"
-#include "waveform/waveform.h"
 #include "util/math.h"
 #include "util/painterscope.h"
+#include "waveform/waveform.h"
+#include "waveformwidgetrenderer.h"
 
-WaveformRendererRGB::WaveformRendererRGB(
-        WaveformWidgetRenderer* waveformWidgetRenderer,
-        ::WaveformRendererSignalBase::Options options)
-        : WaveformRendererSignalBase(waveformWidgetRenderer, options) {
+WaveformRendererSimpleSignal::WaveformRendererSimpleSignal(
+        WaveformWidgetRenderer* waveformWidgetRenderer)
+        : WaveformRendererSignalBase(waveformWidgetRenderer, {}) {
 }
 
-WaveformRendererRGB::~WaveformRendererRGB() {
+WaveformRendererSimpleSignal::~WaveformRendererSimpleSignal() {
 }
 
-void WaveformRendererRGB::onSetup(const QDomNode& /* node */) {
+void WaveformRendererSimpleSignal::onSetup(const QDomNode& /* node */) {
 }
 
-void WaveformRendererRGB::draw(
+void WaveformRendererSimpleSignal::draw(
         QPainter* painter,
         QPaintEvent* /*event*/) {
     ConstWaveformPointer pWaveform = m_waveformRenderer->getWaveform();
@@ -76,14 +75,15 @@ void WaveformRendererRGB::draw(
     // Represents the # of waveform data points per horizontal pixel.
     const double gain = (lastVisualIndex - firstVisualIndex) / length;
 
-    // Per-band gain from the EQ knobs.
-    float allGain = 1.0f;
-    float lowGain = 1.0f;
-    float midGain = 1.0f;
-    float highGain = 1.0f;
-    getGains(&allGain, &lowGain, &midGain, &highGain);
+    float allGain(1.0);
+    getGains(&allGain, nullptr, nullptr, nullptr);
 
     QColor color;
+    color.setRgbF(
+            m_signalColor_r,
+            m_signalColor_g,
+            m_signalColor_b,
+            0.9f);
 
     QPen pen;
     pen.setCapStyle(Qt::FlatCap);
@@ -128,86 +128,44 @@ void WaveformRendererRGB::draw(
         visualFrameStop = math_clamp(visualFrameStop, 0, lastVisualFrame);
 
         int visualIndexStart = visualFrameStart * 2;
-        int visualIndexStop  = visualFrameStop * 2;
+        int visualIndexStop = visualFrameStop * 2;
 
-        unsigned char maxLow  = 0;
-        unsigned char maxMid  = 0;
-        unsigned char maxHigh = 0;
         float maxAllLeft = 0.;
         float maxAllRight = 0.;
 
         for (int i = visualIndexStart;
-             i >= 0 && i + 1 < dataSize && i + 1 <= visualIndexStop; i += 2) {
+                i >= 0 && i + 1 < dataSize && i + 1 <= visualIndexStop;
+                i += 2) {
             const WaveformData& waveformDataLeft = data[i];
             const WaveformData& waveformDataRight = data[i + 1];
-
-            maxLow = math_max3(maxLow,
-                    waveformDataLeft.filtered.low,
-                    waveformDataRight.filtered.low);
-            maxMid = math_max3(maxMid,
-                    waveformDataLeft.filtered.mid,
-                    waveformDataRight.filtered.mid);
-            maxHigh = math_max3(maxHigh,
-                    waveformDataLeft.filtered.high,
-                    waveformDataRight.filtered.high);
             float allLeft = waveformDataLeft.filtered.all;
             maxAllLeft = math_max(maxAllLeft, allLeft);
             float allRight = waveformDataRight.filtered.all;
             maxAllRight = math_max(maxAllRight, allRight);
         }
 
-        float maxLowF = maxLow * lowGain;
-        float maxMidF = maxMid * midGain;
-        float maxHighF = maxHigh * highGain;
-
-        float allUnscaled = maxLow + maxMid + maxHigh;
-        float eqGain = 1.0f;
-        if (allUnscaled > 0.0f) {
-            eqGain = (maxLowF + maxMidF + maxHighF) / allUnscaled;
-        }
-
-        float red = maxLowF * m_rgbLowColor_r + maxMidF * m_rgbMidColor_r +
-                maxHighF * m_rgbHighColor_r;
-        float green = maxLowF * m_rgbLowColor_g + maxMidF * m_rgbMidColor_g +
-                maxHighF * m_rgbHighColor_g;
-        float blue = maxLowF * m_rgbLowColor_b + maxMidF * m_rgbMidColor_b +
-                maxHighF * m_rgbHighColor_b;
-
-        // Compute maximum (needed for value normalization)
-        float max = math_max3(red, green, blue);
-
-        // Prevent division by zero
-        if (max > 0.0f) {
-            // Set color
-            color.setRgbF(red / max, green / max, blue / max);
-
-            pen.setColor(color);
-
-            painter->setPen(pen);
-            switch (m_alignment) {
-                case Qt::AlignBottom:
-                case Qt::AlignRight:
-                    painter->drawLine(x,
-                            breadth,
-                            x,
-                            breadth -
-                                    static_cast<int>(heightFactor * eqGain *
-                                            math_max(maxAllLeft, maxAllRight)));
-                    break;
-                case Qt::AlignTop:
-                case Qt::AlignLeft:
-                    painter->drawLine(x,
-                            0,
-                            x,
-                            static_cast<int>(heightFactor * eqGain *
+        pen.setColor(color);
+        painter->setPen(pen);
+        switch (m_alignment) {
+        case Qt::AlignBottom:
+        case Qt::AlignRight:
+            painter->drawLine(x,
+                    breadth,
+                    x,
+                    breadth -
+                            static_cast<int>(heightFactor *
                                     math_max(maxAllLeft, maxAllRight)));
-                    break;
-                default:
-                    painter->drawLine(x,
-                            static_cast<int>(halfBreadth - heightFactor * eqGain * maxAllLeft),
-                            x,
-                            static_cast<int>(halfBreadth + heightFactor * eqGain * maxAllRight));
-            }
+            break;
+        case Qt::AlignTop:
+        case Qt::AlignLeft:
+            painter->drawLine(
+                    x, 0, x, static_cast<int>(heightFactor * math_max(maxAllLeft, maxAllRight)));
+            break;
+        default:
+            painter->drawLine(x,
+                    static_cast<int>(halfBreadth - heightFactor * maxAllLeft),
+                    x,
+                    static_cast<int>(halfBreadth + heightFactor * maxAllRight));
         }
     }
 }
