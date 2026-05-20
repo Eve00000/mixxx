@@ -38,6 +38,12 @@
 #include "widget/wwaveformviewer.h"
 
 namespace {
+
+// We use an AllBand gain default of 2, because default ReplayGain is "enabled" at -18 LUFS
+// which gives at least 6 dB headroom with modern pop tracks.
+constexpr double kVisualGainDefault[] = {2, 1, 1, 1};
+constexpr bool kOverviewNormalizedDefault = false;
+
 // Returns true if the given waveform should be rendered.
 bool shouldRenderWaveform(WaveformWidgetAbstract* pWaveformWidget) {
     if (pWaveformWidget == nullptr ||
@@ -57,6 +63,25 @@ bool shouldRenderWaveform(WaveformWidgetAbstract* pWaveformWidget) {
 }
 
 const QRegularExpression openGLVersionRegex(QStringLiteral("^(\\d+)\\.(\\d+).*$"));
+
+const QString kWaveformGroup(QStringLiteral("[Waveform]"));
+const ConfigKey kWaveformTypeKey =
+        ConfigKey(kWaveformGroup, QStringLiteral("WaveformType"));
+const ConfigKey kHardwareAccelerationKey =
+        ConfigKey(kWaveformGroup, QStringLiteral("use_hardware_acceleration"));
+const ConfigKey kZoomSyncKey = ConfigKey(
+        kWaveformGroup, QStringLiteral("ZoomSynchronization"));
+const ConfigKey kEndOfTrackWarningKey = ConfigKey(
+        kWaveformGroup, QStringLiteral("EndOfTrackWarningTime"));
+const ConfigKey kDefaultZoomKey =
+        ConfigKey(kWaveformGroup, QStringLiteral("DefaultZoom"));
+const ConfigKey kFrameRateKey =
+        ConfigKey(kWaveformGroup, QStringLiteral("FrameRate"));
+const ConfigKey kVSyncKey = ConfigKey(kWaveformGroup, QStringLiteral("VSync"));
+
+ConfigKey visualGainKey(int index) {
+    return ConfigKey(kWaveformGroup, QStringLiteral("VisualGain_") + QString::number(index));
+}
 }  // anonymous namespace
 
 ///////////////////////////////////////////
@@ -112,7 +137,13 @@ WaveformWidgetFactory::WaveformWidgetFactory()
           m_pVisualsManager(nullptr),
           m_frameCnt(0),
           m_actualFrameRate(0),
-          m_playMarkerPosition(WaveformWidgetRenderer::s_defaultPlayMarkerPosition) {
+          m_playMarkerPosition(WaveformWidgetRenderer::s_defaultPlayMarkerPosition),
+          m_showBpmCurve(true),
+          m_showBpmMarkers(true),
+          m_showBpmLabels(true),
+          m_showKeyMarkers(true),
+          m_showKeyLabels(true),
+          m_showLancelotWheel(true) {
     m_visualGain[All] = 1.0;
     m_visualGain[Low] = 1.0;
     m_visualGain[Mid] = 1.0;
@@ -425,6 +456,26 @@ bool WaveformWidgetFactory::setConfig(UserSettingsPointer config) {
     setUntilMarkTextHeightLimit(toUntilMarkTextHeightLimit(
             m_config->getValue(ConfigKey("[Waveform]", "UntilMarkTextHeightLimit"),
                     toUntilMarkTextHeightLimitIndex(m_untilMarkTextHeightLimit))));
+
+    // BPM & KEY CURVE
+    m_showBpmCurve = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")),
+            true);
+    m_showBpmMarkers = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")),
+            true);
+    m_showBpmLabels = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")),
+            true);
+    m_showKeyMarkers = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")),
+            true);
+    m_showKeyLabels = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")),
+            true);
+    m_showLancelotWheel = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")),
+            true);
 
     return true;
 }
@@ -1397,4 +1448,76 @@ int WaveformWidgetFactory::toUntilMarkTextHeightLimitIndex(float value) {
     }
     assert(false);
     return 0;
+}
+
+void WaveformWidgetFactory::setShowBpmCurve(bool value) {
+    if (m_showBpmCurve == value) {
+        return;
+    }
+    m_showBpmCurve = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")),
+                m_showBpmCurve);
+    }
+    emit showBpmCurveChanged(value);
+}
+
+void WaveformWidgetFactory::setShowBpmMarkers(bool value) {
+    if (m_showBpmMarkers == value) {
+        return;
+    }
+    m_showBpmMarkers = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")),
+                m_showBpmMarkers);
+    }
+    emit showBpmMarkersChanged(value);
+}
+
+void WaveformWidgetFactory::setShowBpmLabels(bool value) {
+    if (m_showBpmLabels == value) {
+        return;
+    }
+    m_showBpmLabels = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")),
+                m_showBpmLabels);
+    }
+    emit showBpmLabelsChanged(value);
+}
+
+void WaveformWidgetFactory::setShowKeyMarkers(bool value) {
+    if (m_showKeyMarkers == value) {
+        return;
+    }
+    m_showKeyMarkers = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")),
+                m_showKeyMarkers);
+    }
+    emit showKeyMarkersChanged(value);
+}
+
+void WaveformWidgetFactory::setShowKeyLabels(bool value) {
+    if (m_showKeyLabels == value) {
+        return;
+    }
+    m_showKeyLabels = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")),
+                m_showKeyLabels);
+    }
+    emit showKeyLabelsChanged(value);
+}
+
+void WaveformWidgetFactory::setShowLancelotWheel(bool value) {
+    if (m_showLancelotWheel == value) {
+        return;
+    }
+    m_showLancelotWheel = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")),
+                m_showLancelotWheel);
+    }
+    emit showLancelotWheelChanged(value);
 }

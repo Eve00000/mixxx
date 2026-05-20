@@ -34,6 +34,14 @@
     <key>com.apple.security.files.bookmarks.app-scope</key>
     <true/>
 
+    <!-- Allow access to the Local Network -->
+    <key>com.apple.security.device.local-network</key>
+    <true/>
+
+    <!-- Allow opening incoming network connections -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+
     <!-- HARDENED RUNTIME ENTITLEMENTS
 
          See https://developer.apple.com/documentation/security/hardened_runtime for details.

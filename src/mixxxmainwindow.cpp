@@ -33,14 +33,19 @@
 #include "broadcast/broadcastmanager.h"
 #endif
 #include "control/controlindicatortimer.h"
+// EVE -> clean up RAM-Play cache
+#include "engine/cachingreader/cachingreader.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
 #ifdef __ENGINEPRIME__
 #include "library/export/libraryexporter.h"
 #endif
 #include "library/trackcollectionmanager.h"
+#include "mixer/nowplaying.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
+#include "osc/oscfunctions.h"
+#include "osc/oscreceiver.cpp"
 #include "recording/recordingmanager.h"
 #include "skin/legacy/launchimage.h"
 #include "skin/skinloader.h"
@@ -135,6 +140,7 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     m_pGuiTick = new GuiTick();
     m_pVisualsManager = new VisualsManager();
+    oscEnable();
 }
 
 #ifdef MIXXX_USE_QOPENGL
@@ -420,11 +426,10 @@ void MixxxMainWindow::initialize() {
             &PlayerManager::noVinylControlInputConfigured,
             this,
             &MixxxMainWindow::slotNoVinylControlInputConfigured);
-
-    connect(&PlayerInfo::instance(),
-            &PlayerInfo::currentPlayingTrackChanged,
-            this,
-            &MixxxMainWindow::slotUpdateWindowTitle);
+    m_pNowPlaying = std::make_unique<NowPlaying>(
+            m_pCoreServices->getSettings(),
+            this);
+    m_pNowPlaying->initialize();
 
     // Start Auto DJ if the cmdline arg is passed.
     if (CmdlineArgs::Instance().getStartAutoDJ()) {
@@ -436,6 +441,9 @@ void MixxxMainWindow::initialize() {
 MixxxMainWindow::~MixxxMainWindow() {
     Timer t("~MixxxMainWindow");
     t.start();
+
+    // Clean up RAM-Play files only if they were actually used and RAM-Play is enabled
+    cleanUpRamPlayCache(m_pCoreServices->getSettings());
 
     // Save the current window state (position, maximized, etc)
     // Note(ronso0): Unfortunately saveGeometry() also stores the fullscreen state.
@@ -519,6 +527,22 @@ MixxxMainWindow::~MixxxMainWindow() {
 
     delete m_pGuiTick;
     delete m_pVisualsManager;
+
+    if (m_pOscReceiver) {
+        qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> Stopping OSC Receiver before shutdown";
+        m_pOscReceiver->stop();
+        if (m_oscThread.isRunning()) {
+            m_oscThread.quit();
+            if (!m_oscThread.wait(3000)) {
+                qWarning()
+                        << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> OSC thread "
+                           "did not stop in time, forcing termination.";
+                m_oscThread.terminate();
+                m_oscThread.wait();
+            }
+        }
+        qDebug() << "[MIXXXMAINWINDOW] -> [OSCRECEIVER] -> OSC Receiver stopped and cleaned up";
+    }
 }
 
 void MixxxMainWindow::initializeWindow() {
@@ -550,7 +574,6 @@ void MixxxMainWindow::initializeWindow() {
                     .toUtf8()));
 
     setWindowIcon(QIcon(MIXXX_ICON_PATH));
-    slotUpdateWindowTitle(TrackPointer());
 }
 
 #ifndef __APPLE__
@@ -750,27 +773,6 @@ QDialog::DialogCode MixxxMainWindow::noOutputDlg(bool* continueClicked) {
             return QDialog::Rejected;
         }
     }
-}
-
-void MixxxMainWindow::slotUpdateWindowTitle(TrackPointer pTrack) {
-    QString appTitle = VersionStore::applicationName();
-    QString filePath;
-
-    // If we have a track, use getInfo() to format a summary string and prepend
-    // it to the title.
-    // TODO(rryan): Does this violate Mac App Store policies?
-    if (pTrack) {
-        QString trackInfo = pTrack->getInfo();
-        if (!trackInfo.isEmpty()) {
-            appTitle = QString("%1 | %2").arg(trackInfo, appTitle);
-        }
-        filePath = pTrack->getLocation();
-    }
-    setWindowTitle(appTitle);
-
-    // Display a draggable proxy icon for the track in the title bar on
-    // platforms that support it, e.g. macOS
-    setWindowFilePath(filePath);
 }
 
 void MixxxMainWindow::createMenuBar() {
@@ -1440,4 +1442,131 @@ void MixxxMainWindow::initializationProgressUpdate(int progress, const QString& 
         m_pLaunchImage->progress(progress, serviceName);
     }
     qApp->processEvents();
+}
+
+void MixxxMainWindow::oscEnable() {
+    // Check if m_pCoreServices is ready
+    if (!m_pCoreServices) {
+        qDebug() << "[MIXXXMAINWINDOW] -> m_pCoreServices is not ready, "
+                    "delaying OSC initialization...";
+        QTimer::singleShot(3000, this, [this]() { oscEnable(); }); // Retry after 3 seconds
+        return;
+    }
+
+    // Check if OSC is enabled in settings
+    if (m_pCoreServices->getSettings()->getValue<bool>(ConfigKey("[OSC]", "OscEnabled"))) {
+        qDebug() << "[MIXXXMAINWINDOW] -> Mixxx OSC Service Enabled";
+        int ckOscPortInInt = m_pCoreServices->getSettings()
+                                     ->getValue(ConfigKey("[OSC]", "OscPortIn"))
+                                     .toInt();
+        if (!m_pOscReceiver) {
+            m_pOscReceiver = std::make_unique<OscReceiver>(m_pCoreServices->getSettings());
+            m_pOscReceiver->moveToThread(&m_oscThread);
+
+            qDebug() << "[MIXXXMAINWINDOW] -> Calling loadOscConfiguration";
+            m_pOscReceiver->loadOscConfiguration(m_pCoreServices->getSettings());
+
+            // Add a 3-second delay before starting the thread
+            QTimer::singleShot(3000, this, [this, ckOscPortInInt]() {
+                qDebug() << "[MIXXXMAINWINDOW] -> Starting OSC thread after delay...";
+                connect(&m_oscThread,
+                        &QThread::started,
+                        m_pOscReceiver.get(),
+                        [this, ckOscPortInInt]() {
+                            m_pOscReceiver->startOscReceiver(ckOscPortInInt);
+                        });
+                connect(&m_oscThread,
+                        &QThread::finished,
+                        this,
+                        &MixxxMainWindow::onOscThreadFinished);
+                m_oscThread.start();
+
+                // Start a timer to periodically check responsiveness
+                QTimer* responsivenessTimer = new QTimer(this);
+                connect(responsivenessTimer, &QTimer::timeout, this, [this]() {
+                    if (m_pOscReceiver) {
+                        m_pOscReceiver->checkResponsiveness();
+                    }
+                });
+                responsivenessTimer->start(5000); // Check every 5 seconds
+            });
+        }
+    } else {
+        qDebug() << "[MIXXXMAINWINDOW] -> Mixxx OSC Service NOT Enabled";
+
+        if (m_pOscReceiver) {
+            // Ensure stop is implemented properly in OscReceiver
+            m_pOscReceiver->stop();
+            // Request interruption
+            m_oscThread.requestInterruption();
+            // Quit the thread gracefully
+            m_oscThread.quit();
+            // Wait for the thread to finish with a timeout
+            if (!m_oscThread.wait(3000)) {
+                qWarning() << "[MIXXXMAINWINDOW] -> OSC thread did not stop in "
+                              "time, forcing termination.";
+                m_oscThread.terminate(); // Forcibly terminate if not stopped in time
+            }
+            // Reset the receiver pointer & delete the object
+            m_pOscReceiver.reset();
+        }
+    }
+}
+
+void MixxxMainWindow::onOscThreadFinished() {
+    qDebug() << "[MIXXXMAINWINDOW] -> OSC thread finished";
+
+    // Safely delete the receiver object once the thread has finished
+    if (m_pOscReceiver) {
+        // Ensure the receiver object is deleted in the main thread
+        m_pOscReceiver->deleteLater();
+        // Reset the unique pointer to null
+        m_pOscReceiver.reset();
+    }
+}
+
+void MixxxMainWindow::cleanUpRamPlayCache(UserSettingsPointer pConfig) {
+    if (!pConfig) {
+        return;
+    }
+    // Clean up RAM-Play files only if they were actually used and RAM-Play is enabled
+    bool ramPlayEnabled = pConfig->getValue<bool>(
+            ConfigKey("[RAM-Play]", "Enabled"), false);
+
+    if (!ramPlayEnabled) {
+        qDebug() << "RAM-Play cleanup skipped - disabled in config";
+        return;
+    }
+
+    QString dirName = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "DirectoryName"));
+    if (dirName.isEmpty()) {
+        dirName = "MixxxTmp"; // Default if empty
+    }
+
+    QString ramPlayPath;
+#ifdef Q_OS_WIN
+    QString driveLetter = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "WindowsDrive"));
+    driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
+    if (driveLetter.isEmpty()) {
+        driveLetter = "R"; // Default if empty
+    }
+    ramPlayPath = driveLetter + ":/" + dirName + "/";
+#else
+    QString basePath = pConfig->getValueString(
+            ConfigKey("[RAM-Play]", "LinuxDrive"));
+    if (basePath.isEmpty()) {
+        basePath = "/dev/shm"; // Default if empty
+    }
+    // Remove trailing slashes
+    while (basePath.endsWith('/')) {
+        basePath.chop(1);
+    }
+    ramPlayPath = basePath + "/" + dirName + "/";
+#endif
+
+    qDebug() << "Cleaning up RAM-PLAY files from:" << ramPlayPath;
+
+    CachingReaderWorker::cleanupAllRamFiles(ramPlayPath);
 }

@@ -12,14 +12,18 @@
 #include "util/assert.h"
 #include "util/duration.h"
 #include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wtracktableview.h"
 
 namespace {
+const bool sDebug = true;
 const char* kPreferenceGroupName = "[Auto DJ]";
 const char* kRepeatPlaylistPreference = "Requeue";
 } // anonymous namespace
 
-DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
+DlgAutoDJ::DlgAutoDJ(
+        // WLibrary* parent,
+        QWidget* parent,
         UserSettingsPointer pConfig,
         Library* pLibrary,
         AutoDJProcessor* pProcessor,
@@ -28,12 +32,35 @@ DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
           Ui::DlgAutoDJ(),
           m_pConfig(pConfig),
           m_pAutoDJProcessor(pProcessor),
+          // changed to get info from library or preparationwindow
+          //          m_pTrackTableView(new WTrackTableView(this,
+          //                  m_pConfig,
+          //                  pLibrary,
+          //                  parent->getTrackTableBackgroundColorOpacity(),
+          //                  /*no sorting*/ false)),
+          //          m_bShowButtonText(parent->getShowButtonText()),
+          // Casting to check if parent is WLibrary or WLibraryPreparationWidget
           m_pTrackTableView(new WTrackTableView(this,
                   m_pConfig,
                   pLibrary,
-                  parent->getTrackTableBackgroundColorOpacity(),
+                  qobject_cast<WLibrary*>(parent)
+                          ? qobject_cast<WLibrary*>(parent)
+                                    ->getTrackTableBackgroundColorOpacity()
+                          : (qobject_cast<WLibraryPreparationWindow*>(parent)
+                                            ? qobject_cast<
+                                                      WLibraryPreparationWindow*>(
+                                                      parent)
+                                                      ->getTrackTableBackgroundColorOpacity()
+                                            : 1.0),
                   /*no sorting*/ false)),
-          m_bShowButtonText(parent->getShowButtonText()),
+          m_bShowButtonText(qobject_cast<WLibrary*>(parent)
+                          ? qobject_cast<WLibrary*>(parent)->getShowButtonText()
+                          : (qobject_cast<WLibraryPreparationWindow*>(parent)
+                                            ? qobject_cast<
+                                                      WLibraryPreparationWindow*>(
+                                                      parent)
+                                                      ->getShowButtonText()
+                                            : false)),
           m_pAutoDJTableModel(nullptr) {
     setupUi(this);
 
@@ -55,6 +82,21 @@ DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
             &WTrackTableView::trackSelected,
             this,
             &DlgAutoDJ::updateSelectionInfo);
+
+    if (pLibrary) {
+        connect(pLibrary,
+                &Library::setTrackTableFont,
+                m_pTrackTableView,
+                &WTrackTableView::setTrackTableFont);
+        connect(pLibrary,
+                &Library::setTrackTableRowHeight,
+                m_pTrackTableView,
+                &WTrackTableView::setTrackTableRowHeight);
+        connect(pLibrary,
+                &Library::setSelectedClick,
+                m_pTrackTableView,
+                &WTrackTableView::setSelectedClick);
+    }
 
     connect(pLibrary,
             &Library::setTrackTableFont,
@@ -81,51 +123,50 @@ DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
     m_pAutoDJTableModel = m_pAutoDJProcessor->getTableModel();
     m_pTrackTableView->loadTrackModel(m_pAutoDJTableModel);
 
-    // Do not set this because it disables auto-scrolling
-    //m_pTrackTableView->setDragDropMode(QAbstractItemView::InternalMove);
+    // m_pTrackTableView->setDragDropMode(QAbstractItemView::DragDrop);
 
     connect(pushButtonAutoDJ,
             &QPushButton::clicked,
             this,
             &DlgAutoDJ::toggleAutoDJButton);
 
-    setupActionButton(pushButtonFadeNow, &DlgAutoDJ::fadeNowButton, tr("Fade"));
-    setupActionButton(pushButtonSkipNext, &DlgAutoDJ::skipNextButton, tr("Skip"));
-    setupActionButton(pushButtonShuffle, &DlgAutoDJ::shufflePlaylistButton, tr("Shuffle"));
-    setupActionButton(pushButtonAddRandomTrack, &DlgAutoDJ::addRandomTrackButton, tr("Random"));
+    setupActionButton(pushButtonFadeNow, &DlgAutoDJ::fadeNowButton, tr("\n\nFade"));
+    setupActionButton(pushButtonSkipNext, &DlgAutoDJ::skipNextButton, tr("\n\nSkip"));
+    setupActionButton(pushButtonShuffle, &DlgAutoDJ::shufflePlaylistButton, tr("\n\nShuffle"));
+    setupActionButton(pushButtonAddRandomTrack, &DlgAutoDJ::addRandomTrackButton, tr("\n\nRandom"));
 
     m_enableBtnTooltip = tr(
-            "Enable Auto DJ\n"
+            "\nEnable Auto DJ\n"
             "\n"
             "Shortcut: Shift+F12");
     m_disableBtnTooltip = tr(
-            "Disable Auto DJ\n"
+            "\nDisable Auto DJ\n"
             "\n"
             "Shortcut: Shift+F12");
     QString fadeBtnTooltip = tr(
-            "Trigger the transition to the next track\n"
+            "\nTrigger the transition to the next track\n"
             "\n"
             "Shortcut: Shift+F11");
     QString skipBtnTooltip = tr(
-            "Skip the next track in the Auto DJ queue\n"
+            "\nSkip the next track in the Auto DJ queue\n"
             "\n"
             "Shortcut: Shift+F10");
     QString shuffleBtnTooltip = tr(
-            "Shuffle the content of the Auto DJ queue\n"
+            "\nShuffle the content of the Auto DJ queue\n"
             "\n"
             "Shortcut: Shift+F9");
     QString addRandomTrackBtnTooltip = tr(
-            "Adds a random track from track sources (crates) to the Auto DJ queue.\n"
+            "\nAdds a random track from track sources (crates) to the Auto DJ queue.\n"
             "If no track sources are configured, the track is added from the library instead.");
     QString repeatBtnTooltip = tr(
-            "Repeat the playlist");
+            "\nRepeat the playlist");
     QString spinBoxTransitionTooltip = tr(
-            "Determines the duration of the transition");
+            "\nDetermines the duration of the transition");
     QString labelTransitionTooltip = tr(
             // "sec" as in seconds
-            "Seconds");
+            "\nSeconds");
     QString fadeModeTooltip = tr(
-            "Auto DJ Fade Modes\n"
+            "\nAuto DJ Fade Modes\n"
             "\n"
             "Full Intro + Outro:\n"
             "Play the full intro and outro. Use the intro or outro length as the\n"
@@ -197,7 +238,7 @@ DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
             this,
             &DlgAutoDJ::slotRepeatPlaylistChanged);
     if (m_bShowButtonText) {
-        pushButtonRepeatPlaylist->setText(tr("Repeat"));
+        pushButtonRepeatPlaylist->setText(tr("\n\nRepeat"));
     }
     bool repeatPlaylist = m_pConfig->getValue<bool>(
             ConfigKey(kPreferenceGroupName, kRepeatPlaylistPreference));
@@ -228,7 +269,9 @@ DlgAutoDJ::DlgAutoDJ(WLibrary* parent,
 }
 
 DlgAutoDJ::~DlgAutoDJ() {
-    qDebug() << "~DlgAutoDJ()";
+    if (sDebug) {
+        qDebug() << "~DlgAutoDJ()";
+    }
 
     // Delete m_pTrackTableView before the table model. This is because the
     // table view saves the header state using the model.
@@ -316,7 +359,7 @@ void DlgAutoDJ::autoDJStateChanged(AutoDJProcessor::AutoDJState state) {
         pushButtonAutoDJ->setChecked(false);
         pushButtonAutoDJ->setToolTip(m_enableBtnTooltip);
         if (m_bShowButtonText) {
-            pushButtonAutoDJ->setText(tr("Enable"));
+            pushButtonAutoDJ->setText(tr("\n\nEnable"));
         }
         pushButtonFadeNow->setEnabled(false);
         pushButtonSkipNext->setEnabled(false);
@@ -325,7 +368,7 @@ void DlgAutoDJ::autoDJStateChanged(AutoDJProcessor::AutoDJState state) {
         pushButtonAutoDJ->setChecked(true);
         pushButtonAutoDJ->setToolTip(m_disableBtnTooltip);
         if (m_bShowButtonText) {
-            pushButtonAutoDJ->setText(tr("Disable"));
+            pushButtonAutoDJ->setText(tr("\n\nDisable"));
         }
 
         // If fading, you can't hit fade now.

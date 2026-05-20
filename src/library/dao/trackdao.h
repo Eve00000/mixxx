@@ -15,6 +15,7 @@
 class SqlTransaction;
 class PlaylistDAO;
 class AnalysisDao;
+class SegmentsDAO;
 class CueDAO;
 class LibraryHashDAO;
 
@@ -41,6 +42,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
             CueDAO& cueDao,
             PlaylistDAO& playlistDao,
             AnalysisDao& analysisDao,
+            SegmentsDAO& segmentsDao,
             LibraryHashDAO& libraryHashDao,
             UserSettingsPointer pConfig);
     ~TrackDAO() override;
@@ -104,6 +106,16 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     TrackPointer getTrackByUrl(const QUrl& url) const {
         return getTrackByRef(TrackRef::fromUrl(url));
     }
+
+    // BPM Segments
+    void loadTrackBpmSegments(Track* pTrack) const;
+    void saveTrackBpmSegments(Track* pTrack) const;
+    bool deleteBpmSegmentsForTrack(TrackId trackId) const;
+
+    // Key Segments
+    void loadTrackKeySegments(Track* pTrack) const;
+    void saveTrackKeySegments(Track* pTrack) const;
+    bool deleteKeySegmentsForTrack(TrackId trackId) const;
 
   signals:
     // Forwarded from Track object
@@ -204,6 +216,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     CueDAO& m_cueDao;
     PlaylistDAO& m_playlistDao;
     AnalysisDao& m_analysisDao;
+    SegmentsDAO& m_segmentsDao;
     LibraryHashDAO& m_libraryHashDao;
 
     const UserSettingsPointer m_pConfig;
@@ -219,6 +232,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     int m_queryLibraryMixxxDeletedColumn;
 
     QSet<TrackId> m_tracksAddedSet;
+    std::unique_ptr<SegmentsDAO> m_pSegmentsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);
 };

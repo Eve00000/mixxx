@@ -37,13 +37,13 @@ Description:
                 <Size>0me,1min</Size>
                 <Children>
                   <Template src="skins:LateNight/helpers/skin_settings_numToggle.xml">
-                    <SetVariable name="Text">4</SetVariable>
+                    <SetVariable name="Text">8</SetVariable>
                     <SetVariable name="Setting">[Skin],show_8_hotcues</SetVariable>
                     <SetVariable name="IsEqual">0</SetVariable>
                     <SetVariable name="Width">20f</SetVariable>
                   </Template>
                   <Template src="skins:LateNight/helpers/skin_settings_numToggle.xml">
-                    <SetVariable name="Text">8</SetVariable>
+                    <SetVariable name="Text">16</SetVariable>
                     <SetVariable name="Setting">[Skin],show_8_hotcues</SetVariable>
                     <SetVariable name="IsEqual">1</SetVariable>
                     <SetVariable name="Width">20f</SetVariable>

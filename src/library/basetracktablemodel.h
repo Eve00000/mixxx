@@ -7,10 +7,12 @@
 
 #include "library/columncache.h"
 #include "library/trackmodel.h"
+#include "track/cue.h"
 #include "track/track_decl.h"
 #include "util/color/colorpalette.h"
 
 class TrackCollectionManager;
+class CuePointer;
 
 class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     Q_OBJECT
@@ -114,6 +116,10 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     static constexpr bool kApplyPlayedTrackColorDefault = true;
     static void setApplyPlayedTrackColor(bool apply);
+
+    ColumnCache::Column publicMapColumn(int column) const {
+        return mapColumn(column);
+    }
 
   protected:
     static constexpr int defaultColumnWidth() {
@@ -303,4 +309,8 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     static std::optional<ColorPalette> s_keyColorPalette;
 
     static bool s_bApplyPlayedTrackColor;
+    QString composeHotCueTooltip(const QModelIndex& index, const QString& columnValue) const;
+    QString generateHotcueRow(const CuePointer& pHotcue,
+            double sampleRate,
+            TrackPointer pTrack) const;
 };

@@ -79,6 +79,16 @@
             <SetVariable name="ConfigKey">[Skin],show_microphones</SetVariable>
           </Template>
 
+          <!-- ADDED PrepWin BUTTON -->
+          <Template src="skins:LateNight/controls/button_2state_persist.xml">
+            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
+            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+            <SetVariable name="Size">52f,20f</SetVariable>
+            <SetVariable name="state_0_text">PREP WIN</SetVariable>
+            <SetVariable name="state_1_text">PREP WIN</SetVariable>
+            <SetVariable name="ConfigKey">[Skin],show_preparation_window</SetVariable>
+          </Template>
+
         </Children>
         <Connection>
           <ConfigKey>[Skin],show_maximized_library</ConfigKey>
@@ -111,6 +121,16 @@
             <SetVariable name="ConfigKey">[Skin],show_4decks</SetVariable>
           </Template>
 
+          <!-- ADDED PrepWin BUTTON FOR MAXIMIZED LIBRARY -->
+          <Template src="skins:LateNight/controls/button_2state_persist.xml">
+            <SetVariable name="TooltipId">toggle_4decks</SetVariable>
+            <SetVariable name="ObjectName">GuiToggleButton</SetVariable>
+            <SetVariable name="Size">52f,20f</SetVariable>
+            <SetVariable name="state_0_text">PREP WIN</SetVariable>
+            <SetVariable name="state_1_text">PREP WIN</SetVariable>
+            <SetVariable name="ConfigKey">[Skin],show_preparation_window</SetVariable>
+          </Template>
+
         </Children>
         <Connection>
           <ConfigKey>[Skin],show_maximized_library</ConfigKey>
@@ -118,7 +138,11 @@
         </Connection>
       </WidgetGroup><!-- GUI toggles with maximized library -->
 
-      <WidgetGroup><Size>me,min</Size></WidgetGroup>
+      <!-- ADJUSTED SPACER TO COMPENSATE FOR ADDED BUTTON -->
+      <!--WidgetGroup><Size>15f,min</Size></WidgetGroup-->
+	  <WidgetGroup>
+        <Size>me,min</Size>
+      </WidgetGroup>
 
       <StatusLight>
         <TooltipId>autodj_status</TooltipId>

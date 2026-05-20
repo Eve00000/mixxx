@@ -20,7 +20,7 @@
 class DlgTagFetcher;
 class DlgTrackInfo;
 class DlgTrackInfoMulti;
-//class DlgDeleteFilesConfirmation;
+// class DlgDeleteFilesConfirmation;
 class ExternalTrackCollection;
 class Library;
 class TrackModel;
@@ -29,6 +29,7 @@ class WCoverArtMenu;
 class WFindOnWebMenu;
 class WSearchRelatedTracksMenu;
 class WStarRatingAction;
+class WTrackTableView;
 
 /// A context menu for track(s).
 /// Can be used with individual track type widgets based on TrackPointer
@@ -44,20 +45,21 @@ class WTrackMenu : public QMenu {
         LoadTo = 1 << 1,
         Playlist = 1 << 2,
         Crate = 1 << 3,
-        Remove = 1 << 4,
-        Metadata = 1 << 5,
-        Reset = 1 << 6,
-        BPM = 1 << 7,
-        Color = 1 << 8,
-        HideUnhidePurge = 1 << 9,
-        RemoveFromDisk = 1 << 10,
-        FileBrowser = 1 << 11,
-        Properties = 1 << 12,
-        SearchRelated = 1 << 13,
-        UpdateReplayGainFromPregain = 1 << 14,
-        SelectInLibrary = 1 << 15,
-        Analyze = 1 << 16,
-        FindOnWeb = 1 << 17,
+        SearchCrate = 1 << 4,
+        Remove = 1 << 5,
+        Metadata = 1 << 6,
+        Reset = 1 << 7,
+        BPM = 1 << 8,
+        Color = 1 << 9,
+        HideUnhidePurge = 1 << 10,
+        RemoveFromDisk = 1 << 11,
+        FileBrowser = 1 << 12,
+        Properties = 1 << 13,
+        SearchRelated = 1 << 14,
+        UpdateReplayGainFromPregain = 1 << 15,
+        SelectInLibrary = 1 << 16,
+        Analyze = 1 << 17,
+        FindOnWeb = 1 << 18,
         TrackModelFeatures = Remove | HideUnhidePurge,
         All = AutoDJ | LoadTo | Playlist | Crate | Remove | Metadata | Reset | Analyze |
                 BPM | Color | HideUnhidePurge | RemoveFromDisk | FileBrowser |
@@ -72,6 +74,7 @@ class WTrackMenu : public QMenu {
             WTrackMenu::Feature::SearchRelated |
             WTrackMenu::Feature::Playlist |
             WTrackMenu::Feature::Crate |
+            WTrackMenu::Feature::SearchCrate |
             WTrackMenu::Feature::Metadata |
             WTrackMenu::Feature::Reset |
             WTrackMenu::Feature::Analyze |
@@ -182,6 +185,13 @@ class WTrackMenu : public QMenu {
     void slotPopulateCrateMenu();
     void addSelectionToNewCrate();
 
+    // SearchCrate
+    void slotPopulateSearchCrateMenu();
+
+    // PreparationList
+    void slotAddToPreparationListBottom();
+    void slotAddToPreparationListTop();
+
     // Auto DJ
     void slotAddToAutoDJBottom();
     void slotAddToAutoDJTop();
@@ -243,11 +253,14 @@ class WTrackMenu : public QMenu {
     void addSelectionToPlaylist(int iPlaylistId);
     void updateSelectionCrates(QWidget* pWidget);
 
+    void addToPreparationList(PlaylistDAO::PreparationListSendLoc loc);
     void addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc);
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
     void lockBpm(bool lock);
+
+    int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
 
 #ifdef __STEM__
     void loadSelectionToGroup(const QString& group,
@@ -287,6 +300,7 @@ class WTrackMenu : public QMenu {
     parented_ptr<QMenu> m_pSamplerMenu;
     parented_ptr<QMenu> m_pPlaylistMenu;
     parented_ptr<QMenu> m_pCrateMenu;
+    parented_ptr<QMenu> m_pSearchCrateMenu;
     parented_ptr<QMenu> m_pMetadataMenu;
     parented_ptr<QMenu> m_pMetadataUpdateExternalCollectionsMenu;
     parented_ptr<QMenu> m_pHotcueMenu;
@@ -310,6 +324,10 @@ class WTrackMenu : public QMenu {
 
     // Save Track Metadata Action:
     parented_ptr<QAction> m_pExportMetadataAct;
+
+    // Send To PreparationList
+    parented_ptr<QAction> m_pPreparationListBottomAct;
+    parented_ptr<QAction> m_pPreparationListTopAct;
 
     // Send to Auto-DJ Action
     parented_ptr<QAction> m_pAutoDJBottomAct;
@@ -393,6 +411,7 @@ class WTrackMenu : public QMenu {
 
     bool m_bPlaylistMenuLoaded;
     bool m_bCrateMenuLoaded;
+    bool m_bSearchCrateMenuLoaded;
 
     Features m_eActiveFeatures;
     const Features m_eTrackModelFeatures;

@@ -9,6 +9,9 @@
 #include "library/library_decl.h"
 #ifdef __ENGINEPRIME__
 #include "library/trackset/crate/crateid.h"
+// EVE
+#include "library/trackset/searchcrate/searchcrateid.h"
+// EVE
 #endif
 #include "preferences/usersettings.h"
 #include "track/track_decl.h"
@@ -16,9 +19,15 @@
 #include "util/parented_ptr.h"
 
 class AnalysisFeature;
+class AutoSuggestionsFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
+// EVE
+class SearchCrateFeature;
+class GroupedSearchCratesFeature;
+// EVE
+class GroupedCratesFeature;
 class LibraryControl;
 class LibraryFeature;
 class LibraryTableModel;
@@ -26,12 +35,16 @@ class KeyboardEventFilter;
 class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
+class GroupedPlaylistsFeature;
+class PreparationFeature;
 class RecordingManager;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
 class WLibrarySidebar;
+class WLibraryPreparationWindow;
 class WLibrary;
+class WPreparationWindow;
 class QAbstractItemModel;
 
 #ifdef __ENGINEPRIME__
@@ -70,6 +83,9 @@ class Library: public QObject {
     void bindSidebarWidget(WLibrarySidebar* sidebarWidget);
     void bindLibraryWidget(WLibrary* libraryWidget,
                     KeyboardEventFilter* pKeyboard);
+    void bindLibraryPreparationWindowWidget(
+            WLibraryPreparationWindow* libraryPreparationWindowWidget,
+            KeyboardEventFilter* pKeyboard);
 
     void addFeature(LibraryFeature* feature);
 
@@ -101,10 +117,21 @@ class Library: public QObject {
     /// Triggers a new search in the internal track collection
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
+    void showAutoSuggestions();
+
+    static const QString kAutoSuggestionsViewName;
 
     bool requestAddDir(const QString& directory);
     bool requestRemoveDir(const QString& directory, LibraryRemovalType removalType);
     bool requestRelocateDir(const QString& previousDirectory, const QString& newDirectory);
+
+    // to let wtrackmenu get it
+    WLibraryPreparationWindow* preparationWindow() const {
+        return m_pLibraryPreparationWindowWidget;
+    }
+    WLibrary* libraryWidget() const {
+        return m_pLibraryWidget;
+    }
 
 #ifdef __ENGINEPRIME__
     std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(QWidget* parent);
@@ -112,7 +139,9 @@ class Library: public QObject {
 
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);
+    void slotShowTrackModelInPreparationWindow(QAbstractItemModel* model);
     void slotSwitchToView(const QString& view);
+    void slotSwitchToViewInPreparationWindow(const QString& view);
     void slotLoadTrack(TrackPointer pTrack);
 #ifdef __STEM__
     void slotLoadTrackToPlayer(TrackPointer pTrack,
@@ -126,13 +155,22 @@ class Library: public QObject {
     void slotRefreshLibraryModels();
     void slotCreatePlaylist();
     void slotCreateCrate();
+    // EVE
+    void slotCreateSearchCrate();
+    //    void slotCreateSearchCrateFromSearch();
+    void slotCreateSearchCrateFromSearch(const QString& text);
+    // EVE
     void onSkinLoadFinished();
     void slotSaveCurrentViewState() const;
+    void slotSaveCurrentViewStateInPreparationWindow() const;
     void slotRestoreCurrentViewState() const;
+    void slotRestoreCurrentViewStateInPreparationWindow() const;
 
   signals:
     void showTrackModel(QAbstractItemModel* model, bool restoreState = true);
+    void showTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = true);
     void switchToView(const QString& view);
+    void switchToViewInPreparationWindow(const QString& view);
     void loadTrack(TrackPointer pTrack);
 #ifdef __STEM__
     void loadTrackToPlayer(TrackPointer pTrack,
@@ -146,8 +184,12 @@ class Library: public QObject {
 #endif
     void restoreSearch(const QString&);
     void search(const QString& text);
+    // EVE
+    //    void newSearchCratesFromSearch(const QString& text);
+    // EVE
     void disableSearch();
     void pasteFromSidebar();
+    void pasteFromSidebarInPreparationWindow();
     // emit this signal to enable/disable the cover art widget
     void enableCoverArtDisplay(bool);
     void selectTrack(const TrackId&);
@@ -156,6 +198,9 @@ class Library: public QObject {
 #ifdef __ENGINEPRIME__
     void exportLibrary();
     void exportCrate(CrateId crateId);
+    // EVE
+    void exportSearchCrate(SearchCrateId searchCrateId);
+    // EVE
 #endif
     void saveModelState();
     void restoreModelState();
@@ -185,11 +230,18 @@ class Library: public QObject {
     const static QString m_sTrackViewName;
     const static QString m_sAutoDJViewName;
     WLibrary* m_pLibraryWidget;
+    WLibraryPreparationWindow* m_pLibraryPreparationWindowWidget;
     MixxxLibraryFeature* m_pMixxxLibraryFeature;
     PlaylistFeature* m_pPlaylistFeature;
+    parented_ptr<AutoSuggestionsFeature> m_pAutoSuggestionsFeature;
+    GroupedPlaylistsFeature* m_pGroupedPlaylistsFeature;
     CrateFeature* m_pCrateFeature;
+    SearchCrateFeature* m_pSearchCrateFeature;
+    GroupedSearchCratesFeature* m_pGroupedSearchCratesFeature;
+    GroupedCratesFeature* m_pGroupedCratesFeature;
     AnalysisFeature* m_pAnalysisFeature;
     BrowseFeature* m_pBrowseFeature;
+    PreparationFeature* m_pPreparationFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;
     bool m_editMetadataSelectedClick;

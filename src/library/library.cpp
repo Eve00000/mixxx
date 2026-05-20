@@ -8,6 +8,7 @@
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/analysis/analysisfeature.h"
 #include "library/autodj/autodjfeature.h"
+#include "library/autosuggestions/autosuggestionsfeature.h"
 #include "library/banshee/bansheefeature.h"
 #include "library/browse/browsefeature.h"
 #ifdef __ENGINEPRIME__
@@ -28,8 +29,15 @@
 #include "library/trackcollectionmanager.h"
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
+#include "library/trackset/playlist/groupedplaylistsfeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/preparation/preparationfeature.h"
+#include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
+#include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
+// Eve
+#include "library/trackset/crate/groupedcratesfeature.h"
+// Eve
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
 #include "moc_library.cpp"
@@ -37,12 +45,13 @@
 #include "util/logger.h"
 #include "util/sandbox.h"
 #include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wlibrarysidebar.h"
 #include "widget/wsearchlineedit.h"
 #include "widget/wtracktableview.h"
 
 namespace {
-
+const bool sDebug = false;
 const mixxx::Logger kLogger("Library");
 
 } // namespace
@@ -52,6 +61,7 @@ using namespace mixxx::library::prefs;
 // This is the name which we use to register the WTrackTableView with the
 // WLibrary
 const QString Library::m_sTrackViewName = QString("WTrackTableView");
+const QString Library::kAutoSuggestionsViewName = QStringLiteral("AutoSuggestions");
 
 // The default row height of the library.
 const int Library::kDefaultRowHeightPx = 20;
@@ -70,10 +80,16 @@ Library::Library(
           m_pSidebarModel(make_parented<SidebarModel>(this)),
           m_pLibraryControl(make_parented<LibraryControl>(this)),
           m_pLibraryWidget(nullptr),
+          m_pLibraryPreparationWindowWidget(nullptr),
           m_pMixxxLibraryFeature(nullptr),
           m_pPlaylistFeature(nullptr),
+          m_pGroupedPlaylistsFeature(nullptr),
           m_pCrateFeature(nullptr),
-          m_pAnalysisFeature(nullptr) {
+          m_pSearchCrateFeature(nullptr),
+          m_pGroupedSearchCratesFeature(nullptr),
+          m_pGroupedCratesFeature(nullptr),
+          m_pAnalysisFeature(nullptr),
+          m_pPreparationFeature(nullptr) {
     qRegisterMetaType<LibraryRemovalType>("LibraryRemovalType");
 
     m_pKeyNotation.reset(
@@ -100,11 +116,45 @@ Library::Library(
 
     addFeature(new AutoDJFeature(this, m_pConfig, pPlayerManager));
 
-    m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
-    addFeature(m_pPlaylistFeature);
+    m_pAutoSuggestionsFeature = make_parented<AutoSuggestionsFeature>(
+            this, m_pConfig);
+    addFeature(m_pAutoSuggestionsFeature);
 
-    m_pCrateFeature = new CrateFeature(this, m_pConfig);
-    addFeature(m_pCrateFeature);
+    m_pPreparationFeature = new PreparationFeature(this, UserSettingsPointer(m_pConfig));
+    addFeature(m_pPreparationFeature);
+
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsReplace"), false))) {
+        qDebug() << "[GROUPEDPLAYLISTSFEATURE] -> GroupedPlaylistsEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsEnabled"));
+
+        qDebug() << "[GROUPEDPLAYLISTSFEATURE] -> GroupedPlaylistsReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsReplace"));
+    } else {
+        m_pPlaylistFeature = new PlaylistFeature(this, UserSettingsPointer(m_pConfig));
+        addFeature(m_pPlaylistFeature);
+    }
+
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsEnabled"), true)) {
+        m_pGroupedPlaylistsFeature = new GroupedPlaylistsFeature(
+                this, UserSettingsPointer(m_pConfig));
+        addFeature(m_pGroupedPlaylistsFeature);
+    }
+
+    // m_pCrateFeature = new CrateFeature(this, m_pConfig);
+    // addFeature(m_pCrateFeature);
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"), false))) {
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"));
+
+        qDebug() << "[GROUPEDCRATESFEATURE] -> GroupedCratesReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"));
+    } else {
+        m_pCrateFeature = new CrateFeature(this, m_pConfig);
+        addFeature(m_pCrateFeature);
+    }
+
 #ifdef __ENGINEPRIME__
     connect(m_pCrateFeature,
             &CrateFeature::exportAllCrates,
@@ -117,6 +167,28 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
+        m_pGroupedCratesFeature = new GroupedCratesFeature(this, m_pConfig);
+        addFeature(m_pGroupedCratesFeature);
+    }
+
+    // EVE -> SMARTIES
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), false))) {
+        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"));
+        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
+    } else {
+        m_pSearchCrateFeature = new SearchCrateFeature(this, m_pConfig);
+        addFeature(m_pSearchCrateFeature);
+    }
+
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
+        m_pGroupedSearchCratesFeature = new GroupedSearchCratesFeature(this, m_pConfig);
+        addFeature(m_pGroupedSearchCratesFeature);
+    }
+    // EVE -> SMARTIES
 
     m_pBrowseFeature = new BrowseFeature(
             this, m_pConfig, pRecordingManager);
@@ -147,6 +219,28 @@ Library::Library(
             &CrateFeature::analyzeTracks,
             m_pAnalysisFeature,
             &AnalysisFeature::analyzeTracks);
+    // EVE -> SMARTIES
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), false))) {
+        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesEnabled "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"));
+
+        qDebug() << "[GROUPEDSEARCHCRATESFEATURE] -> GroupedSearchCratesReplace "
+                 << m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"));
+    } else {
+        connect(m_pSearchCrateFeature,
+                &SearchCrateFeature::analyzeTracks,
+                m_pAnalysisFeature,
+                &AnalysisFeature::analyzeTracks);
+    }
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
+        connect(m_pGroupedSearchCratesFeature,
+                &GroupedSearchCratesFeature::analyzeTracks,
+                m_pAnalysisFeature,
+                &AnalysisFeature::analyzeTracks);
+    }
+    // EVE -> SMARTIES
+
     connect(this,
             &Library::analyzeTracks,
             m_pAnalysisFeature,
@@ -308,6 +402,10 @@ void Library::bindSearchboxWidget(WSearchLineEdit* pSearchboxWidget) {
             &WSearchLineEdit::search,
             this,
             &Library::search);
+    connect(pSearchboxWidget,
+            &WSearchLineEdit::newSearchCrate,
+            this,
+            &Library::slotCreateSearchCrateFromSearch);
     connect(this,
             &Library::disableSearch,
             pSearchboxWidget,
@@ -465,6 +563,105 @@ void Library::bindLibraryWidget(
     emit setTrackTableFont(m_trackTableFont);
     emit setTrackTableRowHeight(m_iTrackTableRowHeight);
     emit setSelectedClick(m_editMetadataSelectedClick);
+    if (sDebug) {
+        qDebug() << "[Library] -> bindLibraryWindow finished";
+    }
+}
+
+void Library::bindLibraryPreparationWindowWidget(
+        WLibraryPreparationWindow* pLibraryPreparationWindowWidget,
+        KeyboardEventFilter* pKeyboard) {
+    m_pLibraryPreparationWindowWidget = pLibraryPreparationWindowWidget;
+    WTrackTableView* pTrackTableView =
+            new WTrackTableView(
+                    m_pLibraryPreparationWindowWidget,
+                    m_pConfig,
+                    this,
+                    m_pLibraryPreparationWindowWidget
+                            ->getTrackTableBackgroundColorOpacity(),
+                    true);
+    pTrackTableView->installEventFilter(pKeyboard);
+    connect(this,
+            &Library::showTrackModelInPreparationWindow,
+            pTrackTableView,
+            &WTrackTableView::loadTrackModelInPreparationWindow);
+    connect(this,
+            &Library::pasteFromSidebarInPreparationWindow,
+            m_pLibraryPreparationWindowWidget,
+            &WLibraryPreparationWindow::pasteFromSidebarInPreparationWindow);
+    connect(pTrackTableView,
+            &WTrackTableView::loadTrack,
+            this,
+            &Library::slotLoadTrack);
+    connect(pTrackTableView,
+            &WTrackTableView::loadTrackToPlayer,
+            this,
+            &Library::slotLoadTrackToPlayer);
+    m_pLibraryPreparationWindowWidget->registerViewInPreparationWindow(
+            m_sTrackViewName, pTrackTableView);
+
+    connect(m_pLibraryPreparationWindowWidget,
+            &WLibraryPreparationWindow::setLibraryFocus,
+            m_pLibraryControl,
+            &LibraryControl::setLibraryFocus);
+    connect(this,
+            &Library::switchToViewInPreparationWindow,
+            m_pLibraryPreparationWindowWidget,
+            &WLibraryPreparationWindow::switchToViewInPreparationWindow);
+    connect(this,
+            &Library::saveModelState,
+            pTrackTableView,
+            &WTrackTableView::slotSaveCurrentViewState);
+    connect(this,
+            &Library::restoreModelState,
+            pTrackTableView,
+            &WTrackTableView::slotRestoreCurrentViewState);
+    connect(this,
+            &Library::selectTrack,
+            m_pLibraryPreparationWindowWidget,
+            &WLibraryPreparationWindow::slotSelectTrackInActiveTrackView);
+    connect(pTrackTableView,
+            &WTrackTableView::trackSelected,
+            this,
+            &Library::trackSelected);
+
+    connect(this,
+            &Library::setTrackTableFont,
+            pTrackTableView,
+            &WTrackTableView::setTrackTableFont);
+    connect(this,
+            &Library::setTrackTableRowHeight,
+            pTrackTableView,
+            &WTrackTableView::setTrackTableRowHeight);
+    connect(this,
+            &Library::setSelectedClick,
+            pTrackTableView,
+            &WTrackTableView::setSelectedClick);
+
+    m_pLibraryControl->bindLibraryPreparationWindowWidget(
+            m_pLibraryPreparationWindowWidget, pKeyboard);
+
+    connect(m_pLibraryControl,
+            &LibraryControl::showHideTrackMenu,
+            pTrackTableView,
+            &WTrackTableView::slotShowHideTrackMenu);
+    connect(pTrackTableView,
+            &WTrackTableView::trackMenuVisible,
+            m_pLibraryControl,
+            &LibraryControl::slotUpdateTrackMenuControl);
+
+    for (const auto& feature : std::as_const(m_features)) {
+        feature->bindLibraryPreparationWindowWidget(m_pLibraryPreparationWindowWidget, pKeyboard);
+    }
+
+    // Set the current font and row height on all the WTrackTableViews that were
+    // just connected to us.
+    emit setTrackTableFont(m_trackTableFont);
+    emit setTrackTableRowHeight(m_iTrackTableRowHeight);
+    emit setSelectedClick(m_editMetadataSelectedClick);
+    if (sDebug) {
+        qDebug() << "[Library] -> bindLibraryPreparationWindow finished";
+    }
 }
 
 void Library::addFeature(LibraryFeature* feature) {
@@ -478,13 +675,25 @@ void Library::addFeature(LibraryFeature* feature) {
             this,
             &Library::pasteFromSidebar);
     connect(feature,
+            &LibraryFeature::pasteFromSidebarInPreparationWindow,
+            this,
+            &Library::pasteFromSidebarInPreparationWindow);
+    connect(feature,
             &LibraryFeature::showTrackModel,
             this,
             &Library::slotShowTrackModel);
     connect(feature,
+            &LibraryFeature::showTrackModelInPreparationWindow,
+            this,
+            &Library::slotShowTrackModelInPreparationWindow);
+    connect(feature,
             &LibraryFeature::switchToView,
             this,
             &Library::slotSwitchToView);
+    connect(feature,
+            &LibraryFeature::switchToViewInPreparationWindow,
+            this,
+            &Library::slotSwitchToViewInPreparationWindow);
     connect(feature,
             &LibraryFeature::loadTrack,
             this,
@@ -533,7 +742,9 @@ void Library::onPlayerManagerTrackAnalyzerIdle() {
 }
 
 void Library::slotShowTrackModel(QAbstractItemModel* model) {
-    // qDebug() << "Library::slotShowTrackModel" << model;
+    if (sDebug) {
+        qDebug() << "Library::slotShowTrackModel" << model;
+    }
     TrackModel* trackModel = dynamic_cast<TrackModel*>(model);
     VERIFY_OR_DEBUG_ASSERT(trackModel) {
         return;
@@ -543,9 +754,31 @@ void Library::slotShowTrackModel(QAbstractItemModel* model) {
     emit restoreSearch(trackModel->currentSearch());
 }
 
+void Library::slotShowTrackModelInPreparationWindow(QAbstractItemModel* model) {
+    if (sDebug) {
+        qDebug() << "Library::slotShowTrackModelInPreparationWindow" << model;
+    }
+    TrackModel* trackModel = dynamic_cast<TrackModel*>(model);
+    VERIFY_OR_DEBUG_ASSERT(trackModel) {
+        return;
+    }
+    emit showTrackModelInPreparationWindow(model);
+    emit switchToViewInPreparationWindow(m_sTrackViewName);
+    emit restoreSearch(trackModel->currentSearch());
+}
+
 void Library::slotSwitchToView(const QString& view) {
-    // qDebug() << "Library::slotSwitchToView" << view;
+    if (sDebug) {
+        qDebug() << "Library::slotSwitchToView" << view;
+    }
     emit switchToView(view);
+}
+
+void Library::slotSwitchToViewInPreparationWindow(const QString& view) {
+    if (sDebug) {
+        qDebug() << "Library::slotSwitchToView" << view;
+    }
+    emit switchToViewInPreparationWindow(view);
 }
 
 void Library::slotLoadTrack(TrackPointer pTrack) {
@@ -591,9 +824,29 @@ void Library::slotCreateCrate() {
     m_pCrateFeature->slotCreateCrate();
 }
 
+// EVE -> SMARTIES
+void Library::slotCreateSearchCrateFromSearch(const QString& text) {
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), true))) {
+        m_pGroupedSearchCratesFeature->slotCreateSearchCrateFromSearch(text);
+    } else {
+        m_pSearchCrateFeature->slotCreateSearchCrateFromSearch(text);
+    }
+}
+
+void Library::slotCreateSearchCrate() {
+    if ((m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) &&
+            (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), true))) {
+        m_pGroupedSearchCratesFeature->slotCreateSearchCrate();
+    } else {
+        m_pSearchCrateFeature->slotCreateSearchCrate();
+    }
+}
+
 void Library::onSkinLoadFinished() {
     // Enable the default selection when a new skin is loaded.
     m_pSidebarModel->activateDefaultSelection();
+    m_pPreparationFeature->onPreparationWindowReady();
 }
 
 bool Library::requestAddDir(const QString& dir) {
@@ -743,6 +996,13 @@ void Library::searchTracksInCollection(const QString& query) {
     m_pSidebarModel->activateDefaultSelection();
 }
 
+void Library::showAutoSuggestions() {
+    m_pAutoSuggestionsFeature->activate();
+    emit switchToView(kAutoSuggestionsViewName);
+    // Select it but don't scroll there
+    m_pSidebarModel->slotFeatureSelect(m_pAutoSuggestionsFeature, QModelIndex());
+}
+
 #ifdef __ENGINEPRIME__
 std::unique_ptr<mixxx::LibraryExporter> Library::makeLibraryExporter(
         QWidget* parent) {
@@ -757,6 +1017,8 @@ bool Library::isTrackIdInCurrentLibraryView(const TrackId& trackId) {
     }
     if (m_pLibraryWidget) {
         return m_pLibraryWidget->isTrackInCurrentView(trackId);
+    } else if (m_pLibraryPreparationWindowWidget) {
+        return m_pLibraryPreparationWindowWidget->isTrackInCurrentViewInPreparationWindow(trackId);
     } else {
         return false;
     }
@@ -768,9 +1030,21 @@ void Library::slotSaveCurrentViewState() const {
     }
 }
 
+void Library::slotSaveCurrentViewStateInPreparationWindow() const {
+    if (m_pLibraryPreparationWindowWidget) {
+        return m_pLibraryPreparationWindowWidget->saveCurrentViewStateInPreparationWindow();
+    }
+}
+
 void Library::slotRestoreCurrentViewState() const {
     if (m_pLibraryWidget) {
         return m_pLibraryWidget->restoreCurrentViewState();
+    }
+}
+
+void Library::slotRestoreCurrentViewStateInPreparationWindow() const {
+    if (m_pLibraryWidget) {
+        return m_pLibraryPreparationWindowWidget->restoreCurrentViewStateInPreparationWindow();
     }
 }
 
