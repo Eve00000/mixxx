@@ -28,14 +28,17 @@ def is_in_merge():
 
 
 def is_ammending():
-    ppid = os.getppid()
-    pppid = (
-        subprocess.check_output(("ps", "-p", str(ppid), "-oppid="))
+    # Check git's command line arguments via environment
+    # This works when git uses GIT_EDITOR or similar
+    import os
+    # Look for evidence of amend in git's state
+    git_dir = (
+        subprocess.check_output(["git", "rev-parse", "--git-dir"])
         .decode()
         .strip()
     )
-    git_command = subprocess.check_output(("ps", "-p", pppid, "-ocommand="))
-    return True if b"--amend" in git_command else False
+    amend_file = os.path.join(git_dir, "AMEND_EDITMSG")
+    return os.path.exists(amend_file)
 
 
 def parse_changelog(content, development_release_date):
