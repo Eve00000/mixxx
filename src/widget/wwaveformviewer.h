@@ -28,12 +28,12 @@ class WWaveformViewer : public WWidget, public TrackDropTarget {
 
     bool handleDragAndDropEventFromWindow(QEvent* pEvent) override;
 
-    void dragEnterEvent(QDragEnterEvent *event) override;
-    void dropEvent(QDropEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
-    void mousePressEvent(QMouseEvent * /*unused*/) override;
-    void mouseMoveEvent(QMouseEvent * /*unused*/) override;
-    void mouseReleaseEvent(QMouseEvent * /*unused*/) override;
+    void mousePressEvent(QMouseEvent* /*unused*/) override;
+    void mouseMoveEvent(QMouseEvent* /*unused*/) override;
+    void mouseReleaseEvent(QMouseEvent* /*unused*/) override;
     void leaveEvent(QEvent* /*unused*/) override;
 
   signals:
@@ -51,8 +51,8 @@ class WWaveformViewer : public WWidget, public TrackDropTarget {
 
   protected:
     void showEvent(QShowEvent* event) override;
-    void resizeEvent(QResizeEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
   private slots:
     void onZoomChange(double zoom);
@@ -62,7 +62,7 @@ class WWaveformViewer : public WWidget, public TrackDropTarget {
     WaveformWidgetAbstract* getWaveformWidget() {
         return m_waveformWidget;
     }
-    //direct access to let factory sync/set default zoom
+    // direct access to let factory sync/set default zoom
     void setZoom(double zoom);
     void setDisplayBeatGridAlpha(int alpha);
     void setPlayMarkerPosition(double position);

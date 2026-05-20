@@ -5,19 +5,25 @@
 #include "moc_softwarewaveformwidget.cpp"
 #include "waveform/renderers/waveformrenderbackground.h"
 #include "waveform/renderers/waveformrenderbeat.h"
+#include "waveform/renderers/waveformrenderbpmcurve.h"
 #include "waveform/renderers/waveformrendererendoftrack.h"
 #include "waveform/renderers/waveformrendererfilteredsignal.h"
 #include "waveform/renderers/waveformrendererpreroll.h"
+#include "waveform/renderers/waveformrenderkeycurve.h"
 #include "waveform/renderers/waveformrendermark.h"
 #include "waveform/renderers/waveformrendermarkrange.h"
 
-SoftwareWaveformWidget::SoftwareWaveformWidget(const QString& group, QWidget* parent)
+SoftwareWaveformWidget::SoftwareWaveformWidget(const QString& group,
+        QWidget* parent,
+        WaveformRendererSignalBase::Options options)
         : NonGLWaveformWidgetAbstract(group, parent) {
     addRenderer<WaveformRenderBackground>();
     addRenderer<WaveformRendererEndOfTrack>();
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
-    addRenderer<WaveformRendererFilteredSignal>();
+    addRenderer<WaveformRendererFilteredSignal>(options);
+    m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
+    m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 

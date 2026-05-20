@@ -1535,11 +1535,13 @@ add_library(
   src/util/workerthreadscheduler.cpp
   src/util/xml.cpp
   src/waveform/guitick.cpp
+  src/waveform/overviewtype.cpp
   src/waveform/renderers/glwaveformrenderbackground.cpp
   src/waveform/renderers/glvsynctestrenderer.cpp
   src/waveform/renderers/waveformmark.cpp
   src/waveform/renderers/waveformmarkrange.cpp
   src/waveform/renderers/waveformmarkset.cpp
+  src/waveform/renderers/waveformoverviewrenderer.cpp
   src/waveform/renderers/waveformrenderbackground.cpp
   src/waveform/renderers/waveformrenderbeat.cpp
   src/waveform/renderers/waveformrenderbpmcurve.cpp
@@ -1553,6 +1555,7 @@ add_library(
   src/waveform/renderers/waveformrendererpreroll.cpp
   src/waveform/renderers/waveformrendererrgb.cpp
   src/waveform/renderers/waveformrenderersignalbase.cpp
+  src/waveform/renderers/waveformrenderersimplesignal.cpp
   src/waveform/renderers/waveformrendermark.cpp
   src/waveform/renderers/waveformrendermarkbase.cpp
   src/waveform/renderers/waveformrendermarkrange.cpp
@@ -1569,6 +1572,7 @@ add_library(
   src/waveform/widgets/emptywaveformwidget.cpp
   src/waveform/widgets/hsvwaveformwidget.cpp
   src/waveform/widgets/rgbwaveformwidget.cpp
+  src/waveform/widgets/simplesignalwaveformwidget.cpp
   src/waveform/widgets/softwarewaveformwidget.cpp
   src/waveform/widgets/waveformwidgetabstract.cpp
   src/waveform/widgets/glwaveformwidgetabstract.cpp

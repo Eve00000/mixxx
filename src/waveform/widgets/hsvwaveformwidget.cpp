@@ -13,13 +13,15 @@
 #include "waveform/renderers/waveformrendermark.h"
 #include "waveform/renderers/waveformrendermarkrange.h"
 
-HSVWaveformWidget::HSVWaveformWidget(const QString& group, QWidget* parent)
+HSVWaveformWidget::HSVWaveformWidget(const QString& group,
+        QWidget* parent,
+        ::WaveformRendererSignalBase::Options options)
         : NonGLWaveformWidgetAbstract(group, parent) {
     addRenderer<WaveformRenderBackground>();
     addRenderer<WaveformRendererEndOfTrack>();
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
-    addRenderer<WaveformRendererHSV>();
+    addRenderer<WaveformRendererHSV>(options);
     m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
     m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
     addRenderer<WaveformRenderBeat>();

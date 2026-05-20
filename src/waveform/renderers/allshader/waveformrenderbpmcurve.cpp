@@ -583,4 +583,19 @@ void WaveformRenderBpmCurve::update() {
     updateNode();
 }
 
+// void WaveformRenderBpmCurve::slotShowBpmCurveChanged(double value) {
+//     m_showBpmCurve = value > 0.5;
+//     update();
+// }
+//
+// void WaveformRenderBpmCurve::slotShowBpmLabelsChanged(double value) {
+//     m_showBpmLabels = value > 0.5;
+//     update();
+// }
+//
+// void WaveformRenderBpmCurve::slotShowBpmMarkersChanged(double value) {
+//     m_showBpmMarkers = value > 0.5;
+//     update();
+// }
+
 } // namespace allshader
