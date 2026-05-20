@@ -51,6 +51,7 @@ class WaveformMarkNode : public rendergraph::GeometryNode {
                 .setTexture(std::make_unique<Texture>(pContext, image));
         m_textureWidth = image.width();
         m_textureHeight = image.height();
+        markDirtyMaterial();
     }
     void update(float x, float y, float devicePixelRatio) {
 #ifdef MIXXX_DEBUG_ASSERTIONS_ENABLED
@@ -66,6 +67,7 @@ class WaveformMarkNode : public rendergraph::GeometryNode {
                         y + m_textureHeight / devicePixelRatio},
                 {0.f, 0.f},
                 {1.f, 1.f});
+        markDirtyGeometry();
     }
     float textureWidth() const {
         return m_textureWidth;
@@ -165,6 +167,7 @@ allshader::WaveformRenderMark::WaveformRenderMark(
           m_untilMarkShowBeats{false},
           m_untilMarkShowTime(false),
           m_untilMarkAlign(Qt::AlignVCenter),
+          m_untilMarkHorizAlign(2),
           m_untilMarkTextSize(0),
           m_untilMarkTextHeightLimit(0.0) {
     {
@@ -206,6 +209,10 @@ allshader::WaveformRenderMark::WaveformRenderMark(
             this,
             &WaveformRenderMark::setUntilMarkAlign);
     connect(pWaveformWidgetFactory,
+            &WaveformWidgetFactory::untilMarkHorizAlignChanged,
+            this,
+            &WaveformRenderMark::setUntilMarkHorizAlign);
+    connect(pWaveformWidgetFactory,
             &WaveformWidgetFactory::untilMarkTextPointSizeChanged,
             this,
             &WaveformRenderMark::setUntilMarkTextSize);
@@ -227,6 +234,7 @@ void allshader::WaveformRenderMark::setup(const QDomNode& node, const SkinContex
     m_untilMarkShowBeats = pWaveformWidgetFactory->getUntilMarkShowBeats();
     m_untilMarkShowTime = pWaveformWidgetFactory->getUntilMarkShowTime();
     m_untilMarkAlign = pWaveformWidgetFactory->getUntilMarkAlign();
+    m_untilMarkHorizAlign = pWaveformWidgetFactory->getUntilMarkHorizAlign();
 
     m_untilMarkTextSize =
             pWaveformWidgetFactory->getUntilMarkTextPointSize();
@@ -272,6 +280,8 @@ void allshader::WaveformRenderMark::updateRangeNode(GeometryNode* pNode,
             {posx1, posy1}, {posx2, posy2}, {r, g, b, a}, {r, g, b, 0.f});
     vertexUpdater.addRectangleVGradient(
             {posx1, posy4}, {posx2, posy3}, {r, g, b, a}, {r, g, b, 0.f});
+    pNode->markDirtyGeometry();
+    pNode->markDirtyMaterial();
 }
 
 bool allshader::WaveformRenderMark::isSubtreeBlocked() const {
@@ -456,6 +466,7 @@ void allshader::WaveformRenderMark::update() {
                 {drawOffset + kPlayPosWidth, static_cast<float>(m_waveformRenderer->getBreadth())},
                 {0.f, 0.f},
                 {1.f, 1.f});
+        m_pPlayPosNode->markDirtyGeometry();
     }
 
     if (m_untilMarkShowBeats || m_untilMarkShowTime) {
@@ -465,6 +476,49 @@ void allshader::WaveformRenderMark::update() {
         m_pDigitsRenderNode->clear();
     }
 }
+
+// original
+
+// void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
+//     const auto untilMarkMaxHeightForText = getMaxHeightForText(m_untilMarkTextHeightLimit);
+//
+//     m_pDigitsRenderNode->updateTexture(m_waveformRenderer->getContext(),
+//             m_untilMarkTextSize,
+//             untilMarkMaxHeightForText,
+//             m_waveformRenderer->getDevicePixelRatio());
+//
+//     if (m_timeUntilMark == 0.0) {
+//         m_pDigitsRenderNode->clear();
+//         return;
+//     }
+//     const float ch = m_pDigitsRenderNode->height();
+//
+//     float y = m_untilMarkAlign == Qt::AlignTop ? 0.f
+//             : m_untilMarkAlign == Qt::AlignBottom
+//             ? m_waveformRenderer->getBreadth() - ch
+//             : m_waveformRenderer->getBreadth() / 2.f;
+//
+//     bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
+//             ch * 2.f < untilMarkMaxHeightForText;
+//
+//     if (multiLine) {
+//         if (m_untilMarkAlign != Qt::AlignTop) {
+//             y -= ch;
+//         }
+//     } else {
+//         if (m_untilMarkAlign != Qt::AlignTop && m_untilMarkAlign != Qt::AlignBottom) {
+//             // center
+//             y -= ch / 2.f;
+//         }
+//     }
+//
+//     m_pDigitsRenderNode->update(
+//             x,
+//             y,
+//             multiLine,
+//             m_untilMarkShowBeats ? QString::number(m_beatsUntilMark) : QString{},
+//             m_untilMarkShowTime ? timeSecToString(m_timeUntilMark) : QString{});
+// }
 
 void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
     const auto untilMarkMaxHeightForText = getMaxHeightForText(m_untilMarkTextHeightLimit);
@@ -478,33 +532,78 @@ void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
         m_pDigitsRenderNode->clear();
         return;
     }
-    const float ch = m_pDigitsRenderNode->height();
+
+    QString beatsText = m_untilMarkShowBeats ? QString::number(m_beatsUntilMark) : QString{};
+    QString timeText = m_untilMarkShowTime ? timeSecToString(m_timeUntilMark) : QString{};
+
+    const float charHeight = m_pDigitsRenderNode->height();
+    bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
+            charHeight * 2.f < untilMarkMaxHeightForText;
+
+    const float charWidth = charHeight * 0.65f;
+    float textWidth = 0.0f;
+
+    if (multiLine) {
+        int maxLen = std::max(beatsText.length(), timeText.length());
+        textWidth = maxLen * charWidth;
+    } else {
+        QString combinedText;
+        if (m_untilMarkShowBeats && m_untilMarkShowTime) {
+            combinedText = beatsText + " / " + timeText;
+        } else if (m_untilMarkShowBeats) {
+            combinedText = beatsText;
+        } else {
+            combinedText = timeText;
+        }
+        textWidth = combinedText.length() * charWidth;
+    }
+
+    const float waveformLength = m_waveformRenderer->getLength();
+    float xPos = x;
+
+    switch (m_untilMarkHorizAlign) {
+    // Left of Waveform
+    case 0:
+        xPos = 0.0f;
+        break;
+    // Left of Playmarker
+    case 1:
+        xPos = x - textWidth + (charWidth * 0.5f);
+        xPos = x - textWidth + (charWidth * 0.3f);
+        break;
+    // Right of Playmarker default
+    case 2:
+        xPos = x;
+        break;
+    }
+
+    if (xPos < 0.0f) {
+        xPos = 0.0f;
+    } else if (xPos + textWidth > waveformLength) {
+        xPos = waveformLength - textWidth;
+    }
 
     float y = m_untilMarkAlign == Qt::AlignTop ? 0.f
             : m_untilMarkAlign == Qt::AlignBottom
-            ? m_waveformRenderer->getBreadth() - ch
+            ? m_waveformRenderer->getBreadth() - charHeight
             : m_waveformRenderer->getBreadth() / 2.f;
-
-    bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
-            ch * 2.f < untilMarkMaxHeightForText;
 
     if (multiLine) {
         if (m_untilMarkAlign != Qt::AlignTop) {
-            y -= ch;
+            y -= charHeight;
         }
     } else {
         if (m_untilMarkAlign != Qt::AlignTop && m_untilMarkAlign != Qt::AlignBottom) {
-            // center
-            y -= ch / 2.f;
+            y -= charHeight / 2.f;
         }
     }
 
     m_pDigitsRenderNode->update(
-            x,
+            xPos,
             y,
             multiLine,
-            m_untilMarkShowBeats ? QString::number(m_beatsUntilMark) : QString{},
-            m_untilMarkShowTime ? timeSecToString(m_timeUntilMark) : QString{});
+            beatsText,
+            timeText);
 }
 
 // Generate the texture used to draw the play position marker.
@@ -584,6 +683,7 @@ void allshader::WaveformRenderMark::updatePlayPosMarkTexture(rendergraph::Contex
 
     dynamic_cast<TextureMaterial&>(m_pPlayPosNode->material())
             .setTexture(std::make_unique<Texture>(pContext, image));
+    m_pPlayPosNode->markDirtyMaterial();
 }
 
 void allshader::WaveformRenderMark::drawTriangle(QPainter* painter,

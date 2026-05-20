@@ -31,6 +31,7 @@ def is_ammending():
     # Check git's command line arguments via environment
     # This works when git uses GIT_EDITOR or similar
     import os
+
     # Look for evidence of amend in git's state
     git_dir = (
         subprocess.check_output(["git", "rev-parse", "--git-dir"])
