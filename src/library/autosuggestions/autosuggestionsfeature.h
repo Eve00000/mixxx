@@ -36,6 +36,7 @@ class AutoSuggestionsFeature : public LibraryFeature {
 
     bool dropAccept(const QList<QUrl>& urls, QObject* pSource) override;
     // bool dragMoveAccept(const QList<QUrl>& urls) override;
+    using LibraryFeature::dragMoveAccept;
     bool dragMoveAccept(const QList<QUrl>& urls);
 
     void bindLibraryWidget(WLibrary* libraryWidget,

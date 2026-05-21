@@ -17,6 +17,7 @@
 #include "track/track.h"
 #include "util/color/color.h"
 #include "util/color/predefinedcolorpalettes.h"
+#include "util/defs.h"
 
 namespace {
 
@@ -60,7 +61,7 @@ DlgReplaceCueColor::DlgReplaceCueColor(
     setupUi(this);
     setWindowModality(Qt::ApplicationModal);
 
-    spinBoxHotcueIndex->setMaximum(NUM_HOT_CUES);
+    spinBoxHotcueIndex->setMaximum(kMaxNumberOfHotcues);
 
     QIcon icon = QIcon::fromTheme("dialog-warning");
     if (!icon.isNull()) {

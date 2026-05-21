@@ -165,7 +165,7 @@ bool AnalyzerBeats::shouldAnalyze(TrackPointer pTrack) const {
     // dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
 
     // if (pExtendedPlugin) {
-    qDebug() << "[AnalyzerBeats] - -------- ------------- - ---PluginID: " << pluginID;
+    // qDebug() << "[AnalyzerBeats] - -------- ------------- - ---PluginID: " << pluginID;
 
     bool isExtendedPlugin = (pluginID == "qm-tempotracker-extended:0");
 

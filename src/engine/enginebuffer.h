@@ -114,6 +114,9 @@ class EngineBuffer : public EngineObject {
     mixxx::audio::ChannelCount getChannelCount() const {
         return m_channelCount;
     }
+    mixxx::audio::FramePos getPlayPos() const {
+        return m_playPos;
+    }
     bool getScratching() const;
     bool isReverse() const;
     /// Returns current bpm value (not thread-safe)
@@ -233,6 +236,8 @@ class EngineBuffer : public EngineObject {
     void seekAbs(mixxx::audio::FramePos);
     void seekExact(mixxx::audio::FramePos);
 
+    void verifyPlay();
+
   public slots:
     void slotControlPlayRequest(double);
     void slotControlPlayFromStart(double);
@@ -298,7 +303,7 @@ class EngineBuffer : public EngineObject {
         return m_previousBufferSeek;
     }
     bool updateIndicatorsAndModifyPlay(bool newPlay, bool oldPlay);
-    void verifyPlay();
+
     void notifyTrackLoaded(TrackPointer pNewTrack, TrackPointer pOldTrack);
     void processTrackLocked(CSAMPLE* pOutput,
             const std::size_t bufferSize,

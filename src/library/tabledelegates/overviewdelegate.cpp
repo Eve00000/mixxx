@@ -27,8 +27,6 @@ inline TrackModel* asTrackModel(
 inline WLibrary* findLibraryWidgetParent(QWidget* pWidget) {
     while (pWidget) {
         WLibrary* pLibrary = qobject_cast<WLibrary*>(pWidget);
-        WLibraryPreparationWindow* pPreparationWindow =
-                qobject_cast<WLibraryPreparationWindow*>(pWidget);
         if (pLibrary) {
             return pLibrary;
         }

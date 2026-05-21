@@ -28,7 +28,7 @@ constexpr bool kDefaultArchive = true;
 
 constexpr int MAX_DECKS = 4;
 constexpr double VOLUME_THRESHOLD = 0.001;
-constexpr bool debugNowPlaing = true;
+constexpr bool debugNowPlaing = false;
 } // namespace
 
 // NowPlaying Main

@@ -6,11 +6,13 @@
 #include <QMutex>
 #include <QtGlobal>
 #include <algorithm>
+#include <limits>
 
 #include "effects/backends/audiounit/audiouniteffectprocessor.h"
 #include "engine/effects/engineeffectparameter.h"
 #include "engine/engine.h"
 #include "util/assert.h"
+#include "util/fpclassify.h"
 
 AudioUnitEffectGroupState::AudioUnitEffectGroupState(
         const mixxx::EngineParameters& engineParameters)
@@ -183,7 +185,9 @@ void AudioUnitEffectProcessor::syncParameters() {
     int i = 0;
     for (auto parameter : m_parameters) {
         if (m_lastValues.size() < i) {
-            m_lastValues.push_back(NAN);
+            static_assert(sizeof(AudioUnitParameterValue) == sizeof(float));
+            // m_lastValues.push_back(util_float_nan());
+            m_lastValues.push_back(std::numeric_limits<float>::quiet_NaN());
         }
         DEBUG_ASSERT(m_lastValues.size() >= i);
 
