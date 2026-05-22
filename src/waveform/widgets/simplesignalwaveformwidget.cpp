@@ -20,8 +20,8 @@ SimpleSignalWaveformWidget::SimpleSignalWaveformWidget(const QString& group, QWi
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
     addRenderer<WaveformRendererSimpleSignal>();
-    m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
-    m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
+    addRenderer<WaveformRenderBpmCurve>();
+    addRenderer<WaveformRenderKeyCurve>();
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 
