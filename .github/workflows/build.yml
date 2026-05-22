@@ -322,6 +322,12 @@ jobs:
             echo "QT_ANDROID_KEYSTORE_PATH=${{ github.workspace }}/mixxx.keystore" >> $GITHUB_ENV
           fi
 
+      - name: "[android] Setup build environment"
+        if: startsWith(matrix.artifacts_slug, 'android')
+        run: |
+          chmod +x ${{ matrix.buildenv_script }}
+          source ${{ matrix.buildenv_script }} setup
+
       - name: "[macOS/Linux] Set up build environment"
         if: matrix.buildenv_script != null && runner.os != 'Windows'
         run: ${{ matrix.buildenv_script }} setup
