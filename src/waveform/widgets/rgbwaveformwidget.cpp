@@ -23,8 +23,8 @@ RGBWaveformWidget::RGBWaveformWidget(const QString& group,
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
     addRenderer<WaveformRendererRGB>(options);
-    m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
-    m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
+    addRenderer<WaveformRenderBpmCurve>();
+    addRenderer<WaveformRenderKeyCurve>();
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 

@@ -22,8 +22,8 @@ SoftwareWaveformWidget::SoftwareWaveformWidget(const QString& group,
     addRenderer<WaveformRendererPreroll>();
     addRenderer<WaveformRenderMarkRange>();
     addRenderer<WaveformRendererFilteredSignal>(options);
-    m_rendererStack.push_back(new WaveformRenderBpmCurve(this));
-    m_rendererStack.push_back(new WaveformRenderKeyCurve(this));
+    addRenderer<WaveformRenderBpmCurve>();
+    addRenderer<WaveformRenderKeyCurve>();
     addRenderer<WaveformRenderBeat>();
     addRenderer<WaveformRenderMark>();
 
