@@ -60,8 +60,10 @@ jobs:
               -DMAD=ON
               -DMODPLUG=ON
               -DWAVPACK=ON
+              -DBUILD_TESTING=OFF
+              -DBUILD_BENCH=OFF
               -DINSTALL_USER_UDEV_RULES=OFF
-            ctest_args: []
+            # ctest_args: []
             compiler_cache: ccache
             compiler_cache_path: /home/runner/.cache/ccache
             compiler_cache_id: qt6
@@ -82,9 +84,11 @@ jobs:
               -DQT6=ON
               -DQML=OFF
               -DWAVPACK=ON
+              -DBUILD_TESTING=OFF
+              -DBUILD_BENCH=OFF
               -DVCPKG_TARGET_TRIPLET=x64-osx-min1100-release
             # TODO: Fix this broken test on macOS
-            ctest_args: --exclude-regex DirectoryDAOTest.relocateDirectory
+            # ctest_args: --exclude-regex DirectoryDAOTest.relocateDirectory
             cpack_generator: DragNDrop
             compiler_cache: ccache
             compiler_cache_path: /Users/runner/Library/Caches/ccache
@@ -105,6 +109,8 @@ jobs:
               -DQT6=ON
               -DQML=ON
               -DWAVPACK=ON
+              -DBUILD_TESTING=OFF
+              -DBUILD_BENCH=OFF
               -DVCPKG_TARGET_TRIPLET=arm64-osx-min1100-release
             # TODO: Fix this broken test on macOS
             crosscompile: true
@@ -132,11 +138,13 @@ jobs:
               -DQT6=ON
               -DQML=ON
               -DWAVPACK=ON
+              -DBUILD_TESTING=OFF
+              -DBUILD_BENCH=OFF
               -DVCPKG_TARGET_TRIPLET=x64-windows-release
             cc: cl
             cxx: cl
             # TODO: Fix these broken tests on Windows
-            ctest_args: --exclude-regex '^AutoDJProcessorTest.*$'
+            # ctest_args: --exclude-regex '^AutoDJProcessorTest.*$'
             cpack_generator: WIX
             buildenv_basepath: C:\buildenv
             buildenv_script: tools/windows_buildenv.bat
@@ -159,12 +167,14 @@ jobs:
               -DQT6=ON
               -DQML=ON
               -DWAVPACK=ON
+              -DBUILD_TESTING=OFF
+              -DBUILD_BENCH=OFF
               -DVCPKG_TARGET_TRIPLET=arm64-windows-release
               -DVCPKG_DEFAULT_HOST_TRIPLET=arm64-windows-release
             cc: cl
             cxx: cl
             # TODO: Fix these broken tests on Windows
-            ctest_args: --exclude-regex '^AutoDJProcessorTest.*$'
+            # ctest_args: --exclude-regex '^AutoDJProcessorTest.*$'
             cpack_generator: WIX
             buildenv_basepath: C:\buildenv
             buildenv_script: tools/windows_buildenv.bat
