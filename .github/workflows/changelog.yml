@@ -21,11 +21,8 @@ jobs:
         if: env.MIXXXBOT_TOKEN != null
         with:
           token: ${{ env.MIXXXBOT_TOKEN }}
-repository : mixxxdj / manual event - type : update - changelog client -
-                                             payload
-        : '{"branch": "${{ env.BRANCH_NAME }}", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}' env
-        : MIXXXBOT_TOKEN : $ {
-    {
-        secrets.MIXXXBOT_CHANGELOG_AUTOUPDATER_PAT
-    }
-}
+          repository: mixxxdj/manual
+          event-type: update-changelog
+          client-payload: '{"branch": "${{ env.BRANCH_NAME }}", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+        env:
+          MIXXXBOT_TOKEN: ${{ secrets.MIXXXBOT_CHANGELOG_AUTOUPDATER_PAT }}

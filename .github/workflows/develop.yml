@@ -28,7 +28,7 @@ jobs:
       - name: Check if there is an open PR for this branch
         id: stop-build
         if: ${{ github.event_name == 'push' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           ORGANIZATION: mixxxdj
           REPOSITORY: mixxx
@@ -45,9 +45,7 @@ jobs:
               console.log(`There is ${pullRequests.length} PR open upstream for branch '${context.repo.owner}:${branch}'`);
               return pullRequests.length != 0;
             } catch (error) {
-              console.log(`Didn't find a PR for branch '${context.repo.owner}:${
-        branch}' on '${process.env.ORGANIZATION}/${
-        process.env.REPOSITORY}'.`);
+              console.log(`Didn't find a PR for branch '${context.repo.owner}:${branch}' on '${process.env.ORGANIZATION}/${process.env.REPOSITORY}'.`);
               return false;
             }
 
@@ -79,11 +77,15 @@ jobs:
       ref: ${{ github.ref }}
 
   # This task is used as a probe for auto merge
-#In the future,                                                         \
-              it could also be used to perform a status update(               \
-                      e.g once the whole CI is passing + is ready for review, \
-                      add a specific label such as `need review`)
-      ready : name : Ready to merge needs : -pre - commit - checks - git -
-                                            build runs - on : ubuntu -
-                                                              latest steps
-              : -name : Ready to go run : "exit 0"
+  # In the future, it could also be used to perform a status update (e.g once the whole CI is passing + is ready for review, add a specific label such as `need review`)
+  ready:
+    name: Ready to merge
+    needs:
+      - pre-commit
+      - checks
+      - git
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ready to go
+        run: "exit 0"

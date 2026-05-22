@@ -53,97 +53,90 @@ jobs:
             compiler_cache_id: x64
             buildenv_basepath: /Users/runner/buildenv
             buildenv_script: tools/macos_release_buildenv.sh
-#FIXME : The benchmark are currently broken on Windows and \
-        not really used anyway,                            \
-        so we are disabling them
-#- name : Windows 2022 x64
-#os : windows - 2022
-# #Attention : If you change the cmake_args for the Windows CI build,
-# #also adjust the for the local Windows build setup in
-# #./ tools / windows_buildenv.bat
-#cmake_args : > -
-#- DBULK = ON
-#- DHSS1394 = ON
-#- DLOCALECOMPARE = ON
-#- DMAD = ON
-#- DMEDIAFOUNDATION = ON
-#- DMODPLUG = ON
-#- DQT6 = ON
-#- DQML = ON
-#- DWAVPACK = ON
-#- DVCPKG_TARGET_TRIPLET = x64 - windows - release
-#cc : cl
-#cxx : cl
-#buildenv_basepath : C :\buildenv
-#buildenv_script : tools / windows_buildenv.bat
-#arch : x64
-#- name : Windows 11 ARM64
-#os : windows - 11 - arm
-# #Attention : If you change the cmake_args for the Windows CI build,
-# #also adjust the for the local Windows build setup in
-# #./ tools / windows_buildenv.bat
-#cmake_args : > -
-#- DBULK = ON
-#- DHSS1394 = ON
-#- DLOCALECOMPARE = ON
-#- DMAD = ON
-#- DMEDIAFOUNDATION = ON
-#- DMODPLUG = ON
-#- DQT6 = ON
-#- DQML = ON
-#- DWAVPACK = ON
-#- DVCPKG_TARGET_TRIPLET = arm64 - windows - release
-#- DVCPKG_DEFAULT_HOST_TRIPLET = arm64 - windows - release
-#cc : cl
-#cxx : cl
-#buildenv_basepath : C :\buildenv
-#buildenv_script : tools / windows_buildenv.bat
-#arch : arm64
+          # FIXME: The benchmark are currently broken on Windows and not really used anyway, so we are disabling them
+          # - name: Windows 2022 x64
+          #   os: windows-2022
+          #   # Attention: If you change the cmake_args for the Windows CI build,
+          #   #            also adjust the for the local Windows build setup in
+          #   #            ./tools/windows_buildenv.bat
+          #   cmake_args: >-
+          #     -DBULK=ON
+          #     -DHSS1394=ON
+          #     -DLOCALECOMPARE=ON
+          #     -DMAD=ON
+          #     -DMEDIAFOUNDATION=ON
+          #     -DMODPLUG=ON
+          #     -DQT6=ON
+          #     -DQML=ON
+          #     -DWAVPACK=ON
+          #     -DVCPKG_TARGET_TRIPLET=x64-windows-release
+          #   cc: cl
+          #   cxx: cl
+          #   buildenv_basepath: C:\buildenv
+          #   buildenv_script: tools/windows_buildenv.bat
+          #   arch: x64
+          # - name: Windows 11 ARM64
+          #   os: windows-11-arm
+          #   # Attention: If you change the cmake_args for the Windows CI build,
+          #   #            also adjust the for the local Windows build setup in
+          #   #            ./tools/windows_buildenv.bat
+          #   cmake_args: >-
+          #     -DBULK=ON
+          #     -DHSS1394=ON
+          #     -DLOCALECOMPARE=ON
+          #     -DMAD=ON
+          #     -DMEDIAFOUNDATION=ON
+          #     -DMODPLUG=ON
+          #     -DQT6=ON
+          #     -DQML=ON
+          #     -DWAVPACK=ON
+          #     -DVCPKG_TARGET_TRIPLET=arm64-windows-release
+          #     -DVCPKG_DEFAULT_HOST_TRIPLET=arm64-windows-release
+          #   cc: cl
+          #   cxx: cl
+          #   buildenv_basepath: C:\buildenv
+          #   buildenv_script: tools/windows_buildenv.bat
+          #   arch: arm64
 
-    runs-on: ${
-    {
-        matrix.os
-    }}
+    runs-on: ${{ matrix.os }}
     name: ${{ matrix.name }}
     container: ${{ matrix.container }}
     steps:
       - name: "Check out repository"
         uses: actions/checkout@v5
         with:
-#This is necessary for making `git describe` work.
+          # This is necessary for making `git describe` work.
           fetch-depth: 0
 
       - name: "[Arch Linux] Workaround for the 'unsafe repository' issue caused by CVE-2022-24765"
         if: matrix.container != null
-#See https: // github.com/actions/checkout/issues/760 for details
+        # See https://github.com/actions/checkout/issues/760 for details
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: "Ensure that all tags are fetched"
-#Works around an issue where not the latest tag is not fetched when the
-#workflow is triggered by a tag push event.
-#Possibly related : actions / checkout #290
+        # Works around an issue where not the latest tag is not fetched when the
+        # workflow is triggered by a tag push event.
+        # Possibly related: actions/checkout#290
         run: git fetch origin --force --tags
 
       - name: "[macOS] Set up cmake"
         uses: jwlawson/actions-setup-cmake@v2.2
-#Ubuntu 24.04 should use the CMake version from the repos.
+        # Ubuntu 24.04 should use the CMake version from the repos.
         if: runner.os == 'macOS'
         with:
-#This should always match the minimum required version in
-#our CMakeLists.txt
+          # This should always match the minimum required version in
+          # our CMakeLists.txt
           cmake-version: "3.21.x"
 
       - name: "[Windows] Set up cmake"
         uses: jwlawson/actions-setup-cmake@v2.2
-#Ubuntu 24.04 should use the CMake version from the repos.
-#On windows - 11 -                                                  \
-            arm this action installs the x64 version which has unwanted \
-                    side effects
+        # Ubuntu 24.04 should use the CMake version from the repos.
+        # On windows-11-arm this action installs the x64 version which has unwanted side effects
         if: matrix.os == 'windows-2022'
         with:
-#This is a workaround for a SSL false positive in cmake 3.26.4
-#When downloading the manual.3.21 is required for installing the
-#ANGLE Dlls via IMPORTED_RUNTIME_ARTIFACTS
+          # This is a workaround for a SSL false positive in cmake 3.26.4
+          # When downloading the manual. 3.21 is required for installing the
+          # ANGLE Dlls via IMPORTED_RUNTIME_ARTIFACTS
           cmake-version: "3.21.x"
 
       - name: "[Windows] Set up MSVC Developer Command Prompt"
@@ -169,20 +162,13 @@ jobs:
 
       - name: "[macOS/Windows] Get build environment name"
         if: runner.os != 'Linux'
-        run: ${
-        {
-            matrix.buildenv_script
-        }
-    }
-    name
+        run: ${{ matrix.buildenv_script }} name
 
-                    - name : "[macOS/Windows] Set up build environment cache" if
-            : runner.os !=
-            'Linux' uses : actions / cache @v4 with : path : $ {
-        {
-            matrix.buildenv_basepath
-        }
-    }
+      - name: "[macOS/Windows] Set up build environment cache"
+        if: runner.os != 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.buildenv_basepath }}
           key: ${{ runner.os }}-buildenv-${{ env.BUILDENV_NAME }}
 
       - name: "[macOS/Linux] Set up build environment"
@@ -205,12 +191,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ matrix.compiler_cache_path }}
-          key : ${{matrix.os}} - ${{matrix.compiler_cache_id}} -
-                ${{inputs.branch}} - $ {
-              {
-                  github.run_number
-              }
-          }
+          key: ${{ matrix.os }}-${{ matrix.compiler_cache_id }}-${{ inputs.branch }}-${{ github.run_number }}
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.compiler_cache_id }}-${{ inputs.branch }}
             ${{ matrix.os }}-${{ matrix.compiler_cache_id }}
