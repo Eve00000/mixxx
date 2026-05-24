@@ -2459,7 +2459,6 @@ WEffectChainPresetSelector::indicator:unchecked:selected,
   outline: none;
 }
 
-
 #CueDeleteButton:hover, #CueStandardButton:hover, #CueSavedLoopButton:hover, #CueSavedJumpButton:hover {
   background-color: #4B4B4B;
 }
