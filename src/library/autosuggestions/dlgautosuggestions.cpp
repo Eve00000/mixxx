@@ -14,6 +14,10 @@
 #include "widget/wlibrary.h"
 #include "widget/wtracktableview.h"
 
+namespace {
+const bool sDebugAutoSuggestionDialog = false;
+} // anonymous namespace
+
 DlgAutoSuggestions::DlgAutoSuggestions(WLibrary* parent,
         UserSettingsPointer pConfig,
         Library* pLibrary,
@@ -135,7 +139,9 @@ DlgAutoSuggestions::DlgAutoSuggestions(WLibrary* parent,
 }
 
 DlgAutoSuggestions::~DlgAutoSuggestions() {
-    qDebug() << "~DlgAutoSuggestions()";
+    if (sDebugAutoSuggestionDialog) {
+        qDebug() << "~DlgAutoSuggestions()";
+    }
     delete m_pTrackTableView;
 }
 
