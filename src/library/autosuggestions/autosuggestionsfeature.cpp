@@ -27,6 +27,8 @@
 #include "widget/wlibrarysidebar.h"
 
 namespace {
+const bool sDebugAutoSuggestion = false;
+
 int findOrCrateAutoDjPlaylistId(PlaylistDAO& playlistDAO) {
     int playlistId = playlistDAO.getPlaylistIdFromName(AUTOSUGGESTIONS_TABLE);
     if (playlistId < 0) {
@@ -230,13 +232,18 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
     QString autoSuggestionsFile = settingsPath + "/AutoSuggestions.m3u8";
 
     if (autoSuggestionsFile.isEmpty()) {
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Empty file path";
+        }
         qDebug() << "[AutoSuggestionsFeature] -> Empty file path";
         return;
     }
 
     QFile file(autoSuggestionsFile);
     if (!file.exists()) {
-        qDebug() << "[AutoSuggestionsFeature] -> File does not exist:" << autoSuggestionsFile;
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> File does not exist:" << autoSuggestionsFile;
+        }
         return;
     }
 
@@ -264,42 +271,55 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
 
     QString currentHashHex = QString::fromLatin1(currentHash.toHex());
 
-    // qDebug() << "[AutoSuggestionsFeature] -> Current hash (raw):" << currentHash.toHex();
-    // qDebug() << "[AutoSuggestionsFeature] -> Last hash (hex from config):" << lastHashHex;
-    // qDebug() << "[AutoSuggestionsFeature] -> Last hash (converted back):" << lastHash.toHex();
-
+    if (sDebugAutoSuggestion) {
+        qDebug() << "[AutoSuggestionsFeature] -> Current hash (raw):" << currentHash.toHex();
+        qDebug() << "[AutoSuggestionsFeature] -> Last hash (hex from config):" << lastHashHex;
+        qDebug() << "[AutoSuggestionsFeature] -> Last hash (converted back):" << lastHash.toHex();
+    }
     // bool fileChanged = false;
 
     if (lastFile != autoSuggestionsFile) {
         // fileChanged = true;
-        qDebug() << "[AutoSuggestionsFeature] -> File path changed from"
-                 << lastFile << "to" << autoSuggestionsFile;
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> File path changed from"
+                     << lastFile << "to" << autoSuggestionsFile;
+        }
     } else if (currentTimestamp != lastTimestamp) {
         // fileChanged = true;
-        qDebug() << "[AutoSuggestionsFeature] -> Timestamp changed from"
-                 << lastTimestamp << "to" << currentTimestamp;
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Timestamp changed from"
+                     << lastTimestamp << "to" << currentTimestamp;
+        }
     } else if (lastHashHex.isEmpty() || currentHash != lastHash) {
         // fileChanged = true;
-        qDebug() << "[AutoSuggestionsFeature] -> Content hash changed";
-        // qDebug() << "Old hash (hex):" << lastHashHex;
-        // qDebug() << "New hash (hex):" << currentHashHex;
-        // qDebug() << "Old hash (raw):" << lastHash.toHex();
-        // qDebug() << "New hash (raw):" << currentHash.toHex();
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Content hash changed";
+            // qDebug() << "Old hash (hex):" << lastHashHex;
+            // qDebug() << "New hash (hex):" << currentHashHex;
+            // qDebug() << "Old hash (raw):" << lastHash.toHex();
+            // qDebug() << "New hash (raw):" << currentHash.toHex();
+        }
     } else {
-        qDebug() << "[AutoSuggestionsFeature] -> File hasn't changed since last import."
-                 << "Timestamp:" << currentTimestamp
-                 << "Hash:" << currentHashHex
-                 << "Skipping import to preserve playlist.";
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> File hasn't changed since last import."
+                     << "Timestamp:" << currentTimestamp
+                     << "Hash:" << currentHashHex
+                     << "Skipping import to preserve playlist.";
+        }
         return;
     }
 
-    qDebug() << "[AutoSuggestionsFeature] -> File has changed - importing.";
+    if (sDebugAutoSuggestion) {
+        qDebug() << "[AutoSuggestionsFeature] -> File has changed - importing.";
+    }
 
     if (m_playlistDao.isPlaylistLocked(m_iAutoSuggestionsPlaylistId)) {
-        qDebug() << "[AutoSuggestionsFeature] -> Can't import a playlist into "
-                    "locked playlist"
-                 << m_iAutoSuggestionsPlaylistId
-                 << m_playlistDao.getPlaylistName(m_iAutoSuggestionsPlaylistId);
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Can't import a playlist into "
+                        "locked playlist"
+                     << m_iAutoSuggestionsPlaylistId
+                     << m_playlistDao.getPlaylistName(m_iAutoSuggestionsPlaylistId);
+        }
         return;
     }
 
@@ -326,7 +346,9 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
 
     if (originalFile.open(QIODevice::ReadOnly | QIODevice::Text) &&
             processedFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qDebug() << "[AutoSuggestionsFeature] -> Processing file with placeholder replacement";
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Processing file with placeholder replacement";
+        }
 
         QTextStream readStream(&originalFile);
         QTextStream writeStream(&processedFile);
@@ -343,18 +365,22 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
             if (line.contains(kSettingsDirPlaceholder)) {
                 line.replace(kSettingsDirPlaceholder, settingsPath);
                 replacementCount++;
-                qDebug() << "[AutoSuggestionsFeature] -> Replaced "
-                            "{{MIXXX_SETTINGS_DIR}} in line:"
-                         << originalLine;
-                qDebug() << "[AutoSuggestionsFeature] -> With:" << line;
+                if (sDebugAutoSuggestion) {
+                    qDebug() << "[AutoSuggestionsFeature] -> Replaced "
+                                "{{MIXXX_SETTINGS_DIR}} in line:"
+                             << originalLine;
+                    qDebug() << "[AutoSuggestionsFeature] -> With:" << line;
+                }
             }
             if (line.contains(kAutoSuggestionsPlaceholder)) {
                 line.replace(kAutoSuggestionsPlaceholder, "AutoSuggestions");
                 replacementCount++;
-                qDebug() << "[AutoSuggestionsFeature] -> Replaced "
-                            "{{AutoSuggestions}} in line:"
-                         << originalLine;
-                qDebug() << "[AutoSuggestionsFeature] -> With:" << line;
+                if (sDebugAutoSuggestion) {
+                    qDebug() << "[AutoSuggestionsFeature] -> Replaced "
+                                "{{AutoSuggestions}} in line:"
+                             << originalLine;
+                    qDebug() << "[AutoSuggestionsFeature] -> With:" << line;
+                }
             }
 
             writeStream << line << "\n";
@@ -363,30 +389,43 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
         originalFile.close();
         processedFile.close();
 
-        qDebug() << "[AutoSuggestionsFeature] -> Performed" << replacementCount
-                 << "placeholder replacements";
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> Performed" << replacementCount
+                     << "placeholder replacements";
+        }
 
         locations = Parser::parse(processedFilePath);
 
-        qDebug() << "[AutoSuggestionsFeature] Raw locations from parser after replacement:";
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] Raw locations from parser after replacement:";
+        }
         for (const QString& location : std::as_const(locations)) {
-            qDebug() << "  -" << location;
+            if (sDebugAutoSuggestion) {
+                qDebug() << "  -" << location;
+            }
         }
 
         if (processedFile.exists()) {
             processedFile.remove();
-            qDebug() << "[AutoSuggestionsFeature] -> Removed temporary processed file";
+            if (sDebugAutoSuggestion) {
+                qDebug() << "[AutoSuggestionsFeature] -> Removed temporary processed file";
+            }
         }
 
     } else {
-        qDebug() << "[AutoSuggestionsFeature] -> ERROR: Could not open files for processing";
-        qDebug() << "[AutoSuggestionsFeature] -> Original file open:" << originalFile.isOpen();
-        qDebug() << "[AutoSuggestionsFeature] -> Processed file open:" << processedFile.isOpen();
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> ERROR: Could not open files for processing";
+            qDebug() << "[AutoSuggestionsFeature] -> Original file open:" << originalFile.isOpen();
+            qDebug() << "[AutoSuggestionsFeature] -> Processed file open:"
+                     << processedFile.isOpen();
+        }
         return;
     }
 
     if (locations.isEmpty()) {
-        qDebug() << "[AutoSuggestionsFeature] -> No valid tracks found in file";
+        if (sDebugAutoSuggestion) {
+            qDebug() << "[AutoSuggestionsFeature] -> No valid tracks found in file";
+        }
         return;
     }
 
@@ -399,13 +438,18 @@ void AutoSuggestionsFeature::ImportAutoSuggestionFile() {
     m_pConfig->set(ConfigKey("[AutoSuggestions]", "LastHash"),
             ConfigValue(currentHashHex));
 
-    qDebug() << "[AutoSuggestions] -> Successfully imported" << locations.size()
-             << "tracks. Timestamp:" << currentTimestamp
-             << "Hash (hex):" << currentHashHex;
+    if (sDebugAutoSuggestion) {
+        qDebug() << "[AutoSuggestions] -> Successfully imported" << locations.size()
+                 << "tracks. Timestamp:" << currentTimestamp
+                 << "Hash (hex):" << currentHashHex;
+    }
 }
 
 void AutoSuggestionsFeature::SlotForceCheckAutoSuggestionsFileNow() {
-    qDebug() << "[AutoSuggestionsFeature] -> Force import requested - resetting timestamp and hash";
+    if (sDebugAutoSuggestion) {
+        qDebug() << "[AutoSuggestionsFeature] -> Force import requested - "
+                    "resetting timestamp and hash";
+    }
 
     m_lastFileTimestamp = 0;
     m_lastFileHash.clear();
@@ -419,7 +463,9 @@ void AutoSuggestionsFeature::SlotForceCheckAutoSuggestionsFileNow() {
 }
 
 void AutoSuggestionsFeature::ResetFileTracking() {
-    qDebug() << "AutoSuggestionsFeature: Resetting file tracking data";
+    if (sDebugAutoSuggestion) {
+        qDebug() << "AutoSuggestionsFeature: Resetting file tracking data";
+    }
     m_lastFileTimestamp = 0;
     m_lastFileHash.clear();
     m_lastAutoSuggestionsFile.clear();

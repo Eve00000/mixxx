@@ -10,6 +10,7 @@
 #include "util/math.h"
 
 namespace {
+const bool sDebugAutoSuggestionProcessor = false;
 const QString kPreferenceGroup = QStringLiteral("[AutoSuggestions]");
 const QString kControlGroup = QStringLiteral("[AutoSuggestions]");
 const char* kRefreshRatePreferenceName = "RefreshRate";
@@ -117,9 +118,12 @@ TrackPointer AutoSuggestionsProcessor::getNextTrackFromQueue() {
 
 void AutoSuggestionsProcessor::setRefreshRate(int time) {
     if constexpr (sDebug) {
-        qDebug() << "AutoSuggestionsProcessor::slotImportPlaylistFile -- Old "
-                    "RefreshRate"
-                 << m_refreshRate;
+        if (sDebugAutoSuggestionProcessor) {
+            qDebug()
+                    << "AutoSuggestionsProcessor::slotImportPlaylistFile -- Old "
+                       "RefreshRate"
+                    << m_refreshRate;
+        }
     }
 
     m_pConfig->setValue(ConfigKey(kPreferenceGroup, kRefreshRatePreferenceName),
@@ -127,9 +131,11 @@ void AutoSuggestionsProcessor::setRefreshRate(int time) {
     m_refreshRate = time;
 
     if constexpr (sDebug) {
-        qDebug() << "AutoSuggestionsProcessor::slotImportPlaylistFile -- New "
-                    "RefreshRate"
-                 << m_refreshRate;
+        if (sDebugAutoSuggestionProcessor) {
+            qDebug() << "AutoSuggestionsProcessor::slotImportPlaylistFile -- New "
+                        "RefreshRate"
+                     << m_refreshRate;
+        }
     }
     updateTimerState();
 }
@@ -155,22 +161,28 @@ void AutoSuggestionsProcessor::updateTimerState() {
         m_pRefreshTimer->start(intervalMs);
 
         if constexpr (sDebug) {
-            qDebug() << "AutoSuggestionsProcessor: Timer started with interval"
-                     << intervalMs << "ms";
+            if (sDebugAutoSuggestionProcessor) {
+                qDebug() << "AutoSuggestionsProcessor: Timer started with interval"
+                         << intervalMs << "ms";
+            }
         }
     } else {
         m_pRefreshTimer->stop();
 
         if constexpr (sDebug) {
-            qDebug() << "AutoSuggestionsProcessor: Timer stopped (state="
-                     << m_eState << ", rate=" << m_refreshRate << ")";
+            if (sDebugAutoSuggestionProcessor) {
+                qDebug() << "AutoSuggestionsProcessor: Timer stopped (state="
+                         << m_eState << ", rate=" << m_refreshRate << ")";
+            }
         }
     }
 }
 
 void AutoSuggestionsProcessor::onRefreshTimerTimeout() {
     if constexpr (sDebug) {
-        qDebug() << "AutoSuggestionsProcessor: Timer timeout - calling checkNow()";
+        if (sDebugAutoSuggestionProcessor) {
+            qDebug() << "AutoSuggestionsProcessor: Timer timeout - calling checkNow()";
+        }
     }
     if (m_eState != ASS_IDLE) {
         return;
