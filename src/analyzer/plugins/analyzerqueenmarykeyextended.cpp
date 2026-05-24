@@ -28,7 +28,7 @@ AnalyzerPluginInfo AnalyzerQueenMaryKeyExtended::pluginInfo() {
     return AnalyzerPluginInfo(
             "qm-keydetector-extended:0",
             QObject::tr("Queen Mary University London (Extended)"),
-            QObject::tr("Queen Mary Key Detector with Key Change Detection"),
+            QObject::tr("Queen Mary Key Detector with Key Change Detection & segmentation"),
             false);
 }
 
