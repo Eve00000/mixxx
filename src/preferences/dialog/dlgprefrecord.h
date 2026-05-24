@@ -12,10 +12,10 @@ class ControlProxy;
 class QRadioButton;
 class QWidget;
 
-class DlgPrefRecord : public DlgPreferencePage, public Ui::DlgPrefRecordDlg  {
+class DlgPrefRecord : public DlgPreferencePage, public Ui::DlgPrefRecordDlg {
     Q_OBJECT
   public:
-    DlgPrefRecord(QWidget *parent, UserSettingsPointer _config);
+    DlgPrefRecord(QWidget* parent, UserSettingsPointer _config);
     virtual ~DlgPrefRecord();
 
   public slots:
@@ -32,19 +32,28 @@ class DlgPrefRecord : public DlgPreferencePage, public Ui::DlgPrefRecordDlg  {
     void slotSliderCompression();
     void slotGroupChanged();
 
+  private slots:
+    void slotToggleCueEnabled();
+
   signals:
-    void apply(const QString &);
+    void apply(const QString&);
 
   private:
     void setupEncoderUI();
     void loadMetaData();
     void updateTextQuality();
     void updateTextCompression();
+    void updateTracklistAsComment();
     void saveRecordingFolder();
     void saveMetaData();
     void saveEncoding();
     void saveUseCueFile();
+    void saveTracklistAsComment();
+    void saveUseCueFileAnnotation();
     void saveSplitSize();
+    void loadChannelMode();
+    void saveChannelMode();
+    void updateSplitNoneItem();
 
     // Pointer to config object
     UserSettingsPointer m_pConfig;

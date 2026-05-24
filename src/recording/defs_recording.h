@@ -16,7 +16,7 @@
 #define RECORD_ON 2.0
 #define RECORD_SPLIT_CONTINUE 3.0
 
-//File options for preferences Splitting
+// File options for preferences Splitting
 #define SPLIT_650MB "650 MB (CD)"
 #define SPLIT_700MB "700 MB (CD)"
 #define SPLIT_1024MB "1 GB"
@@ -26,6 +26,7 @@
 #define SPLIT_74MIN "74 Minutes (CD)"
 #define SPLIT_80MIN "80 Minutes (CD)"
 #define SPLIT_120MIN "120 Minutes"
+#define SPLIT_NONE "No Splitting"
 
 // Byte conversions. Slightly rounded to leave enough room to add
 // closing frames by the encoder. All sizes are in bytes.
