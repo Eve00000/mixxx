@@ -436,7 +436,6 @@ void WCueMenuPopup::slotStandardCue() {
     VERIFY_OR_DEBUG_ASSERT(m_pTrack != nullptr) {
         return;
     }
-
     if (m_pCue->getType() != mixxx::CueType::HotCue) {
         updateTypeAndColorIfDefault(mixxx::CueType::HotCue);
     }
@@ -583,6 +582,9 @@ void WCueMenuPopup::closeEvent(QCloseEvent* event) {
     emit aboutToHide();
     QWidget::closeEvent(event);
 }
+
+///////////////////
+////////////////////
 
 // #include "widget/wcuemenupopup.h"
 //

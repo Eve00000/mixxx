@@ -1,12 +1,14 @@
+#include "engine/readaheadmanager.h"
+
 #include <gtest/gtest.h>
 
-#include <QtDebug>
 #include <QScopedPointer>
+#include <QtDebug>
 
-#include "engine/cachingreader/cachingreader.h"
 #include "control/controlobject.h"
+#include "engine/cachingreader/cachingreader.h"
+#include "engine/controls/cuecontrol.h"
 #include "engine/controls/loopingcontrol.h"
-#include "engine/readaheadmanager.h"
 #include "test/mixxxtest.h"
 #include "util/assert.h"
 #include "util/defs.h"
@@ -68,6 +70,35 @@ class StubLoopControl : public LoopingControl {
     QList<mixxx::audio::FramePos> m_targetReturnValues;
 };
 
+class StubCueControl : public CueControl {
+  public:
+    StubCueControl()
+            : CueControl(kGroup, UserSettingsPointer()) {
+    }
+
+    void pushValues(double trigger, double target) {
+        m_triggerReturnValues.push_back(
+                mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(trigger));
+
+        m_targetReturnValues.push_back(
+                mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(target));
+    }
+
+    mixxx::audio::FramePos nextTrigger(bool,
+            mixxx::audio::FramePos,
+            mixxx::audio::FramePos* pTargetPosition,
+            mixxx::audio::FrameDiff_t) override {
+        RELEASE_ASSERT(!m_targetReturnValues.isEmpty());
+        *pTargetPosition = m_targetReturnValues.takeFirst();
+        RELEASE_ASSERT(!m_triggerReturnValues.isEmpty());
+        return m_triggerReturnValues.takeFirst();
+    }
+
+  protected:
+    QList<mixxx::audio::FramePos> m_triggerReturnValues;
+    QList<mixxx::audio::FramePos> m_targetReturnValues;
+};
+
 class ReadAheadManagerTest : public MixxxTest {
   public:
     ReadAheadManagerTest()
@@ -87,12 +118,17 @@ class ReadAheadManagerTest : public MixxxTest {
         SampleUtil::clear(m_pBuffer, MAX_BUFFER_LEN);
         m_pReader.reset(new StubReader());
         m_pLoopControl.reset(new StubLoopControl());
+        m_pCueControl.reset(new StubCueControl());
+        /*m_pReadAheadManager.reset(new ReadAheadManager(m_pReader.data(),
+                                                       m_pLoopControl.data()));*/
         m_pReadAheadManager.reset(new ReadAheadManager(m_pReader.data(),
-                                                       m_pLoopControl.data()));
+                m_pLoopControl.data(),
+                m_pCueControl.data()));
     }
 
     QScopedPointer<StubReader> m_pReader;
     QScopedPointer<StubLoopControl> m_pLoopControl;
+    QScopedPointer<StubCueControl> m_pCueControl;
     QScopedPointer<ReadAheadManager> m_pReadAheadManager;
     ControlObject m_beatClosestCO;
     ControlObject m_beatNextCO;
