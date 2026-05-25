@@ -37,6 +37,10 @@ constexpr bool kDefaultNowPlayingAppendMode = false;
 constexpr bool kDefaultNowPlayingAddTimestamp = true;
 constexpr bool kDefaultNowPlayingArchive = true;
 constexpr int kDefaultNowPlayingPollInterval = 1000;
+
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "Enabled");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled = false;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -70,7 +74,8 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
 
     // Update combo box
     ComboBoxCueMode->addItem(tr("Mixxx mode"), static_cast<int>(CueMode::Mixxx));
-    ComboBoxCueMode->addItem(tr("Mixxx mode (no blinking)"), static_cast<int>(CueMode::MixxxNoBlinking));
+    ComboBoxCueMode->addItem(tr("Mixxx mode (no blinking)"),
+            static_cast<int>(CueMode::MixxxNoBlinking));
     ComboBoxCueMode->addItem(tr("Pioneer mode"), static_cast<int>(CueMode::Pioneer));
     ComboBoxCueMode->addItem(tr("Denon mode"), static_cast<int>(CueMode::Denon));
     ComboBoxCueMode->addItem(tr("Numark mode"), static_cast<int>(CueMode::Numark));
@@ -99,16 +104,16 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             static_cast<double>(TrackTime::DisplayMode::REMAINING)) {
         radioButtonRemaining->setChecked(true);
         m_pControlTrackTimeDisplay->set(
-            static_cast<double>(TrackTime::DisplayMode::REMAINING));
+                static_cast<double>(TrackTime::DisplayMode::REMAINING));
     } else if (positionDisplayType ==
-                   static_cast<double>(TrackTime::DisplayMode::ELAPSED_AND_REMAINING)) {
+            static_cast<double>(TrackTime::DisplayMode::ELAPSED_AND_REMAINING)) {
         radioButtonElapsedAndRemaining->setChecked(true);
         m_pControlTrackTimeDisplay->set(
-            static_cast<double>(TrackTime::DisplayMode::ELAPSED_AND_REMAINING));
+                static_cast<double>(TrackTime::DisplayMode::ELAPSED_AND_REMAINING));
     } else {
         radioButtonElapsed->setChecked(true);
         m_pControlTrackTimeDisplay->set(
-            static_cast<double>(TrackTime::DisplayMode::ELAPSED));
+                static_cast<double>(TrackTime::DisplayMode::ELAPSED));
     }
     connect(buttonGroupTrackTime,
             QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
@@ -126,43 +131,40 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     comboBoxTimeFormat->clear();
 
     comboBoxTimeFormat->addItem(tr("mm:ss%1zz - Traditional")
-                                .arg(mixxx::DurationBase::kDecimalSeparator),
-                                static_cast<int>
-                                (TrackTime::DisplayFormat::TRADITIONAL));
+                                        .arg(mixxx::DurationBase::kDecimalSeparator),
+            static_cast<int>(TrackTime::DisplayFormat::TRADITIONAL));
 
     comboBoxTimeFormat->addItem(tr("mm:ss - Traditional (Coarse)"),
-                                static_cast<int>
-                                (TrackTime::DisplayFormat::TRADITIONAL_COARSE));
+            static_cast<int>(TrackTime::DisplayFormat::TRADITIONAL_COARSE));
 
     comboBoxTimeFormat->addItem(tr("s%1zz - Seconds")
-                                .arg(mixxx::DurationBase::kDecimalSeparator),
-                                static_cast<int>
-                                (TrackTime::DisplayFormat::SECONDS));
+                                        .arg(mixxx::DurationBase::kDecimalSeparator),
+            static_cast<int>(TrackTime::DisplayFormat::SECONDS));
 
     comboBoxTimeFormat->addItem(tr("sss%1zz - Seconds (Long)")
-                                .arg(mixxx::DurationBase::kDecimalSeparator),
-                                static_cast<int>
-                                (TrackTime::DisplayFormat::SECONDS_LONG));
+                                        .arg(mixxx::DurationBase::kDecimalSeparator),
+            static_cast<int>(TrackTime::DisplayFormat::SECONDS_LONG));
 
     comboBoxTimeFormat->addItem(tr("s%1sss%2zz - Kiloseconds")
-                                .arg(QString(mixxx::DurationBase::kDecimalSeparator),
-                                     QString(mixxx::DurationBase::kKiloGroupSeparator)),
-                                static_cast<int>
-                                (TrackTime::DisplayFormat::KILO_SECONDS));
+                                        .arg(QString(mixxx::DurationBase::kDecimalSeparator),
+                                                QString(mixxx::DurationBase::kKiloGroupSeparator)),
+            static_cast<int>(TrackTime::DisplayFormat::KILO_SECONDS));
 
     double time_format = static_cast<double>(
-                                            m_pConfig->getValue(
-                                            ConfigKey("[Controls]", "TimeFormat"),
-                                            static_cast<int>(TrackTime::DisplayFormat::TRADITIONAL)));
+            m_pConfig->getValue(
+                    ConfigKey("[Controls]", "TimeFormat"),
+                    static_cast<int>(TrackTime::DisplayFormat::TRADITIONAL)));
     m_pControlTrackTimeFormat->set(time_format);
     comboBoxTimeFormat->setCurrentIndex(
-                comboBoxTimeFormat->findData(time_format));
+            comboBoxTimeFormat->findData(time_format));
 
     comboBoxLoadPoint->addItem(tr("Intro start"), static_cast<int>(SeekOnLoadMode::IntroStart));
     comboBoxLoadPoint->addItem(tr("Main cue"), static_cast<int>(SeekOnLoadMode::MainCue));
     comboBoxLoadPoint->addItem(tr("First hotcue"), static_cast<int>(SeekOnLoadMode::FirstHotcue));
-    comboBoxLoadPoint->addItem(tr("First sound (skip silence)"), static_cast<int>(SeekOnLoadMode::FirstSound));
-    comboBoxLoadPoint->addItem(tr("Beginning of track"), static_cast<int>(SeekOnLoadMode::Beginning));
+    comboBoxLoadPoint->addItem(tr("First sound (skip silence)"),
+            static_cast<int>(SeekOnLoadMode::FirstSound));
+    comboBoxLoadPoint->addItem(tr("Beginning of track"),
+            static_cast<int>(SeekOnLoadMode::Beginning));
     bool seekModeExisted = m_pConfig->exists(ConfigKey("[Controls]", "CueRecall"));
     int seekMode = m_pConfig->getValue(ConfigKey("[Controls]", "CueRecall"),
             static_cast<int>(SeekOnLoadMode::IntroStart));
@@ -210,12 +212,14 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
                                          !seekModeExisted) &&
             !(m_cueMode == CueMode::Denon ||
                     m_cueMode == CueMode::Numark);
-    m_bSetIntroStartAtMainCue = m_pConfig->getValue(ConfigKey("[Controls]", "SetIntroStartAtMainCue"),
+    m_bSetIntroStartAtMainCue = m_pConfig->getValue(
+            ConfigKey("[Controls]", "SetIntroStartAtMainCue"),
             introStartMoveDefault);
     // This is an ugly hack to ensure AnalyzerSilence gets the correct default
     // value because ConfigValue::getValue does not set the value of the ConfigValue
     // in case no value had been set previously (when mixxx.cfg is empty).
-    m_pConfig->setValue(ConfigKey("[Controls]", "SetIntroStartAtMainCue"), m_bSetIntroStartAtMainCue);
+    m_pConfig->setValue(ConfigKey("[Controls]", "SetIntroStartAtMainCue"),
+            m_bSetIntroStartAtMainCue);
     checkBoxIntroStartMove->setChecked(m_bSetIntroStartAtMainCue);
     connect(checkBoxIntroStartMove,
             &QCheckBox::toggled,
@@ -255,18 +259,18 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
 
     // RateRange is the legacy ConfigKey. RateRangePercent is used now.
     if (m_pConfig->exists(ConfigKey("[Controls]", "RateRange")) &&
-        !m_pConfig->exists(ConfigKey("[Controls]", "RateRangePercent"))) {
+            !m_pConfig->exists(ConfigKey("[Controls]", "RateRangePercent"))) {
         int legacyIndex = m_pConfig->getValueString(ConfigKey("[Controls]", "RateRange")).toInt();
         if (legacyIndex == 0) {
             m_iRateRangePercent = 6;
         } else if (legacyIndex == 1) {
             m_iRateRangePercent = 8;
         } else {
-            m_iRateRangePercent = (legacyIndex-1) * 10;
+            m_iRateRangePercent = (legacyIndex - 1) * 10;
         }
     } else {
         m_iRateRangePercent = m_pConfig->getValue(ConfigKey("[Controls]", "RateRangePercent"),
-                                                  kDefaultRateRangePercent);
+                kDefaultRateRangePercent);
     }
     if (!(m_iRateRangePercent > 0 && m_iRateRangePercent <= 90)) {
         m_iRateRangePercent = kDefaultRateRangePercent;
@@ -284,8 +288,8 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             &DlgPrefDeck::slotKeyLockModeSelected);
 
     m_keylockMode = static_cast<KeylockMode>(
-        m_pConfig->getValue(ConfigKey("[Controls]", "keylockMode"),
-                            static_cast<int>(KeylockMode::LockOriginalKey)));
+            m_pConfig->getValue(ConfigKey("[Controls]", "keylockMode"),
+                    static_cast<int>(KeylockMode::LockOriginalKey)));
     for (ControlProxy* pControl : std::as_const(m_keylockModeControls)) {
         pControl->set(static_cast<double>(m_keylockMode));
     }
@@ -297,8 +301,8 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             &DlgPrefDeck::slotKeyUnlockModeSelected);
 
     m_keyunlockMode = static_cast<KeyunlockMode>(
-        m_pConfig->getValue(ConfigKey("[Controls]", "keyunlockMode"),
-        static_cast<int>(KeyunlockMode::ResetLockedKey)));
+            m_pConfig->getValue(ConfigKey("[Controls]", "keyunlockMode"),
+                    static_cast<int>(KeyunlockMode::ResetLockedKey)));
     for (ControlProxy* pControl : std::as_const(m_keyunlockModeControls)) {
         pControl->set(static_cast<int>(m_keyunlockMode));
     }
@@ -323,13 +327,13 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     // Update "reset speed" and "reset pitch" check boxes
     // TODO: All defaults should only be set in slotResetToDefaults.
     int configSPAutoReset = m_pConfig->getValue<int>(
-                    ConfigKey("[Controls]", "SpeedAutoReset"),
-                    BaseTrackPlayer::RESET_PITCH);
+            ConfigKey("[Controls]", "SpeedAutoReset"),
+            BaseTrackPlayer::RESET_PITCH);
 
-    m_speedAutoReset = (configSPAutoReset==BaseTrackPlayer::RESET_SPEED ||
-                        configSPAutoReset==BaseTrackPlayer::RESET_PITCH_AND_SPEED);
-    m_pitchAutoReset = (configSPAutoReset==BaseTrackPlayer::RESET_PITCH ||
-                        configSPAutoReset==BaseTrackPlayer::RESET_PITCH_AND_SPEED);
+    m_speedAutoReset = (configSPAutoReset == BaseTrackPlayer::RESET_SPEED ||
+            configSPAutoReset == BaseTrackPlayer::RESET_PITCH_AND_SPEED);
+    m_pitchAutoReset = (configSPAutoReset == BaseTrackPlayer::RESET_PITCH ||
+            configSPAutoReset == BaseTrackPlayer::RESET_PITCH_AND_SPEED);
 
     checkBoxResetSpeed->setChecked(m_speedAutoReset);
     checkBoxResetPitch->setChecked(m_pitchAutoReset);
@@ -494,6 +498,20 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotNowPlayingPollIntervalChanged);
 
+    // IncludeOriginalMasterWhenPlayingStems
+
+    m_bIncludeOriginalMasterWhenPlayingStemsEnabled = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
+
+    checkBoxEnableIncludeOriginalMasterWhenPlayingStems->setChecked(
+            m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
+
+    connect(checkBoxEnableIncludeOriginalMasterWhenPlayingStems,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotEnableIncludeOriginalMasterWhenPlayingStemsChanged);
+
     slotUpdate();
 }
 
@@ -557,7 +575,7 @@ void DlgPrefDeck::slotUpdate() {
     }
 
     int reset = m_pConfig->getValue(ConfigKey("[Controls]", "SpeedAutoReset"),
-        static_cast<int>(BaseTrackPlayer::RESET_PITCH));
+            static_cast<int>(BaseTrackPlayer::RESET_PITCH));
     if (reset == BaseTrackPlayer::RESET_PITCH) {
         checkBoxResetPitch->setChecked(true);
         checkBoxResetSpeed->setChecked(false);
@@ -579,8 +597,8 @@ void DlgPrefDeck::slotUpdate() {
     }
 
     SliderRateRampSensitivity->setValue(
-        m_pConfig->getValue(ConfigKey("[Controls]", "RateRampSensitivity"),
-                            kDefaultRateRampSensitivity));
+            m_pConfig->getValue(ConfigKey("[Controls]", "RateRampSensitivity"),
+                    kDefaultRateRampSensitivity));
 
     spinBoxTemporaryRateCoarse->setValue(RateControl::getTemporaryRateChangeCoarseAmount());
     spinBoxTemporaryRateFine->setValue(RateControl::getTemporaryRateChangeFineAmount());
@@ -625,6 +643,12 @@ void DlgPrefDeck::slotUpdate() {
         break;
     }
     comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
+
+    m_bIncludeOriginalMasterWhenPlayingStemsEnabled = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
+    checkBoxEnableIncludeOriginalMasterWhenPlayingStems
+            ->setChecked(m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -674,6 +698,9 @@ void DlgPrefDeck::slotResetToDefaults() {
     checkBoxNowPlayingAddTimestamp->setChecked(kDefaultNowPlayingAddTimestamp);
     checkBoxNowPlayingArchive->setChecked(kDefaultNowPlayingArchive);
     comboBoxNowPlayingPollInterval->setCurrentIndex(1);
+
+    checkBoxEnableIncludeOriginalMasterWhenPlayingStems->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -749,7 +776,7 @@ void DlgPrefDeck::slotSetTrackTimeDisplay(QAbstractButton* b) {
 
 void DlgPrefDeck::slotSetTrackTimeDisplay(double v) {
     m_timeDisplayMode = static_cast<TrackTime::DisplayMode>(static_cast<int>(v));
-    m_pConfig->set(ConfigKey("[Controls]","PositionDisplay"), ConfigValue(v));
+    m_pConfig->set(ConfigKey("[Controls]", "PositionDisplay"), ConfigValue(v));
     if (m_timeDisplayMode == TrackTime::DisplayMode::REMAINING) {
         radioButtonRemaining->setChecked(true);
     } else if (m_timeDisplayMode == TrackTime::DisplayMode::ELAPSED_AND_REMAINING) {
@@ -789,9 +816,9 @@ void DlgPrefDeck::slotRateRampingModeLinearButton(bool checked) {
 
 void DlgPrefDeck::slotTimeFormatChanged(double v) {
     int i = static_cast<int>(v);
-    m_pConfig->set(ConfigKey("[Controls]","TimeFormat"), ConfigValue(v));
+    m_pConfig->set(ConfigKey("[Controls]", "TimeFormat"), ConfigValue(v));
     comboBoxTimeFormat->setCurrentIndex(
-                comboBoxTimeFormat->findData(i));
+            comboBoxTimeFormat->findData(i));
 }
 
 void DlgPrefDeck::slotSetTrackLoadMode(int comboboxIndex) {
@@ -809,7 +836,7 @@ void DlgPrefDeck::slotApply() {
             ConfigValue(m_bSetIntroStartAtMainCue));
 
     double timeDisplay = static_cast<double>(m_timeDisplayMode);
-    m_pConfig->set(ConfigKey("[Controls]","PositionDisplay"), ConfigValue(timeDisplay));
+    m_pConfig->set(ConfigKey("[Controls]", "PositionDisplay"), ConfigValue(timeDisplay));
     m_pControlTrackTimeDisplay->set(timeDisplay);
 
     // time format
@@ -834,7 +861,7 @@ void DlgPrefDeck::slotApply() {
     // because a proxy in DlgPrefLibrary listens to [Channe1],rate_range changes
     // in order to update the fuzzy BPM range with the new value of "RateRangePercent".
     m_pConfig->setValue(ConfigKey("[Controls]", "RateRangePercent"),
-                        m_iRateRangePercent);
+            m_iRateRangePercent);
     setRateRangeForAllDecks(m_iRateRangePercent);
 
     m_pConfig->setValue(ConfigKey("[Controls]", "RateDir"),
@@ -898,6 +925,9 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
     m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
     m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
+
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
+            m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -997,6 +1027,10 @@ void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
     labelNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
     labelNowPlayingPollInterval->setEnabled(checked);
     comboBoxNowPlayingPollInterval->setEnabled(checked);
+}
+
+void DlgPrefDeck::slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked) {
+    m_bIncludeOriginalMasterWhenPlayingStemsEnabled = checked;
 }
 
 void DlgPrefDeck::slotNowPlayingAppendChanged(bool checked) {
