@@ -957,6 +957,50 @@ CoverInfo WTrackMenu::getCoverInfoOfLastTrack() const {
     }
 }
 
+// void WTrackMenu::generateTrackLoadMenu(const QString& group,
+//         const QString& label,
+//         TrackPointer pTrack,
+//         QMenu* pParentMenu,
+//         bool primaryDeck,
+//         bool enabled) {
+// #ifdef __STEM__
+//     if (pTrack && !pTrack->hasStreamInfoFromSource()) {
+//         // The stem metadata are loaded on stream info refresh, which occurs
+//         // when the file gets loaded for the time in the session. If there is
+//         no
+//         // stream info from source, when open the file, which lead to loading
+//         // the stem manifest.
+//         mixxx::AudioSource::OpenParams config;
+//         config.setChannelCount(mixxx::kMaxEngineChannelInputCount);
+//         SoundSourceProxy(pTrack).openAudioSource(config);
+//     }
+//     if (enabled && pTrack && pTrack->hasStem()) {
+//         auto* pStemMenu = new WTrackStemMenu(
+//                 label, pParentMenu, primaryDeck, group,
+//                 pTrack->getStemInfo());
+//         connect(pStemMenu,
+//                 &WTrackStemMenu::selectedStem,
+//                 this,
+//                 [this](const QString& group, mixxx::StemChannelSelection
+//                 stemMask) {
+//                     loadSelectionToGroup(group, stemMask);
+//                     close();
+//                 });
+//         pParentMenu->addMenu(pStemMenu);
+//     } else
+// #else
+//     Q_UNUSED(pTrack)
+//     Q_UNUSED(primaryDeck)
+// #endif
+//     {
+//         QAction* pAction = new QAction(label, this);
+//         pAction->setEnabled(enabled);
+//         pParentMenu->addAction(pAction);
+//         connect(pAction, &QAction::triggered, this, [this, group] {
+//         loadSelectionToGroup(group); });
+//     }
+// }
+
 void WTrackMenu::generateTrackLoadMenu(const QString& group,
         const QString& label,
         TrackPointer pTrack,

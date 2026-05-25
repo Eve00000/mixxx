@@ -102,6 +102,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     void slotNowPlayingPollIntervalChanged(int index);
     void slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked);
 
+    void slotDownSampleUpSampleModeSelected(QAbstractButton*);
+
   private:
     // Because the CueDefault list is out of order, we have to set the combo
     // box using the user data, not the index.  Returns the index of the item
@@ -116,6 +118,7 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
 
     const std::unique_ptr<ControlObject> m_pControlTrackTimeDisplay;
     const std::unique_ptr<ControlObject> m_pControlTrackTimeFormat;
+    const std::unique_ptr<ControlObject> m_pShowPremixInStemsContainer;
 
     const parented_ptr<ControlProxy> m_pNumDecks;
     const parented_ptr<ControlProxy> m_pNumSamplers;
@@ -160,4 +163,5 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
     bool m_bIncludeOriginalMasterWhenPlayingStemsEnabled;
+    bool m_bUpSampleStems;
 };

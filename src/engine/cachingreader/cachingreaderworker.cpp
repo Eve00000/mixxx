@@ -138,6 +138,10 @@ void CachingReaderWorker::newTrack(TrackPointer pTrack) {
     workReady();
 }
 
+void CachingReaderWorker::setUpsampleStems(bool upSampleStems) {
+    m_pUpSampleStems = upSampleStems;
+}
+
 void CachingReaderWorker::run() {
     // EVE
     // kLogger.debug() << m_group << "Worker thread started";
@@ -545,6 +549,7 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
 
 #ifdef __STEM__
     config.setStemMask(stemMask);
+    config.setUpSampleStems(m_pUpSampleStems);
 #endif
 
     m_pAudioSource = SoundSourceProxy(trackToOpen).openAudioSource(config);

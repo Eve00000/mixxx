@@ -2,6 +2,7 @@
 #include <QRegularExpression>
 #include <QtDebug>
 
+#include "control/pollingcontrolproxy.h"
 #include "moc_cachingreader.cpp"
 #include "util/assert.h"
 #include "util/compatibility/qatomic.h"
@@ -79,6 +80,10 @@ CachingReader::CachingReader(const QString& group,
             s_ramPlayConfig.decksEnabled,
             s_ramPlayConfig.samplersEnabled,
             s_ramPlayConfig.previewEnabled);
+
+    PollingControlProxy proxy("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+    bool upSampleStems = proxy.toBool();
+    m_worker.setUpsampleStems(upSampleStems);
 
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
