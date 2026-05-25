@@ -62,6 +62,8 @@ EngineDeck::EngineDeck(
     connect(m_pBuffer, &EngineBuffer::trackLoaded, this, &EngineDeck::slotTrackLoaded);
 
     m_pStemCount = std::make_unique<ControlObject>(ConfigKey(getGroup(), "stem_count"));
+    qDebug() << "Created stem count control for group" << getGroup()
+             << "with key" << ConfigKey(getGroup(), "stem_count");
     m_pStemCount->setReadOnly();
 
     m_stemGain.reserve(mixxx::kMaxSupportedStems);
@@ -79,14 +81,41 @@ EngineDeck::EngineDeck(
                 ConfigKey(getGroupForStem(getGroup(), stemIdx), QStringLiteral("mute")));
         pMuteButton->setButtonMode(mixxx::control::ButtonMode::PowerWindow);
         m_stemMute.push_back(std::move(pMuteButton));
-
         m_stemVuMeter.emplace_back(std::make_unique<EngineVuMeter>(
                 getGroupForStem(getGroup(), stemIdx), QString(), false));
     }
+    connect(m_stemMute[0].get(),
+            &ControlPushButton::valueChanged,
+            this,
+            &EngineDeck::slotStem1MuteToggled);
+    qDebug() << "Connecting stem 1" << "mute button to slotStem1MuteToggled";
+
 #endif
 }
 
 #ifdef __STEM__
+void EngineDeck::slotStem1MuteToggled(int value) {
+    // 0 = unmuted, 1 = muted
+    bool stem1Unmuted = value == 0;
+
+    qDebug() << "slotStem1MuteToggled called"
+             << (stem1Unmuted ? "muted" : "unmuted");
+
+    // Toggle all other stems to the opposite state of stem 1
+    for (std::size_t i = 1; i < m_stemMute.size(); ++i) {
+        m_stemMute[i]->set(stem1Unmuted ? 1 : 0);
+        m_stemGain[i]->set(1);
+    }
+
+    // for (int stemIdx = 1; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
+    //     m_stemMute[stemIdx]->set(stem1Unmuted ? 1 : 0);
+    //     m_stemGain[stemIdx]->set(1);
+    //     qDebug() << "Stem" << stemIdx + 1 << "mute set to" << (stem1Unmuted ?
+    //     "muted" : "unmuted")
+    //              << "and gain set to 1";
+    // }
+}
+
 void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
         TrackPointer) {
     VERIFY_OR_DEBUG_ASSERT(m_pStemCount) {
@@ -97,7 +126,14 @@ void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
         for (int stemIdx = 0; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
             m_stemGain[stemIdx]->set(1.0);
             m_stemMute[stemIdx]->set(0.0);
-            ;
+            // set audio on for pre-mixxx // off for stems
+            if (stemIdx == 0) {
+                // First stem: unmuted
+                m_stemMute[stemIdx]->set(0.0);
+            } else {
+                // All others: muted
+                m_stemMute[stemIdx]->set(1.0);
+            }
         }
     }
     if (pNewTrack) {
@@ -371,7 +407,7 @@ void EngineDeck::slotPassthroughChangeRequest(double v) {
 #ifdef __STEM__
 // static
 QString EngineDeck::getGroupForStem(QStringView deckGroup, int stemIdx) {
-    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 4);
+    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx <= 4);
     return deckGroup.chopped(1) + QStringLiteral("_Stem") + QChar('1' + stemIdx) + QChar(']');
 }
 #endif

@@ -1134,6 +1134,7 @@ add_library(
   src/encoder/encodervorbissettings.cpp
   src/encoder/encoderwave.cpp
   src/encoder/encoderwavesettings.cpp
+  src/engine/engine.cpp
   src/engine/bufferscalers/enginebufferscale.cpp
   src/engine/bufferscalers/enginebufferscalelinear.cpp
   src/engine/bufferscalers/enginebufferscalest.cpp

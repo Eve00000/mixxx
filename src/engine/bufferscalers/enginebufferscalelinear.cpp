@@ -8,15 +8,15 @@
 #include "util/math.h"
 #include "util/sample.h"
 
-EngineBufferScaleLinear::EngineBufferScaleLinear(ReadAheadManager *pReadAheadManager)
-    : m_pReadAheadManager(pReadAheadManager),
-      m_bufferInt(SampleUtil::alloc(kiLinearScaleReadAheadLength)),
-      m_bufferIntSize(0),
-      m_bClear(false),
-      m_dRate(1.0),
-      m_dOldRate(1.0),
-      m_dCurrentFrame(0.0),
-      m_dNextFrame(0.0) {
+EngineBufferScaleLinear::EngineBufferScaleLinear(ReadAheadManager* pReadAheadManager)
+        : m_pReadAheadManager(pReadAheadManager),
+          m_bufferInt(SampleUtil::alloc(kiLinearScaleReadAheadLength)),
+          m_bufferIntSize(0),
+          m_bClear(false),
+          m_dRate(1.0),
+          m_dOldRate(1.0),
+          m_dCurrentFrame(0.0),
+          m_dNextFrame(0.0) {
     onSignalChanged();
     SampleUtil::clear(m_bufferInt, kiLinearScaleReadAheadLength);
 }
@@ -32,8 +32,8 @@ void EngineBufferScaleLinear::onSignalChanged() {
 }
 
 void EngineBufferScaleLinear::setScaleParameters(double base_rate,
-                                                 double* pTempoRatio,
-                                                 double* pPitchRatio) {
+        double* pTempoRatio,
+        double* pPitchRatio) {
     Q_UNUSED(pPitchRatio);
 
     m_dOldRate = m_dRate;
@@ -49,8 +49,7 @@ void EngineBufferScaleLinear::clear() {
 }
 
 // laurent de soras - punked from musicdsp.org (mad props)
-inline float hermite4(float frac_pos, float xm1, float x0, float x1, float x2)
-{
+inline float hermite4(float frac_pos, float xm1, float x0, float x1, float x2) {
     const float c = (x1 - xm1) * 0.5f;
     const float v = x0 - x1;
     const float w = c + v;
@@ -69,7 +68,7 @@ double EngineBufferScaleLinear::scaleBuffer(
     }
 
     if (m_bClear) {
-        m_dOldRate = m_dRate;  // If cleared, don't interpolate rate.
+        m_dOldRate = m_dRate; // If cleared, don't interpolate rate.
         m_bClear = false;
     }
     double rate_add_old = m_dOldRate; // Smoothly interpolate to new playback rate
@@ -106,7 +105,7 @@ double EngineBufferScaleLinear::scaleBuffer(
                 extra_samples -= extra_samples % getOutputSignal().getChannelCount();
                 extra_samples += getOutputSignal().getChannelCount();
             }
-            //qDebug() << "extra samples" << extra_samples;
+            // qDebug() << "extra samples" << extra_samples;
 
             SINT next_samples_read = m_pReadAheadManager->getNextSamples(
                     rate_add_new, m_bufferInt, extra_samples, getOutputSignal().getChannelCount());
@@ -122,7 +121,7 @@ double EngineBufferScaleLinear::scaleBuffer(
         m_dOldRate = 0.0;
         m_dRate = rate_add_new;
         // pass the address of the frame at the halfway point
-        SINT frameOffset =  getOutputSignal().samples2frames(iOutputBufferSize) / 2;
+        SINT frameOffset = getOutputSignal().samples2frames(iOutputBufferSize) / 2;
         SINT sampleOffset = getOutputSignal().frames2samples(frameOffset);
         frames_read += do_scale(pOutputBuffer + sampleOffset, iOutputBufferSize - sampleOffset);
     } else {
@@ -214,7 +213,7 @@ double EngineBufferScaleLinear::do_scale(CSAMPLE* buf, SINT buf_size) {
     const SINT bufferSizeFrames = getOutputSignal().samples2frames(buf_size);
     const double rate_delta = rate_diff / bufferSizeFrames;
     // use Gaussian sum formula (n(n+1))/2 for
-    //for (int j = 0; j < bufferSizeFrames; ++j) {
+    // for (int j = 0; j < bufferSizeFrames; ++j) {
     //    frames += (j * rate_delta) + rate_old;
     //}
     frames = (bufferSizeFrames - 1) * bufferSizeFrames / 2.0;

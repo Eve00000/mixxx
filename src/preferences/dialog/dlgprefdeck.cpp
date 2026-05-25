@@ -25,6 +25,7 @@ constexpr int kDefaultRateRampSensitivity = 250;
 // bool kDefaultCloneDeckOnLoad is defined in header file to make it available
 // to playermanager.cpp
 const QString kAppGroup = QStringLiteral("[App]");
+<<<<<<< HEAD
 
 const ConfigKey kConfigKeyNowPlayingEnabled = ConfigKey("[NowPlaying]", "Enabled");
 const ConfigKey kConfigKeyNowPlayingAppendMode = ConfigKey("[NowPlaying]", "AppendMode");
@@ -41,6 +42,15 @@ constexpr int kDefaultNowPlayingPollInterval = 1000;
 const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled =
         ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "Enabled");
 constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled = false;
+=======
+const QString kControlsGroup = QStringLiteral("[Controls]");
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "Enabled");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled = false;
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpsampleStems =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpsampleStems = 0;
+>>>>>>> 6da72ddd30 (5Stems)
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -428,6 +438,7 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
 
+<<<<<<< HEAD
     // NowPlaying settings
     m_bNowPlayingEnabled = m_pConfig->getValue(
             kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
@@ -498,6 +509,8 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotNowPlayingPollIntervalChanged);
 
+=======
+>>>>>>> 6da72ddd30 (5Stems)
     // IncludeOriginalMasterWhenPlayingStems
 
     m_bIncludeOriginalMasterWhenPlayingStemsEnabled = m_pConfig->getValue(
@@ -512,6 +525,24 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotEnableIncludeOriginalMasterWhenPlayingStemsChanged);
 
+<<<<<<< HEAD
+=======
+    connect(buttonGroupDownSampleUpsample,
+            QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
+            this,
+            &DlgPrefDeck::slotDownSampleUpsampleModeSelected);
+
+    m_bUpsampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpsampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpsampleStems);
+
+    if (m_bUpsampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+
+>>>>>>> 6da72ddd30 (5Stems)
     slotUpdate();
 }
 
@@ -605,6 +636,7 @@ void DlgPrefDeck::slotUpdate() {
     spinBoxPermanentRateCoarse->setValue(RateControl::getPermanentRateChangeCoarseAmount());
     spinBoxPermanentRateFine->setValue(RateControl::getPermanentRateChangeFineAmount());
 
+<<<<<<< HEAD
     m_bNowPlayingEnabled = m_pConfig->getValue(
             kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
     m_bNowPlayingAppendMode = m_pConfig->getValue(
@@ -644,11 +676,25 @@ void DlgPrefDeck::slotUpdate() {
     }
     comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
 
+=======
+>>>>>>> 6da72ddd30 (5Stems)
     m_bIncludeOriginalMasterWhenPlayingStemsEnabled = m_pConfig->getValue(
             kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
             kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
     checkBoxEnableIncludeOriginalMasterWhenPlayingStems
             ->setChecked(m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
+<<<<<<< HEAD
+=======
+    m_bUpsampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpsampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpsampleStems);
+
+    if (m_bUpsampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+>>>>>>> 6da72ddd30 (5Stems)
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -692,6 +738,7 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     radioButtonOriginalKey->setChecked(true);
     radioButtonResetUnlockedKey->setChecked(true);
+<<<<<<< HEAD
 
     checkBoxEnableNowPlaying->setChecked(kDefaultNowPlayingEnabled);
     checkBoxNowPlayingAppend->setChecked(kDefaultNowPlayingAppendMode);
@@ -701,6 +748,12 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     checkBoxEnableIncludeOriginalMasterWhenPlayingStems->setChecked(
             kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
+=======
+    checkBoxEnableIncludeOriginalMasterWhenPlayingStems->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsEnabled);
+    radioButtonDownSampleOriginalMix->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpsampleStems);
+>>>>>>> 6da72ddd30 (5Stems)
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -914,6 +967,7 @@ void DlgPrefDeck::slotApply() {
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
 
+<<<<<<< HEAD
     m_pConfig->setValue(ConfigKey("[Controls]", "RateTempLeft"), m_dRateTempCoarse);
     m_pConfig->setValue(ConfigKey("[Controls]", "RateTempRight"), m_dRateTempFine);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermLeft"), m_dRatePermCoarse);
@@ -928,6 +982,24 @@ void DlgPrefDeck::slotApply() {
 
     m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
             m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
+=======
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, QStringLiteral("RateTempLeft")),
+            m_dRateTempCoarse);
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, QStringLiteral("RateTempRight")),
+            m_dRateTempFine);
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, QStringLiteral("RatePermLeft")),
+            m_dRatePermCoarse);
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, QStringLiteral("RatePermRight")),
+            m_dRatePermFine);
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsEnabled,
+            m_bIncludeOriginalMasterWhenPlayingStemsEnabled);
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpsampleStems,
+            m_bUpsampleStems);
+>>>>>>> 6da72ddd30 (5Stems)
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1016,6 +1088,7 @@ int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
     return 0;
 }
 
+<<<<<<< HEAD
 void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
     m_bNowPlayingEnabled = checked;
 
@@ -1029,10 +1102,13 @@ void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
     comboBoxNowPlayingPollInterval->setEnabled(checked);
 }
 
+=======
+>>>>>>> 6da72ddd30 (5Stems)
 void DlgPrefDeck::slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked) {
     m_bIncludeOriginalMasterWhenPlayingStemsEnabled = checked;
 }
 
+<<<<<<< HEAD
 void DlgPrefDeck::slotNowPlayingAppendChanged(bool checked) {
     m_bNowPlayingAppendMode = checked;
 
@@ -1070,5 +1146,12 @@ void DlgPrefDeck::slotNowPlayingPollIntervalChanged(int index) {
     default:
         m_iNowPlayingPollInterval = 1000;
         break;
+=======
+void DlgPrefDeck::slotDownSampleUpsampleModeSelected(QAbstractButton* pressedButton) {
+    if (pressedButton == radioButtonUpSampleStems) {
+        m_bUpsampleStems = true;
+    } else if (pressedButton == radioButtonDownSampleOriginalMix) {
+        m_bUpsampleStems = false;
+>>>>>>> 6da72ddd30 (5Stems)
     }
 }
