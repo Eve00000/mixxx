@@ -113,6 +113,10 @@ void CachingReaderWorker::newTrack(TrackPointer pTrack) {
     workReady();
 }
 
+void CachingReaderWorker::setUpsampleStems(bool upSampleStems) {
+    m_pUpSampleStems = upSampleStems;
+}
+
 void CachingReaderWorker::run() {
     // the id of this thread, for debugging purposes
     static auto lastId = QAtomicInt(0);
@@ -218,6 +222,7 @@ void CachingReaderWorker::loadTrack(const TrackPointer& pTrack) {
     config.setChannelCount(m_maxSupportedChannel);
 #ifdef __STEM__
     config.setStemMask(stemMask);
+    config.setUpSampleStems(m_pUpSampleStems);
 #endif
     m_pAudioSource = SoundSourceProxy(pTrack).openAudioSource(config);
     if (!m_pAudioSource) {

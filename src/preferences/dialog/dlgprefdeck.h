@@ -16,7 +16,7 @@ class QWidget;
 
 namespace {
 constexpr bool kDefaultCloneDeckOnLoad = true;
-} // namespace
+}
 
 namespace {
 const ConfigKey kConfigKeyLoadWhenDeckPlaying = ConfigKey("[Controls]", "LoadWhenDeckPlaying");
@@ -25,7 +25,7 @@ const ConfigKey kConfigKeyAllowTrackLoadToPlayingDeck =
 constexpr LoadWhenDeckPlaying kDefaultLoadWhenDeckPlaying = LoadWhenDeckPlaying::Reject;
 } // namespace
 
-class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
+class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     Q_OBJECT
   public:
     DlgPrefDeck(QWidget* parent,
@@ -57,11 +57,14 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     void slotTimeFormatChanged(double);
 
-    void slotNumDecksChanged(double, bool initializing=false);
-    void slotNumSamplersChanged(double, bool initializing=false);
+    void slotNumDecksChanged(double, bool initializing = false);
+    void slotNumSamplersChanged(double, bool initializing = false);
 
     void slotUpdateSpeedAutoReset(bool);
     void slotUpdatePitchAutoReset(bool);
+
+    void slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked);
+    void slotDownSampleUpsampleModeSelected(QAbstractButton*);
 
   private:
     // Because the CueDefault list is out of order, we have to set the combo
@@ -114,4 +117,7 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     double m_dRateTempFine;
     double m_dRatePermCoarse;
     double m_dRatePermFine;
+
+    bool m_bIncludeOriginalMasterWhenPlayingStemsEnabled;
+    bool m_bUpsampleStems;
 };

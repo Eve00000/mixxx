@@ -2,6 +2,7 @@
 
 #include <QtDebug>
 
+#include "control/pollingcontrolproxy.h"
 #include "moc_cachingreader.cpp"
 #include "util/assert.h"
 #include "util/compatibility/qatomic.h"
@@ -64,6 +65,10 @@ CachingReader::CachingReader(const QString& group,
                   &m_chunkReadRequestFIFO,
                   &m_readerStatusUpdateFIFO,
                   maxSupportedChannel) {
+    PollingControlProxy proxy("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+    bool upSampleStems = proxy.toBool();
+    m_worker.setUpsampleStems(upSampleStems);
+
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
     // chunks. Initialize each chunk to hold nothing and add it to the free

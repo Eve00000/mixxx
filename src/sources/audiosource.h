@@ -243,6 +243,16 @@ class AudioSource : public UrlResource, public virtual /*implements*/ IAudioSour
             }
             m_stemMask = stemMask;
         }
+
+        void setUpSampleStems(bool upsample) {
+            m_upSampleStems = upsample;
+        }
+        bool getUpSampleStems() const {
+            return m_upSampleStems;
+        }
+
+        bool m_upSampleStems = true;
+
 #endif
 
         void setSampleRate(

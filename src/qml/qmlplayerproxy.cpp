@@ -3,6 +3,9 @@
 #include <QBuffer>
 #include <QQmlEngine>
 
+#include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
+#include "engine/engine.h"
 #include "mixer/basetrackplayer.h"
 #include "moc_qmlplayerproxy.cpp"
 #include "qmltrackproxy.h"
@@ -38,9 +41,22 @@ void QmlPlayerProxy::loadTrack(QmlTrackProxy* track, bool play) {
     if (m_pCurrentTrack == track->internal()) {
         return;
     }
+
+#ifdef __STEM__
+    // auto proxyIncludeOriginalMasterWhenPlayingStemsCO = std::make_unique<PollingControlProxy>(
+    //         "IncludeOriginalMasterWhenPlayingStems", "Enabled");
+    // bool includeOriginal = proxyIncludeOriginalMasterWhenPlayingStemsCO->toBool();
+
+    // const mixxx::StemMask stemMask =
+    //         includeOriginal
+    //         ? mixxx::kStemMaskAll5
+    //         : mixxx::kStemMaskAll4;
+#endif
+
     emit loadTrackRequested(track->internal(),
 #ifdef __STEM__
-            mixxx::StemChannel::All,
+            // mixxx::StemChannel::All,
+            mixxx::getActiveStemMask(),
 #endif
             play);
 }
