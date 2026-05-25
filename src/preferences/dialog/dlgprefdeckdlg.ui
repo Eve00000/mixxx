@@ -734,6 +734,25 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
       </widget>
     </item>
     <item row="3" column="0">
+      <widget class="QGroupBox" name="groupBoxIncludeOriginalMasterWhenPlayingStems">
+        <property name="title">
+          <string>Include Original Master when playing Stems</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayoutIncludeOriginalMasterWhenPlayingStems">
+          <property name="spacing">
+            <number>10</number>
+          </property>
+          <item row="0" column="0" colspan="3">
+            <widget class="QCheckBox" name="checkBoxEnableIncludeOriginalMasterWhenPlayingStems">
+              <property name="text">
+                <string>Include Original Master when playing Stems</string>
+              </property>
+            </widget>
+          </item>
+        </layout>
+      </widget>
+    </item>
+    <item row="4" column="0">
       <spacer name="verticalSpacer2">
         <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -780,6 +799,7 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
   <tabstop>checkBoxNowPlayingAddTimestamp</tabstop>
   <tabstop>checkBoxNowPlayingArchive</tabstop>
   <tabstop>comboBoxNowPlayingPollInterval</tabstop>
+  <tabstop>checkBoxEnableIncludeOriginalMasterWhenPlayingStems</tabstop>
  </tabstops>
  <resources/>
  <buttongroups>

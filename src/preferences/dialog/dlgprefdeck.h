@@ -18,21 +18,21 @@ constexpr bool kDefaultCloneDeckOnLoad = true;
 }
 
 namespace TrackTime {
-    enum class DisplayMode {
-        ELAPSED,
-        REMAINING,
-        ELAPSED_AND_REMAINING,
-    };
+enum class DisplayMode {
+    ELAPSED,
+    REMAINING,
+    ELAPSED_AND_REMAINING,
+};
 
-    enum class DisplayFormat {
-        TRADITIONAL,
-        TRADITIONAL_COARSE,
-        SECONDS,
-        SECONDS_LONG,
-        KILO_SECONDS,
-        HECTO_SECONDS,
-    };
-}
+enum class DisplayFormat {
+    TRADITIONAL,
+    TRADITIONAL_COARSE,
+    SECONDS,
+    SECONDS_LONG,
+    KILO_SECONDS,
+    HECTO_SECONDS,
+};
+} // namespace TrackTime
 
 enum class KeylockMode {
     LockOriginalKey,
@@ -57,7 +57,7 @@ const ConfigKey kConfigKeyAllowTrackLoadToPlayingDeck =
 constexpr LoadWhenDeckPlaying kDefaultLoadWhenDeckPlaying = LoadWhenDeckPlaying::Reject;
 } // namespace
 
-class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
+class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     Q_OBJECT
   public:
     DlgPrefDeck(QWidget* parent,
@@ -89,8 +89,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     void slotTimeFormatChanged(double);
 
-    void slotNumDecksChanged(double, bool initializing=false);
-    void slotNumSamplersChanged(double, bool initializing=false);
+    void slotNumDecksChanged(double, bool initializing = false);
+    void slotNumSamplersChanged(double, bool initializing = false);
 
     void slotUpdateSpeedAutoReset(bool);
     void slotUpdatePitchAutoReset(bool);
@@ -100,6 +100,7 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     void slotNowPlayingAddTimestampChanged(bool checked);
     void slotNowPlayingArchiveChanged(bool checked);
     void slotNowPlayingPollIntervalChanged(int index);
+    void slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked);
 
   private:
     // Because the CueDefault list is out of order, we have to set the combo
@@ -158,4 +159,5 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     bool m_bNowPlayingAddTimestamp;
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
+    bool m_bIncludeOriginalMasterWhenPlayingStemsEnabled;
 };
