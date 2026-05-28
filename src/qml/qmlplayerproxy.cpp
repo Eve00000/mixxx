@@ -3,6 +3,9 @@
 #include <QBuffer>
 #include <QQmlEngine>
 
+#include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
+#include "engine/engine.h"
 #include "mixer/basetrackplayer.h"
 #include "moc_qmlplayerproxy.cpp"
 #include "qmltrackproxy.h"
@@ -38,6 +41,7 @@ void QmlPlayerProxy::loadTrack(QmlTrackProxy* track, bool play) {
     if (m_pCurrentTrack == track->internal()) {
         return;
     }
+
     emit loadTrackRequested(track->internal(),
 #ifdef __STEM__
             mixxx::StemChannel::All,

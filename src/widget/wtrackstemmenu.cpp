@@ -6,6 +6,7 @@
 
 namespace {
 const QList<mixxx::StemChannel> stemTracks = {
+        mixxx::StemChannel::PreMix,
         mixxx::StemChannel::First,
         mixxx::StemChannel::Second,
         mixxx::StemChannel::Third,
@@ -31,32 +32,25 @@ WTrackStemMenu::WTrackStemMenu(const QString& label,
         });
     }
 
-    QAction* pAction = new QAction(tr("Load pre-mixed stereo track"), this);
-    addAction(pAction);
-    connect(pAction, &QAction::triggered, this, [this, group] {
-        emit selectedStem(group, mixxx::StemChannel::All);
-    });
-    addSeparator();
-
-    DEBUG_ASSERT(stemTracks.count() == mixxx::kMaxSupportedStems);
-    int stemIdx = 0;
-    for (const auto& stemTrack : stemTracks) {
-        m_stemActions.emplace_back(
-                make_parented<QAction>(tr("Load the \"%1\" stem")
-                                               .arg(m_stemInfo.at(stemIdx).getLabel()),
-                        this));
-        addAction(m_stemActions.back().get());
-        connect(m_stemActions.back().get(), &QAction::triggered, this, [this, stemTrack] {
-            emit selectedStem(m_group, stemTrack);
-        });
-        connect(m_stemActions.back().get(),
-                &QAction::toggled,
-                this,
-                [this, stemTrack](bool checked) {
-                    m_currentSelection.setFlag(stemTrack, checked);
-                });
-        stemIdx++;
-    }
+    // DEBUG_ASSERT(stemTracks.count() == mixxx::kMaxSupportedStems);
+    // int stemIdx = 0;
+    // for (const auto& stemTrack : stemTracks) {
+    //     m_stemActions.emplace_back(
+    //             make_parented<QAction>(tr("Load the \"%1\" stem")
+    //                                            .arg(m_stemInfo.at(stemIdx).getLabel()),
+    //                     this));
+    //     addAction(m_stemActions.back().get());
+    //     connect(m_stemActions.back().get(), &QAction::triggered, this, [this, stemTrack] {
+    //         emit selectedStem(m_group, stemTrack);
+    //     });
+    //     connect(m_stemActions.back().get(),
+    //             &QAction::toggled,
+    //             this,
+    //             [this, stemTrack](bool checked) {
+    //                 m_currentSelection.setFlag(stemTrack, checked);
+    //             });
+    //     stemIdx++;
+    // }
     m_selectAction = make_parented<QAction>(this);
     m_selectAction->setToolTip(tr("Load multiple stem into a stereo deck"));
     m_selectAction->setDisabled(true);

@@ -251,14 +251,23 @@ class WTrackMenu : public QMenu {
     void clearBeats();
     void lockBpm(bool lock);
 
+    // #ifdef __STEM__
+    //     void loadSelectionToGroup(const QString& group,
+    //             mixxx::StemChannelSelection stemMask = mixxx::StemChannelSelection(),
+    //             bool play = false);
+    // #else
+    //     void loadSelectionToGroup(const QString& group,
+    //             bool play = false);
+    // #endif
+
 #ifdef __STEM__
     void loadSelectionToGroup(const QString& group,
             mixxx::StemChannelSelection stemMask = mixxx::StemChannelSelection(),
             bool play = false);
 #else
-    void loadSelectionToGroup(const QString& group,
-            bool play = false);
+    void loadSelectionToGroup(const QString& group, bool play = false);
 #endif
+
     void clearTrackSelection();
 
     std::pair<bool, bool> getTrackBpmLockStates() const;

@@ -2,7 +2,6 @@
 
 #include "audio/signalinfo.h"
 
-
 namespace mixxx {
 static constexpr audio::ChannelCount kEngineChannelOutputCount =
         audio::ChannelCount::stereo();
@@ -11,21 +10,21 @@ static constexpr audio::ChannelCount kMaxEngineChannelInputCount =
 // The following constant is always defined as it used for the waveform data
 // struct, which must stay consistent, whether the STEM feature is enabled or
 // not.
-constexpr int kMaxSupportedStems = 4;
+constexpr int kMaxSupportedStems = 5;
 #ifdef __STEM__
 enum class StemChannel {
-    First = 0x1,
-    Second = 0x2,
-    Third = 0x4,
-    Fourth = 0x8,
+    PreMix = 0x1,
+    First = 0x2,
+    Second = 0x4,
+    Third = 0x8,
+    Fourth = 0x10,
 
     None = 0,
-    All = First | Second | Third | Fourth
+    All = PreMix | First | Second | Third | Fourth
 };
 Q_DECLARE_FLAGS(StemChannelSelection, StemChannel);
 #endif
 
-// Contains the information needed to process a buffer of audio
 class EngineParameters final {
   public:
     SINT framesPerBuffer() const {

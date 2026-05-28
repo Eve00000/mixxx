@@ -23,6 +23,7 @@
 #include "widget/winitialglwidget.h"
 #endif
 
+#include "control/pollingcontrolproxy.h"
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "coreservices.h"
 #include "defs_urls.h"
@@ -317,6 +318,11 @@ void MixxxMainWindow::initialize() {
             WaveformWidgetFactory::instance(),
             &WaveformWidgetFactory::slotSkinLoaded);
 
+    connect(this,
+            &MixxxMainWindow::skinLoaded,
+            this,
+            &MixxxMainWindow::slotSkinLoaded);
+
     // Initialize preference dialog
     m_pPrefDlg = new DlgPreferences(
             m_pCoreServices->getScreensaverManager(),
@@ -468,6 +474,20 @@ void MixxxMainWindow::initialize() {
         // AutoDj is second from the top by default, all features collapsed).
         pLibrary->showAutoDJ();
     }
+}
+
+void MixxxMainWindow::slotSkinLoaded() {
+    createSkinProxies();
+}
+
+void MixxxMainWindow::createSkinProxies() {
+    auto m_pShowOriginalPremix = std::make_unique<ControlProxy>(
+            ConfigKey("[Skin]", "show_original_premix"));
+
+    auto m_pPremixToggleMode = std::make_unique<ControlProxy>(
+            ConfigKey("[Skin]", "stem_premix_toggle_mode"));
+    // qDebug() << "[MixxxMainWindow] -> Created skin control proxies
+    // m_pShowOriginalPremix & m_pPremixToggleMode";
 }
 
 MixxxMainWindow::~MixxxMainWindow() {

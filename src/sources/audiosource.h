@@ -243,6 +243,21 @@ class AudioSource : public UrlResource, public virtual /*implements*/ IAudioSour
             }
             m_stemMask = stemMask;
         }
+
+        void setPremixIncludedVars(bool premixIncluded, bool upsample) {
+            m_premixIncluded = premixIncluded;
+            m_upSampleStems = upsample;
+        }
+        bool getPremixIncluded() const {
+            return m_premixIncluded;
+        }
+        bool getUpSampleStems() const {
+            return m_upSampleStems;
+        }
+
+        bool m_premixIncluded = true;
+        bool m_upSampleStems = true;
+
 #endif
 
         void setSampleRate(
