@@ -49,6 +49,7 @@ class SoundSourceSTEM : public SoundSource {
     QMap<int, qint64> m_streamTotalFramesProcessed;
     QMap<int, qint64> m_streamTotalResamplingTime;
 
+    bool m_premixIncluded;
     bool m_upSampleStems;
     int m_referenceSampleRate;
     audio::SampleRate m_targetSampleRate;

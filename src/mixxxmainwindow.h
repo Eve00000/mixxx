@@ -20,6 +20,8 @@ class LaunchImage;
 class VisualsManager;
 class WMainMenuBar;
 class OscReceiver;
+class PollingControlProxy;
+struct LibraryScanResultSummary;
 
 namespace mixxx {
 
@@ -89,6 +91,7 @@ class MixxxMainWindow : public QMainWindow {
 
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
+    void slotSkinLoaded();
 
   signals:
     void skinLoaded();
@@ -119,6 +122,11 @@ class MixxxMainWindow : public QMainWindow {
     void alwaysHideMenuBarDlg();
 #endif
     static void cleanUpRamPlayCache(UserSettingsPointer pConfig);
+
+#ifdef __STEM__
+    void createSkinProxies();
+#endif
+
     QDialog::DialogCode soundDeviceErrorDlg(
             const QString &title, const QString &text, bool* retryClicked);
     QDialog::DialogCode soundDeviceBusyDlg(bool* retryClicked);
@@ -162,4 +170,9 @@ class MixxxMainWindow : public QMainWindow {
     std::unique_ptr<NowPlaying> m_pNowPlaying;
     QThread m_oscThread;
     std::unique_ptr<OscReceiver> m_pOscReceiver;
+
+#ifdef __STEM__
+    std::unique_ptr<PollingControlProxy> m_pShowOriginalPremix;
+    std::unique_ptr<PollingControlProxy> m_pPremixToggleMode;
+#endif
 };

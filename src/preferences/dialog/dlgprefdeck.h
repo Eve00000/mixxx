@@ -100,7 +100,6 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     void slotNowPlayingAddTimestampChanged(bool checked);
     void slotNowPlayingArchiveChanged(bool checked);
     void slotNowPlayingPollIntervalChanged(int index);
-    void slotEnableIncludeOriginalMasterWhenPlayingStemsChanged(bool checked);
 
     void slotDownSampleUpSampleModeSelected(QAbstractButton*);
 
@@ -162,6 +161,5 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     bool m_bNowPlayingAddTimestamp;
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
-    bool m_bIncludeOriginalMasterWhenPlayingStemsEnabled;
     bool m_bUpSampleStems;
 };
