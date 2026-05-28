@@ -54,7 +54,8 @@ Cue::Cue(
         double stem1vol,
         double stem2vol,
         double stem3vol,
-        double stem4vol)
+        double stem4vol,
+        double stem5vol)
         : m_bDirty(false), // clear flag after loading from database
           m_dbId(id),
           m_type(type),
@@ -65,7 +66,8 @@ Cue::Cue(
           m_stem1vol(stem1vol),
           m_stem2vol(stem2vol),
           m_stem3vol(stem3vol),
-          m_stem4vol(stem4vol) {
+          m_stem4vol(stem4vol),
+          m_stem5vol(stem5vol) {
     DEBUG_ASSERT(m_dbId.isValid());
     if (length != 0) {
         if (position.isValid()) {
@@ -96,7 +98,8 @@ Cue::Cue(
           m_stem1vol(cueInfo.getStem1vol().value_or(kNoHotCue)),
           m_stem2vol(cueInfo.getStem2vol().value_or(kNoHotCue)),
           m_stem3vol(cueInfo.getStem3vol().value_or(kNoHotCue)),
-          m_stem4vol(cueInfo.getStem4vol().value_or(kNoHotCue)) {
+          m_stem4vol(cueInfo.getStem4vol().value_or(kNoHotCue)),
+          m_stem5vol(cueInfo.getStem5vol().value_or(kNoHotCue)) {
     DEBUG_ASSERT(!m_dbId.isValid());
 }
 
@@ -110,7 +113,8 @@ Cue::Cue(
         double stem1vol,
         double stem2vol,
         double stem3vol,
-        double stem4vol)
+        double stem4vol,
+        double stem5vol)
         : m_bDirty(true), // not yet in database, needs to be saved
           m_type(type),
           m_startPosition(startPosition),
@@ -120,7 +124,8 @@ Cue::Cue(
           m_stem1vol(stem1vol),
           m_stem2vol(stem2vol),
           m_stem3vol(stem3vol),
-          m_stem4vol(stem4vol) {
+          m_stem4vol(stem4vol),
+          m_stem5vol(stem5vol) {
     DEBUG_ASSERT(m_iHotCue == kNoHotCue || m_iHotCue >= mixxx::kFirstHotCueIndex);
     DEBUG_ASSERT(m_startPosition.isValid() || m_endPosition.isValid());
     DEBUG_ASSERT(!m_dbId.isValid());
@@ -139,7 +144,8 @@ mixxx::CueInfo Cue::getCueInfo(
             m_stem1vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem1vol),
             m_stem2vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem2vol),
             m_stem3vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem3vol),
-            m_stem4vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem4vol));
+            m_stem4vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem4vol),
+            m_stem5vol == kNoHotCue ? std::nullopt : std::make_optional(m_stem5vol));
 }
 
 DbId Cue::getId() const {
@@ -281,6 +287,11 @@ double Cue::getStem4vol() const {
     return m_stem4vol;
 }
 
+double Cue::getStem5vol() const {
+    const auto lock = lockMutex(&m_mutex);
+    return m_stem5vol;
+}
+
 void Cue::setStem1vol(double stem1vol) {
     auto lock = lockMutex(&m_mutex);
     if (m_stem1vol == stem1vol) {
@@ -332,6 +343,20 @@ void Cue::setStem4vol(double stem4vol) {
     //        return;
     //    }
     m_stem4vol = stem4vol;
+    m_bDirty = true;
+    lock.unlock();
+    emit updated();
+}
+
+void Cue::setStem5vol(double stem5vol) {
+    auto lock = lockMutex(&m_mutex);
+    if (m_stem5vol == stem5vol) {
+        return;
+    }
+    //    if (stem4vol < -100 || stem4vol > 100) {
+    //        return;
+    //    }
+    m_stem5vol = stem5vol;
     m_bDirty = true;
     lock.unlock();
     emit updated();

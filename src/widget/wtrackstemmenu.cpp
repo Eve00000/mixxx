@@ -6,11 +6,7 @@
 
 namespace {
 const QList<mixxx::StemChannel> stemTracks = {
-<<<<<<< HEAD
-
-        == == == =
-                         mixxx::StemChannel::PreMix,
->>>>>>> 5166d641a6 (5Stems)
+        mixxx::StemChannel::PreMix,
         mixxx::StemChannel::First,
         mixxx::StemChannel::Second,
         mixxx::StemChannel::Third,

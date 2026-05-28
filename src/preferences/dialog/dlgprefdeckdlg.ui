@@ -747,11 +747,24 @@
             <property name="spacing">
               <number>10</number>
             </property>
-            <item row="0" column="0" colspan="3">
-              <widget class="QCheckBox" name="checkBoxEnableIncludeOriginalMasterWhenPlayingStems">
+            <item row="1" column="0">
+              <widget class="QRadioButton" name="radioButtonDownSampleOriginalMix">
                 <property name="text">
-                  <string>Include Original Master when playing Stems</string>
+                  <string>DownSample Original Master</string>
                 </property>
+                <attribute name="buttonGroup">
+                  <string notr="true">buttonGroupDownSampleUpSample</string>
+                </attribute>
+              </widget>
+            </item>
+            <item row="2" column="0">
+              <widget class="QRadioButton" name="radioButtonUpSampleStems">
+                <property name="text">
+                  <string>UpSample Stems</string>
+                </property>
+                <attribute name="buttonGroup">
+                  <string notr="true">buttonGroupDownSampleUpSample</string>
+                </attribute>
               </widget>
             </item>
           </layout>
@@ -804,9 +817,8 @@
     <tabstop>checkBoxNowPlayingAddTimestamp</tabstop>
     <tabstop>checkBoxNowPlayingArchive</tabstop>
     <tabstop>comboBoxNowPlayingPollInterval</tabstop>
-    <tabstop>checkBoxEnableIncludeOriginalMasterWhenPlayingStems</tabstop>
-    <tabstop>radioButtonDownSample</tabstop>
-    <tabstop>radioButtonUpSample</tabstop>
+    <tabstop>radioButtonDownSampleOriginalMix</tabstop>
+    <tabstop>radioButtonUpSampleStems</tabstop>
   </tabstops>
   <resources/>
   <buttongroups>

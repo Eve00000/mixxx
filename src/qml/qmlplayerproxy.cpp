@@ -2,9 +2,6 @@
 
 #include <QBuffer>
 
-#include "control/controlproxy.h"
-#include "control/pollingcontrolproxy.h"
-#include "engine/engine.h"
 #include "mixer/basetrackplayer.h"
 #include "moc_qmlplayerproxy.cpp"
 #include "qml/asyncimageprovider.h"
@@ -56,21 +53,6 @@ QmlPlayerProxy::QmlPlayerProxy(BaseTrackPlayer* pTrackPlayer, QObject* parent)
     if (m_pTrackPlayer && m_pTrackPlayer->getLoadedTrack()) {
         slotTrackLoaded(pTrackPlayer->getLoadedTrack());
     }
-}
-
-void QmlPlayerProxy::loadTrack(QmlTrackProxy* track, bool play) {
-    if (track == nullptr || track->internal() == nullptr) {
-        return;
-    }
-    if (m_pCurrentTrack == track->internal()) {
-        return;
-    }
-
-    emit loadTrackRequested(track->internal(),
-#ifdef __STEM__
-            mixxx::StemChannel::All,
-#endif
-            play);
 }
 
 void QmlPlayerProxy::loadTrackFromLocation(const QString& trackLocation, bool play) {

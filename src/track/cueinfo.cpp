@@ -42,6 +42,7 @@ CueInfo::CueInfo()
           m_stem2vol(std::nullopt),
           m_stem3vol(std::nullopt),
           m_stem4vol(std::nullopt),
+          m_stem5vol(std::nullopt),
           m_flags(CueFlag::None) {
 }
 
@@ -56,6 +57,7 @@ CueInfo::CueInfo(
         const std::optional<int>& stem2vol,
         const std::optional<int>& stem3vol,
         const std::optional<int>& stem4vol,
+        const std::optional<int>& stem5vol,
         CueFlags flags)
         : m_type(type),
           m_startPositionMillis(startPositionMillis),
@@ -67,6 +69,7 @@ CueInfo::CueInfo(
           m_stem2vol(stem2vol),
           m_stem3vol(stem3vol),
           m_stem4vol(stem4vol),
+          m_stem5vol(stem5vol),
           m_flags(flags) {
     assertEndPosition(type, endPositionMillis);
 }
@@ -120,6 +123,10 @@ std::optional<int> CueInfo::getStem4vol() const {
     return m_stem4vol;
 }
 
+std::optional<int> CueInfo::getStem5vol() const {
+    return m_stem4vol;
+}
+
 void CueInfo::setStem1vol(int stem1vol) {
     m_stem1vol = stem1vol;
 }
@@ -134,6 +141,10 @@ void CueInfo::setStem3vol(int stem3vol) {
 
 void CueInfo::setStem4vol(int stem4vol) {
     m_stem4vol = stem4vol;
+}
+
+void CueInfo::setStem5vol(int stem5vol) {
+    m_stem5vol = stem5vol;
 }
 
 QString CueInfo::getLabel() const {
@@ -164,7 +175,8 @@ bool operator==(
             lhs.getStem1vol() == rhs.getStem1vol() &&
             lhs.getStem2vol() == rhs.getStem2vol() &&
             lhs.getStem3vol() == rhs.getStem3vol() &&
-            lhs.getStem4vol() == rhs.getStem4vol();
+            lhs.getStem4vol() == rhs.getStem4vol() &&
+            lhs.getStem5vol() == rhs.getStem5vol();
 }
 
 QDebug operator<<(QDebug debug, const CueType& cueType) {
@@ -213,6 +225,7 @@ QDebug operator<<(QDebug debug, const CueInfo& cueInfo) {
             << ", stem2vol=" << cueInfo.getStem2vol()
             << ", stem3vol=" << cueInfo.getStem3vol()
             << ", stem4vol=" << cueInfo.getStem4vol()
+            << ", stem5vol=" << cueInfo.getStem5vol()
             << ", flags=" << cueInfo.flags()
             << "]";
     return debug;

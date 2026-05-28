@@ -67,6 +67,7 @@ class WCueMenuPopup : public QWidget {
     void slotEditStem2vol();
     void slotEditStem3vol();
     void slotEditStem4vol();
+    void slotEditStem5vol();
     // EVE
     void slotDeleteCue();
     void slotUpdate();
@@ -106,6 +107,7 @@ class WCueMenuPopup : public QWidget {
     std::unique_ptr<QLineEdit> m_pEditStem2vol;
     std::unique_ptr<QLineEdit> m_pEditStem3vol;
     std::unique_ptr<QLineEdit> m_pEditStem4vol;
+    std::unique_ptr<QLineEdit> m_pEditStem5vol;
     // Eve
     std::unique_ptr<WColorPicker> m_pColorPicker;
     std::unique_ptr<CueMenuPushButton> m_pDeleteCue;

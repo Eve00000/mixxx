@@ -316,7 +316,8 @@ class Track : public QObject {
             double stem1vol = 1.0,
             double stem2vol = 1.0,
             double stem3vol = 1.0,
-            double stem4vol = 1.0);
+            double stem4vol = 1.0,
+            double stem5vol = 1.0);
     CuePointer createAndAddCue(
             mixxx::CueType type,
             int hotCueIndex,

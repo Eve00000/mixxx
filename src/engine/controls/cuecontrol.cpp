@@ -968,6 +968,7 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     double pass2CueCreationStem2Vol;
     double pass2CueCreationStem3Vol;
     double pass2CueCreationStem4Vol;
+    double pass2CueCreationStem5Vol;
 
     bool loopEnabled = m_pLoopEnabled->toBool();
     if (mode == HotcueSetMode::Auto) {
@@ -1001,6 +1002,7 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
                 QString("[%1_Stem2]").arg(groupBaseName),
                 QString("[%1_Stem3]").arg(groupBaseName),
                 QString("[%1_Stem4]").arg(groupBaseName),
+                QString("[%1_Stem5]").arg(groupBaseName),
         };
         // get the mute multiplier
         auto getMuteMultiplier = [](const QString& group) -> int {
@@ -1019,12 +1021,14 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
         pass2CueCreationStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
         pass2CueCreationStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
         pass2CueCreationStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
+        pass2CueCreationStem5Vol = getVolume(stemGroups[4], getMuteMultiplier(stemGroups[4]));
     } else {
         qDebug() << "[CUECONTROL] -> stem -> proxyStem = 1";
         pass2CueCreationStem1Vol = 1.0;
         pass2CueCreationStem2Vol = 1.0;
         pass2CueCreationStem3Vol = 1.0;
         pass2CueCreationStem4Vol = 1.0;
+        pass2CueCreationStem5Vol = 1.0;
     }
     // EveCue-Loop
 
@@ -1110,7 +1114,8 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
             pass2CueCreationStem1Vol,
             pass2CueCreationStem2Vol,
             pass2CueCreationStem3Vol,
-            pass2CueCreationStem4Vol);
+            pass2CueCreationStem4Vol,
+            pass2CueCreationStem5Vol);
 
     // Note: createAndAddCue() emits cuesUpdated() connected to loadCuesFromTrack()
     // updating pControl with the created Cue.
@@ -1281,7 +1286,8 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                         QString("[%1_Stem1]").arg(groupBaseName),
                         QString("[%1_Stem2]").arg(groupBaseName),
                         QString("[%1_Stem3]").arg(groupBaseName),
-                        QString("[%1_Stem4]").arg(groupBaseName)};
+                        QString("[%1_Stem4]").arg(groupBaseName),
+                        QString("[%1_Stem5]").arg(groupBaseName)};
 
                 auto setMuteAndVolume = [](const QString& group,
                                                 double volume) {
@@ -1298,6 +1304,7 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
                 setMuteAndVolume(stemGroups[1], pCue->getStem2vol());
                 setMuteAndVolume(stemGroups[2], pCue->getStem3vol());
                 setMuteAndVolume(stemGroups[3], pCue->getStem4vol());
+                setMuteAndVolume(stemGroups[4], pCue->getStem5vol());
             }
             // EveCue-Loop
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
@@ -2732,10 +2739,12 @@ HotcueControl::HotcueControl(const QString& group, int hotcueIndex)
     m_hotcueStem2vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem2vol")));
     m_hotcueStem3vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem3vol")));
     m_hotcueStem4vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem4vol")));
+    m_hotcueStem5vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem5vol")));
     m_hotcueStem1vol->setReadOnly();
     m_hotcueStem2vol->setReadOnly();
     m_hotcueStem3vol->setReadOnly();
     m_hotcueStem4vol->setReadOnly();
+    m_hotcueStem5vol->setReadOnly();
 
     m_hotcueType = std::make_unique<ControlObject>(keyForControl(QStringLiteral("type")));
     m_hotcueType->setReadOnly();
@@ -3019,6 +3028,10 @@ void HotcueControl::setStem3vol(double stem3vol) {
 
 void HotcueControl::setStem4vol(double stem4vol) {
     m_hotcueStem4vol->set(static_cast<double>(stem4vol));
+}
+
+void HotcueControl::setStem5vol(double stem5vol) {
+    m_hotcueStem5vol->set(static_cast<double>(stem5vol));
 }
 
 void HotcueControl::setStatus(HotcueControl::Status status) {

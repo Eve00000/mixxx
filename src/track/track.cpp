@@ -962,6 +962,7 @@ void Track::setMainCuePosition(mixxx::audio::FramePos position) {
                     100,
                     100,
                     100,
+                    100,
                     100));
             // While this method could be called from any thread,
             // associated Cue objects should always live on the
@@ -1080,7 +1081,8 @@ CuePointer Track::createAndAddCue(
         double stem1vol,
         double stem2vol,
         double stem3vol,
-        double stem4vol) {
+        double stem4vol,
+        double stem5vol) {
     VERIFY_OR_DEBUG_ASSERT(hotCueIndex == Cue::kNoHotCue ||
             hotCueIndex >= mixxx::kFirstHotCueIndex) {
         return CuePointer{};
@@ -1097,7 +1099,8 @@ CuePointer Track::createAndAddCue(
             stem1vol,
             stem2vol,
             stem3vol,
-            stem4vol));
+            stem4vol,
+            stem5vol));
     // While this method could be called from any thread,
     // associated Cue objects should always live on the
     // same thread as their host, namely this->thread().

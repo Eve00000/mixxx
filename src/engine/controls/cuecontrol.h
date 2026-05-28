@@ -104,6 +104,7 @@ class HotcueControl : public QObject {
     void setStem2vol(double stem2vol);
     void setStem3vol(double stem3vol);
     void setStem4vol(double stem4vol);
+    void setStem5vol(double stem5vol);
 
     /// Used for caching the preview state of this hotcue control
     /// for the case the cue is deleted during preview.
@@ -180,6 +181,7 @@ class HotcueControl : public QObject {
     std::unique_ptr<ControlObject> m_hotcueStem2vol;
     std::unique_ptr<ControlObject> m_hotcueStem3vol;
     std::unique_ptr<ControlObject> m_hotcueStem4vol;
+    std::unique_ptr<ControlObject> m_hotcueStem5vol;
     // Hotcue button controls
     std::unique_ptr<ControlPushButton> m_hotcueSet;
     std::unique_ptr<ControlPushButton> m_hotcueSetCue;

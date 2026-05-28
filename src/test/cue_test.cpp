@@ -19,6 +19,7 @@ TEST(CueTest, NewCueIsDirty) {
             1.0,
             1.0,
             1.0,
+            1.0,
             1.0);
     EXPECT_TRUE(cue.isDirty());
 }
@@ -46,6 +47,7 @@ TEST(CueTest, ConvertCueInfoToCueRoundtrip) {
             std::make_optional(3),
             QStringLiteral("label"),
             RgbColor::optional(0xABCDEF),
+            1.0,
             1.0,
             1.0,
             1.0,
