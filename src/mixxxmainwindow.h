@@ -17,6 +17,7 @@ class GuiTick;
 class LaunchImage;
 class VisualsManager;
 class WMainMenuBar;
+class PollingControlProxy;
 struct LibraryScanResultSummary;
 
 namespace mixxx {
@@ -91,6 +92,7 @@ class MixxxMainWindow : public QMainWindow {
 
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
+    void slotSkinLoaded();
 
   signals:
     void skinLoaded();
@@ -115,6 +117,10 @@ class MixxxMainWindow : public QMainWindow {
     bool confirmExit();
 #ifndef __APPLE__
     void alwaysHideMenuBarDlg();
+#endif
+
+#ifdef __STEM__
+    void createSkinProxies();
 #endif
 
     QDialog::DialogCode soundDeviceErrorDlg(
@@ -162,4 +168,9 @@ class MixxxMainWindow : public QMainWindow {
     mixxx::preferences::ScreenSaver m_inhibitScreensaver;
 
     QSet<ControlObject*> m_skinCreatedControls;
+
+#ifdef __STEM__
+    std::unique_ptr<PollingControlProxy> m_pShowOriginalPremix;
+    std::unique_ptr<PollingControlProxy> m_pPremixToggleMode;
+#endif
 };

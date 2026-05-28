@@ -13,6 +13,8 @@ class EngineBuffer;
 class EngineMixer;
 class ControlPushButton;
 class ControlPotmeter;
+class ControlProxy;
+class PollingControlProxy;
 
 class EngineDeck : public EngineChannel, public AudioDestination {
     Q_OBJECT
@@ -72,7 +74,6 @@ class EngineDeck : public EngineChannel, public AudioDestination {
     void cloneStemState(const EngineDeck* deckToClone);
     void addStemHandle(const ChannelHandleAndGroup& stemHandleGroup);
     static QString getGroupForStem(QStringView deckGroup, int stemIdx);
-    void slotStem1MuteToggled(int value);
 #endif
 
   signals:
@@ -85,10 +86,21 @@ class EngineDeck : public EngineChannel, public AudioDestination {
     void slotTrackLoaded(TrackPointer pNewTrack, TrackPointer);
 #endif
 
+  private slots:
+#ifdef __STEM__
+    void slotPremixMuteToggled(double value);
+    void ensureSkinControls();
+#endif
+
   private:
 #ifdef __STEM__
     // Process multiple channels and mix them together into the passed buffer
     void processStem(CSAMPLE* pOutput, const std::size_t bufferSize);
+
+    bool isPremixVisible() const;
+    bool isToggleModeEnabled() const;
+    void applyStemMode(bool premixActive);
+
 #endif
 
     std::vector<ChannelHandleAndGroup> m_stems;
@@ -113,4 +125,9 @@ class EngineDeck : public EngineChannel, public AudioDestination {
     ControlPushButton* m_pPassing;
     bool m_bPassthroughIsActive;
     bool m_bPassthroughWasActive;
+
+#ifdef __STEM__
+    std::unique_ptr<PollingControlProxy> m_pShowOriginalPremixProxy;
+    std::unique_ptr<PollingControlProxy> m_pPremixToggleModeProxy;
+#endif
 };

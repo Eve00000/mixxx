@@ -657,30 +657,23 @@
             <property name="spacing">
               <number>10</number>
             </property>
-            <item row="0" column="0" colspan="3">
-              <widget class="QCheckBox" name="checkBoxEnableIncludeOriginalMasterWhenPlayingStems">
-                <property name="text">
-                  <string>Include Original Master when playing Stems</string>
-                </property>
-              </widget>
-            </item>
             <item row="1" column="0">
               <widget class="QRadioButton" name="radioButtonDownSampleOriginalMix">
                 <property name="text">
                   <string>DownSample Original Master</string>
                 </property>
                 <attribute name="buttonGroup">
-                  <string notr="true">buttonGroupDownSampleUpsample</string>
+                  <string notr="true">buttonGroupDownSampleUpSample</string>
                 </attribute>
               </widget>
             </item>
             <item row="2" column="0">
               <widget class="QRadioButton" name="radioButtonUpSampleStems">
                 <property name="text">
-                  <string>Upsample Stems</string>
+                  <string>UpSample Stems</string>
                 </property>
                 <attribute name="buttonGroup">
-                  <string notr="true">buttonGroupDownSampleUpsample</string>
+                  <string notr="true">buttonGroupDownSampleUpSample</string>
                 </attribute>
               </widget>
             </item>
@@ -729,7 +722,7 @@
     <tabstop>spinBoxTemporaryRateCoarse</tabstop>
     <tabstop>spinBoxPermanentRateFine</tabstop>
     <tabstop>spinBoxPermanentRateCoarse</tabstop>
-    <tabstop>checkBoxEnableIncludeOriginalMasterWhenPlayingStems</tabstop>
+    <!--tabstop>checkBoxEnableIncludeOriginalMasterWhenPlayingStems</tabstop-->
   </tabstops>
   <resources/>
   <buttongroups>
@@ -738,6 +731,6 @@
     <buttongroup name="buttonGroupKeyLockMode"/>
     <buttongroup name="buttonGroupSpeedBendBehavior"/>
     <buttongroup name="buttonGroupSyncMode"/>
-    <buttongroup name="buttonGroupDownSampleUpsample"/>
+    <buttongroup name="buttonGroupDownSampleUpSample"/>
   </buttongroups>
 </ui>

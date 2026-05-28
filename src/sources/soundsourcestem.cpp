@@ -308,7 +308,9 @@ SoundSource::OpenResult SoundSourceSingleSTEM::tryOpen(
 }
 
 SoundSourceSTEM::SoundSourceSTEM(const QUrl& url)
-        : SoundSource(url) {
+        : SoundSource(url),
+          m_premixIncluded(false),
+          m_upSampleStems(false) {
 }
 
 SoundSource::OpenResult SoundSourceSTEM::tryOpen(
@@ -350,6 +352,11 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
                 << SoundSourceFFmpeg::formatErrorString(avformat_find_stream_info_result);
         return OpenResult::Failed;
     }
+    m_premixIncluded = params.getPremixIncluded();
+    m_upSampleStems = params.getUpSampleStems();
+    // qDebug() << "[SoundSourceStem] params:"
+    //         << "premixIncluded:" << m_premixIncluded
+    //         << "upSampleStems:" << m_upSampleStems;
 
     // bool foundPremixedStream = false;
     // AVStream* firstStem = nullptr;
@@ -362,6 +369,7 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
     }
     OpenParams stemParam = params;
     stemParam.setChannelCount(mixxx::audio::ChannelCount::stereo());
+
     for (unsigned int streamIdx = 0; streamIdx < pavInputFormatContext->nb_streams; streamIdx++) {
         if (pavInputFormatContext->streams[streamIdx]->codecpar->codec_type !=
                 AVMEDIA_TYPE_AUDIO) {
@@ -468,8 +476,6 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
     initBitrateOnce(m_pStereoStreams.front()->getBitrate());
     initFrameIndexRangeOnce(m_pStereoStreams.front()->frameIndexRange());*/
 
-    m_upSampleStems = params.getUpSampleStems();
-
     const auto& premixInfo = m_pStereoStreams.front()->getSignalInfo();
 
     if (m_upSampleStems) {
@@ -532,18 +538,14 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
     // Use integer arithmetic for critical calculations to ensure cross-platform consistency
     const SINT outputFramesNeeded = globalSampleFrames.frameLength();
 
-    const SINT targetStartFrame =
-            globalSampleFrames.frameIndexRange().start();
+    const SINT targetStartFrame = globalSampleFrames.frameIndexRange().start();
 
     // Integer-based position calculation (avoids floating-point differences)
-    const SINT sourceStartFrame =
-            (targetStartFrame * streamSampleRate) /
-            targetSampleRate;
+    const SINT sourceStartFrame = (targetStartFrame * streamSampleRate) / targetSampleRate;
 
     // Calculate input frames needed with integer math
-    const SINT inputFramesNeeded =
-            ((outputFramesNeeded * streamSampleRate) +
-                    targetSampleRate - 1) /
+    const SINT inputFramesNeeded = ((outputFramesNeeded * streamSampleRate) +
+                                           targetSampleRate - 1) /
                     targetSampleRate +
             4;
 
@@ -636,10 +638,6 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
 
 CSAMPLE SoundSourceSTEM::safeCubicInterpolate(
         CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-    // Handle denormals/NaN using the safe math functions
-    //    if (!util_isnormal(mu)) {
-    //        mu = 0.0f;
-    //    }
 
     // Robust cubic interpolation that works across compilers
     // const CSAMPLE mu2 = mu * mu;
@@ -737,7 +735,7 @@ CSAMPLE SoundSourceSTEM::robustCubicInterpolate(
 }
 
 void SoundSourceSTEM::showResamplingSummary() {
-    qDebug() << "=== STEM RESAMPLING FINAL SUMMARY ===";
+    qDebug() << "[SoundSourceSTEM] -> === STEM RESAMPLING FINAL SUMMARY ===";
     for (auto it = m_streamTotalFramesProcessed.begin();
             it != m_streamTotalFramesProcessed.end();
             ++it) {
@@ -745,11 +743,11 @@ void SoundSourceSTEM::showResamplingSummary() {
         qint64 frames = it.value();
         qint64 timeNs = m_streamTotalResamplingTime[streamIdx];
 
-        qDebug() << "Stream" << streamIdx << ":" << frames << "frames,"
+        qDebug() << "[SoundSourceSTEM] -> Stream" << streamIdx << ":" << frames << "frames,"
                  << (timeNs / 1000000.0) << "ms,"
                  << (frames > 0 ? (timeNs / (frames * 1000000.0)) : 0) << "ms per frame";
     }
-    qDebug() << "=====================================";
+    qDebug() << "[SoundSourceSTEM] -> =====================================";
 }
 
 void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
@@ -758,8 +756,8 @@ void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
     SINT outputSampleLength = m_pStereoStreams.front()->getSignalInfo().frames2samples(
             globalSampleFrames.frameLength());
 
-    // qDebug() << "Processing stream" << streamIdx << "without resampling";
-    // qDebug() << "Frames:" << globalSampleFrames.frameLength();
+    // qDebug() << "[SoundSourceSTEM] -> Processing stream" << streamIdx << "without resampling";
+    // qDebug() << "[SoundSourceSTEM] -> Frames:" << globalSampleFrames.frameLength();
 
     // Read directly into temp buffer
     WritableSampleFrames currentStemFrame(
@@ -768,7 +766,7 @@ void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
 
     // auto readResult = m_pStereoStreams[streamIdx]->readSampleFrames(currentStemFrame);
     m_pStereoStreams[streamIdx]->readSampleFrames(currentStemFrame);
-    // qDebug() << "Read" << readResult.frameIndexRange().length() << "frames";
+    // qDebug() << "[SoundSourceSTEM] -> Read" << readResult.frameIndexRange().length() << "frames";
 
     // Check audio data
     // bool hasAudio = false;
@@ -782,7 +780,7 @@ void SoundSourceSTEM::processWithoutResampler(size_t streamIdx,
             break;
         }
     }
-    // qDebug() << "Audio detected:" << (hasAudio ? "YES" : "NO");
+    // qDebug() << "[SoundSourceSTEM] -> Audio detected:" << (hasAudio ? "YES" : "NO");
     // Mix directly from temp buffer
     std::size_t stemCount = m_pStereoStreams.size();
 
@@ -804,18 +802,21 @@ void SoundSourceSTEM::testCubicInterpolation() {
 
     // Test edge cases
     result = cubicInterpolate(0.0f, 1.0f, 2.0f, 3.0f, 0.0f);
-    qDebug() << "Cubic interpolation at mu=0.0:" << result << "(expected: 1.0)";
+    qDebug() << "[SoundSourceSTEM] -> Cubic interpolation at mu=0.0:" << result
+             << "(expected: 1.0)";
 
     result = cubicInterpolate(0.0f, 1.0f, 2.0f, 3.0f, 1.0f);
-    qDebug() << "Cubic interpolation at mu=1.0:" << result << "(expected: 2.0)";
+    qDebug() << "[SoundSourceSTEM] -> Cubic interpolation at mu=1.0:" << result
+             << "(expected: 2.0)";
 }
 
 void SoundSourceSTEM::initializeResamplers(int targetSampleRate) {
 // Debug output to check compilation flags
 #ifdef __FAST_MATH__
-    qWarning() << "STEM: WARNING! Compiled with fast-math - audio quality may suffer!";
+    qWarning() << "[SoundSourceSTEM] -> WARNING! Compiled with fast-math - "
+                  "audio quality may suffer!";
 #else
-    qDebug() << "STEM: Compiled with precise math settings";
+    qDebug() << "[SoundSourceSTEM] -> Compiled with precise math settings";
 #endif
 
     std::size_t stemCount = m_pStereoStreams.size();
@@ -844,19 +845,19 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
         return ReadableSampleFrames();
     };
 
-    // --- Step 1: Determine target sample rate ---
+    // 1: Determine target sample rate
     const int targetSampleRate = m_targetSampleRate;
 
     SINT outputSampleLength =
             getSignalInfo().frames2samples(
                     globalSampleFrames.frameLength());
 
-    // --- Step 2: Initialize resamplers on first call if needed ---
+    // 2: Initialize resamplers on first call if needed
     if (m_needsResampling.empty()) {
         initializeResamplers(targetSampleRate);
     }
 
-    // --- Step 3: Reuse buffers if needed ---
+    // 3: Reuse buffers if needed
     if (outputSampleLength > m_buffer.size()) {
         m_buffer = SampleBuffer(outputSampleLength);
     }
@@ -902,7 +903,7 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
         return read;
     }
 
-    // --- Step 4: Process each stream ---
+    // 4: Process each stream
     for (std::size_t streamIdx = 0;
             streamIdx < stemCount;
             streamIdx++) {

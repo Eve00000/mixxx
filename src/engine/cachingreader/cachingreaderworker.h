@@ -116,7 +116,7 @@ class CachingReaderWorker : public EngineWorker {
 
     void quitWait();
 
-    void setUpsampleStems(bool upSampleStems);
+    void setPremixIncludedVars(bool premixIncluded, bool upSampleStems);
 
   signals:
     // Emitted once a new track is loaded and ready to be read from.
@@ -189,5 +189,6 @@ class CachingReaderWorker : public EngineWorker {
 
     QAtomicInt m_stop;
 
+    bool m_pPremixIncluded;
     bool m_pUpSampleStems;
 };
