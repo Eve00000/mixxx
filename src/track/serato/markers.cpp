@@ -658,6 +658,7 @@ QList<CueInfo> SeratoMarkers::getCues() const {
                         1.0,
                         1.0,
                         1.0,
+                        1.0,
                         CueFlag::None);
                 cueInfos.append(cueInfo);
             }
@@ -680,6 +681,7 @@ QList<CueInfo> SeratoMarkers::getCues() const {
                         loopIndex,
                         QString(),
                         std::nullopt,
+                        1.0,
                         1.0,
                         1.0,
                         1.0,

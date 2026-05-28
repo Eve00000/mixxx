@@ -261,6 +261,7 @@ class WTrackMenu : public QMenu {
     void lockBpm(bool lock);
 
     int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
+
     // #ifdef __STEM__
     //     void loadSelectionToGroup(const QString& group,
     //             mixxx::StemChannelSelection stemMask = mixxx::StemChannelSelection(),
@@ -269,6 +270,14 @@ class WTrackMenu : public QMenu {
     //     void loadSelectionToGroup(const QString& group,
     //             bool play = false);
     // #endif
+
+#ifdef __STEM__
+    void loadSelectionToGroup(const QString& group,
+            mixxx::StemChannelSelection stemMask = mixxx::StemChannelSelection(),
+            bool play = false);
+#else
+    void loadSelectionToGroup(const QString& group, bool play = false);
+#endif
 
     void clearTrackSelection();
 

@@ -619,6 +619,7 @@ QList<CueInfo> SeratoMarkers2::getCues() const {
                 1.0,
                 1.0,
                 1.0,
+                1.0,
                 CueFlag::None);
         cueInfos.append(cueInfo);
     }
@@ -642,6 +643,7 @@ QList<CueInfo> SeratoMarkers2::getCues() const {
                 pLoopEntry->getIndex(),
                 pLoopEntry->getLabel(),
                 std::nullopt, // Serato's Loops don't have a color
+                1.0,
                 1.0,
                 1.0,
                 1.0,
