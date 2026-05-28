@@ -817,9 +817,8 @@
     <tabstop>checkBoxNowPlayingAddTimestamp</tabstop>
     <tabstop>checkBoxNowPlayingArchive</tabstop>
     <tabstop>comboBoxNowPlayingPollInterval</tabstop>
-    <tabstop>checkBoxEnableIncludeOriginalMasterWhenPlayingStems</tabstop>
-    <tabstop>radioButtonDownSample</tabstop>
-    <tabstop>radioButtonUpSample</tabstop>
+    <tabstop>radioButtonDownSampleOriginalMix</tabstop>
+    <tabstop>radioButtonUpSampleStems</tabstop>
   </tabstops>
   <resources/>
   <buttongroups>
