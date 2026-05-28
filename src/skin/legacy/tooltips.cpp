@@ -1231,4 +1231,12 @@ void Tooltips::addStandardTooltips() {
     add("configure_input")
             << tr("Select and configure a hardware device for this input");
 
+    add("toggle_premix")
+            << tr("Select to show the original mix as a Stem Channel.")
+            << tr("When loading a track the original mix will be unmuted and")
+            << tr("the stems will be muted.");
+
+    add("toggle_premix_mute_mode")
+            << tr("When selected the mute button of the original mix (_Stem0)")
+            << tr("will function as toggle between original mix and stems.");
 }

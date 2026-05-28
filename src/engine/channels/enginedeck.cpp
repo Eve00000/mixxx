@@ -62,8 +62,6 @@ EngineDeck::EngineDeck(
     connect(m_pBuffer, &EngineBuffer::trackLoaded, this, &EngineDeck::slotTrackLoaded);
 
     m_pStemCount = std::make_unique<ControlObject>(ConfigKey(getGroup(), "stem_count"));
-    qDebug() << "Created stem count control for group" << getGroup()
-             << "with key" << ConfigKey(getGroup(), "stem_count");
     m_pStemCount->setReadOnly();
 
     m_stemGain.reserve(mixxx::kMaxSupportedStems);
@@ -87,33 +85,84 @@ EngineDeck::EngineDeck(
     connect(m_stemMute[0].get(),
             &ControlPushButton::valueChanged,
             this,
-            &EngineDeck::slotStem1MuteToggled);
-    qDebug() << "Connecting stem 1" << "mute button to slotStem1MuteToggled";
-
+            &EngineDeck::slotPremixMuteToggled);
 #endif
 }
 
 #ifdef __STEM__
-void EngineDeck::slotStem1MuteToggled(int value) {
-    // 0 = unmuted, 1 = muted
-    bool stem1Unmuted = value == 0;
 
-    qDebug() << "slotStem1MuteToggled called"
-             << (stem1Unmuted ? "muted" : "unmuted");
-
-    // Toggle all other stems to the opposite state of stem 1
-    for (std::size_t i = 1; i < m_stemMute.size(); ++i) {
-        m_stemMute[i]->set(stem1Unmuted ? 1 : 0);
-        m_stemGain[i]->set(1);
+void EngineDeck::ensureSkinControls() {
+    if (!m_pShowOriginalPremixProxy) {
+        m_pShowOriginalPremixProxy = std::make_unique<PollingControlProxy>(
+                "[Skin]", "show_original_premix", ControlFlag::AllowMissingOrInvalid);
     }
 
-    // for (int stemIdx = 1; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
-    //     m_stemMute[stemIdx]->set(stem1Unmuted ? 1 : 0);
-    //     m_stemGain[stemIdx]->set(1);
-    //     qDebug() << "Stem" << stemIdx + 1 << "mute set to" << (stem1Unmuted ?
-    //     "muted" : "unmuted")
-    //              << "and gain set to 1";
-    // }
+    if (!m_pPremixToggleModeProxy) {
+        m_pPremixToggleModeProxy = std::make_unique<PollingControlProxy>(
+                "[Skin]", "stem_premix_toggle_mode", ControlFlag::AllowMissingOrInvalid);
+    }
+}
+
+bool EngineDeck::isPremixVisible() const {
+    return m_pShowOriginalPremixProxy &&
+            m_pShowOriginalPremixProxy->toBool();
+}
+
+bool EngineDeck::isToggleModeEnabled() const {
+    return m_pPremixToggleModeProxy &&
+            m_pPremixToggleModeProxy->toBool();
+}
+
+void EngineDeck::applyStemMode(bool premixActive) {
+    const bool premixVisible = isPremixVisible();
+
+    if (!premixVisible) {
+        // premix hidden -> always stems only
+        m_stemMute[0]->set(1.0);
+
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->set(0.0);
+        }
+        return;
+    }
+
+    if (premixActive) {
+        // premix ON
+        m_stemMute[0]->set(0.0);
+
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->set(1.0);
+        }
+    } else {
+        // stems ON
+        m_stemMute[0]->set(1.0);
+
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->set(0.0);
+        }
+    }
+}
+
+void EngineDeck::slotPremixMuteToggled(double value) {
+    ensureSkinControls();
+
+    const bool premixVisible = isPremixVisible();
+    const bool toggleMode = isToggleModeEnabled();
+
+    // if premix not visible ? only mute premix, no switching
+    if (!premixVisible) {
+        m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        return;
+    }
+
+    // if toggle mode disabled ? behave like simple mute
+    if (!toggleMode) {
+        m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        return;
+    }
+
+    const bool premixActive = (value <= 0.0);
+    applyStemMode(premixActive);
 }
 
 void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
@@ -121,24 +170,23 @@ void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
     VERIFY_OR_DEBUG_ASSERT(m_pStemCount) {
         return;
     }
+    ensureSkinControls();
+    const bool premixActive = isPremixVisible();
+
     if (m_pConfig->getValue(
-                ConfigKey("[Mixer Profile]", "stem_auto_reset"), true)) {
-        for (int stemIdx = 0; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
-            m_stemGain[stemIdx]->set(1.0);
-            m_stemMute[stemIdx]->set(0.0);
-            // set audio on for pre-mixxx // off for stems
-            if (stemIdx == 0) {
-                // First stem: unmuted
-                m_stemMute[stemIdx]->set(0.0);
-            } else {
-                // All others: muted
-                m_stemMute[stemIdx]->set(1.0);
-            }
+                ConfigKey("[Mixer Profile]", "stem_auto_reset"), true) &&
+            !m_stemClonedState) {
+        for (int i = 0; i < mixxx::kMaxSupportedStems; ++i) {
+            m_stemGain[i]->set(1.0);
         }
+
+        applyStemMode(premixActive);
     }
+
+    m_stemClonedState = false;
+
     if (pNewTrack) {
-        int stemCount = pNewTrack->getStemInfo().size();
-        m_pStemCount->forceSet(stemCount);
+        m_pStemCount->forceSet(pNewTrack->getStemInfo().size());
     } else {
         m_pStemCount->forceSet(0);
     }
@@ -407,7 +455,8 @@ void EngineDeck::slotPassthroughChangeRequest(double v) {
 #ifdef __STEM__
 // static
 QString EngineDeck::getGroupForStem(QStringView deckGroup, int stemIdx) {
-    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx <= 4);
+    // DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 4);
+    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 5);
     return deckGroup.chopped(1) + QStringLiteral("_Stem") + QChar('1' + stemIdx) + QChar(']');
 }
 #endif

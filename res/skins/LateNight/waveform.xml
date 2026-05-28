@@ -1,7 +1,5 @@
 <Template>
-  <SetVariable name="Group">
-    [Channel<Variable name="ChanNum"/>]
-  </SetVariable>
+  <SetVariable name="Group">[Channel<Variable name="ChanNum"/>]</SetVariable>
   <SetVariable name="BtnType">embedded</SetVariable>
   <SetVariable name="BtnSize">library</SetVariable>
   <SetVariable name="CoverName">BeatEditCover</SetVariable>
@@ -56,16 +54,22 @@
                         <Size>1min,2me</Size>
                       </WidgetGroup>
                       <Template src="skins:LateNight/stem_premix.xml">
-                      <!--Template src="skins:LateNight/stem_channel.xml"-->
                         <SetVariable name="StemNum">1</SetVariable>
                       </Template>
                       <WidgetGroup>
                         <Size>1min,3f</Size>
                       </WidgetGroup>
                     </Children>
+                    <Connection>
+                      <ConfigKey persist="false">[Skin],show_original_premix</ConfigKey>
+                      <Transform>
+                        <IsEqual>1</IsEqual>
+                      </Transform>
+                      <BindProperty>visible</BindProperty>
+                    </Connection>
                   </WidgetGroup>
                   <WidgetGroup>
-                    <!-- StemCh2 controls  -->
+                    <!-- StemCh1 controls  -->
                     <Layout>horizontal</Layout>
                     <Children>
                       <WidgetGroup>
@@ -80,7 +84,7 @@
                     </Children>
                   </WidgetGroup>
                   <WidgetGroup>
-                    <!-- StemCh3 controls  -->
+                    <!-- StemCh2 controls  -->
                     <Layout>horizontal</Layout>
                     <Children>
                       <WidgetGroup>
@@ -95,7 +99,7 @@
                     </Children>
                   </WidgetGroup>
                   <WidgetGroup>
-                    <!-- StemCh4 controls  -->
+                    <!-- StemCh3 controls  -->
                     <Layout>horizontal</Layout>
                     <Children>
                       <WidgetGroup>
@@ -110,7 +114,7 @@
                     </Children>
                   </WidgetGroup>
                   <WidgetGroup>
-                    <!-- StemCh5 controls  -->
+                    <!-- StemCh4 controls  -->
                     <Layout>horizontal</Layout>
                     <Children>
                       <WidgetGroup>
@@ -124,14 +128,53 @@
                       </WidgetGroup>
                     </Children>
                   </WidgetGroup>
-
                 </Children>
               </WidgetGroup>
               <!-- /StemControls 4ch -->
 
             </Children>
+            <Connection>
+              <ConfigKey persist="true">[Channel<Variable name="ChanNum"/>],stem_count</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
           </WidgetGroup>
           <!-- /StemControlsInner -->
+
+          <WidgetGroup>
+            <!-- NoStemLabel -->
+            <Layout>horizontal</Layout>
+            <SizePolicy>me,f</SizePolicy>
+            <Children>
+              <WidgetGroup>
+                <Size>1me,3f</Size>
+              </WidgetGroup>
+              <Label>
+                <SizePolicy>min,me</SizePolicy>
+                <ObjectName>NoStemLabel</ObjectName>
+                <Text>Track has no STEMs</Text>
+              </Label>
+              <WidgetGroup>
+                <Size>1me,3f</Size>
+              </WidgetGroup>
+              <!-- WaveformMinSizeConstrain -->
+              <WidgetGroup>
+                <Size>0f,110f</Size>
+                <Connection>
+                  <ConfigKey persist="true">[Skin],keep_consistent_waveform_heights</ConfigKey>
+                  <BindProperty>visible</BindProperty>
+                </Connection>
+              </WidgetGroup>
+              <!-- /WaveformMinSizeConstrain -->
+            </Children>
+            <Connection>
+              <ConfigKey persist="true">[Channel<Variable name="ChanNum"/>],stem_count</ConfigKey>
+              <Transform>
+                <Not/>
+              </Transform>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+          <!-- /NoStemLabel -->
 
           <WidgetGroup>
             <Size>1me,1me</Size>
@@ -150,7 +193,7 @@
           WaveformBox<Variable name="ChanNum"/>
         </ObjectName>
         <Layout>horizontal</Layout>
-        <SizePolicy>me,me</SizePolicy>
+        <Size>me,30min</Size>
         <Children>
           <Visual>
             <TooltipId>waveform_display</TooltipId>
@@ -444,21 +487,13 @@
                     <RightClickIsPushButton>false</RightClickIsPushButton>
                     <State>
                       <Number>0</Number>
-                      <Unpressed scalemode="STRETCH">
-                        skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>.svg
-                      </Unpressed>
-                      <Pressed scalemode="STRETCH">
-                        skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>_active.svg
-                      </Pressed>
+                      <Unpressed scalemode="STRETCH">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>.svg</Unpressed>
+                      <Pressed scalemode="STRETCH">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>_active.svg</Pressed>
                     </State>
                     <State>
                       <Number>1</Number>
-                      <Unpressed scalemode="STRETCH">
-                        skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>.svg
-                      </Unpressed>
-                      <Pressed scalemode="STRETCH">
-                        skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>_active.svg
-                      </Pressed>
+                      <Unpressed scalemode="STRETCH">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>.svg</Unpressed>
+                      <Pressed scalemode="STRETCH">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn_<Variable name="BtnType"/>_<Variable name="BtnSize"/>_active.svg</Pressed>
                     </State>
                     <Connection>
                       <ConfigKey>

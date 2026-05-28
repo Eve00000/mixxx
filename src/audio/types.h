@@ -101,7 +101,6 @@ class ChannelCount {
     // }
 
     static constexpr ChannelCount stem() {
-        // return ChannelCount(static_cast<value_t>(8)); // 4 stereo channels
         return ChannelCount(static_cast<value_t>(10)); // 5 stereo channels including premix
     }
 

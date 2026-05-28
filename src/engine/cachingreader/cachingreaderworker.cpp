@@ -38,7 +38,9 @@ CachingReaderWorker::CachingReaderWorker(
           m_tag(QString("CachingReaderWorker %1").arg(m_group)),
           m_pChunkReadRequestFIFO(pChunkReadRequestFIFO),
           m_pReaderStatusFIFO(pReaderStatusFIFO),
-          m_maxSupportedChannel(maxSupportedChannel) {
+          m_maxSupportedChannel(maxSupportedChannel),
+          m_pPremixIncluded(true),
+          m_pUpSampleStems(false) {
 }
 
 QHash<QString, CachingReaderWorker::RamTrackEntry> CachingReaderWorker::s_ramTracks;
@@ -138,7 +140,8 @@ void CachingReaderWorker::newTrack(TrackPointer pTrack) {
     workReady();
 }
 
-void CachingReaderWorker::setUpsampleStems(bool upSampleStems) {
+void CachingReaderWorker::setPremixIncludedVars(bool premixIncluded, bool upSampleStems) {
+    m_pPremixIncluded = premixIncluded;
     m_pUpSampleStems = upSampleStems;
 }
 
@@ -549,7 +552,7 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
 
 #ifdef __STEM__
     config.setStemMask(stemMask);
-    config.setUpSampleStems(m_pUpSampleStems);
+    config.setPremixIncludedVars(m_pPremixIncluded, m_pUpSampleStems);
 #endif
 
     m_pAudioSource = SoundSourceProxy(trackToOpen).openAudioSource(config);

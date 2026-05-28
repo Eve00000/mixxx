@@ -143,7 +143,7 @@ class CachingReaderWorker : public EngineWorker {
     // called in mixxxmain to clean up cache
     static void cleanupAllRamFiles(const QString& ramDiskPath);
 
-    void setUpsampleStems(bool upSampleStems);
+    void setPremixIncludedVars(bool premixIncluded, bool upSampleStems);
 
   signals:
     // Emitted once a new track is loaded and ready to be read from.
@@ -258,5 +258,6 @@ class CachingReaderWorker : public EngineWorker {
 
     static bool isRamFileUsedByOtherGroups(const QString& filePath, const QString& currentGroup);
     static void cleanupRamFileIfUnused(const QString& filePath);
+    bool m_pPremixIncluded;
     bool m_pUpSampleStems;
 };
