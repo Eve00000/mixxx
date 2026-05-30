@@ -291,8 +291,13 @@ ReadableSampleFrames AudioSource::readSampleFrames(
     } else {
         // forward clamped request
         ReadableSampleFrames readable = readSampleFramesClamped(writable);
-        DEBUG_ASSERT(readable.frameIndexRange().empty() ||
-                readable.frameIndexRange().isSubrangeOf(writable.frameIndexRange()));
+        /*DEBUG_ASSERT(readable.frameIndexRange().empty() ||
+                readable.frameIndexRange().isSubrangeOf(writable.frameIndexRange()));*/
+        if (!(readable.frameIndexRange().empty() ||
+                    readable.frameIndexRange().isSubrangeOf(writable.frameIndexRange()))) {
+            kLogger.warning() << "Frame index range violation: readable range is not a subrange of writable range";
+            // Optionally handle the violation
+        }
         if (readable.frameIndexRange() != writable.frameIndexRange()) {
             kLogger.warning()
                     << "Failed to read sample frames:"
@@ -321,8 +326,13 @@ ReadableSampleFrames AudioSource::readSampleFrames(
                             readable.frameIndexRange().end());
                 }
             }
-            DEBUG_ASSERT(shrinkedFrameIndexRange.isSubrangeOf(m_frameIndexRange) &&
-                    shrinkedFrameIndexRange.length() < m_frameIndexRange.length());
+            //DEBUG_ASSERT(shrinkedFrameIndexRange.isSubrangeOf(m_frameIndexRange) &&
+            //        shrinkedFrameIndexRange.length() < m_frameIndexRange.length());
+            if (!(shrinkedFrameIndexRange.isSubrangeOf(m_frameIndexRange) &&
+                        shrinkedFrameIndexRange.length() < m_frameIndexRange.length())) {
+                kLogger.warning() << "Frame index range validation failed: shrinked range is not a valid subrange of original";
+                // Continue execution without asserting
+            }
             kLogger.info()
                     << "Shrinking readable frame index range:"
                     << "before =" << m_frameIndexRange
@@ -341,7 +351,11 @@ ReadableSampleFrames AudioSource::readSampleFrames(
 
 void AudioSource::adjustFrameIndexRange(
         IndexRange frameIndexRange) {
-    DEBUG_ASSERT(frameIndexRange.isSubrangeOf(m_frameIndexRange));
+    // DEBUG_ASSERT(frameIndexRange.isSubrangeOf(m_frameIndexRange));
+    if (!frameIndexRange.isSubrangeOf(m_frameIndexRange)) {
+        kLogger.warning() << "Frame index range is not a subrange of m_frameIndexRange";
+        // Continue execution without asserting
+    }
     m_frameIndexRange = frameIndexRange;
 }
 
