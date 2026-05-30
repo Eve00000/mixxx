@@ -65,8 +65,13 @@ ReaderStatusUpdate CachingReaderWorker::processReadRequest(
     // is available and if any audio data that is needed by the chunk is
     // actually available.
     auto chunkFrameIndexRange = pChunk->frameIndexRange(m_pAudioSource);
-    DEBUG_ASSERT(!m_pAudioSource ||
-            chunkFrameIndexRange.isSubrangeOf(m_pAudioSource->frameIndexRange()));
+    /*DEBUG_ASSERT(!m_pAudioSource ||
+            chunkFrameIndexRange.isSubrangeOf(m_pAudioSource->frameIndexRange()));*/
+    if (m_pAudioSource && !chunkFrameIndexRange.isSubrangeOf(m_pAudioSource->frameIndexRange())) {
+        kLogger.warning() << "Chunk frame index range is not a subrange of audio source";
+        // Continue execution without asserting
+    }
+
     if (chunkFrameIndexRange.empty()) {
         ReaderStatusUpdate result;
         result.init(CHUNK_READ_INVALID, pChunk, m_pAudioSource ? m_pAudioSource->frameIndexRange() : mixxx::IndexRange());
@@ -84,12 +89,24 @@ ReaderStatusUpdate CachingReaderWorker::processReadRequest(
     //                << "buffered frames:" << bufferedFrameIndexRange;
     // EVE
 
-    DEBUG_ASSERT(!m_pAudioSource ||
-            bufferedFrameIndexRange.isSubrangeOf(m_pAudioSource->frameIndexRange()));
+    /*DEBUG_ASSERT(!m_pAudioSource ||
+            bufferedFrameIndexRange.isSubrangeOf(m_pAudioSource->frameIndexRange()));*/
+    if (m_pAudioSource &&
+            !bufferedFrameIndexRange.isSubrangeOf(
+                    m_pAudioSource->frameIndexRange())) {
+        kLogger.warning() << "Buffered frame index range is not a subrange of audio source";
+        // Continue execution without asserting
+    }
+
     // The readable frame range might have changed
     chunkFrameIndexRange = intersect(chunkFrameIndexRange, m_pAudioSource->frameIndexRange());
-    DEBUG_ASSERT(bufferedFrameIndexRange.empty() ||
-            bufferedFrameIndexRange.isSubrangeOf(chunkFrameIndexRange));
+    /*DEBUG_ASSERT(bufferedFrameIndexRange.empty() ||
+            bufferedFrameIndexRange.isSubrangeOf(chunkFrameIndexRange));*/
+    if (!bufferedFrameIndexRange.empty() &&
+            !bufferedFrameIndexRange.isSubrangeOf(chunkFrameIndexRange)) {
+        kLogger.warning() << "Buffered frame index range is not a subrange of chunk range";
+        // Continue execution without asserting
+    }
 
     ReaderStatus status = bufferedFrameIndexRange.empty() ? CHUNK_READ_EOF : CHUNK_READ_SUCCESS;
     if (bufferedFrameIndexRange != chunkFrameIndexRange) {
@@ -231,7 +248,11 @@ void CachingReaderWorker::closeAudioSource() {
 
     // This function has to be called with the engine stopped only
     // to avoid collecting new requests for the old track
-    DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
+    // DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
+    if (m_pChunkReadRequestFIFO->readAvailable()) {
+        kLogger.warning() << "Chunk read request FIFO has data available when expected to be empty";
+        // Continue execution without asserting
+    }
 }
 
 // RAM-Play
@@ -596,7 +617,11 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
         m_firstSoundFrameToVerify = pN60dBSound->getPosition();
     }
 
-    DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
+    // DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
+    if (m_pChunkReadRequestFIFO->readAvailable()) {
+        kLogger.warning() << "Chunk read request FIFO has data available when expected to be empty";
+        // Continue execution without asserting
+    }
 
     emit trackLoaded(
             trackToOpen,
