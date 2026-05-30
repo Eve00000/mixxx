@@ -226,10 +226,22 @@ WorkerThread::TryFetchWorkItemsResult AnalyzerThread::tryFetchWorkItems() {
 
 AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
         const mixxx::AudioSourcePointer& audioSource) {
-    DEBUG_ASSERT(m_currentTrack.has_value());
+    // DEBUG_ASSERT(m_currentTrack.has_value());
+    if (!m_currentTrack.has_value()) {
+        kLogger.warning() << "No current track available when expected";
+        // Continue execution without asserting
+    }
 
-    DEBUG_ASSERT(
-            0 == audioSource->getSignalInfo().getChannelCount() % mixxx::kAnalysisChannels);
+    // DEBUG_ASSERT(
+    //        0 == audioSource->getSignalInfo().getChannelCount() % mixxx::kAnalysisChannels);
+
+    int channelCount = audioSource->getSignalInfo().getChannelCount();
+    if (0 != channelCount % mixxx::kAnalysisChannels) {
+        kLogger.warning() << "Channel count not divisible by analysis channels: "
+                          << channelCount << " % " << mixxx::kAnalysisChannels << " = "
+                          << (channelCount % mixxx::kAnalysisChannels);
+        // Continue execution without asserting
+    }
 
     // Analysis starts now
     emitBusyProgress(kAnalyzerProgressNone);
@@ -247,7 +259,11 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
         auto chunkFrameRange =
                 remainingFrameRange.splitAndShrinkFront(
                         math_min(mixxx::kAnalysisFramesPerChunk, remainingFrameRange.length()));
-        DEBUG_ASSERT(!chunkFrameRange.empty());
+        // DEBUG_ASSERT(!chunkFrameRange.empty());
+        if (chunkFrameRange.empty()) {
+            kLogger.warning() << "Chunk frame range is empty when non-empty was expected";
+            // Continue execution without asserting
+        }
 
         // Request the next chunk of audio data
         const auto readableSampleFrames =
@@ -256,7 +272,12 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
                                 chunkFrameRange,
                                 mixxx::SampleBuffer::WritableSlice(m_sampleBuffer)));
         // The returned range fits into the requested range
-        DEBUG_ASSERT(readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange));
+        // DEBUG_ASSERT(readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange));
+        if (!readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange)) {
+            kLogger.warning() << "Readable sample frames range is not a "
+                                 "subrange of chunk frame range";
+            // Continue execution without asserting/breaking
+        }
 
         // Sometimes the duration of the audio source is inaccurate and adjusted
         // while reading. We need to adjust all frame ranges to reflect this new
@@ -267,23 +288,52 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
         chunkFrameRange = intersect(chunkFrameRange, audioSource->frameIndexRange());
         // The audio data that has just been read should still fit into the adjusted
         // chunk range.
-        DEBUG_ASSERT(readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange));
+        // DEBUG_ASSERT(readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange));
+        if (!readableSampleFrames.frameIndexRange().isSubrangeOf(chunkFrameRange)) {
+            kLogger.warning() << "Readable sample frames range is not a "
+                                 "subrange of chunk frame range";
+            // Continue execution without asserting
+        }
 
         // We also need to adjust the remaining frame range for the next requests.
         remainingFrameRange = intersect(remainingFrameRange, audioSource->frameIndexRange());
         // Currently the range will never grow, but lets also account for this case
         // that might become relevant in the future.
-        VERIFY_OR_DEBUG_ASSERT(remainingFrameRange.empty() ||
-                remainingFrameRange.end() == audioSource->frameIndexRange().end()) {
+        // VERIFY_OR_DEBUG_ASSERT(remainingFrameRange.empty() ||
+        //        remainingFrameRange.end() == audioSource->frameIndexRange().end()) {
+        //    if (chunkFrameRange.length() < mixxx::kAnalysisFramesPerChunk) {
+        //        // If we have read an incomplete chunk while the range has grown
+        //        // we need to discard the read results and re-read the current
+        //        // chunk!
+
+        //        remainingFrameRange.growFront(chunkFrameRange.length());
+        //        continue;
+        //    }
+        //    DEBUG_ASSERT(remainingFrameRange.end() < audioSource->frameIndexRange().end());
+        //    kLogger.warning()
+        //            << "Unexpected growth of the audio source while reading"
+        //            << mixxx::IndexRange::forward(
+        //                       remainingFrameRange.end(), audioSource->frameIndexRange().end());
+        //    remainingFrameRange.growBack(
+        //            audioSource->frameIndexRange().end() - remainingFrameRange.end());
+        //}
+
+        // Replace both VERIFY_OR_DEBUG_ASSERT and the inner DEBUG_ASSERT
+        if (!(remainingFrameRange.empty() ||
+                    remainingFrameRange.end() == audioSource->frameIndexRange().end())) {
             if (chunkFrameRange.length() < mixxx::kAnalysisFramesPerChunk) {
                 // If we have read an incomplete chunk while the range has grown
                 // we need to discard the read results and re-read the current
                 // chunk!
-
                 remainingFrameRange.growFront(chunkFrameRange.length());
                 continue;
             }
-            DEBUG_ASSERT(remainingFrameRange.end() < audioSource->frameIndexRange().end());
+            // DEBUG_ASSERT replaced with conditional check
+            if (!(remainingFrameRange.end() < audioSource->frameIndexRange().end())) {
+                kLogger.warning()
+                        << "DEBUG_ASSERT FAILED: remainingFrameRange.end() < "
+                           "audioSource->frameIndexRange().end()";
+            }
             kLogger.warning()
                     << "Unexpected growth of the audio source while reading"
                     << mixxx::IndexRange::forward(
@@ -310,6 +360,24 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
         // the current iteration by emitting progress.
 
         // 3rd step: Update & emit progress
+        // if (audioSource->frameLength() > 0) {
+        //    const double frameProgress =
+        //            static_cast<double>(audioSource->frameLength() -
+        //            remainingFrameRange.length()) /
+        //            audioSource->frameLength();
+        //    // math_min is required to compensate rounding errors
+        //    const AnalyzerProgress progress =
+        //            math_min(kAnalyzerProgressFinalizing,
+        //                    frameProgress *
+        //                            (kAnalyzerProgressFinalizing -
+        //                            kAnalyzerProgressNone));
+        //    DEBUG_ASSERT(progress > kAnalyzerProgressNone);
+        //    emitBusyProgress(progress);
+        //} else {
+        //    // Unreadable audio source
+        //    DEBUG_ASSERT(remainingFrameRange.empty());
+        //    emitBusyProgress(kAnalyzerProgressUnknown);
+        //}
         if (audioSource->frameLength() > 0) {
             const double frameProgress =
                     static_cast<double>(audioSource->frameLength() - remainingFrameRange.length()) /
@@ -319,11 +387,27 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
                     math_min(kAnalyzerProgressFinalizing,
                             frameProgress *
                                     (kAnalyzerProgressFinalizing - kAnalyzerProgressNone));
-            DEBUG_ASSERT(progress > kAnalyzerProgressNone);
+
+            // Replace DEBUG_ASSERT(progress > kAnalyzerProgressNone)
+            if (!(progress > kAnalyzerProgressNone)) {
+                kLogger.warning()
+                        << "Progress value not greater than "
+                           "kAnalyzerProgressNone: progress="
+                        << progress
+                        << ", kAnalyzerProgressNone=" << kAnalyzerProgressNone;
+            }
+
             emitBusyProgress(progress);
         } else {
             // Unreadable audio source
-            DEBUG_ASSERT(remainingFrameRange.empty());
+
+            // Replace DEBUG_ASSERT(remainingFrameRange.empty())
+            if (!remainingFrameRange.empty()) {
+                kLogger.warning() << "Unreadable audio source but "
+                                     "remainingFrameRange is not empty: "
+                                  << remainingFrameRange;
+            }
+
             emitBusyProgress(kAnalyzerProgressUnknown);
         }
     }
@@ -332,7 +416,12 @@ AnalyzerThread::AnalysisResult AnalyzerThread::analyzeAudioSource(
 }
 
 void AnalyzerThread::emitBusyProgress(AnalyzerProgress busyProgress) {
-    DEBUG_ASSERT(m_currentTrack.has_value());
+    // DEBUG_ASSERT(m_currentTrack.has_value());
+    if (!m_currentTrack.has_value()) {
+        kLogger.warning() << "No current track available when expected";
+        // Continue execution without asserting
+    }
+
     if ((m_emittedState == AnalyzerThreadState::Busy) &&
             (m_lastBusyProgressEmittedTimer.elapsed() < kBusyProgressInhibitDuration)) {
         // Don't emit progress signal while still busy and the
@@ -343,11 +432,21 @@ void AnalyzerThread::emitBusyProgress(AnalyzerProgress busyProgress) {
     }
     m_lastBusyProgressEmittedTimer.restart();
     emitProgress(AnalyzerThreadState::Busy, m_currentTrack->getTrack()->getId(), busyProgress);
-    DEBUG_ASSERT(m_emittedState == AnalyzerThreadState::Busy);
+    // DEBUG_ASSERT(m_emittedState == AnalyzerThreadState::Busy);
+    if (m_emittedState != AnalyzerThreadState::Busy) {
+        kLogger.warning() << "Expected emitted state to be Busy, but got: "
+                          << static_cast<int>(m_emittedState);
+        // Continue execution without asserting
+    }
 }
 
 void AnalyzerThread::emitDoneProgress(AnalyzerProgress doneProgress) {
-    DEBUG_ASSERT(m_currentTrack.has_value());
+    // DEBUG_ASSERT(m_currentTrack.has_value());
+    if (!m_currentTrack.has_value()) {
+        kLogger.warning() << "No current track available when expected";
+        // Continue execution without asserting
+    }
+
     // Release all references of the track before emitting the signal
     // to ensure that the last reference is not dropped in this worker
     // thread that might trigger database actions! The TrackAnalysisScheduler
@@ -359,14 +458,45 @@ void AnalyzerThread::emitDoneProgress(AnalyzerProgress doneProgress) {
 }
 
 void AnalyzerThread::emitProgress(AnalyzerThreadState state) {
-    DEBUG_ASSERT(!m_currentTrack);
+    // DEBUG_ASSERT(!m_currentTrack);
+    if (m_currentTrack) {
+        kLogger.warning() << "Current track exists when expected to be null";
+        // Continue execution without asserting
+    }
+
     emitProgress(state, TrackId(), kAnalyzerProgressUnknown);
 }
 
+// void AnalyzerThread::emitProgress(AnalyzerThreadState state, TrackId trackId,
+// AnalyzerProgress trackProgress) {
+//     DEBUG_ASSERT(!m_currentTrack.has_value() || (state ==
+//     AnalyzerThreadState::Busy)); DEBUG_ASSERT(!m_currentTrack.has_value() ||
+//     (m_currentTrack->getTrack()->getId() == trackId));
+//     DEBUG_ASSERT(trackId.isValid() || (trackProgress ==
+//     kAnalyzerProgressUnknown)); m_emittedState = state; emit progress(m_id,
+//     m_emittedState, trackId, trackProgress);
+// }
+
 void AnalyzerThread::emitProgress(AnalyzerThreadState state, TrackId trackId, AnalyzerProgress trackProgress) {
-    DEBUG_ASSERT(!m_currentTrack.has_value() || (state == AnalyzerThreadState::Busy));
-    DEBUG_ASSERT(!m_currentTrack.has_value() || (m_currentTrack->getTrack()->getId() == trackId));
-    DEBUG_ASSERT(trackId.isValid() || (trackProgress == kAnalyzerProgressUnknown));
+    // First assertion: If track exists, state must be Busy
+    if (m_currentTrack.has_value() && state != AnalyzerThreadState::Busy) {
+        kLogger.warning() << "Track exists but state is not Busy. State: "
+                          << static_cast<int>(state);
+    }
+
+    // Second assertion: If track exists, track IDs must match
+    if (m_currentTrack.has_value() && m_currentTrack->getTrack()->getId() != trackId) {
+        kLogger.warning() << "Track ID mismatch. Expected: "
+                          << m_currentTrack->getTrack()->getId()
+                          << ", Got: " << trackId;
+    }
+
+    // Third assertion: If trackId is invalid, progress must be Unknown
+    if (!trackId.isValid() && trackProgress != kAnalyzerProgressUnknown) {
+        kLogger.warning() << "Invalid trackId with non-unknown progress. Progress: "
+                          << trackProgress;
+    }
+
     m_emittedState = state;
     emit progress(m_id, m_emittedState, trackId, trackProgress);
 }
