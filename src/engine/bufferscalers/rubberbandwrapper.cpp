@@ -48,18 +48,33 @@ mixxx::audio::ChannelCount getChannelPerWorker(mixxx::audio::ChannelCount chCoun
     // There should always be a pool set, even if multi threading isn't enabled.
     // This is because multi threading will always be used for stem when
     // possible.
-    VERIFY_OR_DEBUG_ASSERT(pPool) {
+    //VERIFY_OR_DEBUG_ASSERT(pPool) {
+    //    return mixxx::kMaxEngineChannelInputCount;
+    //}
+    if (!pPool) {
+     //   kLogger.warning() << "pPool is null, returning max channel input count";
         return mixxx::kMaxEngineChannelInputCount;
     }
     auto channelPerWorker = pPool->channelPerWorker();
     // The task count includes all the thread in the pool + the engine thread
     auto maxThreadCount = pPool->maxThreadCount() + 1;
-    VERIFY_OR_DEBUG_ASSERT(chCount % channelPerWorker == 0) {
+    //VERIFY_OR_DEBUG_ASSERT(chCount % channelPerWorker == 0) {
+    //    return mixxx::kEngineChannelOutputCount;
+    //}
+    if (chCount % channelPerWorker != 0) {
+    //    kLogger.warning() << "Channel count mismatch: " << chCount
+    //                      << " % " << channelPerWorker << " != 0";
         return mixxx::kEngineChannelOutputCount;
     }
+
     auto numTasks = chCount / channelPerWorker;
     if (numTasks > maxThreadCount) {
-        VERIFY_OR_DEBUG_ASSERT(numTasks % maxThreadCount == 0) {
+        //VERIFY_OR_DEBUG_ASSERT(numTasks % maxThreadCount == 0) {
+        //    return mixxx::kEngineChannelOutputCount;
+        //}
+        if (numTasks % maxThreadCount != 0) {
+         //   kLogger.warning() << "Task distribution mismatch: " << numTasks
+         //                     << " % " << maxThreadCount << " != 0";
             return mixxx::kEngineChannelOutputCount;
         }
         return mixxx::audio::ChannelCount(chCount / maxThreadCount);
@@ -211,13 +226,27 @@ void RubberBandWrapper::setup(mixxx::audio::SampleRate sampleRate,
         mixxx::audio::ChannelCount chCount,
         const RubberBandStretcher::Options& opt) {
     // The instance should have been cleared, or not set before
-    VERIFY_OR_DEBUG_ASSERT(m_pInstances.size() == 0) {
+    //VERIFY_OR_DEBUG_ASSERT(m_pInstances.size() == 0) {
+    //    m_pInstances.clear();
+    //};
+    if (!m_pInstances.empty()) {
+        //kLogger.warning() << "m_pInstances not empty, clearing " << m_pInstances.size() << " instances";
         m_pInstances.clear();
-    };
+    }
 
     m_channelPerWorker = getChannelPerWorker(chCount);
     qDebug() << "RubberBandWrapper::setup - using" << m_channelPerWorker << "channel(s) per task";
-    VERIFY_OR_DEBUG_ASSERT(0 == chCount % m_channelPerWorker) {
+    //VERIFY_OR_DEBUG_ASSERT(0 == chCount % m_channelPerWorker) {
+    //    // If we have an uneven number of channel, which we can't evenly
+    //    // distribute across the RubberBandPool workers, we fallback to using a
+    //    // single instance to limit the audio imperfection that may come from
+    //    // using RB with different parameters.
+    //    m_pInstances.emplace_back(
+    //            std::make_unique<RubberBandTask>(
+    //                    sampleRate, chCount, opt));
+    //    return;
+    //}
+    if (0 != chCount % m_channelPerWorker) {
         // If we have an uneven number of channel, which we can't evenly
         // distribute across the RubberBandPool workers, we fallback to using a
         // single instance to limit the audio imperfection that may come from

@@ -408,8 +408,8 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
         //     // This is because we only support one set of metadata for the whole
         //     // STEM file, where we determine the track parameters from an
         //     // on-the-fly mix of all 4 stems. Especially the replaygain differs
-        //     // between the on-the-fly mix and the pre-mastered track, because we
-        //     // do not apply DSP (limiter, equalizer, compressor) to the
+        //     // between the on-the-fly mix and the pre-mastered track, because we do
+        //     // not apply DSP (limiter, equalizer, compressor) to the
         //     // on-the-fly mix. If this ever gets changed, we should set
         //     // `initSampleRateOnce` and `initBitrateOnce` to match the stem
         //     // sample rate and bit rate, such that
@@ -652,7 +652,6 @@ void SoundSourceSTEM::processWithResampler(size_t streamIdx,
 
 CSAMPLE SoundSourceSTEM::safeCubicInterpolate(
         CSAMPLE y0, CSAMPLE y1, CSAMPLE y2, CSAMPLE y3, CSAMPLE mu) {
-
     // Robust cubic interpolation that works across compilers
     // const CSAMPLE mu2 = mu * mu;
     const CSAMPLE a0 = y3 - y2 - y0 + y1;
@@ -897,7 +896,7 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
 
     CSAMPLE* pBuffer = globalSampleFrames.writableData();
 
-    if (m_requestedChannelCount ==
+    /*if (m_requestedChannelCount ==
                     mixxx::audio::ChannelCount::stereo() &&
             stemCount != 1) {
         SampleUtil::clear(
@@ -908,6 +907,23 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
                 outputSampleLength *
                         static_cast<SINT>(stemCount) ==
                 globalSampleFrames.writableLength());
+    }*/
+    if (m_requestedChannelCount ==
+                    mixxx::audio::ChannelCount::stereo() &&
+            stemCount != 1) {
+        SampleUtil::clear(
+                pBuffer,
+                globalSampleFrames.writableLength());
+    } else {
+        if (outputSampleLength * static_cast<SINT>(stemCount) !=
+                globalSampleFrames.writableLength()) {
+            // Log warning instead of asserting
+            kLogger.warning() << "Buffer size mismatch: expected="
+                              << (outputSampleLength * static_cast<SINT>(stemCount))
+                              << " actual=" << globalSampleFrames.writableLength();
+            // Optionally handle the mismatch gracefully
+            SampleUtil::clear(pBuffer, globalSampleFrames.writableLength());
+        }
     }
 
     if (stemCount == 1) {

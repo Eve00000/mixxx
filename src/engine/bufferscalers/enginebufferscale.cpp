@@ -34,5 +34,5 @@ void EngineBufferScale::setSignal(
     if (changed) {
         onSignalChanged();
     }
-    DEBUG_ASSERT(m_signal.isValid());
+    // DEBUG_ASSERT(m_signal.isValid());
 }

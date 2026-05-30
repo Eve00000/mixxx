@@ -369,7 +369,11 @@ void handleMessage(
 #ifdef MIXXX_DEBUG_ASSERTIONS_FATAL
         // re-send as fatal.
         // The "%s" is intentional. See -Werror=format-security.
-        qFatal("%s", input.toLocal8Bit().constData());
+        /*qFatal("%s", input.toLocal8Bit().constData());*/
+        {
+            const QByteArray fatalMsg = input.toLocal8Bit();
+            qFatal("%s", fatalMsg.constData());
+        }
         return;
 #endif // MIXXX_DEBUG_ASSERTIONS_FATAL
     }
