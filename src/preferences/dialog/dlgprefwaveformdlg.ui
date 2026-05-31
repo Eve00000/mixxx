@@ -494,7 +494,103 @@ Select from different types of displays for the waveform, which differ primarily
       </widget>
      </item>
 
+<!-- BPM & Key Curve, Markers, Labels & Lancelot Wheel -->
+
+     <item row="12" column="0">
+      <widget class="QLabel" name="bpmKeyDisplayLabel">
+       <property name="text">
+        <string>BPM &amp; Key display</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+      </widget>
+     </item>
+
      <item row="12" column="1" colspan="4">
+      <layout class="QGridLayout" name="bpmKeyDisplayLayout">
+       <item row="0" column="0">
+        <widget class="QCheckBox" name="showBpmCurveCheckBox">
+         <property name="text">
+          <string>Show BPM curve</string>
+         </property>
+         <property name="toolTip">
+          <string>Display the BPM curve on the waveform</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+         <widget class="QCheckBox" name="showBpmLabelsCheckBox">
+           <property name="text">
+             <string>Show BPM labels</string>
+           </property>
+           <property name="toolTip">
+             <string>Display BPM values at change points</string>
+           </property>
+           <property name="checked">
+             <bool>true</bool>
+           </property>
+         </widget>
+       </item>
+       <item row="0" column="2">
+         <widget class="QCheckBox" name="showBpmMarkersCheckBox">
+           <property name="text">
+             <string>Show BPM markers</string>
+           </property>
+           <property name="toolTip">
+             <string>Display markers at BPM change points</string>
+           </property>
+           <property name="checked">
+             <bool>true</bool>
+           </property>
+         </widget>
+       </item>
+       <item row="1" column="0">
+         <widget class="QCheckBox" name="showLancelotWheelCheckBox">
+           <property name="text">
+             <string>Show Lancelot wheel</string>
+           </property>
+           <property name="toolTip">
+             <string>Display the Lancelot wheel on the waveform</string>
+           </property>
+           <property name="checked">
+             <bool>true</bool>
+           </property>
+         </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="showKeyLabelsCheckBox">
+         <property name="text">
+          <string>Show Key labels</string>
+         </property>
+         <property name="toolTip">
+          <string>Display Key names at Key change points</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+         <widget class="QCheckBox" name="showKeyMarkersCheckBox">
+           <property name="text">
+             <string>Show Key markers</string>
+           </property>
+           <property name="toolTip">
+             <string>Display Key markers at Key change points</string>
+           </property>
+           <property name="checked">
+             <bool>true</bool>
+           </property>
+         </widget>
+       </item>
+      </layout>
+     </item>
+
+     <item row="13" column="1" colspan="4">
       <layout class="QHBoxLayout" name="marker_option_layout">
        <item>
         <layout class="QVBoxLayout" name="marker_options_placement_layout">
@@ -578,7 +674,7 @@ Select from different types of displays for the waveform, which differ primarily
       </layout><!-- marker_option_layout -->
      </item>
 
-     <item row="13" column="1" colspan="4">
+     <item row="14" column="1" colspan="4">
       <widget class="QLabel" name="requiresGLSLLabel">
        <property name="text">
         <string>This functionality requires waveform acceleration.</string>
@@ -589,7 +685,7 @@ Select from different types of displays for the waveform, which differ primarily
       </widget>
      </item>
 
-     <item row="14" column="0">
+     <item row="15" column="0">
       <widget class="QLabel" name="stemOpacityLabel">
        <property name="text">
         <string>Stem</string>
@@ -602,7 +698,7 @@ Select from different types of displays for the waveform, which differ primarily
        </property>
       </widget>
      </item>
-     <item row="14" column="1" colspan="4">
+     <item row="15" column="1" colspan="4">
       <layout class="QGridLayout" name="stemOpacityGridLayout">
        <item row="0" column="0">
         <widget class="QLabel" name="stemOpacityMainLabel">
@@ -679,7 +775,7 @@ Select from different types of displays for the waveform, which differ primarily
       </layout>
      </item>
 
-     <item row="15" column="1" colspan="4">
+     <item row="16" column="1" colspan="4">
       <widget class="QLabel" name="requiresGLSLLabel2">
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -733,7 +829,43 @@ Select from different types of displays for the waveform overview, which differ 
       </widget>
      </item>
 
-     <item row="3" column="0">
+      <!-- BPM & KEY Markers & BPM Curve -->
+      <item row="3" column="1" colspan="4">
+        <layout class="QHBoxLayout" name="overviewBpmKeyLayout">
+          <item>
+            <widget class="QCheckBox" name="overviewShowBpmCurveCheckBox">
+              <property name="text">
+                <string>Show BPM curve</string>
+              </property>
+              <property name="checked">
+                <bool>true</bool>
+              </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QCheckBox" name="overviewShowBpmMarkersCheckBox">
+              <property name="text">
+                <string>Show BPM markers</string>
+              </property>
+              <property name="checked">
+                <bool>true</bool>
+              </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QCheckBox" name="overviewShowKeyMarkersCheckBox">
+              <property name="text">
+                <string>Show key markers</string>
+              </property>
+              <property name="checked">
+                <bool>true</bool>
+              </property>
+            </widget>
+          </item>
+        </layout>
+      </item>
+
+      <item row="4" column="0">
       <widget class="QLabel" name="overview_gain_label">
        <property name="toolTip">
         <string extracomment="Select a gain mode for the waveform overview."/>
@@ -743,7 +875,7 @@ Select from different types of displays for the waveform overview, which differ 
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="4">
+     <item row="4" column="1" colspan="4">
       <widget class="QRadioButton" name="overview_scale_normalize">
        <property name="text">
         <string>Normalize to peak</string>
@@ -753,7 +885,7 @@ Select from different types of displays for the waveform overview, which differ 
        </attribute>
       </widget>
      </item>
-     <item row="4" column="1" colspan="4">
+     <item row="5" column="1" colspan="4">
       <widget class="QRadioButton" name="overview_scale_allReplayGain">
        <property name="text">
         <string extracomment="'Global' refers to the 'Global' visual gain in the scrolling waveform settings">Use Waveform "Global" gain and ReplayGain (if enabled)</string>
@@ -906,11 +1038,20 @@ Select from different types of displays for the waveform overview, which differ 
   <tabstop>untilMarkAlignComboBox</tabstop>
   <tabstop>untilMarkTextPointSizeSpinBox</tabstop>
   <tabstop>untilMarkTextHeightLimitComboBox</tabstop>
+  <tabstop>showBpmCurveCheckBox</tabstop>
+  <tabstop>showBpmMarkersCheckBox</tabstop>
+  <tabstop>showBpmLabelsCheckBox</tabstop>
+  <tabstop>showKeyMarkersCheckBox</tabstop>
+  <tabstop>showKeyLabelsCheckBox</tabstop>
+  <tabstop>showLancelotWheelCheckBox</tabstop>
   <tabstop>waveformOverviewComboBox</tabstop>
   <tabstop>overviewStereoCheckBox</tabstop>
   <tabstop>overviewMinuteMarkersCheckBox</tabstop>
   <tabstop>overview_scale_normalize</tabstop>
   <tabstop>overview_scale_allReplayGain</tabstop>
+  <tabstop>overviewShowBpmCurveCheckBox</tabstop>
+  <tabstop>overviewShowBpmMarkersCheckBox</tabstop>
+  <tabstop>overviewShowKeyMarkersCheckBox</tabstop>
   <tabstop>enableWaveformCaching</tabstop>
   <tabstop>enableWaveformGenerationWithAnalysis</tabstop>
   <tabstop>clearCachedWaveforms</tabstop>

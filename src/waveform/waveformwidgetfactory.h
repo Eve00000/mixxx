@@ -209,6 +209,37 @@ class WaveformWidgetFactory : public QObject,
     /// Returns the desired surface format for the OpenGLWindow
     static QSurfaceFormat getSurfaceFormat(UserSettingsPointer pConfig = nullptr);
 
+    // BPM & KEY Markers, Curve..
+    void setShowBpmCurve(bool value);
+    bool showBpmCurve() const {
+        return m_showBpmCurve;
+    }
+
+    void setShowBpmMarkers(bool value);
+    bool showBpmMarkers() const {
+        return m_showBpmMarkers;
+    }
+
+    void setShowBpmLabels(bool value);
+    bool showBpmLabels() const {
+        return m_showBpmLabels;
+    }
+
+    void setShowKeyMarkers(bool value);
+    bool showKeyMarkers() const {
+        return m_showKeyMarkers;
+    }
+
+    void setShowKeyLabels(bool value);
+    bool showKeyLabels() const {
+        return m_showKeyLabels;
+    }
+
+    void setShowLancelotWheel(bool value);
+    bool showLancelotWheel() const {
+        return m_showLancelotWheel;
+    }
+
   protected:
     bool setWidgetType(
             WaveformWidgetType::Type type,
@@ -270,6 +301,13 @@ class WaveformWidgetFactory : public QObject,
     void stemReorderOnChangeChanged(bool value);
     void stemOutlineOpacityChanged(float value);
     void stemOpacityChanged(float value);
+
+    void showBpmCurveChanged(bool value);
+    void showBpmMarkersChanged(bool value);
+    void showBpmLabelsChanged(bool value);
+    void showKeyMarkersChanged(bool value);
+    void showKeyLabelsChanged(bool value);
+    void showLancelotWheelChanged(bool value);
 
   public slots:
     void slotSkinLoaded();
@@ -368,4 +406,11 @@ class WaveformWidgetFactory : public QObject,
     double m_actualFrameRate;
     int m_vSyncType;
     double m_playMarkerPosition;
+
+    bool m_showBpmCurve = true;
+    bool m_showBpmMarkers = true;
+    bool m_showBpmLabels = true;
+    bool m_showKeyMarkers = true;
+    bool m_showKeyLabels = true;
+    bool m_showLancelotWheel = true;
 };

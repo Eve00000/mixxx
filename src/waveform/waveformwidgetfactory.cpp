@@ -146,7 +146,13 @@ WaveformWidgetFactory::WaveformWidgetFactory()
           m_pVisualsManager(nullptr),
           m_frameCnt(0),
           m_actualFrameRate(0),
-          m_playMarkerPosition(WaveformWidgetRenderer::s_defaultPlayMarkerPosition) {
+          m_playMarkerPosition(WaveformWidgetRenderer::s_defaultPlayMarkerPosition),
+          m_showBpmCurve(true),
+          m_showBpmMarkers(true),
+          m_showBpmLabels(true),
+          m_showKeyMarkers(true),
+          m_showKeyLabels(true),
+          m_showLancelotWheel(true) {
     m_visualGain[AllBand] = kVisualGainDefault[AllBand];
     m_visualGain[Low] = kVisualGainDefault[Low];
     m_visualGain[Mid] = kVisualGainDefault[Mid];
@@ -475,6 +481,26 @@ bool WaveformWidgetFactory::setConfig(UserSettingsPointer config) {
     setStemOutlineOpacity(static_cast<float>(
             m_config->getValue(ConfigKey(kWaveformGroup, QStringLiteral("stem_outline_opacity")),
                     0.15)));
+
+    // BPM & KEY CURVE
+    m_showBpmCurve = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")),
+            true);
+    m_showBpmMarkers = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")),
+            true);
+    m_showBpmLabels = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")),
+            true);
+    m_showKeyMarkers = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")),
+            true);
+    m_showKeyLabels = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")),
+            true);
+    m_showLancelotWheel = m_config->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")),
+            true);
 
     return true;
 }
@@ -1559,4 +1585,76 @@ int WaveformWidgetFactory::toUntilMarkTextHeightLimitIndex(float value) {
     }
     DEBUG_ASSERT(!"unsupported height limit");
     return 0;
+}
+
+void WaveformWidgetFactory::setShowBpmCurve(bool value) {
+    if (m_showBpmCurve == value) {
+        return;
+    }
+    m_showBpmCurve = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")),
+                m_showBpmCurve);
+    }
+    emit showBpmCurveChanged(value);
+}
+
+void WaveformWidgetFactory::setShowBpmMarkers(bool value) {
+    if (m_showBpmMarkers == value) {
+        return;
+    }
+    m_showBpmMarkers = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")),
+                m_showBpmMarkers);
+    }
+    emit showBpmMarkersChanged(value);
+}
+
+void WaveformWidgetFactory::setShowBpmLabels(bool value) {
+    if (m_showBpmLabels == value) {
+        return;
+    }
+    m_showBpmLabels = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")),
+                m_showBpmLabels);
+    }
+    emit showBpmLabelsChanged(value);
+}
+
+void WaveformWidgetFactory::setShowKeyMarkers(bool value) {
+    if (m_showKeyMarkers == value) {
+        return;
+    }
+    m_showKeyMarkers = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")),
+                m_showKeyMarkers);
+    }
+    emit showKeyMarkersChanged(value);
+}
+
+void WaveformWidgetFactory::setShowKeyLabels(bool value) {
+    if (m_showKeyLabels == value) {
+        return;
+    }
+    m_showKeyLabels = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")),
+                m_showKeyLabels);
+    }
+    emit showKeyLabelsChanged(value);
+}
+
+void WaveformWidgetFactory::setShowLancelotWheel(bool value) {
+    if (m_showLancelotWheel == value) {
+        return;
+    }
+    m_showLancelotWheel = value;
+    if (m_config) {
+        m_config->setValue(ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")),
+                m_showLancelotWheel);
+    }
+    emit showLancelotWheelChanged(value);
 }
