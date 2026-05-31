@@ -42,28 +42,74 @@ namespace {
 ///  | 7        | 1      | 2    |
 ///  | 8        | 1      | 1    |
 
+// mixxx::audio::ChannelCount getChannelPerWorker(mixxx::audio::ChannelCount chCount) {
+//     RubberBandWorkerPool* pPool = RubberBandWorkerPool::instance();
+//
+//     // There should always be a pool set, even if multi threading isn't enabled.
+//     // This is because multi threading will always be used for stem when
+//     // possible.
+//     VERIFY_OR_DEBUG_ASSERT(pPool) {
+//         return mixxx::kMaxEngineChannelInputCount;
+//     }
+//     auto channelPerWorker = pPool->channelPerWorker();
+//     // The task count includes all the thread in the pool + the engine thread
+//     auto maxThreadCount = pPool->maxThreadCount() + 1;
+//     VERIFY_OR_DEBUG_ASSERT(chCount % channelPerWorker == 0) {
+//         return mixxx::kEngineChannelOutputCount;
+//     }
+//     auto numTasks = chCount / channelPerWorker;
+//     if (numTasks > maxThreadCount) {
+//         VERIFY_OR_DEBUG_ASSERT(numTasks % maxThreadCount == 0) {
+//             return mixxx::kEngineChannelOutputCount;
+//         }
+//         return mixxx::audio::ChannelCount(chCount / maxThreadCount);
+//     }
+//     return channelPerWorker;
+// }
+
 mixxx::audio::ChannelCount getChannelPerWorker(mixxx::audio::ChannelCount chCount) {
     RubberBandWorkerPool* pPool = RubberBandWorkerPool::instance();
 
     // There should always be a pool set, even if multi threading isn't enabled.
     // This is because multi threading will always be used for stem when
     // possible.
-    VERIFY_OR_DEBUG_ASSERT(pPool) {
-        return mixxx::kMaxEngineChannelInputCount;
+    if (!pPool) {
+        qWarning() << "RubberBandWorkerPool not initialized, using fallback";
+        // Fallback: process all channels in one task
+        return chCount;
     }
+
     auto channelPerWorker = pPool->channelPerWorker();
     // The task count includes all the thread in the pool + the engine thread
     auto maxThreadCount = pPool->maxThreadCount() + 1;
-    VERIFY_OR_DEBUG_ASSERT(chCount % channelPerWorker == 0) {
-        return mixxx::kEngineChannelOutputCount;
+
+    // Convert to integers for calculations
+    const int chCountInt = static_cast<int>(chCount);
+    const int channelPerWorkerInt = static_cast<int>(channelPerWorker);
+
+    if (channelPerWorkerInt <= 0) {
+        qWarning() << "Invalid channelPerWorker:" << channelPerWorkerInt;
+        return chCount;
     }
-    auto numTasks = chCount / channelPerWorker;
-    if (numTasks > maxThreadCount) {
-        VERIFY_OR_DEBUG_ASSERT(numTasks % maxThreadCount == 0) {
-            return mixxx::kEngineChannelOutputCount;
+
+    if (chCountInt % channelPerWorkerInt != 0) {
+        qWarning() << "Channel count" << chCountInt << "not divisible by" << channelPerWorkerInt;
+        return chCount;
+    }
+
+    auto numTasks = chCountInt / channelPerWorkerInt;
+    if (numTasks > maxThreadCount && maxThreadCount > 0) {
+        if (numTasks % maxThreadCount != 0) {
+            qWarning() << "Cannot distribute channels evenly across threads";
+            return chCount;
         }
-        return mixxx::audio::ChannelCount(chCount / maxThreadCount);
+        return mixxx::audio::ChannelCount(chCountInt / maxThreadCount);
     }
+
+    qDebug() << "[RubberBandWorkerPool] Linux - Max threads:" << maxThreadCount
+             << "Channel per worker:" << static_cast<int>(channelPerWorker)
+             << "Total channels:" << static_cast<int>(chCount);
+
     return channelPerWorker;
 }
 } // namespace
@@ -207,34 +253,198 @@ void RubberBandWrapper::reset() {
 void RubberBandWrapper::clear() {
     m_pInstances.clear();
 }
+
+// void RubberBandWrapper::setup(mixxx::audio::SampleRate sampleRate,
+//         mixxx::audio::ChannelCount chCount,
+//         const RubberBandStretcher::Options& opt) {
+//     // The instance should have been cleared, or not set before
+//     VERIFY_OR_DEBUG_ASSERT(m_pInstances.size() == 0) {
+//         m_pInstances.clear();
+//     };
+//
+//     m_channelPerWorker = getChannelPerWorker(chCount);
+//     qDebug() << "RubberBandWrapper::setup - using" << m_channelPerWorker <<
+//     "channel(s) per task"; VERIFY_OR_DEBUG_ASSERT(0 == chCount %
+//     m_channelPerWorker) {
+//         // If we have an uneven number of channel, which we can't evenly
+//         // distribute across the RubberBandPool workers, we fallback to using
+//         a
+//         // single instance to limit the audio imperfection that may come from
+//         // using RB with different parameters.
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, chCount, opt));
+//         return;
+//     }
+//
+//     m_pInstances.reserve(chCount / m_channelPerWorker);
+//     for (int c = 0; c < chCount; c += m_channelPerWorker) {
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, m_channelPerWorker, opt));
+//     }
+// }
+
+// void RubberBandWrapper::setup(mixxx::audio::SampleRate sampleRate,
+//         mixxx::audio::ChannelCount chCount,
+//         const RubberBandStretcher::Options& opt) {
+//     // Validate inputs
+//     if (!sampleRate.isValid() || sampleRate <= 0) {
+//         qWarning() << "RubberBandWrapper::setup - Invalid sample rate:" <<
+//         static_cast<int>(sampleRate); return;
+//     }
+//
+//     if (chCount <= 0) {
+//         qWarning() << "RubberBandWrapper::setup - Invalid channel count:" <<
+//         chCount; return;
+//     }
+//
+//     // The instance should have been cleared, or not set before
+//     VERIFY_OR_DEBUG_ASSERT(m_pInstances.size() == 0) {
+//         m_pInstances.clear();
+//     };
+//
+//     // Safely get channel per worker with fallback
+//     mixxx::audio::ChannelCount channelPerWorker;
+//     try {
+//         channelPerWorker = getChannelPerWorker(chCount);
+//         if (channelPerWorker <= 0) {
+//             qWarning() << "Invalid channelPerWorker from getChannelPerWorker,
+//             using fallback"; channelPerWorker = std::min(chCount,
+//             mixxx::audio::ChannelCount(2));
+//         }
+//     } catch (...) {
+//         qWarning() << "Exception in getChannelPerWorker, using fallback";
+//         channelPerWorker = std::min(chCount, mixxx::audio::ChannelCount(2));
+//     }
+//
+//     qDebug() << "RubberBandWrapper::setup - using" << channelPerWorker <<
+//     "channel(s) per task";
+//
+//     // Check for division by zero
+//     if (channelPerWorker <= 0) {
+//         qWarning() << "channelPerWorker is zero, creating single instance";
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, chCount, opt));
+//         return;
+//     }
+//
+//     // Check modulo safely
+//     if (static_cast<int>(chCount) % static_cast<int>(channelPerWorker) != 0)
+//     {
+//         qWarning() << "Channel count" << chCount << "not divisible by" <<
+//         channelPerWorker
+//                    << "- using single instance";
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, chCount, opt));
+//         return;
+//     }
+//
+//     const int numInstances = static_cast<int>(chCount) /
+//     static_cast<int>(channelPerWorker); if (numInstances <= 0) {
+//         qWarning() << "Invalid number of instances:" << numInstances;
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, chCount, opt));
+//         return;
+//     }
+//
+//     m_pInstances.reserve(numInstances);
+//     for (int c = 0; c < chCount; c += channelPerWorker) {
+//         m_pInstances.emplace_back(
+//                 std::make_unique<RubberBandTask>(
+//                         sampleRate, channelPerWorker, opt));
+//     }
+// }
+
 void RubberBandWrapper::setup(mixxx::audio::SampleRate sampleRate,
         mixxx::audio::ChannelCount chCount,
         const RubberBandStretcher::Options& opt) {
+    // Validate inputs
+    if (!sampleRate.isValid() || sampleRate <= 0) {
+        qWarning() << "RubberBandWrapper::setup - Invalid sample rate:"
+                   << static_cast<int>(sampleRate);
+        return;
+    }
+
+    if (chCount <= 0) {
+        qWarning() << "RubberBandWrapper::setup - Invalid channel count:"
+                   << static_cast<int>(chCount);
+        return;
+    }
+
     // The instance should have been cleared, or not set before
     VERIFY_OR_DEBUG_ASSERT(m_pInstances.size() == 0) {
         m_pInstances.clear();
     };
 
-    m_channelPerWorker = getChannelPerWorker(chCount);
-    qDebug() << "RubberBandWrapper::setup - using" << m_channelPerWorker << "channel(s) per task";
-    VERIFY_OR_DEBUG_ASSERT(0 == chCount % m_channelPerWorker) {
-        // If we have an uneven number of channel, which we can't evenly
-        // distribute across the RubberBandPool workers, we fallback to using a
-        // single instance to limit the audio imperfection that may come from
-        // using RB with different parameters.
+    qDebug() << "[RubberBandWrapper] Linux - Sample rate:" << static_cast<int>(sampleRate)
+             << "Channel count:" << static_cast<int>(chCount)
+             << "Options:" << opt;
+
+    // Safely get channel per worker with fallback
+    mixxx::audio::ChannelCount channelPerWorker;
+    try {
+        channelPerWorker = getChannelPerWorker(chCount);
+        if (channelPerWorker <= 0) {
+            qWarning() << "Invalid channelPerWorker from getChannelPerWorker, using fallback";
+            // Compare integer values
+            const int chCountInt = static_cast<int>(chCount);
+            const int fallbackValue = (chCountInt < 2) ? chCountInt : 2;
+            channelPerWorker = mixxx::audio::ChannelCount(fallbackValue);
+        }
+    } catch (...) {
+        qWarning() << "Exception in getChannelPerWorker, using fallback";
+        const int chCountInt = static_cast<int>(chCount);
+        const int fallbackValue = (chCountInt < 2) ? chCountInt : 2;
+        channelPerWorker = mixxx::audio::ChannelCount(fallbackValue);
+    }
+
+    qDebug() << "RubberBandWrapper::setup - using"
+             << static_cast<int>(channelPerWorker) << "channel(s) per task";
+
+    // Check for division by zero
+    if (channelPerWorker <= 0) {
+        qWarning() << "channelPerWorker is zero, creating single instance";
         m_pInstances.emplace_back(
                 std::make_unique<RubberBandTask>(
                         sampleRate, chCount, opt));
         return;
     }
 
-    m_pInstances.reserve(chCount / m_channelPerWorker);
-    for (int c = 0; c < chCount; c += m_channelPerWorker) {
+    // Convert to integers for modulo operation
+    const int chCountInt = static_cast<int>(chCount);
+    const int channelPerWorkerInt = static_cast<int>(channelPerWorker);
+
+    // Check modulo safely
+    if (chCountInt % channelPerWorkerInt != 0) {
+        qWarning() << "Channel count" << chCountInt << "not divisible by" << channelPerWorkerInt
+                   << "- using single instance";
         m_pInstances.emplace_back(
                 std::make_unique<RubberBandTask>(
-                        sampleRate, m_channelPerWorker, opt));
+                        sampleRate, chCount, opt));
+        return;
+    }
+
+    const int numInstances = chCountInt / channelPerWorkerInt;
+    if (numInstances <= 0) {
+        qWarning() << "Invalid number of instances:" << numInstances;
+        m_pInstances.emplace_back(
+                std::make_unique<RubberBandTask>(
+                        sampleRate, chCount, opt));
+        return;
+    }
+
+    m_pInstances.reserve(numInstances);
+    for (int c = 0; c < chCountInt; c += channelPerWorkerInt) {
+        m_pInstances.emplace_back(
+                std::make_unique<RubberBandTask>(
+                        sampleRate, channelPerWorker, opt));
     }
 }
+
 void RubberBandWrapper::setPitchScale(double scale) {
     for (auto& stretcher : m_pInstances) {
         stretcher->setPitchScale(scale);
