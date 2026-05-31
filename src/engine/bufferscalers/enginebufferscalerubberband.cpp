@@ -94,11 +94,71 @@ void EngineBufferScaleRubberBand::setScaleParameters(double base_rate,
     m_dPitchRatio = *pPitchRatio;
 }
 
+// void EngineBufferScaleRubberBand::onSignalChanged() {
+//     // TODO: Resetting the sample rate will cause internal
+//     // memory allocations that may block the real-time thread.
+//     // When is this function actually invoked??
+//     if (!getOutputSignal().isValid()) {
+//         return;
+//     }
+//
+//     uint8_t channelCount = getOutputSignal().getChannelCount();
+//     if (m_buffers.size() != channelCount) {
+//         m_buffers.resize(channelCount);
+//     }
+//
+//     if (m_bufferPtrs.size() != channelCount) {
+//         m_bufferPtrs.resize(channelCount);
+//     }
+//
+//     m_rubberBand.clear();
+//
+//     for (int chIdx = 0; chIdx < channelCount; chIdx++) {
+//         if (m_buffers[chIdx].size() == MAX_BUFFER_LEN) {
+//             continue;
+//         }
+//         m_buffers[chIdx] = mixxx::SampleBuffer(MAX_BUFFER_LEN);
+//         m_bufferPtrs[chIdx] = m_buffers[chIdx].data();
+//     }
+//
+//     RubberBandStretcher::Options rubberbandOptions =
+//             RubberBandStretcher::OptionProcessRealTime;
+// #if RUBBERBANDV3
+//     if (m_useEngineFiner) {
+//         rubberbandOptions |=
+//                 RubberBandStretcher::OptionEngineFiner |
+//                 // Process Channels Together. otherwise the result is not
+//                 // mono-compatible. See #11361
+//                 RubberBandStretcher::OptionChannelsTogether;
+//     }
+// #endif
+//
+//     m_rubberBand.setup(
+//             getOutputSignal().getSampleRate(),
+//             getOutputSignal().getChannelCount(),
+//             rubberbandOptions);
+//     // Setting the time ratio to a very high value will cause RubberBand
+//     // to preallocate buffers large enough to (almost certainly)
+//     // avoid memory reallocations during playback.
+//     m_rubberBand.setTimeRatio(2.0);
+//     m_rubberBand.setTimeRatio(1.0);
+// }
+
 void EngineBufferScaleRubberBand::onSignalChanged() {
     // TODO: Resetting the sample rate will cause internal
     // memory allocations that may block the real-time thread.
     // When is this function actually invoked??
     if (!getOutputSignal().isValid()) {
+        return;
+    }
+
+    // Get sample rate from the output signal
+    const auto sampleRate = getOutputSignal().getSampleRate();
+
+    // Validate sample rate before using it
+    if (!sampleRate.isValid() || sampleRate <= 0) {
+        qWarning() << "EngineBufferScaleRubberBand::onSignalChanged - Invalid sample rate:"
+                   << static_cast<int>(sampleRate);
         return;
     }
 
@@ -133,9 +193,13 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
     }
 #endif
 
+    // Pass the SampleRate object directly, not an int
+    qDebug() << "EngineBufferScaleRubberBand::onSignalChanged - Setting up with sample rate:"
+             << static_cast<int>(sampleRate) << "channels:" << channelCount;
+
     m_rubberBand.setup(
-            getOutputSignal().getSampleRate(),
-            getOutputSignal().getChannelCount(),
+            sampleRate,                               // Pass the SampleRate object directly
+            mixxx::audio::ChannelCount(channelCount), // Convert to ChannelCount
             rubberbandOptions);
     // Setting the time ratio to a very high value will cause RubberBand
     // to preallocate buffers large enough to (almost certainly)
@@ -527,23 +591,60 @@ void EngineBufferScaleRubberBand::reset() {
     m_remainingPaddingInOutput = static_cast<SINT>(getStartDelay());
 }
 
+// void EngineBufferScaleRubberBand::initStemWorkers() {
+//     m_premixWorker = std::make_unique<RubberBandWrapper>();
+//     m_premixWorker->setup(
+//             getOutputSignal().getSampleRate(),
+//             mixxx::audio::ChannelCount::stereo(),
+//             RubberBand::RubberBandStretcher::OptionProcessRealTime);
+//
+//     m_stemsWorker = std::make_unique<RubberBandWrapper>();
+//     m_stemsWorker->setup(
+//             getOutputSignal().getSampleRate(),
+//             mixxx::audio::ChannelCount::fromInt(8),
+//             RubberBand::RubberBandStretcher::OptionProcessRealTime |
+//                     RubberBand::RubberBandStretcher::OptionChannelsTogether);
+//
+//     // Apply current time ratio to both
+//     m_premixWorker->setTimeRatio(m_effectiveRate);
+//     m_stemsWorker->setTimeRatio(m_effectiveRate);
+//
+//     // Initialize buffers
+//     m_premixBuffers.resize(2);
+//     m_premixPtrs.resize(2);
+//     m_stemsBuffers.resize(8);
+//     m_stemsPtrs.resize(8);
+//
+//     qDebug() << "EngineBufferScaleRubberBand: Initialized synced workers for STEM mode";
+// }
+
 void EngineBufferScaleRubberBand::initStemWorkers() {
+    const auto sampleRate = getOutputSignal().getSampleRate();
+
+    if (!sampleRate.isValid() || sampleRate <= 0) {
+        qWarning() << "EngineBufferScaleRubberBand::initStemWorkers - Invalid sample rate:"
+                   << static_cast<int>(sampleRate);
+        return;
+    }
+
     m_premixWorker = std::make_unique<RubberBandWrapper>();
     m_premixWorker->setup(
-            getOutputSignal().getSampleRate(),
+            sampleRate, // Pass SampleRate object directly
             mixxx::audio::ChannelCount::stereo(),
             RubberBand::RubberBandStretcher::OptionProcessRealTime);
 
     m_stemsWorker = std::make_unique<RubberBandWrapper>();
     m_stemsWorker->setup(
-            getOutputSignal().getSampleRate(),
-            mixxx::audio::ChannelCount::fromInt(8),
+            sampleRate,                    // Pass SampleRate object directly
+            mixxx::audio::ChannelCount(8), // Use constructor instead of fromInt
             RubberBand::RubberBandStretcher::OptionProcessRealTime |
                     RubberBand::RubberBandStretcher::OptionChannelsTogether);
 
     // Apply current time ratio to both
-    m_premixWorker->setTimeRatio(m_effectiveRate);
-    m_stemsWorker->setTimeRatio(m_effectiveRate);
+    if (m_effectiveRate > 0) {
+        m_premixWorker->setTimeRatio(1.0 / m_effectiveRate);
+        m_stemsWorker->setTimeRatio(1.0 / m_effectiveRate);
+    }
 
     // Initialize buffers
     m_premixBuffers.resize(2);

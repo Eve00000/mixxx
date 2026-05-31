@@ -306,6 +306,53 @@ bool TrackRecord::mergeExtraMetadataFromSource(
     return modified;
 }
 
+// bool TrackRecord::updateStreamInfoFromSource(
+//         mixxx::audio::StreamInfo streamInfoFromSource) {
+//     // Complete missing properties from metadata. Some properties
+//     // are mandatory while others like the bitrate might not be
+//     // reported by all decoders.
+//     VERIFY_OR_DEBUG_ASSERT(streamInfoFromSource.getSignalInfo().getChannelCount().isValid()) {
+//         streamInfoFromSource.refSignalInfo().setChannelCount(
+//                 getMetadata().getStreamInfo().getSignalInfo().getChannelCount());
+//     }
+//     VERIFY_OR_DEBUG_ASSERT(streamInfoFromSource.getSignalInfo().getSampleRate().isValid()) {
+//         streamInfoFromSource.refSignalInfo().setSampleRate(
+//                 getMetadata().getStreamInfo().getSignalInfo().getSampleRate());
+//     }
+//     VERIFY_OR_DEBUG_ASSERT(streamInfoFromSource.getDuration() > Duration::empty()) {
+//         streamInfoFromSource.setDuration(
+//                 getMetadata().getStreamInfo().getDuration());
+//     }
+//     if (!streamInfoFromSource.getBitrate().isValid()) {
+//         // The bitrate might not be reported by the SoundSource
+//         streamInfoFromSource.setBitrate(
+//                 getMetadata().getStreamInfo().getBitrate());
+//     }
+//     // Stream properties are not expected to vary during a session, apart from
+//     // the channel count and so the bitrate as different components may request
+//     // the stream in stereo or multi channels
+//     VERIFY_OR_DEBUG_ASSERT(!m_streamInfoFromSource ||
+//             (m_streamInfoFromSource->getDuration() ==
+//                             streamInfoFromSource.getDuration() &&
+//                     m_streamInfoFromSource->getSignalInfo().getSampleRate() ==
+//                             streamInfoFromSource.getSignalInfo()
+//                                     .getSampleRate())) {
+//         kLogger.warning()
+//                 << "Varying stream properties:"
+//                 << *m_streamInfoFromSource
+//                 << "->"
+//                 << streamInfoFromSource;
+//     }
+//     m_streamInfoFromSource = streamInfoFromSource;
+//     // Stream info from source is always propagated to metadata and
+//     // unconditionally overwrites any properties that have once been
+//     // parsed from file tags! This is required to store the most
+//     // accurate information about the audio stream in the database.
+//     const bool metadataUpdated = refMetadata().updateStreamInfoFromSource(streamInfoFromSource);
+//     DEBUG_ASSERT(getMetadata().getStreamInfo() == streamInfoFromSource);
+//     return metadataUpdated;
+// }
+
 bool TrackRecord::updateStreamInfoFromSource(
         mixxx::audio::StreamInfo streamInfoFromSource) {
     // Complete missing properties from metadata. Some properties
@@ -328,21 +375,44 @@ bool TrackRecord::updateStreamInfoFromSource(
         streamInfoFromSource.setBitrate(
                 getMetadata().getStreamInfo().getBitrate());
     }
-    // Stream properties are not expected to vary during a session, apart from
-    // the channel count and so the bitrate as different components may request
-    // the stream in stereo or multi channels
-    VERIFY_OR_DEBUG_ASSERT(!m_streamInfoFromSource ||
-            (m_streamInfoFromSource->getDuration() ==
-                            streamInfoFromSource.getDuration() &&
-                    m_streamInfoFromSource->getSignalInfo().getSampleRate() ==
-                            streamInfoFromSource.getSignalInfo()
-                                    .getSampleRate())) {
-        kLogger.warning()
-                << "Varying stream properties:"
-                << *m_streamInfoFromSource
-                << "->"
-                << streamInfoFromSource;
+
+    // Check if this is a STEM file
+    bool isStemFile = false;
+    QString urlStr = QString::fromStdString(getUrl().toStdString());
+    if (urlStr.contains(".stem.mp4", Qt::CaseInsensitive) ||
+            urlStr.contains(".stem.m4a", Qt::CaseInsensitive)) {
+        isStemFile = true;
     }
+
+    // Stream properties are not expected to vary during a session
+    if (m_streamInfoFromSource) {
+        bool durationMatches = (m_streamInfoFromSource->getDuration() ==
+                streamInfoFromSource.getDuration());
+        bool sampleRateMatches = (m_streamInfoFromSource->getSignalInfo().getSampleRate() ==
+                streamInfoFromSource.getSignalInfo().getSampleRate());
+
+        if (!durationMatches || !sampleRateMatches) {
+            if (!isStemFile) {
+                // For non-STEM files, log warning (but don't assert)
+                kLogger.warning()
+                        << "Varying stream properties:"
+                        << *m_streamInfoFromSource
+                        << "->"
+                        << streamInfoFromSource;
+            } else {
+                // For STEM files, just log info (expected behavior)
+                if (!sampleRateMatches) {
+                    kLogger.info()
+                            << "STEM file sample rate changed from"
+                            << m_streamInfoFromSource->getSignalInfo().getSampleRate()
+                            << "to"
+                            << streamInfoFromSource.getSignalInfo().getSampleRate()
+                            << "- expected when switching between premix and stems";
+                }
+            }
+        }
+    }
+
     m_streamInfoFromSource = streamInfoFromSource;
     // Stream info from source is always propagated to metadata and
     // unconditionally overwrites any properties that have once been
