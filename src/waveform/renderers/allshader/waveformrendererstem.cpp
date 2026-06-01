@@ -278,6 +278,170 @@ bool WaveformRendererStem::preprocessInner() {
     return true;
 }
 
+
+// bool WaveformRendererStem::preprocessInner() {
+//     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
+//     if (!pTrack || (m_isSlipRenderer && !m_waveformRenderer->isSlipActive())) {
+//         return false;
+//     }
+
+//     auto stemInfo = pTrack->getStemInfo();
+//     if (stemInfo.isEmpty()) {
+//         return false;
+//     }
+
+//     ConstWaveformPointer waveform = pTrack->getWaveform();
+//     if (waveform.isNull()) {
+//         return false;
+//     }
+
+//     const WaveformData* data = waveform->data();
+//     if (!data || waveform->getDataSize() <= 1 || !waveform->hasStem()) {
+//         return false;
+//     }
+
+//     uint selectedStems = m_waveformRenderer->getSelectedStems();
+
+//     const float devicePixelRatio = m_waveformRenderer->getDevicePixelRatio();
+//     const int length = static_cast<int>(m_waveformRenderer->getLength());
+//     const int pixelLength = static_cast<int>(length * devicePixelRatio);
+//     const int stripLength = static_cast<int>(static_cast<float>(pixelLength) / kPixelPerStrip);
+//     const float invDevicePixelRatio = kPixelPerStrip / devicePixelRatio;
+//     const float halfStripSize = kPixelPerStrip / 2.0f / devicePixelRatio;
+
+//     float allGain = 1.0f;
+//     getGains(&allGain, nullptr, nullptr, nullptr);
+
+//     const float breadth = static_cast<float>(m_waveformRenderer->getBreadth());
+//     const float stemBreadth = m_splitStemTracks ? breadth / 4.0f : 0;
+//     const float halfBreadth = (m_splitStemTracks ? stemBreadth : breadth) / 2.0f;
+
+//     const float heightFactor = allGain * halfBreadth / m_maxValue;
+
+//     const int dataSize = waveform->getDataSize();
+//     const double visualFramesSize = dataSize / 2.0;
+
+//     const double firstVisualFrame =
+//             m_waveformRenderer->getFirstDisplayedPosition(
+//                     m_isSlipRenderer ? ::WaveformRendererAbstract::Slip
+//                                      : ::WaveformRendererAbstract::Play) *
+//             visualFramesSize;
+//     const double lastVisualFrame =
+//             m_waveformRenderer->getLastDisplayedPosition(
+//                     m_isSlipRenderer ? ::WaveformRendererAbstract::Slip
+//                                      : ::WaveformRendererAbstract::Play) *
+//             visualFramesSize;
+
+//     const double visualIncrementPerPixel = (lastVisualFrame - firstVisualFrame) / stripLength;
+//     double xVisualFrame = qRound(firstVisualFrame / visualIncrementPerPixel) *
+//             visualIncrementPerPixel;
+
+//     const int numVerticesPerLine = 6;
+//     const int numStemsToDraw = mixxx::audio::ChannelCount::stem(); // Keep full size to include premix
+//     const int layersPerStem = 2;
+//     const int reservedCeiling = numVerticesPerLine * layersPerStem * numStemsToDraw * stripLength;
+
+//     geometry().setDrawingMode(Geometry::DrawingMode::Triangles);
+//     geometry().allocate(reservedCeiling);
+//     markDirtyGeometry();
+
+//     RGBAVertexUpdater vertexUpdater{geometry().vertexDataAs<Geometry::RGBAColoredPoint2D>()};
+
+//     const double maxSamplingRange = visualIncrementPerPixel / 2.0;
+//     const bool premixMuted =
+//             (!m_pStemMute.empty() && m_pStemMute.size() > 0) ? m_pStemMute[0]->toBool() : false;
+
+//     for (int visualIdx = 0; visualIdx < stripLength; ++visualIdx) {
+//         int stemLayer = 0;
+//         for (int stemIdx : std::as_const(m_stackOrder)) {
+            
+//             float color_r = 0.5f;
+//             float color_g = 0.5f;
+//             float color_b = 0.5f;
+//             float color_a_base = 1.0f;
+
+//             if (stemIdx == 0) {
+//                 // === PREMIX COLOR CONFIGURATION ===
+//                 // Give the combined background overview a semi-dark gray, 
+//                 // or match standard waveform overview tracks (e.g. RGB 70, 70, 70).
+//                 color_r = 0.27f;
+//                 color_g = 0.27f;
+//                 color_b = 0.27f;
+//                 color_a_base = 0.40f; // Softly transparent background layer
+//             } else {
+//                 // === INDIVIDUAL STEMS COLOR CONFIGURATION ===
+//                 const int colorIdx = stemIdx - 1;
+//                 if (colorIdx < 0 || colorIdx >= static_cast<int>(stemInfo.size())) {
+//                     continue;
+//                 }
+//                 const QColor stemColor = stemInfo[colorIdx].getColor();
+//                 color_r = stemColor.redF();
+//                 color_g = stemColor.greenF();
+//                 color_b = stemColor.blueF();
+//                 color_a_base = stemColor.alphaF();
+//             }
+
+//             const int visualFrameStart = std::lround(xVisualFrame - maxSamplingRange);
+//             const int visualFrameStop = std::lround(xVisualFrame + maxSamplingRange);
+//             const int visualIndexStart = std::max(visualFrameStart * 2, 0);
+//             const int visualIndexStop = std::min(
+//                     std::max(visualFrameStop, visualFrameStart + 1) * 2,
+//                     dataSize - 1);
+
+//             const float fVisualIdx = static_cast<float>(visualIdx) * invDevicePixelRatio;
+
+//             uchar u8max = 0;
+//             for (int chn = 0; chn < 2; ++chn) {
+//                 for (int i = visualIndexStart + chn; i < visualIndexStop + chn; i += 2) {
+//                     if (stemIdx == 0) {
+//                         // Read from the unified filtered byte data array for combined display
+//                         u8max = math_max(u8max, data[i].filtered.all);
+//                     } else {
+//                         u8max = math_max(u8max, data[i].stems[stemIdx]);
+//                     }
+//                 }
+//             }
+
+//             const float max = static_cast<float>(u8max);
+
+//             for (int layerIdx = 0; layerIdx < 2; ++layerIdx) {
+//                 float color_a = color_a_base * (layerIdx ? m_opacity : m_outlineOpacity);
+
+//                 float effectiveGain = 1.0f;
+//                 if (stemIdx > 0 && premixMuted) {
+//                     const bool isMuted = (m_pStemMute.size() > static_cast<size_t>(stemIdx))
+//                             ? m_pStemMute[stemIdx]->toBool()
+//                             : false;
+//                     const float volume = (m_pStemGain.size() > static_cast<size_t>(stemIdx))
+//                             ? static_cast<float>(m_pStemGain[stemIdx]->get())
+//                             : 1.0f;
+//                     const bool deselected = selectedStems && !(selectedStems & (1 << stemIdx));
+//                     effectiveGain = (isMuted || deselected) ? 0.0f : volume;
+//                 }
+
+//                 const float h = heightFactor * (max * effectiveGain);
+                
+//                 vertexUpdater.addRectangle(
+//                         {fVisualIdx - halfStripSize,
+//                                 stemLayer * stemBreadth + halfBreadth - h},
+//                         {fVisualIdx + halfStripSize,
+//                                 stemLayer * stemBreadth + halfBreadth +
+//                                         (m_isSlipRenderer ? 0.f : h)},
+//                         {color_r, color_g, color_b, color_a});
+//             }
+//             ++stemLayer;
+//         }
+//         xVisualFrame += visualIncrementPerPixel;
+//     }
+
+//     const int actualVerticesWritten = vertexUpdater.index();
+//     geometry().allocate(actualVerticesWritten);
+
+//     markDirtyMaterial();
+//     return true;
+// }
+
+
 } // namespace allshader
 
 
