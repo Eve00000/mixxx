@@ -43,19 +43,34 @@ bool AnalyzerGain::processSamples(const CSAMPLE* pIn, SINT count) {
     const CSAMPLE* pGainInput = pIn;
     CSAMPLE* pMixedChannel = nullptr;
 
-    if (m_channelCount == mixxx::audio::ChannelCount::stem()) {
-        // We have an 8 channel soundsource. The only implemented soundsource with
-        // 8ch is the NI STEM file format.
-        // TODO: If we add other soundsources with 8ch, we need to rework this condition.
-        //
-        // For NI STEM we mix all the stems together except the first one,
-        // which contains drums or beats by convention.
+    // if (m_channelCount == mixxx::audio::ChannelCount::stem()) {
+    //     // We have an 8 channel soundsource. The only implemented soundsource with
+    //     // 8ch is the NI STEM file format.
+    //     // TODO: If we add other soundsources with 8ch, we need to rework this condition.
+    //     //
+    //     // For NI STEM we mix all the stems together except the first one,
+    //     // which contains drums or beats by convention.
+    //     count = numFrames * mixxx::audio::ChannelCount::stereo();
+    //     pMixedChannel = SampleUtil::alloc(count);
+    //     VERIFY_OR_DEBUG_ASSERT(pMixedChannel) {
+    //         return false;
+    //     }
+    //     SampleUtil::mixMultichannelToStereo(pMixedChannel, pIn, numFrames, m_channelCount);
+    //     pGainInput = pMixedChannel;
+    // } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+    if (m_channelCount == mixxx::audio::ChannelCount::stem() || static_cast<int>(m_channelCount) >= 8) {
+        // We have an 8 or 10 channel soundsource.
         count = numFrames * mixxx::audio::ChannelCount::stereo();
         pMixedChannel = SampleUtil::alloc(count);
         VERIFY_OR_DEBUG_ASSERT(pMixedChannel) {
             return false;
         }
-        SampleUtil::mixMultichannelToStereo(pMixedChannel, pIn, numFrames, m_channelCount);
+
+        // Clamp channel bounds safely before downmixing
+        const auto safeChannelCount = mixxx::audio::ChannelCount::fromInt(
+                std::min(static_cast<int>(m_channelCount), 10));
+
+        SampleUtil::mixMultichannelToStereo(pMixedChannel, pIn, numFrames, safeChannelCount);
         pGainInput = pMixedChannel;
     } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
         DEBUG_ASSERT(!"Unsupported channel count");

@@ -288,6 +288,27 @@ bool AnalyzerBeats::processSamples(const CSAMPLE* pIn, SINT count) {
 
         pBeatInput = pDrumChannel;
     } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+    // if (m_channelCount == mixxx::audio::ChannelCount::stem() || static_cast<int>(m_channelCount) >= 8) {
+    //     // We have a multi-channel sound source (like 8-channel NI STEM or your updated 10-channel layout).
+    //     count = numFrames * mixxx::audio::ChannelCount::stereo();
+    //     pDrumChannel = SampleUtil::alloc(count);
+
+    //     VERIFY_OR_DEBUG_ASSERT(pDrumChannel) {
+    //         return false;
+    //     }
+
+    //     // Defensively limit downmix iteration steps to valid layout slots
+    //     const auto safeChannelCount = mixxx::audio::ChannelCount::fromInt(
+    //             std::min(static_cast<int>(m_channelCount), 10));
+
+    //     if (m_bpmSettings.getStemStrategy() == BeatDetectionSettings::StemStrategy::Enforced) {
+    //         SampleUtil::copyOneStereoFromMulti(pDrumChannel, pIn, numFrames, safeChannelCount, 0);
+    //     } else {
+    //         SampleUtil::mixMultichannelToStereo(pDrumChannel, pIn, numFrames, safeChannelCount);
+    //     }
+
+    //     pBeatInput = pDrumChannel;
+    // } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {    
         DEBUG_ASSERT(!"Unsupported channel count");
         return false;
     }

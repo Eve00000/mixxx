@@ -215,6 +215,58 @@ bool AnalyzerKey::shouldAnalyze(TrackPointer pTrack) const {
     return true;
 }
 
+// bool AnalyzerKey::processSamples(const CSAMPLE* pIn, SINT count) {
+//     VERIFY_OR_DEBUG_ASSERT(m_pPlugin) {
+//         return false;
+//     }
+
+//     SINT numFrames = count / m_channelCount;
+//     m_currentFrame += numFrames;
+
+//     if (m_currentFrame > m_maxFramesToProcess) {
+//         return true; // silently ignore remaining samples
+//     }
+
+//     const CSAMPLE* pKeyInput = pIn;
+//     CSAMPLE* pHarmonicMixedChannel = nullptr;
+
+//     if (m_channelCount == mixxx::audio::ChannelCount::stem()) {
+//         // We have an 8 channel soundsource. The only implemented soundsource with
+//         // 8ch is the NI STEM file format.
+//         // TODO: If we add other soundsources with 8ch, we need to rework this condition.
+//         //
+//         // For NI STEM we mix all the stems together except the first one,
+//         // which contains drums or beats by convention.
+//         count = numFrames * mixxx::audio::ChannelCount::stereo();
+//         pHarmonicMixedChannel = SampleUtil::alloc(count);
+//         VERIFY_OR_DEBUG_ASSERT(pHarmonicMixedChannel) {
+//             return false;
+//         }
+
+//         if (m_keySettings.getStemStrategy() == KeyDetectionSettings::StemStrategy::Enforced) {
+//             SampleUtil::mixMultichannelToStereo(pHarmonicMixedChannel,
+//                     pIn,
+//                     numFrames,
+//                     m_channelCount,
+//                     excludeFirstChannelMask);
+//         } else {
+//             SampleUtil::mixMultichannelToStereo(
+//                     pHarmonicMixedChannel, pIn, numFrames, m_channelCount);
+//         }
+
+//         pKeyInput = pHarmonicMixedChannel;
+//     } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+//         DEBUG_ASSERT(!"Unsupported channel count");
+//         return false;
+//     }
+
+//     bool ret = m_pPlugin->processSamples(pKeyInput, count);
+//     if (pHarmonicMixedChannel) {
+//         SampleUtil::free(pHarmonicMixedChannel);
+//     }
+//     return ret;
+// }
+
 bool AnalyzerKey::processSamples(const CSAMPLE* pIn, SINT count) {
     VERIFY_OR_DEBUG_ASSERT(m_pPlugin) {
         return false;
@@ -230,32 +282,56 @@ bool AnalyzerKey::processSamples(const CSAMPLE* pIn, SINT count) {
     const CSAMPLE* pKeyInput = pIn;
     CSAMPLE* pHarmonicMixedChannel = nullptr;
 
-    if (m_channelCount == mixxx::audio::ChannelCount::stem()) {
-        // We have an 8 channel soundsource. The only implemented soundsource with
-        // 8ch is the NI STEM file format.
-        // TODO: If we add other soundsources with 8ch, we need to rework this condition.
-        //
-        // For NI STEM we mix all the stems together except the first one,
-        // which contains drums or beats by convention.
+    // if (m_channelCount == mixxx::audio::ChannelCount::stem() || static_cast<int>(m_channelCount) >= 8) {
+    //     // We have a multi-channel sound source (like 8-channel NI STEM or your updated 10-channel layout).
+    //     count = numFrames * mixxx::audio::ChannelCount::stereo();
+    //     pHarmonicMixedChannel = SampleUtil::alloc(count);
+    //     VERIFY_OR_DEBUG_ASSERT(pHarmonicMixedChannel) {
+    //         return false;
+    //     }
+
+    //     // Fix: Defensively clamp the channel count properties to prevent QList out-of-bounds asserts
+    //     const auto safeChannelCount = mixxx::audio::ChannelCount::fromInt(
+    //             std::min(static_cast<int>(m_channelCount), 10));
+
+    //     if (m_keySettings.getStemStrategy() == KeyDetectionSettings::StemStrategy::Enforced) {
+    //         SampleUtil::mixMultichannelToStereo(pHarmonicMixedChannel,
+    //                 pIn,
+    //                 numFrames,
+    //                 safeChannelCount,
+    //                 excludeFirstChannelMask);
+    //     } else {
+    //         SampleUtil::mixMultichannelToStereo(
+    //                 pHarmonicMixedChannel, pIn, numFrames, safeChannelCount);
+    //     }
+
+    //     pKeyInput = pHarmonicMixedChannel;
+    // } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+    if (m_channelCount == mixxx::audio::ChannelCount::stem() || static_cast<int>(m_channelCount) >= 8) {
+        // We have a multi-channel sound source (like 8-channel NI STEM or your updated 10-channel layout).
         count = numFrames * mixxx::audio::ChannelCount::stereo();
         pHarmonicMixedChannel = SampleUtil::alloc(count);
         VERIFY_OR_DEBUG_ASSERT(pHarmonicMixedChannel) {
             return false;
         }
 
+        // Clamp track parameters securely
+        const auto safeChannelCount = mixxx::audio::ChannelCount::fromInt(
+                std::min(static_cast<int>(m_channelCount), 10));
+
         if (m_keySettings.getStemStrategy() == KeyDetectionSettings::StemStrategy::Enforced) {
             SampleUtil::mixMultichannelToStereo(pHarmonicMixedChannel,
                     pIn,
                     numFrames,
-                    m_channelCount,
+                    safeChannelCount,
                     excludeFirstChannelMask);
         } else {
             SampleUtil::mixMultichannelToStereo(
-                    pHarmonicMixedChannel, pIn, numFrames, m_channelCount);
+                    pHarmonicMixedChannel, pIn, numFrames, safeChannelCount);
         }
 
         pKeyInput = pHarmonicMixedChannel;
-    } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+    } else if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {    
         DEBUG_ASSERT(!"Unsupported channel count");
         return false;
     }
