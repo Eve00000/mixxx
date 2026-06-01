@@ -138,7 +138,7 @@ WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig, QWidget* parent)
     m_pEditStem5vol->setPlaceholderText(tr("Volume for Stem 5..."));
     m_pEditStem5vol->setMaxLength(10);
     m_pEditStem5vol->setMaximumSize(50, 20);
-    connect(m_pEditStem5vol.get(), &QLineEdit::textEdited, this, &WCueMenuPopup::slotEditStem4vol);
+    connect(m_pEditStem5vol.get(), &QLineEdit::textEdited, this, &WCueMenuPopup::slotEditStem5vol);
     connect(m_pEditStem5vol.get(), &QLineEdit::returnPressed, this, &WCueMenuPopup::hide);
 
     // Eve
