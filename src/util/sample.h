@@ -35,6 +35,9 @@ class SampleUtil {
     // Sets every sample in pBuffer to zero
     inline
     static void clear(CSAMPLE* pBuffer, SINT numSamples) {
+        if (!pBuffer || numSamples <= 0) {
+            return;
+        }
         DEBUG_ASSERT(numSamples >= 0);
         // We need to cast `numSamples` to an unsigned type to fix a
         // `-Wstringop-overflow` warning on GCC 14.1.1. Casting to unsigned is

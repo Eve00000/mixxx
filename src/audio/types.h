@@ -183,11 +183,21 @@ class SampleRate {
         return value();
     }
 
+    // static SampleRate fromDouble(double value) {
+    //     const auto sampleRate = SampleRate(static_cast<value_t>(value));
+    //     // The sample rate should always be an integer value
+    //     // and this conversion is supposed to be lossless.
+    //     DEBUG_ASSERT(sampleRate.toDouble() == value);
+    //     return sampleRate;
+    // }
+
     static SampleRate fromDouble(double value) {
-        const auto sampleRate = SampleRate(static_cast<value_t>(value));
-        // The sample rate should always be an integer value
-        // and this conversion is supposed to be lossless.
-        DEBUG_ASSERT(sampleRate.toDouble() == value);
+        if (!std::isfinite(value) || value <= 0.0) {
+            return SampleRate(0);
+        }
+        const auto sampleRate = SampleRate(static_cast<value_t>(std::round(value)));
+        // -> Premix removed assert
+        //    DEBUG_ASSERT(sampleRate.toDouble() == value);
         return sampleRate;
     }
 

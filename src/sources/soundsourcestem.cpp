@@ -37,7 +37,7 @@ constexpr int kRequiredStreamCount = kNumStreams;
 
 const Logger kLogger("SoundSourceSTEM");
 
-static constexpr SINT kMaxBufferSize = 192000; // Max 2 seconds at 96kHz
+// static constexpr SINT kMaxBufferSize = 192000; // Max 2 seconds at 96kHz
 
 // Local RAII for AVFormatContext; SoundSourceFFmpeg's wrapper is private.
 struct AVFormatContextDeleter {
@@ -771,15 +771,33 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
         initBitrateOnce(audio::Bitrate(totalBitrateKbps / bitrateCount));
     }
 
+    //// Initialize resampler flags
+    // m_needsResampling.clear();
+    // m_needsResampling.resize(m_pStereoStreams.size(), false);
+    // for (std::size_t streamIdx = 0; streamIdx < m_pStereoStreams.size(); streamIdx++) {
+    //     const auto& streamInfo_local = m_pStereoStreams[streamIdx]->getSignalInfo();
+    //     const int streamSampleRate = streamInfo_local.getSampleRate();
+    //     m_needsResampling[streamIdx] = (streamSampleRate != m_targetSampleRate);
+    //     qDebug() << "[SoundSourceSTEM] Stream" << streamIdx
+    //              << "sample rate:" << streamSampleRate
+    //              << "needs resampling:" << m_needsResampling[streamIdx];
+    // }
+
     // Initialize resampler flags
     m_needsResampling.clear();
     m_needsResampling.resize(m_pStereoStreams.size(), false);
     for (std::size_t streamIdx = 0; streamIdx < m_pStereoStreams.size(); streamIdx++) {
         const auto& streamInfo_local = m_pStereoStreams[streamIdx]->getSignalInfo();
-        const int streamSampleRate = streamInfo_local.getSampleRate();
+
+        // === FIX: Use the strongly-typed SampleRate class instead of a primitive int ===
+        const mixxx::audio::SampleRate streamSampleRate = streamInfo_local.getSampleRate();
+
         m_needsResampling[streamIdx] = (streamSampleRate != m_targetSampleRate);
+
+        // Cast to an int inside the debug macro since qDebug needs a primitive
+        // scalar to print cleanly
         qDebug() << "[SoundSourceSTEM] Stream" << streamIdx
-                 << "sample rate:" << streamSampleRate
+                 << "sample rate:" << static_cast<int>(streamSampleRate)
                  << "needs resampling:" << m_needsResampling[streamIdx];
     }
 

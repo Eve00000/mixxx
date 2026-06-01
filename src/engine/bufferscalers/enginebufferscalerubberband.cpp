@@ -144,18 +144,159 @@ void EngineBufferScaleRubberBand::setScaleParameters(double base_rate,
 //     m_rubberBand.setTimeRatio(1.0);
 // }
 
+// TEST
+// void EngineBufferScaleRubberBand::onSignalChanged() {
+//    // TODO: Resetting the sample rate will cause internal
+//    // memory allocations that may block the real-time thread.
+//    // When is this function actually invoked??
+//    if (!getOutputSignal().isValid()) {
+//        return;
+//    }
+//
+//    // Get sample rate from the output signal
+//    const auto sampleRate = getOutputSignal().getSampleRate();
+//
+//    // Validate sample rate before using it
+//    if (!sampleRate.isValid() || sampleRate <= 0) {
+//        qWarning() << "EngineBufferScaleRubberBand::onSignalChanged - Invalid sample rate:"
+//                   << static_cast<int>(sampleRate);
+//        return;
+//    }
+//
+//    uint8_t channelCount = getOutputSignal().getChannelCount();
+//    if (m_buffers.size() != channelCount) {
+//        m_buffers.resize(channelCount);
+//    }
+//
+//    if (m_bufferPtrs.size() != channelCount) {
+//        m_bufferPtrs.resize(channelCount);
+//    }
+//
+//    m_rubberBand.clear();
+//
+//    // === OPTIMIZATION: Reuse pre-allocated buffer memory without heap thrashing ===
+//    //for (int chIdx = 0; chIdx < channelCount; chIdx++) {
+//    //    if (m_buffers[chIdx].size() != MAX_BUFFER_LEN) {
+//    //        // Only allocate ONCE if the size is wrong
+//    //        m_buffers[chIdx] = mixxx::SampleBuffer(MAX_BUFFER_LEN);
+//    //    } else {
+//    //        // If it's already the right size, just zero it out! No heap allocations.
+//    //        m_buffers[chIdx].fill(0.0f);
+//    //    }
+//    //    m_bufferPtrs[chIdx] = m_buffers[chIdx].data();
+//    //}
+//
+//    // === FIX: Optimize allocations WITHOUT destroying active audio data phase state ===
+//    for (int chIdx = 0; chIdx < channelCount; chIdx++) {
+//        if (m_buffers[chIdx].size() != MAX_BUFFER_LEN) {
+//            // Only allocate ONCE if the layout size is wrong
+//            m_buffers[chIdx] = mixxx::SampleBuffer(MAX_BUFFER_LEN);
+//        } else {
+//            // DO NOT call .fill(0.0f) here!
+//            // Keeping the existing data intact preserves RubberBand's phase history,
+//            // stopping the key/pitch from shifting or drifting mid-scratch.
+//        }
+//        m_bufferPtrs[chIdx] = m_buffers[chIdx].data();
+//    }
+//
+//    RubberBandStretcher::Options rubberbandOptions =
+//            RubberBandStretcher::OptionProcessRealTime;
+// #if RUBBERBANDV3
+//    if (m_useEngineFiner) {
+//        rubberbandOptions |=
+//                RubberBandStretcher::OptionEngineFiner |
+//                // Process Channels Together. otherwise the result is not
+//                // mono-compatible. See #11361
+//                RubberBandStretcher::OptionChannelsTogether;
+//    }
+// #endif
+//
+//    // Pass the SampleRate object directly, not an int
+//    qDebug() << "EngineBufferScaleRubberBand::onSignalChanged - Setting up with sample rate:"
+//             << static_cast<int>(sampleRate) << "channels:" << channelCount;
+//
+//    m_rubberBand.setup(
+//            sampleRate,                               // Pass the SampleRate object directly
+//            mixxx::audio::ChannelCount(channelCount), // Convert to ChannelCount
+//            rubberbandOptions);
+//
+//    // Setting the time ratio to a very high value will cause RubberBand
+//    // to preallocate buffers large enough to (almost certainly)
+//    // avoid memory reallocations during playback.
+//    m_rubberBand.setTimeRatio(2.0);
+//    m_rubberBand.setTimeRatio(1.0);
+//}
+
+// void EngineBufferScaleRubberBand::onSignalChanged() {
+//     if (!getOutputSignal().isValid()) {
+//         return;
+//     }
+//
+//     const auto sampleRate = getOutputSignal().getSampleRate();
+//
+//     if (!sampleRate.isValid() || sampleRate <= 0) {
+//         qWarning() << "EngineBufferScaleRubberBand::onSignalChanged - Invalid sample rate:"
+//                    << static_cast<int>(sampleRate);
+//         return;
+//     }
+//
+//     uint8_t channelCount = getOutputSignal().getChannelCount();
+//     if (m_buffers.size() != channelCount) {
+//         m_buffers.resize(channelCount);
+//     }
+//
+//     if (m_bufferPtrs.size() != channelCount) {
+//         m_bufferPtrs.resize(channelCount);
+//     }
+//
+//     m_rubberBand.clear();
+//
+//     // === FIX: Fast allocation, but clear content to prevent phase latency drift ===
+//     for (int chIdx = 0; chIdx < channelCount; chIdx++) {
+//         if (m_buffers[chIdx].size() != MAX_BUFFER_LEN) {
+//             m_buffers[chIdx] = mixxx::SampleBuffer(MAX_BUFFER_LEN);
+//         } else {
+//             // Reusing memory safely, but zeroing it explicitly fixes the
+//             // calculation offset that causes the deck sync to shatter.
+//             m_buffers[chIdx].clear();
+//         }
+//         m_bufferPtrs[chIdx] = m_buffers[chIdx].data();
+//     }
+//
+//     RubberBandStretcher::Options rubberbandOptions =
+//             RubberBandStretcher::OptionProcessRealTime;
+// #if RUBBERBANDV3
+//     if (m_useEngineFiner) {
+//         rubberbandOptions |=
+//                 RubberBandStretcher::OptionEngineFiner |
+//                 RubberBandStretcher::OptionChannelsTogether;
+//     }
+// #endif
+//
+//     qDebug() << "EngineBufferScaleRubberBand::onSignalChanged - Setting up with sample rate:"
+//              << static_cast<int>(sampleRate) << "channels:" << channelCount;
+//
+//     m_rubberBand.setup(
+//             sampleRate,
+//             mixxx::audio::ChannelCount(channelCount),
+//             rubberbandOptions);
+//
+//     // === CRITICAL FIX FOR TRACK SYNC ===
+//     // Explicitly reset the stretcher state framework to ensure that its internal
+//     // timeline tracking lines up perfectly with the master sync deck layout clock.
+//     m_rubberBand.reset();
+//
+//     m_rubberBand.setTimeRatio(2.0);
+//     m_rubberBand.setTimeRatio(1.0);
+// }
+
 void EngineBufferScaleRubberBand::onSignalChanged() {
-    // TODO: Resetting the sample rate will cause internal
-    // memory allocations that may block the real-time thread.
-    // When is this function actually invoked??
     if (!getOutputSignal().isValid()) {
         return;
     }
 
-    // Get sample rate from the output signal
     const auto sampleRate = getOutputSignal().getSampleRate();
 
-    // Validate sample rate before using it
     if (!sampleRate.isValid() || sampleRate <= 0) {
         qWarning() << "EngineBufferScaleRubberBand::onSignalChanged - Invalid sample rate:"
                    << static_cast<int>(sampleRate);
@@ -173,6 +314,7 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
 
     m_rubberBand.clear();
 
+    // === RESTORED NATIVE BEHAVIOR: Prevents RubberBand sample starvation/tempo slowdown ===
     for (int chIdx = 0; chIdx < channelCount; chIdx++) {
         if (m_buffers[chIdx].size() == MAX_BUFFER_LEN) {
             continue;
@@ -183,14 +325,20 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
 
     RubberBandStretcher::Options rubberbandOptions =
             RubberBandStretcher::OptionProcessRealTime;
+
+    rubberbandOptions |= RubberBandStretcher::OptionChannelsTogether;
 #if RUBBERBANDV3
+    // if (m_useEngineFiner) {
+    //     rubberbandOptions |=
+    //             RubberBandStretcher::OptionEngineFiner |
+    //             // Process Channels Together. otherwise the result is not
+    //             // mono-compatible. See #11361
+    //             RubberBandStretcher::OptionChannelsTogether;
+    // }
     if (m_useEngineFiner) {
-        rubberbandOptions |=
-                RubberBandStretcher::OptionEngineFiner |
-                // Process Channels Together. otherwise the result is not
-                // mono-compatible. See #11361
-                RubberBandStretcher::OptionChannelsTogether;
+        rubberbandOptions |= RubberBandStretcher::OptionEngineFiner;
     }
+
 #endif
 
     // Pass the SampleRate object directly, not an int
@@ -201,12 +349,82 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
             sampleRate,                               // Pass the SampleRate object directly
             mixxx::audio::ChannelCount(channelCount), // Convert to ChannelCount
             rubberbandOptions);
+
+    if (rubberbandOptions & RubberBandStretcher::OptionProcessRealTime) {
+        // Force the stretcher timeline to snap instantly to the identical sample layout step
+        m_rubberBand.reset();
+    }
+
     // Setting the time ratio to a very high value will cause RubberBand
     // to preallocate buffers large enough to (almost certainly)
     // avoid memory reallocations during playback.
     m_rubberBand.setTimeRatio(2.0);
     m_rubberBand.setTimeRatio(1.0);
 }
+
+// void EngineBufferScaleRubberBand::onSignalChanged() {
+//     // TODO: Resetting the sample rate will cause internal
+//     // memory allocations that may block the real-time thread.
+//     // When is this function actually invoked??
+//     if (!getOutputSignal().isValid()) {
+//         return;
+//     }
+//
+//     // Get sample rate from the output signal
+//     const auto sampleRate = getOutputSignal().getSampleRate();
+//
+//     // Validate sample rate before using it
+//     if (!sampleRate.isValid() || sampleRate <= 0) {
+//         qWarning() << "EngineBufferScaleRubberBand::onSignalChanged - Invalid sample rate:"
+//                    << static_cast<int>(sampleRate);
+//         return;
+//     }
+//
+//     uint8_t channelCount = getOutputSignal().getChannelCount();
+//     if (m_buffers.size() != channelCount) {
+//         m_buffers.resize(channelCount);
+//     }
+//
+//     if (m_bufferPtrs.size() != channelCount) {
+//         m_bufferPtrs.resize(channelCount);
+//     }
+//
+//     m_rubberBand.clear();
+//
+//     for (int chIdx = 0; chIdx < channelCount; chIdx++) {
+//         if (m_buffers[chIdx].size() == MAX_BUFFER_LEN) {
+//             continue;
+//         }
+//         m_buffers[chIdx] = mixxx::SampleBuffer(MAX_BUFFER_LEN);
+//         m_bufferPtrs[chIdx] = m_buffers[chIdx].data();
+//     }
+//
+//     RubberBandStretcher::Options rubberbandOptions =
+//             RubberBandStretcher::OptionProcessRealTime;
+// #if RUBBERBANDV3
+//     if (m_useEngineFiner) {
+//         rubberbandOptions |=
+//                 RubberBandStretcher::OptionEngineFiner |
+//                 // Process Channels Together. otherwise the result is not
+//                 // mono-compatible. See #11361
+//                 RubberBandStretcher::OptionChannelsTogether;
+//     }
+// #endif
+//
+//     // Pass the SampleRate object directly, not an int
+//     qDebug() << "EngineBufferScaleRubberBand::onSignalChanged - Setting up with sample rate:"
+//              << static_cast<int>(sampleRate) << "channels:" << channelCount;
+//
+//     m_rubberBand.setup(
+//             sampleRate,                               // Pass the SampleRate object directly
+//             mixxx::audio::ChannelCount(channelCount), // Convert to ChannelCount
+//             rubberbandOptions);
+//     // Setting the time ratio to a very high value will cause RubberBand
+//     // to preallocate buffers large enough to (almost certainly)
+//     // avoid memory reallocations during playback.
+//     m_rubberBand.setTimeRatio(2.0);
+//     m_rubberBand.setTimeRatio(1.0);
+// }
 
 void EngineBufferScaleRubberBand::clear() {
     VERIFY_OR_DEBUG_ASSERT(m_rubberBand.isValid()) {
