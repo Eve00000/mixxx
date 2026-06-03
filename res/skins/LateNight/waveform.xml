@@ -21,12 +21,12 @@
     <Layout>horizontal</Layout>
     <SizePolicy>me,me</SizePolicy>
     <Children>
+      <!--- BEGIN stem-->
       <WidgetGroup>
         <RequiresStem>true</RequiresStem>
         <ObjectName>StemControls</ObjectName>
         <Layout>vertical</Layout>
-        <Size>260f,0me</Size>
-        <!--SizePolicy>max,me</SizePolicy-->
+        <Size>280f,0me</Size>
         <Children>
           <WidgetGroup>
             <Size>0me,1me</Size>
@@ -37,101 +37,14 @@
             <Layout>horizontal</Layout>
             <SizePolicy>f,f</SizePolicy>
             <Children>
-
               <WidgetGroup>
-                <Size>1f,0min</Size>
-              </WidgetGroup>
-
-              <WidgetGroup>
-                <!-- StemControls 4ch -->
                 <Layout>vertical</Layout>
                 <Children>
-                  <WidgetGroup>
-                    <!-- StemCh1 controls  -->
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <WidgetGroup>
-                        <Size>1min,2me</Size>
-                      </WidgetGroup>
-                      <Template src="skins:LateNight/stem_premix.xml">
-                        <SetVariable name="StemNum">1</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <Size>1min,3f</Size>
-                      </WidgetGroup>
-                    </Children>
-                    <Connection>
-                      <ConfigKey persist="false">[Skin],show_original_premix</ConfigKey>
-                      <Transform>
-                        <IsEqual>1</IsEqual>
-                      </Transform>
-                      <BindProperty>visible</BindProperty>
-                    </Connection>
-                  </WidgetGroup>
-                  <WidgetGroup>
-                    <!-- StemCh1 controls  -->
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <WidgetGroup>
-                        <Size>1min,2me</Size>
-                      </WidgetGroup>
-                      <Template src="skins:LateNight/stem_channel.xml">
-                        <SetVariable name="StemNum">2</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <Size>1min,3f</Size>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
-                  <WidgetGroup>
-                    <!-- StemCh2 controls  -->
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <WidgetGroup>
-                        <Size>1min,2me</Size>
-                      </WidgetGroup>
-                      <Template src="skins:LateNight/stem_channel.xml">
-                        <SetVariable name="StemNum">3</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <Size>1min,3f</Size>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
-                  <WidgetGroup>
-                    <!-- StemCh3 controls  -->
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <WidgetGroup>
-                        <Size>1min,2me</Size>
-                      </WidgetGroup>
-                      <Template src="skins:LateNight/stem_channel.xml">
-                        <SetVariable name="StemNum">4</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <Size>1min,3f</Size>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
-                  <WidgetGroup>
-                    <!-- StemCh4 controls  -->
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <WidgetGroup>
-                        <Size>1min,2me</Size>
-                      </WidgetGroup>
-                      <Template src="skins:LateNight/stem_channel.xml">
-                        <SetVariable name="StemNum">5</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <Size>1min,3f</Size>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
+                  <Template src="skins:LateNight/stem/stem.xml">
+                    <SetVariable name="Group">[Channel<Variable name="ChanNum"/>]</SetVariable>
+                  </Template>
                 </Children>
               </WidgetGroup>
-              <!-- /StemControls 4ch -->
-
             </Children>
             <Connection>
               <ConfigKey persist="true">[Channel<Variable name="ChanNum"/>],stem_count</ConfigKey>
@@ -168,9 +81,7 @@
             </Children>
             <Connection>
               <ConfigKey persist="true">[Channel<Variable name="ChanNum"/>],stem_count</ConfigKey>
-              <Transform>
-                <Not/>
-              </Transform>
+              <Transform><Not/></Transform>
               <BindProperty>visible</BindProperty>
             </Connection>
           </WidgetGroup>
@@ -186,7 +97,6 @@
         </Connection>
       </WidgetGroup>
       <!-- StemControls -->
-
 
       <WidgetGroup>
         <ObjectName>
