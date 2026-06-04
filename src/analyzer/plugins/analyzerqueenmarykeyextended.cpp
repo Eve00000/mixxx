@@ -63,29 +63,35 @@ bool AnalyzerQueenMaryKeyExtended::initialize(mixxx::audio::SampleRate sampleRat
             windowSize, stepSize, [this](double* pWindow, size_t) {
                 int iKey = m_pKeyMode->process(pWindow);
 
-                // Validate iKey range (0-23)
-                if (iKey < 0 || iKey >= 24) {
+                // Validate against actual QM-DSP output range (0-24)
+                if (iKey < 0 || iKey > 24) {
                     qWarning() << "[QueenMaryKeyExtended] Invalid iKey from detector:" << iKey;
                     return true; // Skip this frame
                 }
 
-                double* keyStrengths = m_pKeyMode->getKeyStrengths();
-
-                // Find the key with the highest strength
-                int bestKeyIndex = 0;
-                double bestStrength = keyStrengths[0];
-                for (int j = 1; j < 24; ++j) {
-                    if (keyStrengths[j] > bestStrength) {
-                        bestStrength = keyStrengths[j];
-                        bestKeyIndex = j;
-                    }
+                // Skip frames where no key was detected
+                if (iKey == 0) {
+                    // No key detected - optionally log this less verbosely
+                    // qDebug() << "[QueenMaryKeyExtended] No key detected at
+                    // frame:" << m_currentFrame;
+                    return true;
                 }
 
-                ChromaticKey key = static_cast<ChromaticKey>(iKey);
+                // Convert from QM-DSP key index (1-24) to ChromaticKey (0-23)
+                // The formula is consistent for both major and minor:
+                // ChromaticKey = (keyIndex - 1) % 12 for the pitch class,
+                // and the major/minor distinction is preserved in ChromaticKey
+                int chromaticKeyIndex = iKey - 1; // Now in range 0-23
+
+                double* keyStrengths = m_pKeyMode->getKeyStrengths();
+
+                // keyStrengths array is 0-23 (24 elements) - the detector converts
+                // internally for convenience. Use the same index for consistency.
+                ChromaticKey key = static_cast<ChromaticKey>(chromaticKeyIndex);
                 double timeSeconds = static_cast<double>(m_currentFrame) / m_sampleRate;
 
-                // Calculate confidence using original key strengths
-                double confidence = calculateConfidence(keyStrengths, bestKeyIndex);
+                // Calculate confidence using the same index
+                double confidence = calculateConfidence(keyStrengths, chromaticKeyIndex);
 
                 // Store result
                 KeyDetectionResult result;
