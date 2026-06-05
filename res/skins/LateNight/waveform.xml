@@ -26,7 +26,7 @@
         <RequiresStem>true</RequiresStem>
         <ObjectName>StemControls</ObjectName>
         <Layout>vertical</Layout>
-        <Size>280f,0me</Size>
+        <Size>300f,0me</Size>
         <Children>
           <WidgetGroup>
             <Size>0me,1me</Size>

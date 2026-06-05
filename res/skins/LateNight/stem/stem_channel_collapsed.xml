@@ -4,14 +4,14 @@
   <WidgetGroup>
     <ObjectName>StemChannel_Collapsed</ObjectName>
     <Layout>horizontal</Layout>
-    <SizePolicy>50f,min</SizePolicy>
+    <SizePolicy>60f,30f</SizePolicy>
     <Children>
 
       <Label>
         <ObjectName>StemLabelShort</ObjectName>
         <Size>10f,18f</Size>
         <Alignment>left</Alignment>
-        <!--Text><Variable name="StemNum"/></Text-->
+        <Text><Variable name="StemNum"/></Text>
       </Label>
 
       <PushButton>

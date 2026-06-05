@@ -1,12 +1,12 @@
 <Template>
-  <SingletonDefinition>
+  <!--SingletonDefinition>
     <ObjectName>Stem_Expander_<Variable name="ChanNum"/>_Singleton</ObjectName>
     <Children>
       <Template src="skins:LateNight/stem/stem_expand_button.xml">
         <SetVariable name="ChanNum"><Variable name="ChanNum"/></SetVariable>
       </Template>
     </Children>
-  </SingletonDefinition>
+  </SingletonDefinition-->
 
   <SetVariable name="Group">[Channel<Variable name="ChanNum"/>]</SetVariable>
   <SetVariable name="ChanNum"><Variable name="ChanNum"/></SetVariable>
@@ -21,35 +21,76 @@
       <WidgetGroup>
         <ObjectName>StemRowCollapsed</ObjectName>
         <Layout>horizontal</Layout>
-        <SizePolicy>min,min</SizePolicy>
+        <!--SizePolicy>min,60</SizePolicy-->
+        <Size>min,60</Size>
         <Children>
-          <Template src="skins:LateNight/stem/stem_premix_collapsed.xml">
-            <SetVariable name="StemNum">1</SetVariable>
-          </Template>
           <WidgetGroup>
-            <Size>4f,0min</Size>
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/stem/stem_premix_collapsed.xml">
+                <SetVariable name="StemNum">1</SetVariable>
+              </Template>
+              <Template src="skins:LateNight/stem/stem_premix_collapsed_border.xml">
+                <SetVariable name="StemNum">1</SetVariable>
+              </Template>
+            </Children>
           </WidgetGroup>
-          <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
-            <SetVariable name="StemNum">2</SetVariable>
-          </Template>
           <WidgetGroup>
-            <Size>4f,0min</Size>
+            <Size>4f,60min</Size>
           </WidgetGroup>
-          <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
-            <SetVariable name="StemNum">3</SetVariable>
-          </Template>
           <WidgetGroup>
-            <Size>4f,0min</Size>
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
+                <SetVariable name="StemNum">2</SetVariable>
+              </Template>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed_border.xml">
+                <SetVariable name="StemNum">2</SetVariable>
+              </Template>
+            </Children>
           </WidgetGroup>
-          <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
-            <SetVariable name="StemNum">4</SetVariable>
-          </Template>
           <WidgetGroup>
-            <Size>4f,0min</Size>
+            <Size>4f,60min</Size>
           </WidgetGroup>
-          <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
-            <SetVariable name="StemNum">5</SetVariable>
-          </Template>
+          <WidgetGroup>
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
+                <SetVariable name="StemNum">3</SetVariable>
+              </Template>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed_border.xml">
+                <SetVariable name="StemNum">3</SetVariable>
+              </Template>
+            </Children>
+          </WidgetGroup>
+          <WidgetGroup>
+            <Size>4f,60min</Size>
+          </WidgetGroup>
+          <WidgetGroup>
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
+                <SetVariable name="StemNum">4</SetVariable>
+              </Template>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed_border.xml">
+                <SetVariable name="StemNum">4</SetVariable>
+              </Template>
+            </Children>
+          </WidgetGroup>
+          <WidgetGroup>
+            <Size>4f,60min</Size>
+          </WidgetGroup>
+          <WidgetGroup>
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed.xml">
+                <SetVariable name="StemNum">5</SetVariable>
+              </Template>
+              <Template src="skins:LateNight/stem/stem_channel_collapsed_border.xml">
+                <SetVariable name="StemNum">5</SetVariable>
+              </Template>
+            </Children>
+          </WidgetGroup>
         </Children>
         <Connection>
           <ConfigKey persist="true">[Channel<Variable name="ChanNum"/>],stem_controls_expanded</ConfigKey>
