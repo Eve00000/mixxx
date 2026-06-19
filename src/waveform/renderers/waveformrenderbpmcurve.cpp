@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QDomNode>
 #include <QPainter>
+#include <QSizeF>
 #include <algorithm>
 
 #include "skin/legacy/skincontext.h"
@@ -25,7 +26,8 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(WaveformWidgetRenderer* renderer)
           m_offsetSeconds(0.0),
           m_currentRateRatio(1.0),
           m_pRateRatioCO(nullptr),
-          m_reloadTimer() {
+          m_reloadTimer(),
+          m_previousRendererSize(0, 0) {
     initRateRatioControl();
     m_reloadTimer.start();
 
@@ -456,6 +458,26 @@ void WaveformRenderBpmCurve::drawLabel(QPainter* painter,
 }
 
 void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
+    // Check if renderer size has changed
+    const float rendererWidth = m_waveformRenderer->getWidth();
+    const float rendererHeight = m_waveformRenderer->getHeight();
+    QSizeF currentRendererSize(rendererWidth, rendererHeight);
+
+    bool sizeChanged = (currentRendererSize != m_previousRendererSize);
+    if (sizeChanged) {
+        m_previousRendererSize = currentRendererSize;
+        if (showDebugWaveformRenderBpmCurve) {
+            qDebug() << "[WaveformRenderBpmCurve] Renderer size changed to:"
+                     << rendererWidth << "x" << rendererHeight;
+        }
+        QWidget* widget = dynamic_cast<QWidget*>(m_waveformRenderer);
+        if (widget) {
+            widget->update();
+        }
+        // Recalculate BPM range based on new size
+        calculateBpmRange();
+    }
+
     // if track is loaded -> Update play position and current bpm
     // if track had no bpmsegments on load -> wait while analyzing
     // after 2 secs try loading segments again
@@ -525,8 +547,6 @@ void WaveformRenderBpmCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
     double startSample = firstDisplayedPosition * trackSamples;
     double endSample = lastDisplayedPosition * trackSamples;
 
-    const float rendererWidth = m_waveformRenderer->getWidth();
-    const float rendererHeight = m_waveformRenderer->getHeight();
     const Qt::Orientation orientation = m_waveformRenderer->getOrientation();
 
     PainterScope scope(painter);

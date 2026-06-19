@@ -3,6 +3,7 @@
 
 #include <QImage>
 #include <QPainter>
+#include <QSizeF>
 #include <QStringView>
 #include <cmath>
 
@@ -110,7 +111,8 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(
           m_visible(true),
           m_keylockEnabled(false),
           m_isSlipRenderer(type == ::WaveformRendererAbstract::Slip),
-          m_textureReady(false) {
+          m_textureReady(false),
+          m_previousRendererSize(0, 0) {
     m_animationTimer.start();
     m_reloadTimer.start();
     m_style = KeyCurveStyle();
@@ -661,10 +663,22 @@ void WaveformRenderKeyCurve::drawWheelText(
         QPainter& painter, int wheelX, int wheelY, int wheelSize) {
     QString displayKey;
 
+    // if (!m_transposedMusicalKey.isEmpty() && !m_transposedLancelot.isEmpty()) {
+    //     displayKey = m_transposedMusicalKey + " (" + m_transposedLancelot + ")";
+    // } else if (!m_currentWheelKey.isEmpty() && !m_baseLancelot.isEmpty()) {
+    //     displayKey = m_currentWheelKey + " (" + m_baseLancelot + ")";
+    // }
+
     if (!m_transposedMusicalKey.isEmpty() && !m_transposedLancelot.isEmpty()) {
-        displayKey = m_transposedMusicalKey + " (" + m_transposedLancelot + ")";
+        displayKey = m_transposedMusicalKey;
+        if (!m_transposedMusicalKey.contains(m_transposedLancelot)) {
+            displayKey += " (" + m_transposedLancelot + ")";
+        }
     } else if (!m_currentWheelKey.isEmpty() && !m_baseLancelot.isEmpty()) {
-        displayKey = m_currentWheelKey + " (" + m_baseLancelot + ")";
+        displayKey = m_currentWheelKey;
+        if (!m_currentWheelKey.contains(m_baseLancelot)) {
+            displayKey += " (" + m_baseLancelot + ")";
+        }
     }
 
     if (displayKey.isEmpty()) {
@@ -896,6 +910,26 @@ void WaveformRenderKeyCurve::update() {
         return;
     }
 
+    // Check if renderer size has changed
+    float width = static_cast<float>(m_waveformRenderer->getWidth());
+    float height = static_cast<float>(m_waveformRenderer->getBreadth());
+    QSizeF currentRendererSize(width, height);
+
+    bool sizeChanged = (currentRendererSize != m_previousRendererSize);
+    if (sizeChanged) {
+        m_previousRendererSize = currentRendererSize;
+        if (showDebugAllshaderWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve - Allshader] Renderer size changed to:"
+                     << width << "x" << height;
+        }
+
+        if (m_pKeyCurveNode) {
+            m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
+            m_pKeyCurveNode = nullptr;
+        }
+        m_pendingWheelImage = QImage();
+    }
+
     // Check if track changed
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     TrackId currentTrackId = pTrack ? pTrack->getId() : TrackId();
@@ -949,8 +983,15 @@ void WaveformRenderKeyCurve::update() {
     }
 
     // Create initial pending image if needed
+    // Also recreate if size changed and we have segments
     if (!m_pKeyCurveNode && m_pendingWheelImage.isNull() && !m_segments.isEmpty()) {
         QImage wheelImage = createFullImage();
+        createNode(wheelImage);
+    } else if (sizeChanged && !m_segments.isEmpty() && m_pKeyCurveNode) {
+        // If size changed and we already have a node, recreate it with new size
+        QImage wheelImage = createFullImage();
+        m_pKeyCurveNodesParent->removeChildNode(m_pKeyCurveNode);
+        m_pKeyCurveNode = nullptr;
         createNode(wheelImage);
     }
 

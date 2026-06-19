@@ -472,6 +472,10 @@ void WTrackMenu::createActions() {
         m_pClearBeatsAction = make_parented<QAction>(tr("BPM and Beatgrid"), m_pClearMetadataMenu);
         connect(m_pClearBeatsAction, &QAction::triggered, this, &WTrackMenu::slotClearBeats);
 
+        m_pClearSegmentsAction = make_parented<QAction>(
+                tr("BPM and Key Segments"), m_pClearMetadataMenu);
+        connect(m_pClearSegmentsAction, &QAction::triggered, this, &WTrackMenu::slotClearSegments);
+
         m_pClearPlayCountAction = make_parented<QAction>(tr("Play Count"), m_pClearMetadataMenu);
         connect(m_pClearPlayCountAction, &QAction::triggered, this, &WTrackMenu::slotClearPlayCount);
 
@@ -570,6 +574,13 @@ void WTrackMenu::createActions() {
                 &QAction::triggered,
                 this,
                 &WTrackMenu::slotClearBeats);
+
+        m_pSegmentsResetAction = make_parented<QAction>(
+                tr("Clear BPM and Key Segments"), m_pBPMMenu);
+        connect(m_pSegmentsResetAction,
+                &QAction::triggered,
+                this,
+                &WTrackMenu::slotClearSegments);
 
         m_pBpmUndoAction = make_parented<QAction>(tr("Undo last BPM/beats change"), m_pBPMMenu);
         connect(m_pBpmUndoAction,
@@ -745,6 +756,7 @@ void WTrackMenu::setupActions() {
 
     if (featureIsEnabled(Feature::Reset)) {
         m_pClearMetadataMenu->addAction(m_pClearBeatsAction);
+        m_pClearMetadataMenu->addAction(m_pClearSegmentsAction);
         m_pClearMetadataMenu->addAction(m_pClearPlayCountAction);
         m_pClearMetadataMenu->addAction(m_pClearRatingAction);
         m_pClearMetadataMenu->addAction(m_pClearCommentAction);
@@ -1889,6 +1901,8 @@ void WTrackMenu::slotAnalyze() {
 
 void WTrackMenu::slotReanalyze() {
     clearBeats();
+    slotClearKey();
+    clearSegments();
     addToAnalysis();
 }
 
@@ -1901,6 +1915,7 @@ void WTrackMenu::slotReanalyzeWithFixedTempo() {
 
 void WTrackMenu::slotReanalyzeWithVariableTempo() {
     clearBeats();
+    clearSegments();
     AnalyzerTrack::Options options;
     options.useFixedTempo = false;
     addToAnalysis(options);
@@ -2175,6 +2190,33 @@ void WTrackMenu::clearBeats() {
 
 void WTrackMenu::slotClearBeats() {
     clearBeats();
+}
+
+namespace {
+
+class ResetSegmentsTrackPointerOperation : public mixxx::TrackPointerOperation {
+  private:
+    void doApply(
+            const TrackPointer& pTrack) const override {
+        pTrack->deleteBpmSegments();
+        pTrack->deleteKeySegments();
+    }
+};
+
+} // anonymous namespace
+
+void WTrackMenu::clearSegments() {
+    const auto progressLabelText =
+            tr("Resetting BPM and Key Segments of %n track(s)", "", getTrackCount());
+    const auto trackOperator =
+            ResetSegmentsTrackPointerOperation();
+    applyTrackPointerOperation(
+            progressLabelText,
+            &trackOperator);
+}
+
+void WTrackMenu::slotClearSegments() {
+    clearSegments();
 }
 
 namespace {
@@ -2500,6 +2542,7 @@ class ClearAllPerformanceMetadataTrackPointerOperation : public mixxx::TrackPoin
     }
 
     const ResetBeatsTrackPointerOperation m_resetBeats;
+    const ResetSegmentsTrackPointerOperation m_resetSegments;
     const ResetPlayCounterTrackPointerOperation m_resetPlayCounter;
     const RemoveCuesOfTypeTrackPointerOperation m_removeMainCue;
     const RemoveCuesOfTypeTrackPointerOperation m_removeIntroCue;

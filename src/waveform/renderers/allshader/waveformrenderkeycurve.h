@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QElapsedTimer>
 #include <QImage>
+#include <QSizeF>
 #include <memory>
 
 #include "control/controlproxy.h"
@@ -162,6 +163,8 @@ class allshader::WaveformRenderKeyCurve : public WaveformRenderKeyCurveBase,
     bool m_showLancelotWheel = true;
     bool m_showKeyMarkers = true;
     bool m_showKeyLabels = true;
+
+    QSizeF m_previousRendererSize;
 };
 
 inline KeyCurveStyle::KeyCurveStyle()

@@ -1,6 +1,7 @@
 #include "waveform/renderers/allshader/waveformrenderbpmcurve.h"
 
 #include <QPainter>
+#include <QSizeF>
 #include <cmath>
 
 #include "moc_waveformrenderbpmcurve.cpp"
@@ -76,7 +77,8 @@ WaveformRenderBpmCurve::WaveformRenderBpmCurve(
           m_textureReady(false),
           m_visible(true),
           m_needsTextureUpdate(true),
-          m_needsRangeRecalculation(true) {
+          m_needsRangeRecalculation(true),
+          m_previousRendererSize(0, 0) {
     auto pNode = std::make_unique<rendergraph::Node>();
     m_pBpmCurveNodesParent = pNode.get();
     appendChildNode(std::move(pNode));
@@ -549,6 +551,27 @@ void WaveformRenderBpmCurve::update() {
         return;
     }
 
+    // Check if renderer size has changed
+    float width = static_cast<float>(m_waveformRenderer->getWidth());
+    float height = static_cast<float>(m_waveformRenderer->getBreadth());
+    QSizeF currentRendererSize(width, height);
+
+    bool sizeChanged = (currentRendererSize != m_previousRendererSize);
+    if (sizeChanged) {
+        m_previousRendererSize = currentRendererSize;
+        if (showDebugAllshaderWaveformRenderBPMCurve) {
+            qDebug() << "[WaveformRenderBpmCurve - Allshader] Renderer size changed to:"
+                     << width << "x" << height;
+        }
+
+        if (m_pBpmCurveNode) {
+            m_pBpmCurveNodesParent->removeChildNode(m_pBpmCurveNode);
+            m_pBpmCurveNode = nullptr;
+        }
+        m_pendingBpmImage = QImage();
+        m_needsTextureUpdate = true;
+    }
+
     // Check if track changed
     TrackPointer pTrack = m_waveformRenderer->getTrackInfo();
     TrackId currentTrackId = pTrack ? pTrack->getId() : TrackId();
@@ -573,9 +596,18 @@ void WaveformRenderBpmCurve::update() {
     }
 
     // Create initial pending image if needed
+    // Also recreate if size changed and we have segments
     if (!m_pBpmCurveNode && m_pendingBpmImage.isNull() && !m_segments.isEmpty()) {
         QImage bpmImage = drawBpmTexture();
         if (!bpmImage.isNull()) {
+            createNode(bpmImage);
+        }
+    } else if (sizeChanged && !m_segments.isEmpty() && m_pBpmCurveNode) {
+        // If size changed and we already have a node, recreate it with new size
+        QImage bpmImage = drawBpmTexture();
+        if (!bpmImage.isNull()) {
+            m_pBpmCurveNodesParent->removeChildNode(m_pBpmCurveNode);
+            m_pBpmCurveNode = nullptr;
             createNode(bpmImage);
         }
     }

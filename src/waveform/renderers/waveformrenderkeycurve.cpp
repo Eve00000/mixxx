@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QPainter>
+#include <QSizeF>
 #include <cmath>
 
 #include "control/controlproxy.h"
@@ -55,7 +56,8 @@ WaveformRenderKeyCurve::WaveformRenderKeyCurve(WaveformWidgetRenderer* renderer)
           m_currentTotalOffset(0),
           m_currentKeyId(0),
           m_visible(true),
-          m_keylockEnabled(false) {
+          m_keylockEnabled(false),
+          m_previousRendererSize(0, 0) {
     m_animationTimer.start();
     m_reloadTimer.start();
     initLancelotLayout();
@@ -578,11 +580,24 @@ void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
 
     // Display transposed musical key with its Lancelot number
     QString displayKey;
+    // if (!m_transposedMusicalKey.isEmpty() && !m_transposedLancelot.isEmpty()) {
+    //     displayKey = normalizeKeyDisplay(m_transposedMusicalKey) + " (" +
+    //             m_transposedLancelot + ")";
+    // } else if (!m_currentWheelKey.isEmpty() && !m_baseLancelot.isEmpty()) {
+    //     displayKey = normalizeKeyDisplay(m_currentWheelKey) + " (" + m_baseLancelot + ")";
+    // }
     if (!m_transposedMusicalKey.isEmpty() && !m_transposedLancelot.isEmpty()) {
-        displayKey = normalizeKeyDisplay(m_transposedMusicalKey) + " (" +
-                m_transposedLancelot + ")";
+        QString normalizedKey = normalizeKeyDisplay(m_transposedMusicalKey);
+        displayKey = normalizedKey;
+        if (!normalizedKey.contains(m_transposedLancelot)) {
+            displayKey += " (" + m_transposedLancelot + ")";
+        }
     } else if (!m_currentWheelKey.isEmpty() && !m_baseLancelot.isEmpty()) {
-        displayKey = normalizeKeyDisplay(m_currentWheelKey) + " (" + m_baseLancelot + ")";
+        QString normalizedKey = normalizeKeyDisplay(m_currentWheelKey);
+        displayKey = normalizedKey;
+        if (!normalizedKey.contains(m_baseLancelot)) {
+            displayKey += " (" + m_baseLancelot + ")";
+        }
     }
 
     if (!displayKey.isEmpty()) {
@@ -676,6 +691,28 @@ void WaveformRenderKeyCurve::drawKeyChangeLabel(QPainter* painter,
 }
 
 void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
+    // Check if renderer size has changed
+    const float rendererWidth = m_waveformRenderer->getWidth();
+    const float rendererHeight = m_waveformRenderer->getHeight();
+    const Qt::Orientation orientation = m_waveformRenderer->getOrientation();
+
+    QSizeF currentRendererSize(rendererWidth, rendererHeight);
+
+    bool sizeChanged = (currentRendererSize != m_previousRendererSize);
+    if (sizeChanged) {
+        m_previousRendererSize = currentRendererSize;
+        if (showDebugWaveformRenderKeyCurve) {
+            qDebug() << "[WaveformRenderKeyCurve] Renderer size changed to:"
+                     << rendererWidth << "x" << rendererHeight;
+        }
+        if (m_waveformRenderer) {
+            QWidget* widget = dynamic_cast<QWidget*>(m_waveformRenderer);
+            if (widget) {
+                widget->update();
+            }
+        }
+    }
+
     // if track is loaded -> Update play position and current key
     // if track had no keysegments on load -> wait while analyzing
     // after 2 secs try loading segments again -> wheel will appear
@@ -759,10 +796,6 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
 
     double startSample = firstDisplayedPosition * trackSamples;
     double endSample = lastDisplayedPosition * trackSamples;
-
-    const float rendererWidth = m_waveformRenderer->getWidth();
-    const float rendererHeight = m_waveformRenderer->getHeight();
-    const Qt::Orientation orientation = m_waveformRenderer->getOrientation();
 
     PainterScope scope(painter);
     painter->setRenderHint(QPainter::Antialiasing);

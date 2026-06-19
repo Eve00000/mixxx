@@ -157,6 +157,7 @@ class WTrackMenu : public QMenu {
     void slotClearReplayGain();
     void slotClearWaveform();
     void slotClearAllMetadata();
+    void slotClearSegments();
 
     // Analysis
     void slotAnalyze();
@@ -258,6 +259,7 @@ class WTrackMenu : public QMenu {
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
+    void clearSegments();
     void lockBpm(bool lock);
 
     int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
@@ -371,6 +373,7 @@ class WTrackMenu : public QMenu {
     parented_ptr<QAction> m_pBpmFourThirdsAction;
     parented_ptr<QAction> m_pBpmThreeHalvesAction;
     parented_ptr<QAction> m_pBpmResetAction;
+    parented_ptr<QAction> m_pSegmentsResetAction;
     parented_ptr<QAction> m_pBpmUndoAction;
 
     // Track rating and color
@@ -385,6 +388,7 @@ class WTrackMenu : public QMenu {
 
     // Clear track metadata actions
     parented_ptr<QAction> m_pClearBeatsAction;
+    parented_ptr<QAction> m_pClearSegmentsAction;
     parented_ptr<QAction> m_pClearPlayCountAction;
     parented_ptr<QAction> m_pClearRatingAction;
     parented_ptr<QAction> m_pClearMainCueAction;

@@ -9,9 +9,9 @@
 
       <Label>
         <ObjectName>StemLabelShort</ObjectName>
-        <Size>10f,18f</Size>
+        <Size>5f,18f</Size>
         <Alignment>left</Alignment>
-        <Text><Variable name="StemNum"/></Text>
+        <!--Text><Variable name="StemNum"/></Text-->
       </Label>
 
       <PushButton>
@@ -59,6 +59,14 @@
           <ConfigKey><Variable name="StemGroup"/>,volume</ConfigKey>
         </Connection>
       </KnobComposed>
+
+      <Label>
+        <ObjectName>StemLabelShort</ObjectName>
+        <Size>5f,18f</Size>
+        <Alignment>left</Alignment>
+        <!--Text><Variable name="StemNum"/></Text-->
+      </Label>
+
     </Children>
   </WidgetGroup>
 </Template>
