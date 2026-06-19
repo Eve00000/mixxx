@@ -1,7 +1,11 @@
 #pragma once
 
+#include <QColor>
+#include <QString>
+
 #include "control/controlproxy.h"
 #include "skin/legacy/skincontext.h"
+#include "track/steminfo.h"
 #include "track/track.h"
 
 class WStemControlBorder : public WWidgetGroup {

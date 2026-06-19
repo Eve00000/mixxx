@@ -1,5 +1,9 @@
 #include "wstemcontrolborder.h"
 
+#include <QColor>
+#include <QLayout>
+#include <QString>
+
 #include "moc_wstemcontrolborder.cpp"
 #include "util/logger.h"
 
