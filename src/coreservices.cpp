@@ -516,7 +516,10 @@ void CoreServices::initialize(QApplication* pApp) {
     FontUtils::initializeFonts(resourcePath); // takes a long time
 
     emit initializationProgressUpdate(10, tr("database"));
-    m_pDbConnectionPool = MixxxDb(pConfig).connectionPool();
+    // m_pDbConnectionPool = MixxxDb(pConfig).connectionPool();
+    m_pMixxxDb = std::make_unique<MixxxDb>(pConfig);
+    m_pDbConnectionPool = m_pMixxxDb->connectionPool();
+
     if (!m_pDbConnectionPool) {
         exit(-1);
     }

@@ -93,6 +93,7 @@ class WMainMenuBar : public QMenuBar {
     void internalKeywheelStateChanged(int state);
     void internalOnNewSkinLoaded();
     void internalOnNewSkinAboutToLoad();
+    void exportAiSnapshot();
 
   private slots:
 #ifndef __APPLE__
