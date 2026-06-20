@@ -140,7 +140,7 @@ QAbstractScrollArea::corner {
         min-height: 3px;
         max-height: 3px;
       }
-  /* Controls row in AutoDJ, Recording and other library features */
+  /* Controls row in AutoDJ, AutoSuggestions, Recording and other library features */
   #LibraryFeatureControls {
     border-width: 1px 0px 0px 0px;
     border-radius: 0px;
@@ -670,10 +670,11 @@ WTrackProperty[selected="true"],
 }
 
 
-/********************** Loop Controls / AutoDJ spinbox ************************/
+/********************** Loop Controls / AutoDJ, AutoSuggestions spinbox ************************/
 WBeatSpinBox,
 WBpmEditor QDoubleSpinBox,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   selection-color: #a7998b;
   selection-background-color: #111;
@@ -681,6 +682,7 @@ WBpmEditor QDoubleSpinBox,
   WBeatSpinBox:focus,
   WBpmEditor QDoubleSpinBox:focus,
   #spinBoxTransition:focus,
+  #spinBoxRefreshRate:focus,
   #spinBoxRecentDays:focus,
   #LibraryBPMSpinBox:focus  {
     selection-color: #000;
@@ -694,6 +696,7 @@ WBeatSpinBox {
 }
 
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   height: 19px;
   padding: 0px -15px 0px 0px;
@@ -704,11 +707,15 @@ WBeatSpinBox {
 #spinBoxTransition {
   width: 24px;
 }
+#spinBoxRefreshRate {
+  width: 24px;
+}
 #spinBoxRecentDays {
   width: 45px;
 }
 WBeatSpinBox:focus,
 #spinBoxTransition:focus,
+#spinBoxRefreshRate:focus,
 #spinBoxRecentDays:focus {
   border-image: url(skins:LateNight/palemoon/buttons/btn_embedded_spinbox_focus_blue.svg) 3 19 2 3;
 }
@@ -720,6 +727,8 @@ WBeatSpinBox::up-button,
 WBeatSpinBox::down-button,
 #spinBoxTransition::up-button,
 #spinBoxTransition::down-button,
+#spinBoxRefreshRate::up-button,
+#spinBoxRefreshRate::down-button,
 #spinBoxRecentDays::up-button,
 #spinBoxRecentDays::down-button {
   subcontrol-origin: content;
@@ -730,6 +739,7 @@ WBeatSpinBox::down-button,
 
   WBeatSpinBox::up-button,
   #spinBoxTransition::up-button,
+  #spinBoxRefreshRate::up-button,
   #spinBoxRecentDays::up-button {
     subcontrol-position: top right;
     image: url(skins:LateNight/palemoon/buttons/btn__spinbox_up.svg) no-repeat;
@@ -739,12 +749,14 @@ WBeatSpinBox::down-button,
       margin: -2px -1px 0px 0px;
     }
     #spinBoxTransition::up-button,
+    #spinBoxRefreshRate::up-button,
     #spinBoxRecentDays::up-button {
       margin: -2px -3px 0px 0px;
     }
 
   WBeatSpinBox::down-button,
   #spinBoxTransition::down-button,
+  #spinBoxRefreshRate::down-button,
   #spinBoxRecentDays::down-button {
     subcontrol-position: bottom right;
     image: url(skins:LateNight/palemoon/buttons/btn__spinbox_down.svg) no-repeat;
@@ -752,6 +764,7 @@ WBeatSpinBox::down-button,
     margin: 0px -1px -3px 0px;
     }
     #spinBoxTransition::down-button,
+    #spinBoxRefreshRate::down-button,
     #spinBoxRecentDays::down-button {
       margin: 0px -3px -1px 0px;
     }
@@ -1379,6 +1392,7 @@ WEffectChainPresetSelector:!editable:on,
   WBeatSpinBox,
   WBpmEditor QDoubleSpinBox,
   #spinBoxTransition,
+  #spinBoxRefreshRate,
   #spinBoxRecentDays {
     color: #a7998b;
   }
@@ -1505,6 +1519,7 @@ WPushButton#VinylStatus[displayValue="3"], /* needle skip detected (pink bg) */
 #RecDuration[highlight="2"],  /* recording */
 #SkinSettingsToggle[displayValue="1"],
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonRepeatPlaylist:checked,
 QPushButton#pushButtonAnalyze:checked,
 QPushButton#pushButtonRecording:checked {
@@ -1594,6 +1609,7 @@ WEffectSelector:!editable,
   #SkinSettingsToggle[displayValue="1"],
   #LibraryFeatureControls QPushButton:pressed
   QPushButton#pushButtonAutoDJ:checked,
+  QPushButton#pushButtonAutoSuggestions:checked,
   QPushButton#pushButtonRepeatPlaylist:checked,
   QPushButton#pushButtonAnalyze:checked,
   QPushButton#pushButtonRecording:checked,
@@ -1748,9 +1764,12 @@ WBpmEditor QDoubleSpinBox {
   /* library controls */
   #spinBoxTransition::up-button,
   #spinBoxTransition::down-button,
+  #spinBoxRefreshRate::up-button,
+  #spinBoxRefreshRate::down-button,
   #spinBoxRecentDays::up-button,
   #spinBoxRecentDays::down-button,
   QPushButton#pushButtonAutoDJ:enabled:!checked,
+  QPushButton#pushButtonAutoSuggestions:enabled:!checked,
   #LibraryFeatureControls QPushButton:enabled {
     background-color: #222;
   }
@@ -1781,6 +1800,7 @@ WPushButton#StemMuteButton,
 #PassthroughButton[displayValue="1"],
 #BroadcastButton[displayValue="4"], /* warning */
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonAnalyze:checked {
   background-color: #b24c12;
   }
@@ -1838,6 +1858,8 @@ WBeatSpinBox::up-button:pressed,
 WBeatSpinBox::down-button:pressed,
 #spinBoxTransition::up-button:pressed,
 #spinBoxTransition::down-button:pressed,
+#spinBoxRefreshRate::up-button:pressed,
+#spinBoxRefreshRate::down-button:pressed,
 #spinBoxRecentDays::up-button:pressed,
 #spinBoxRecentDays::down-button:pressed {
   background-color: #257b82;
@@ -2861,6 +2883,22 @@ QPushButton#pushButtonRepeatPlaylist:!checked {
   }
 /* AutoDJ button icons */
 
+/* AutoSuggestions button icons */
+QPushButton#pushButtonAutoSuggestions:!checked {
+  image: url(skins:LateNight/palemoon/buttons/btn__autodj_enable_off.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonAutoSuggestions:checked {
+    image: url(skins:LateNight/palemoon/buttons/btn__autodj_enable_on.svg) no-repeat center center;
+  }
+
+QPushButton#pushButtonCheckNow:!enabled {
+  image: url(skins:LateNight/palemoon/buttons/btn__autodj_fade_disabled.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonCheckNow:enabled {
+    image: url(skins:LateNight/palemoon/buttons/btn__autodj_fade.svg) no-repeat center center;
+  }
+/* AutoSuggestions button icons */
+
 /* widgets in cue popup menu */
 WCueMenuPopup #CueDeleteButton {
   icon: url(skins:LateNight/palemoon/buttons/btn__delete.svg);
@@ -2977,6 +3015,7 @@ WTrackPropertyEditor,
 WLibrary QLineEdit,
 WLibrary QPlainTextEdit,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays,
 #LibraryBPMSpinBox {
   background-color: #0f0f0f;
@@ -3346,6 +3385,7 @@ WSearchLineEdit {
 #LibraryFeatureControls QPushButton,
 /* #fadeModeCombobox set below */
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   margin-top: 4px;
 }
