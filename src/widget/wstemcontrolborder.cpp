@@ -39,7 +39,8 @@ void WStemControlBorder::setup(const QDomNode& node, const SkinContext& context)
 
     updateBorderStyle(QColor(0x888888));
 
-    qDebug() << "WStemControlBorder:" << objectName() << "has" << children().size() << "children";
+    // qDebug() << "[WStemControlBorder] " << objectName() << "has" <<
+    // children().size() << "children";
 }
 
 void WStemControlBorder::slotTrackLoaded(TrackPointer pTrack) {

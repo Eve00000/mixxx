@@ -35,7 +35,7 @@ constexpr int kNumStreams = 5;
 // constexpr int kRequiredStreamCount = kNumStreams - 1; // Stem count doesn't include the main mix
 constexpr int kRequiredStreamCount = kNumStreams;
 
-const Logger kLogger("SoundSourceSTEM");
+const Logger kLogger("[SoundSourceSTEM]");
 
 // static constexpr SINT kMaxBufferSize = 192000; // Max 2 seconds at 96kHz
 
@@ -718,7 +718,7 @@ SoundSource::OpenResult SoundSourceSTEM::tryOpen(
              << "isValid:" << m_targetSampleRate.isValid()
              << "value:" << static_cast<int>(m_targetSampleRate);
 
-    qDebug() << "[SoundSourceSTEM] Linux - Target sample rate:" << m_targetSampleRate
+    qDebug() << "[SoundSourceSTEM] Target sample rate:" << m_targetSampleRate
              << "Channel count:" << m_requestedChannelCount
              << "UpSample stems:" << m_upSampleStems;
 
@@ -1804,11 +1804,11 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
     } else {
         // Only validate when we expect the buffer to match
         SINT expectedLength = outputSampleLength * static_cast<SINT>(stemCount);
-        if (expectedLength != globalSampleFrames.writableLength()) {
-            kLogger.warning() << "Buffer size mismatch: expected" << expectedLength
-                              << "got" << globalSampleFrames.writableLength();
-            // Continue anyway, but log warning
-        }
+        // if (expectedLength != globalSampleFrames.writableLength()) {
+        //    kLogger.warning() << "Buffer size mismatch: expected" << expectedLength
+        //                      << "got" << globalSampleFrames.writableLength();
+        // Continue anyway, but log warning
+        //}
     }
 
     if (stemCount == 1) {
