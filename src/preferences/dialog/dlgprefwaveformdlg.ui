@@ -733,7 +733,19 @@
                     </property>
                   </widget>
                 </item>
-
+                <item row="0" column="2">
+                  <widget class="QLabel" name="stemDisplayModeLabel">
+                    <property name="text">
+                      <string>Display mode</string>
+                    </property>
+                    <property name="alignment">
+                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                    </property>
+                    <property name="buddy">
+                      <cstring>stemDisplayModeComboBox</cstring>
+                    </property>
+                  </widget>
+                </item>
                 <item row="1" column="0">
                   <widget class="QDoubleSpinBox" name="stemOpacitySpinBox">
                     <property name="toolTip">
@@ -769,6 +781,13 @@
                     </property>
                     <property name="singleStep">
                       <double>0.010000000000000</double>
+                    </property>
+                  </widget>
+                </item>
+                <item row="1" column="2">
+                  <widget class="QComboBox" name="stemDisplayModeComboBox">
+                    <property name="toolTip">
+                      <string>Select the display layout for stem waveforms</string>
                     </property>
                   </widget>
                 </item>

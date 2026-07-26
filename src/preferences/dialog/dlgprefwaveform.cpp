@@ -136,6 +136,9 @@ DlgPrefWaveform::DlgPrefWaveform(
     untilMarkTextHeightLimitComboBox->addItem(tr("1/3 of waveform viewer"));
     untilMarkTextHeightLimitComboBox->addItem(tr("Entire waveform viewer"));
 
+    stemDisplayModeComboBox->addItem(tr("Overlapping"));
+    stemDisplayModeComboBox->addItem(tr("Stacked"));
+
     // Adopt tr string from first GLSL hint
     requiresGLSLLabel2->setText(requiresGLSLLabel->text());
 
@@ -293,6 +296,10 @@ DlgPrefWaveform::DlgPrefWaveform(
             &QDoubleSpinBox::valueChanged,
             this,
             &DlgPrefWaveform::slotStemOutlineOpacity);
+    connect(stemDisplayModeComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefWaveform::slotStemDisplayMode);
 
     connect(showBpmCurveCheckBox, &QCheckBox::toggled, this, &DlgPrefWaveform::slotSetShowBpmCurve);
     connect(showBpmMarkersCheckBox,
@@ -431,6 +438,7 @@ void DlgPrefWaveform::slotUpdate() {
     stemReorderLayerOnChangedCheckBox->setChecked(factory->isStemReorderOnChange());
     stemOpacitySpinBox->setValue(factory->getStemOpacity());
     stemOutlineOpacitySpinBox->setValue(factory->getStemOutlineOpacity());
+    stemDisplayModeComboBox->setCurrentIndex(factory->isStemSplitTracks() ? 1 : 0);
 
     OverviewType cfgOverviewType =
             m_pConfig->getValue<OverviewType>(kOverviewTypeCfgKey, OverviewType::RGB);
@@ -581,6 +589,8 @@ void DlgPrefWaveform::slotResetToDefaults() {
 
     // 50 (center) is default
     playMarkerPositionSlider->setValue(50);
+
+    stemDisplayModeComboBox->setCurrentIndex(0);
 
     showBpmCurveCheckBox->setChecked(true);
     showBpmMarkersCheckBox->setChecked(true);
@@ -798,9 +808,11 @@ void DlgPrefWaveform::updateStemOptionsEnabled() {
     bool enabled = useWaveformCheckBox->isChecked();
     stemOpacityMainLabel->setEnabled(stemsSupported && enabled);
     stemOpacityOutlineLabel->setEnabled(stemsSupported && enabled);
+    stemDisplayModeLabel->setEnabled(stemsSupported && enabled);
     stemReorderLayerOnChangedCheckBox->setEnabled(stemsSupported && enabled);
     stemOpacitySpinBox->setEnabled(stemsSupported && enabled);
     stemOutlineOpacitySpinBox->setEnabled(stemsSupported && enabled);
+    stemDisplayModeComboBox->setEnabled(stemsSupported && enabled);
     requiresGLSLLabel2->setVisible(!stemsSupported && enabled);
 }
 
@@ -974,6 +986,10 @@ void DlgPrefWaveform::slotStemReorderOnChange(bool value) {
 
 void DlgPrefWaveform::slotStemOutlineOpacity(float value) {
     WaveformWidgetFactory::instance()->setStemOutlineOpacity(value);
+}
+
+void DlgPrefWaveform::slotStemDisplayMode(int index) {
+    WaveformWidgetFactory::instance()->setStemSplitTracks(index == 1);
 }
 
 void DlgPrefWaveform::calculateCachedWaveformDiskUsage() {

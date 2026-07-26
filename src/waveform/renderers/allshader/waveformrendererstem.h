@@ -36,8 +36,14 @@ class allshader::WaveformRendererStem final
     void preprocess() override;
 
   public slots:
+    // void setSplitStemTracks(bool splitStemTracks) {
+    //     m_splitStemTracks = splitStemTracks;
+    // }
     void setSplitStemTracks(bool splitStemTracks) {
-        m_splitStemTracks = splitStemTracks;
+        if (m_splitStemTracks != splitStemTracks) {
+            m_splitStemTracks = splitStemTracks;
+            markDirtyGeometry();
+        }
     }
     void setReorderOnChange(bool value) {
         m_reorderOnChange = value;
@@ -52,10 +58,14 @@ class allshader::WaveformRendererStem final
         m_opacity = value;
         markDirtyMaterial();
     }
+    void onStemControlsExpandedChanged(double value);
+    void onUseStemSplitTracksChanged(double value);
+    void updateSplitState();
 
   private:
     bool m_isSlipRenderer;
     bool m_splitStemTracks;
+    bool m_showOriginalPremix;
 
     bool m_reorderOnChange;
     float m_outlineOpacity;
@@ -63,6 +73,8 @@ class allshader::WaveformRendererStem final
 
     std::vector<std::unique_ptr<ControlProxy>> m_pStemGain;
     std::vector<std::unique_ptr<ControlProxy>> m_pStemMute;
+    std::unique_ptr<ControlProxy> m_pStemControlsExpanded;
+    std::unique_ptr<ControlProxy> m_pUseStemSplitTracks;
 
     QVarLengthArray<int, mixxx::kMaxSupportedStems> m_stackOrder;
 
