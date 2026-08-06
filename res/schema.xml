@@ -633,6 +633,7 @@ reapplying those migrations.
       ALTER TABLE cues ADD COLUMN stem_2_vol REAL DEFAULT 1.00 NOT NULL;
       ALTER TABLE cues ADD COLUMN stem_3_vol REAL DEFAULT 1.00 NOT NULL;
       ALTER TABLE cues ADD COLUMN stem_4_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_5_vol REAL DEFAULT 1.00 NOT NULL;
     </sql>
   </revision>
   <revision version="42" min_compatible="3">

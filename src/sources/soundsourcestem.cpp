@@ -1803,7 +1803,7 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
         SampleUtil::clear(pBuffer, globalSampleFrames.writableLength());
     } else {
         // Only validate when we expect the buffer to match
-        SINT expectedLength = outputSampleLength * static_cast<SINT>(stemCount);
+        // SINT expectedLength = outputSampleLength * static_cast<SINT>(stemCount);
         // if (expectedLength != globalSampleFrames.writableLength()) {
         //    kLogger.warning() << "Buffer size mismatch: expected" << expectedLength
         //                      << "got" << globalSampleFrames.writableLength();
