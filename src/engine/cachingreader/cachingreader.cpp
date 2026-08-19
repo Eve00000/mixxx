@@ -16,7 +16,7 @@ mixxx::Logger kLogger("CachingReader");
 // This is the default hint frameCount that is adopted in case of Hint::kFrameCountForward and
 // Hint::kFrameCountBackward count is provided. It matches 23 ms @ 44.1 kHz
 // TODO() Do we suffer cache misses if we use an audio buffer of above 23 ms?
-constexpr SINT kDefaultHintFrames = 1024;
+constexpr SINT kDefaultHintFrames = 16384;
 
 // With CachingReaderChunk::kFrames = 8192 each chunk consumes
 // 8192 frames * 2 channels/frame * 4-bytes per sample = 65 kB.
