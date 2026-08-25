@@ -74,10 +74,13 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
         m_dndRectMargins = QMargins(dndMargin, dndMargin, dndMargin, dndMargin);
     }
 
-    m_pCueMenuPopup = make_parented<WCueMenuPopup>(context.getConfig(), this);
+    /*m_pCueMenuPopup = make_parented<WCueMenuPopup>(context.getConfig(), this);
     ColorPaletteSettings colorPaletteSettings(context.getConfig());
     auto colorPalette = colorPaletteSettings.getHotcueColorPalette();
-    m_pCueMenuPopup->setColorPalette(colorPalette);
+    m_pCueMenuPopup->setColorPalette(colorPalette);*/
+
+    // Store config pointer in case we need to create a cue menu later on
+    m_pConfig = context.getConfig();
 
     setFocusPolicy(Qt::NoFocus);
 
@@ -171,6 +174,7 @@ void WHotcueButton::mousePressEvent(QMouseEvent* pEvent) {
                 pTrack->removeCue(pHotCue);
                 return;
             }
+            ensureCueMenuIsCreated();
             m_pCueMenuPopup->setTrackCueGroup(pTrack, pHotCue, m_group);
             // use the bottom left corner as starting point for popup
             m_pCueMenuPopup->popup(mapToGlobal(QPoint(0, height())));
@@ -261,6 +265,16 @@ void WHotcueButton::dropEvent(QDropEvent* pEvent) {
     } else {
         pEvent->ignore();
     }
+}
+
+void WHotcueButton::ensureCueMenuIsCreated() {
+    if (m_pCueMenuPopup.get() != nullptr) {
+        return;
+    }
+    VERIFY_OR_DEBUG_ASSERT(m_pConfig) {
+        return;
+    }
+    m_pCueMenuPopup = make_parented<WCueMenuPopup>(m_pConfig, this);
 }
 
 ConfigKey WHotcueButton::createConfigKey(const QString& name) {

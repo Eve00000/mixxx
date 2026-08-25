@@ -49,6 +49,8 @@ class WHotcueButton : public WPushButton {
     ConfigKey createConfigKey(const QString& name);
     void updateStyleSheet();
 
+    void ensureCueMenuIsCreated();
+
     const QString m_group;
     int m_hotcue;
     bool m_hoverCueColor;
@@ -65,4 +67,6 @@ class WHotcueButton : public WPushButton {
     QString m_type;
     QString m_direction;
     QMargins m_dndRectMargins;
+
+    UserSettingsPointer m_pConfig;
 };
