@@ -233,6 +233,11 @@ void WMainMenuBar::initialize() {
     connect(pLibraryCreateCrate, &QAction::triggered, this, &WMainMenuBar::createCrate);
     pLibraryMenu->addAction(pLibraryCreateCrate);
 
+    QString exportSnapshotForAITitle = tr("Export snapshot for AI");
+    auto* pExportSnapshotAiAction = new QAction(exportSnapshotForAITitle, this);
+    connect(pExportSnapshotAiAction, &QAction::triggered, this, &WMainMenuBar::exportAiSnapshot);
+    pLibraryMenu->addAction(pExportSnapshotAiAction);
+
     addMenu(pLibraryMenu);
 
 #if defined(__APPLE__)
