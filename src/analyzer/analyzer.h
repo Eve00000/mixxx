@@ -6,6 +6,10 @@
 #include "util/assert.h"
 #include "util/types.h"
 
+// COMMENT LINE EVE 1
+// COMMENT LINE EVE 2
+// COMMENT LINE EVE 3
+
 /*
  * An Analyzer is an object which wants to process an entire song to
  * calculate some kind of metadata about it. This could be bpm, the
