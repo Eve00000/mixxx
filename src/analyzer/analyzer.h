@@ -10,6 +10,11 @@
 // Comment Line Eve 2
 // Comment Line Eve 3
 
+
+// Comment Line Eve 4
+// Comment Line Eve 5
+// Comment Line Eve 6
+
 /*
  * An Analyzer is an object which wants to process an entire song to
  * calculate some kind of metadata about it. This could be bpm, the
