@@ -13,6 +13,8 @@
 #include "track/beatfactory.h"
 #include "track/track.h"
 
+// test eve
+
 // static
 QList<mixxx::AnalyzerPluginInfo> AnalyzerBeats::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> plugins;
