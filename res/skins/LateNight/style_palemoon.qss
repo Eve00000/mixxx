@@ -189,7 +189,6 @@ WCueMenuPopup #CueStem5volEdit {
   background-color: #19191a;
   color: #ffffff;
 }
-
 WCueMenuPopup #CueExportToSampler1,
 WCueMenuPopup #CueExportToSampler2,
 WCueMenuPopup #CueExportToSampler3,
@@ -205,7 +204,56 @@ WCueMenuPopup #CueExportToSampler12,
 WCueMenuPopup #CueExportToSampler13,
 WCueMenuPopup #CueExportToSampler14,
 WCueMenuPopup #CueExportToSampler15,
-WCueMenuPopup #CueExportToSampler16 {
+WCueMenuPopup #CueExportToSampler16,
+WCueMenuPopup #CueExportToSampler17,
+WCueMenuPopup #CueExportToSampler18,
+WCueMenuPopup #CueExportToSampler19,
+WCueMenuPopup #CueExportToSampler20,
+WCueMenuPopup #CueExportToSampler21,
+WCueMenuPopup #CueExportToSampler22,
+WCueMenuPopup #CueExportToSampler23,
+WCueMenuPopup #CueExportToSampler24,
+WCueMenuPopup #CueExportToSampler25,
+WCueMenuPopup #CueExportToSampler26,
+WCueMenuPopup #CueExportToSampler27,
+WCueMenuPopup #CueExportToSampler28,
+WCueMenuPopup #CueExportToSampler29,
+WCueMenuPopup #CueExportToSampler30,
+WCueMenuPopup #CueExportToSampler31,
+WCueMenuPopup #CueExportToSampler32,
+WCueMenuPopup #CueExportToSampler33,
+WCueMenuPopup #CueExportToSampler34,
+WCueMenuPopup #CueExportToSampler35,
+WCueMenuPopup #CueExportToSampler36,
+WCueMenuPopup #CueExportToSampler37,
+WCueMenuPopup #CueExportToSampler38,
+WCueMenuPopup #CueExportToSampler39,
+WCueMenuPopup #CueExportToSampler40,
+WCueMenuPopup #CueExportToSampler41,
+WCueMenuPopup #CueExportToSampler42,
+WCueMenuPopup #CueExportToSampler43,
+WCueMenuPopup #CueExportToSampler44,
+WCueMenuPopup #CueExportToSampler45,
+WCueMenuPopup #CueExportToSampler46,
+WCueMenuPopup #CueExportToSampler47,
+WCueMenuPopup #CueExportToSampler48,
+WCueMenuPopup #CueExportToSampler49,
+WCueMenuPopup #CueExportToSampler50,
+WCueMenuPopup #CueExportToSampler51,
+WCueMenuPopup #CueExportToSampler52,
+WCueMenuPopup #CueExportToSampler53,
+WCueMenuPopup #CueExportToSampler54,
+WCueMenuPopup #CueExportToSampler55,
+WCueMenuPopup #CueExportToSampler56,
+WCueMenuPopup #CueExportToSampler57,
+WCueMenuPopup #CueExportToSampler58,
+WCueMenuPopup #CueExportToSampler59,
+WCueMenuPopup #CueExportToSampler60,
+WCueMenuPopup #CueExportToSampler61,
+WCueMenuPopup #CueExportToSampler62,
+WCueMenuPopup #CueExportToSampler63,
+WCueMenuPopup #CueExportToSampler64
+{
   border-top: 1px solid #0d0d0d;
   border-left: 1px solid #121212;
   border-bottom: 1px solid #2a2a2a;
@@ -1568,6 +1616,7 @@ WEffectSelector:!editable,
 #CueDeleteButton,
 #CueStandardButton,
 #CueSavedLoopButton,
+#CueExportButton,
 #CueSavedJumpButton {
   outline: none;
   border-width: 2px;
@@ -1603,6 +1652,8 @@ WEffectSelector:!editable,
   #CueStandardButton:checked,
   #CueSavedLoopButton[pressed="true"],
   #CueSavedLoopButton:checked,
+  #CueExportButton[pressed="true"],
+  #CueExportButton:checked,
   #CueSavedJumpButton[pressed="true"],
   #CueSavedJumpButton:checked {
     border-width: 2px;
@@ -1741,6 +1792,7 @@ WBeatSpinBox::down-button {
   #CueDeleteButton,
   #CueStandardButton,
   #CueSavedLoopButton,
+  #CueExportButton,
   #CueSavedJumpButton,
   #SplitCue[displayValue="0"],
   #PlayPreview[displayValue="0"],
@@ -1802,6 +1854,7 @@ WPushButton#LoopAnchor[pressed="true"],
 #RateControls WPushButton[value="1"],
 #BeatgridControls WPushButton[pressed="true"]/*,
 #CueDeleteButton[pressed="true"],
+#CueExportButton[pressed="true"],
 #CueSavedLoopButton[pressed="true"],
 #CueSavedLoopButton:checked*/ {
   background-color: #7d350d;
@@ -3209,6 +3262,13 @@ WCueMenuPopup #CueStandardButton {
   /* make the icon slightly larger than default 16px */
   icon-size: 24px;
 }
+WCueMenuPopup #CueExportButton {
+  icon: url(skins:LateNight/palemoon/buttons/btn__hotcue_export.svg);
+  width: 24px;
+  height: 42px;
+  /* make the icon slightly larger than default 16px */
+  icon-size: 24px;
+}
 WCueMenuPopup #CueSavedLoopButton {
   icon: url(skins:LateNight/palemoon/buttons/btn__loop.svg);
   width: 24px;
@@ -3223,7 +3283,7 @@ WCueMenuPopup #CueSavedJumpButton {
   icon-size: 24px;
 }
 WCueMenuPopup #CueExportButton {
-  icon: url(skins:LateNight/palemoon/buttons/btn__loop.svg);
+  icon: url(skins:LateNight/palemoon/buttons/btn__hotcue_exportop.svg);
   width: 24px;
   height: 42px;
   /* make the icon slightly larger than default 16px */
@@ -3251,6 +3311,11 @@ WCueMenuPopup #CueSavedJumpButton[direction="backward"] {
   outline: none;
   icon: url(skins:LateNight/palemoon/buttons/btn__loop_active.svg);
 }
+#CueExportButton:pressed, #CueExportButton:checked {
+  background-color: #b24c12;
+  outline: none;
+  icon: url(skins:LateNight/palemoon/buttons/btn__hotcue_export_active.svg);
+}
 #CueSavedJumpButton:pressed, #CueSavedJumpButton:checked {
   background-color: #b24c12;
   outline: none;
@@ -3270,7 +3335,11 @@ WCueMenuPopup #CueSavedJumpButton[direction="backward"] {
   outline: none;
   icon: url(skins:LateNight/palemoon/buttons/btn__beats_hotcues_later_active.svg);
 }
-
+#CueStandardButton:pressed, #CueExportButton:checked {
+  background-color: #b24c12;
+  outline: none;
+  icon: url(skins:LateNight/palemoon/buttons/btn__hotcue_export.svg);
+}
 WCueMenuPopup #CueLabelEdit {
   /*border: 1px solid #c2b3a5;*/
   border-radius: 0px;

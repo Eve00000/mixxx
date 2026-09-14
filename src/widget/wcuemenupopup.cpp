@@ -1,14 +1,17 @@
 #include "widget/wcuemenupopup.h"
 
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <array>
+#include <iterator>
 #include <optional>
 #include <vector>
 
@@ -26,8 +29,40 @@ const ConfigKey kJumpDefaultColorIndexConfigKey("[Controls]", "jump_default_colo
 
 constexpr mixxx::audio::FrameDiff_t kMinimumAudibleLoopSizeFrames = 150;
 
+struct ShowKey {
+    const char* key;
+    int count;
+    int blockCount;
+};
+
+const ShowKey kShowKeys[] = {
+        {"show_64samplers", 64, 8},
+        {"show_48samplers", 48, 6},
+        {"show_32samplers", 32, 4},
+        {"show_16samplers", 16, 2},
+        {"show_8samplers", 8, 1},
+        {"show_4samplers", 4, 0},
+};
+
+static const char* const kExpandKeys[] = {
+        "expand_samplers_1-8",
+        "expand_samplers_9-16",
+        "expand_samplers_17-24",
+        "expand_samplers_25-32",
+        "expand_samplers_33-40",
+        "expand_samplers_41-48",
+        "expand_samplers_49-56",
+        "expand_samplers_57-64",
+};
+
+constexpr int kNumExpandKeys = static_cast<int>(std::size(kExpandKeys));
+
 constexpr double kMuteThreshold = 0.0;
-constexpr int kMaxVisibleSamplerButtons = 16;
+// constexpr int kMaxVisibleSamplerButtons = 16;
+constexpr int kMaxVisibleSamplerButtons = 64;
+
+const QRegularExpression kUnsafeFilenameChars(
+        QStringLiteral(R"([\\/:*?"<>|])"));
 } // namespace
 
 void CueMenuPushButton::mousePressEvent(QMouseEvent* e) {
@@ -79,8 +114,7 @@ void WCueMenuPopup::updateTypeAndColorIfDefault(mixxx::CueType newType) {
     }
 }
 
-WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig,
-        QWidget* parent)
+WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig, QWidget* parent)
         : QWidget(parent),
           m_pConfig(pConfig),
           m_colorPaletteSettings(ColorPaletteSettings(pConfig)),
@@ -221,7 +255,6 @@ WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig,
             this,
             &WCueMenuPopup::slotExportCue);
 
-    // Eve - export-to-sampler buttons
     m_pExportToSamplerButtons.reserve(kMaxVisibleSamplerButtons);
     for (int i = 0; i < kMaxVisibleSamplerButtons; ++i) {
         auto btn = std::make_unique<CueMenuPushButton>(this);
@@ -232,7 +265,6 @@ WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig,
         btn->setVisible(false);
         m_pExportToSamplerButtons.push_back(std::move(btn));
     }
-    // Eve
 
     QHBoxLayout* pLabelLayout = new QHBoxLayout();
     pLabelLayout->addWidget(m_pCueNumber.get());
@@ -257,24 +289,7 @@ WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig,
     pLeftLayout->addWidget(m_pEditLabel.get());
     pLeftLayout->addLayout(pStemvolLayout);
     pLeftLayout->addWidget(m_pColorPicker.get());
-
-    // Eve - export-to-sampler layout, up to 4 rows of 4
-    QHBoxLayout* pSamplerRow1 = new QHBoxLayout();
-    QHBoxLayout* pSamplerRow2 = new QHBoxLayout();
-    QHBoxLayout* pSamplerRow3 = new QHBoxLayout();
-    QHBoxLayout* pSamplerRow4 = new QHBoxLayout();
-
-    QHBoxLayout* samplerRows[4] = {
-            pSamplerRow1, pSamplerRow2, pSamplerRow3, pSamplerRow4};
-    for (int i = 0; i < kMaxVisibleSamplerButtons; ++i) {
-        samplerRows[i / 4]->addWidget(m_pExportToSamplerButtons[i].get(), 1);
-    }
-
-    pLeftLayout->addLayout(pSamplerRow1);
-    pLeftLayout->addLayout(pSamplerRow2);
-    pLeftLayout->addLayout(pSamplerRow3);
-    pLeftLayout->addLayout(pSamplerRow4);
-    // Eve
+    m_pLeftLayout = pLeftLayout;
 
     QVBoxLayout* pRightLayout = new QVBoxLayout();
     pRightLayout->addWidget(m_pDeleteCue.get());
@@ -307,6 +322,584 @@ WCueMenuPopup::WCueMenuPopup(UserSettingsPointer pConfig,
     }
 }
 
+// SamplerLayout WCueMenuPopup::currentSamplerLayout() const {
+//     SamplerLayout layout;
+//
+//     PollingControlProxy show4Proxy(
+//             ConfigKey("[LateNight]", "show_4samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show8Proxy(
+//             ConfigKey("[LateNight]", "show_8samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show16Proxy(
+//             ConfigKey("[LateNight]", "show_16samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand1_8Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_1-8"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand9_16Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_9-16"),
+//             ControlFlag::AllowMissingOrInvalid);
+//
+//     const bool show4 = show4Proxy.valid() && show4Proxy.get() != 0.0;
+//     const bool show8 = show8Proxy.valid() && show8Proxy.get() != 0.0;
+//     const bool show16 = show16Proxy.valid() && show16Proxy.get() != 0.0;
+//     const bool expand_1_8 = expand1_8Proxy.valid() && expand1_8Proxy.get() != 0.0;
+//     const bool expand_9_16 = expand9_16Proxy.valid() && expand9_16Proxy.get() != 0.0;
+//
+//     qDebug() << "[WCUEMENUPOPUP] -> currentSamplerLayout config:"
+//              << "show_4=" << show4
+//              << "show_8=" << show8
+//              << "show_16=" << show16
+//              << "expand_1_8=" << expand_1_8
+//              << "expand_9_16=" << expand_9_16;
+//
+//     if (show4 && !show8 && !show16) {
+//         layout.samplerNumbers = {1, 2, 3, 4};
+//         layout.columnsPerRow = {4};
+//     } else if (show8 && !show16) {
+//         if (expand_1_8) {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8};
+//             layout.columnsPerRow = {4, 4};
+//         } else {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8};
+//             layout.columnsPerRow = {8};
+//         }
+//     } else if (show16) {
+//         if (!expand_1_8 && !expand_9_16) {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+//             layout.columnsPerRow = {8, 8};
+//         } else if (expand_1_8 && !expand_9_16) {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+//             layout.columnsPerRow = {4, 4, 8};
+//         } else if (!expand_1_8 && expand_9_16) {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 11, 12, 15, 16};
+//             layout.columnsPerRow = {8, 4, 4};
+//         } else {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14, 11, 12, 15, 16};
+//             layout.columnsPerRow = {4, 4, 4, 4};
+//         }
+//     }
+//     // else: no samplers visible -> empty layout
+//
+//     return layout;
+// }
+
+// SamplerLayout WCueMenuPopup::currentSamplerLayout() const {
+//     SamplerLayout layout;
+//
+//     PollingControlProxy show4Proxy(
+//             ConfigKey("[LateNight]", "show_4samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show8Proxy(
+//             ConfigKey("[LateNight]", "show_8samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show16Proxy(
+//             ConfigKey("[LateNight]", "show_16samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show32Proxy(
+//             ConfigKey("[LateNight]", "show_32samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show48Proxy(
+//             ConfigKey("[LateNight]", "show_48samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy show64Proxy(
+//             ConfigKey("[LateNight]", "show_64samplers"),
+//             ControlFlag::AllowMissingOrInvalid);
+//
+//     PollingControlProxy expand1_8Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_1-8"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand9_16Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_9-16"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand17_24Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_17-24"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand25_32Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_25-32"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand33_40Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_33-40"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand41_48Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_41-48"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand49_56Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_49-56"),
+//             ControlFlag::AllowMissingOrInvalid);
+//     PollingControlProxy expand57_64Proxy(
+//             ConfigKey("[LateNight]", "expand_samplers_57-64"),
+//             ControlFlag::AllowMissingOrInvalid);
+//
+//     const bool show4 = show4Proxy.valid() && show4Proxy.get() != 0.0;
+//     const bool show8 = show8Proxy.valid() && show8Proxy.get() != 0.0;
+//     const bool show16 = show16Proxy.valid() && show16Proxy.get() != 0.0;
+//     const bool show32 = show32Proxy.valid() && show32Proxy.get() != 0.0;
+//     const bool show48 = show48Proxy.valid() && show48Proxy.get() != 0.0;
+//     const bool show64 = show64Proxy.valid() && show64Proxy.get() != 0.0;
+//
+//     const bool e1_8 = expand1_8Proxy.valid() && expand1_8Proxy.get() != 0.0;
+//     const bool e9_16 = expand9_16Proxy.valid() && expand9_16Proxy.get() !=
+//     0.0; const bool e17_24 = expand17_24Proxy.valid() &&
+//     expand17_24Proxy.get() != 0.0; const bool e25_32 =
+//     expand25_32Proxy.valid() && expand25_32Proxy.get() != 0.0; const bool
+//     e33_40 = expand33_40Proxy.valid() && expand33_40Proxy.get() != 0.0; const
+//     bool e41_48 = expand41_48Proxy.valid() && expand41_48Proxy.get() != 0.0;
+//     const bool e49_56 = expand49_56Proxy.valid() && expand49_56Proxy.get() !=
+//     0.0; const bool e57_64 = expand57_64Proxy.valid() &&
+//     expand57_64Proxy.get() != 0.0;
+//
+//     qDebug() << "[WCUEMENUPOPUP] -> currentSamplerLayout config:"
+//              << "show_4=" << show4
+//              << "show_8=" << show8
+//              << "show_16=" << show16
+//              << "show_32=" << show32
+//              << "show_48=" << show48
+//              << "show_64=" << show64
+//              << "e1_8=" << e1_8
+//              << "e9_16=" << e9_16
+//              << "e17_24=" << e17_24
+//              << "e25_32=" << e25_32
+//              << "e33_40=" << e33_40
+//              << "e41_48=" << e41_48
+//              << "e49_56=" << e49_56
+//              << "e57_64=" << e57_64;
+//
+//     if (show4 && !show8 && !show16 && !show32 && !show48 && !show64) {
+//         layout.samplerNumbers = {1, 2, 3, 4};
+//         layout.columnsPerRow = {4};
+//     } else if (show8 && !show16 && !show32 && !show48 && !show64) {
+//         if (e1_8) {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8};
+//             layout.columnsPerRow = {4, 4};
+//         } else {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8};
+//             layout.columnsPerRow = {8};
+//         }
+//     } else if (show16 && !show32 && !show48 && !show64) {
+//         if (!e1_8 && !e9_16) {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+//             13, 14, 15, 16}; layout.columnsPerRow = {8, 8};
+//         } else if (e1_8 && !e9_16) {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12,
+//             13, 14, 15, 16}; layout.columnsPerRow = {4, 4, 8};
+//         } else if (!e1_8 && e9_16) {
+//             layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14,
+//             11, 12, 15, 16}; layout.columnsPerRow = {8, 4, 4};
+//         } else {
+//             layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14,
+//             11, 12, 15, 16}; layout.columnsPerRow = {4, 4, 4, 4};
+//         }
+//     //} else if (show32 && !show48 && !show64) {
+//     //    if (!e1_8 && !e9_16 && !e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 8, 8, 8};
+//     //    } else if (e1_8 && !e9_16 && !e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 8, 8, 8};
+//     //    } else if (!e1_8 && e9_16 && !e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 4, 4, 8, 8};
+//     //    } else if (!e1_8 && !e9_16 && e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 8, 4, 4, 8};
+//     //    } else if (!e1_8 && !e9_16 && !e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 8, 8, 4, 4};
+//     //    } else if (e1_8 && e9_16 && !e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 4, 4, 8, 8};
+//     //    } else if (e1_8 && !e9_16 && e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 8, 4, 4, 8};
+//     //    } else if (e1_8 && !e9_16 && !e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 8, 8, 4, 4};
+//     //    } else if (!e1_8 && e9_16 && e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 4, 4, 4, 4, 8};
+//     //    } else if (!e1_8 && e9_16 && !e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 4, 4, 8, 4, 4};
+//     //    } else if (!e1_8 && !e9_16 && e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 8, 4, 4, 4, 4};
+//     //    } else if (e1_8 && e9_16 && e17_24 && !e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 27, 28, 29, 30,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 4, 4, 4, 4, 8};
+//     //    } else if (e1_8 && e9_16 && !e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 4, 4, 8, 4, 4};
+//     //    } else if (e1_8 && !e9_16 && e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 11, 12,
+//     13, 14, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 8, 4, 4, 4, 4};
+//     //    } else if (!e1_8 && e9_16 && e17_24 && e25_32) {
+//     //        layout.samplerNumbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {8, 4, 4, 4, 4, 4, 4};
+//     //    } else {
+//     //        layout.samplerNumbers = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14,
+//     11, 12, 15, 16, 17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28,
+//     31, 32};
+//     //        layout.columnsPerRow = {4, 4, 4, 4, 4, 4, 4, 4};
+//     //    }
+//     } else if (show32 && !show48 && !show64) {
+//         auto addBlock = [&layout](int first, bool expanded) {
+//             if (expanded) {
+//                 layout.samplerNumbers
+//                         << first << first + 1 << first + 4 << first + 5
+//                         << first + 2 << first + 3 << first + 6 << first + 7;
+//                 layout.columnsPerRow << 4 << 4;
+//             } else {
+//                 for (int i = 0; i < 8; ++i) {
+//                     layout.samplerNumbers << first + i;
+//                 }
+//                 layout.columnsPerRow << 8;
+//             }
+//         };
+//         addBlock(1, e1_8);
+//         addBlock(9, e9_16);
+//         addBlock(17, e17_24);
+//         addBlock(25, e25_32);
+//     } else if (show48 && !show64) {
+//         // 48 samplers = 6 blocks of 8
+//         // build rows of each block based on expand state + concatenate
+//         auto addBlock = [&layout](int first, bool expanded) {
+//             if (expanded) {
+//                 layout.samplerNumbers
+//                         << first << first + 1 << first + 4 << first + 5
+//                         << first + 2 << first + 3 << first + 6 << first + 7;
+//                 layout.columnsPerRow << 4 << 4;
+//             } else {
+//                 for (int i = 0; i < 8; ++i) {
+//                     layout.samplerNumbers << first + i;
+//                 }
+//                 layout.columnsPerRow << 8;
+//             }
+//         };
+//         addBlock(1, e1_8);
+//         addBlock(9, e9_16);
+//         addBlock(17, e17_24);
+//         addBlock(25, e25_32);
+//         addBlock(33, e33_40);
+//         addBlock(41, e41_48);
+//     } else if (show64) {
+//         // 64 samplers = 8 blocks of 8
+//         auto addBlock = [&layout](int first, bool expanded) {
+//             if (expanded) {
+//                 layout.samplerNumbers
+//                         << first << first + 1 << first + 4 << first + 5
+//                         << first + 2 << first + 3 << first + 6 << first + 7;
+//                 layout.columnsPerRow << 4 << 4;
+//             } else {
+//                 for (int i = 0; i < 8; ++i) {
+//                     layout.samplerNumbers << first + i;
+//                 }
+//                 layout.columnsPerRow << 8;
+//             }
+//         };
+//         addBlock(1, e1_8);
+//         addBlock(9, e9_16);
+//         addBlock(17, e17_24);
+//         addBlock(25, e25_32);
+//         addBlock(33, e33_40);
+//         addBlock(41, e41_48);
+//         addBlock(49, e49_56);
+//         addBlock(57, e57_64);
+//     }
+//     // else: no samplers visible -> empty layout
+//
+//     return layout;
+// }
+
+SamplerLayout WCueMenuPopup::currentSamplerLayout() const {
+    SamplerLayout layout;
+
+    int blockCount = -1;
+    bool isFourSamplerLayout = false;
+    QString activeShowKey;
+
+    for (const auto& k : kShowKeys) {
+        PollingControlProxy proxy(
+                ConfigKey("[LateNight]", k.key),
+                ControlFlag::AllowMissingOrInvalid);
+        if (proxy.valid() && proxy.get() != 0.0) {
+            blockCount = k.blockCount;
+            isFourSamplerLayout = (k.count == 4);
+            activeShowKey = QString::fromLatin1(k.key);
+            break;
+        }
+    }
+
+    // read all expand states once so the debug line can print them.
+    std::array<bool, kNumExpandKeys> expandStates{};
+    for (int b = 0; b < kNumExpandKeys; ++b) {
+        PollingControlProxy expandProxy(
+                ConfigKey("[LateNight]", kExpandKeys[b]),
+                ControlFlag::AllowMissingOrInvalid);
+        expandStates[b] = expandProxy.valid() && expandProxy.get() != 0.0;
+    }
+
+    qDebug() << "[WCUEMENUPOPUP] -> currentSamplerLayout config:"
+             << "activeShowKey=" << activeShowKey
+             << "blockCount=" << blockCount
+             << "isFourSamplerLayout=" << isFourSamplerLayout
+             << "expand_1_8=" << expandStates[0]
+             << "expand_9_16=" << expandStates[1]
+             << "expand_17_24=" << expandStates[2]
+             << "expand_25_32=" << expandStates[3]
+             << "expand_33_40=" << expandStates[4]
+             << "expand_41_48=" << expandStates[5]
+             << "expand_49_56=" << expandStates[6]
+             << "expand_57_64=" << expandStates[7];
+
+    if (blockCount < 0) {
+        return layout;
+    }
+
+    if (isFourSamplerLayout) {
+        layout.samplerNumbers = {1, 2, 3, 4};
+        layout.columnsPerRow = {4};
+        return layout;
+    }
+
+    auto addBlock = [&layout](int first, bool expanded) {
+        if (expanded) {
+            layout.samplerNumbers
+                    << first << first + 1 << first + 4 << first + 5
+                    << first + 2 << first + 3 << first + 6 << first + 7;
+            layout.columnsPerRow << 4 << 4;
+        } else {
+            for (int i = 0; i < 8; ++i) {
+                layout.samplerNumbers << first + i;
+            }
+            layout.columnsPerRow << 8;
+        }
+    };
+
+    for (int b = 0; b < blockCount && b < kNumExpandKeys; ++b) {
+        const int firstSamplerNumber = b * 8 + 1;
+        addBlock(firstSamplerNumber, expandStates[b]);
+    }
+
+    return layout;
+}
+
+void WCueMenuPopup::clearExportToSamplerButtons() {
+    // remove buttons first
+    for (auto& btn : m_pExportToSamplerButtons) {
+        if (btn) {
+            btn->setParent(nullptr);
+            btn->deleteLater();
+        }
+    }
+    m_pExportToSamplerButtons.clear();
+
+    // remove rows from the layout and delete them
+    for (QHBoxLayout* pRow : m_pSamplerButtonRows) {
+        if (!pRow) {
+            continue;
+        }
+        while (pRow->count() > 0) {
+            QLayoutItem* pItem = pRow->takeAt(0);
+            delete pItem;
+        }
+        if (m_pLeftLayout) {
+            m_pLeftLayout->removeItem(pRow);
+        }
+        delete pRow;
+    }
+    m_pSamplerButtonRows.clear();
+}
+
+// void WCueMenuPopup::rebuildExportToSamplerButtons() {
+//     qDebug() << "[WCUEMENUPOPUP] -> rebuildExportToSamplerButtons:"
+//              << "m_pLeftLayout=" << m_pLeftLayout;
+//
+//     clearExportToSamplerButtons();
+//
+//     if (!m_pLeftLayout) {
+//         qWarning() << "[WCUEMENUPOPUP] -> m_pLeftLayout is null, bailing";
+//         return;
+//     }
+//
+//     if (!m_pLeftLayout) {
+//         return;
+//     }
+//
+//     const SamplerLayout layout = currentSamplerLayout();
+//
+//     qDebug() << "[WCUEMENUPOPUP] -> layout:"
+//              << "samplerNumbers=" << layout.samplerNumbers
+//              << "columnsPerRow=" << layout.columnsPerRow;
+//
+//     if (layout.samplerNumbers.isEmpty()) {
+//         return;
+//     }
+//
+//     int pos = 0;
+//     for (int cols : layout.columnsPerRow) {
+//         auto* pRow = new QHBoxLayout();
+//         for (int c = 0; c < cols && pos < layout.samplerNumbers.size();
+//                 ++c, ++pos) {
+//             const int samplerNumber = layout.samplerNumbers[pos];
+//
+//             auto btn = std::make_unique<CueMenuPushButton>(this);
+//             btn->setText(QString::number(samplerNumber));
+//             btn->setMinimumSize(22, 18);
+//             btn->setToolTip(
+//                     tr("Export this hotcue/loop as sample to sampler %1")
+//                             .arg(samplerNumber));
+//             btn->setObjectName(
+//                     QStringLiteral("CueExportToSampler%1").arg(samplerNumber));
+//             connect(btn.get(), &QPushButton::clicked, this, [this, samplerNumber]() {
+//                 slotExportToSampler(samplerNumber - 1);
+//             });
+//
+//             pRow->addWidget(btn.get(), 1);
+//             m_pExportToSamplerButtons.push_back(std::move(btn));
+//         }
+//         m_pSamplerButtonRows.push_back(pRow);
+//         m_pLeftLayout->addLayout(pRow);
+//     }
+//
+//     updateExportToSamplerButtons();
+// }
+
+void WCueMenuPopup::rebuildExportToSamplerButtons() {
+    qDebug() << "[WCUEMENUPOPUP] -> rebuildExportToSamplerButtons:"
+             << "m_pLeftLayout=" << m_pLeftLayout;
+
+    clearExportToSamplerButtons();
+
+    if (!m_pLeftLayout) {
+        qWarning() << "[WCUEMENUPOPUP] -> m_pLeftLayout is null, bailing";
+        return;
+    }
+
+    const SamplerLayout layout = currentSamplerLayout();
+
+    qDebug() << "[WCUEMENUPOPUP] -> layout:"
+             << "samplerNumbers=" << layout.samplerNumbers
+             << "columnsPerRow=" << layout.columnsPerRow;
+
+    if (layout.samplerNumbers.isEmpty()) {
+        return;
+    }
+
+    PlayerManager* pPlayerManager = PlayerManager::instance();
+
+    int pos = 0;
+    for (int cols : layout.columnsPerRow) {
+        auto* pRow = new QHBoxLayout();
+        for (int c = 0; c < cols && pos < layout.samplerNumbers.size();
+                ++c, ++pos) {
+            const int samplerNumber = layout.samplerNumbers[pos];
+
+            auto btn = std::make_unique<CueMenuPushButton>(this);
+            btn->setText(QString::number(samplerNumber));
+            btn->setMinimumSize(22, 18);
+            btn->setToolTip(
+                    tr("Export this hotcue/loop as sample to sampler %1")
+                            .arg(samplerNumber));
+            btn->setObjectName(
+                    QStringLiteral("CueExportToSampler%1").arg(samplerNumber));
+            connect(btn.get(), &QPushButton::clicked, this, [this, samplerNumber]() {
+                slotExportToSampler(samplerNumber - 1);
+            });
+
+            // the gred shows colours for the sampler state:
+            // -> black = empty sampler
+            // -> red text if a track is loaded in the sampler, not playing
+            // -> orange background if the sampler is currently playing a NON-LOOP.
+            // -> red background if the sampler is currently playing a LOOP
+            if (pPlayerManager) {
+                const QString group =
+                        PlayerManager::groupForSampler(samplerNumber - 1);
+                const bool hasTrack = samplerHasLoadedTrack(pPlayerManager, group);
+                const bool isPlaying = samplerIsPlaying(group);
+                const bool isLooping = isPlaying && samplerIsLooping(group);
+
+                if (isLooping) {
+                    // Playing a loop
+                    btn->setStyleSheet(QStringLiteral(
+                            "background-color: #800000; color: #ffffff;"));
+                } else if (isPlaying) {
+                    // Playing a one-shot
+                    btn->setStyleSheet(QStringLiteral(
+                            "background-color: #b06000; color: #ffffff;"));
+                } else if (hasTrack) {
+                    // Loaded but stopped
+                    btn->setStyleSheet(QStringLiteral("color: #ff4040;"));
+                }
+            }
+
+            pRow->addWidget(btn.get(), 1);
+            m_pExportToSamplerButtons.push_back(std::move(btn));
+        }
+        m_pSamplerButtonRows.push_back(pRow);
+        m_pLeftLayout->addLayout(pRow);
+    }
+
+    updateExportToSamplerButtons();
+}
+
+bool WCueMenuPopup::samplerIsPlaying(const QString& group) const {
+    ControlObject* pPlay = ControlObject::getControl(
+            ConfigKey(group, QStringLiteral("play")),
+            ControlFlag::AllowMissingOrInvalid);
+    return pPlay && pPlay->toBool();
+}
+
+bool WCueMenuPopup::samplerHasLoadedTrack(
+        PlayerManager* pPlayerManager, const QString& group) const {
+    if (!pPlayerManager) {
+        return false;
+    }
+    BaseTrackPlayer* pPlayer = pPlayerManager->getPlayer(group);
+    if (!pPlayer) {
+        return false;
+    }
+    return pPlayer->getLoadedTrack() != nullptr;
+}
+
+bool WCueMenuPopup::samplerIsLooping(const QString& group) const {
+    ControlObject* pRepeat = ControlObject::getControl(
+            ConfigKey(group, QStringLiteral("repeat")),
+            ControlFlag::AllowMissingOrInvalid);
+    return pRepeat && pRepeat->toBool();
+}
+
 void WCueMenuPopup::setTrackCueGroup(
         TrackPointer pTrack, const CuePointer& pCue, const QString& group) {
     if (!pTrack || !pCue) {
@@ -333,6 +926,7 @@ void WCueMenuPopup::setTrackCueGroup(
         m_pQuantizeEnabled = PollingControlProxy(group, "quantize");
     }
     slotUpdate();
+    rebuildExportToSamplerButtons();
 }
 
 void WCueMenuPopup::slotUpdate() {
@@ -456,20 +1050,13 @@ void WCueMenuPopup::slotUpdate() {
 }
 
 void WCueMenuPopup::updateExportToSamplerButtons() {
-    PollingControlProxy numSamplers(
-            ConfigKey("[App]", "num_samplers"),
-            ControlFlag::AllowMissingOrInvalid);
-    const int visibleSamplers = numSamplers.valid()
-            ? static_cast<int>(numSamplers.get())
-            : 0;
-
     const bool canExport = m_pCue != nullptr &&
             m_pCue->getStartAndEndPosition().startPosition.isValid();
 
-    for (int i = 0; i < static_cast<int>(m_pExportToSamplerButtons.size()); ++i) {
-        auto& btn = m_pExportToSamplerButtons[i];
-        btn->setVisible(i < visibleSamplers);
-        btn->setEnabled(canExport);
+    for (auto& btn : m_pExportToSamplerButtons) {
+        if (btn) {
+            btn->setEnabled(canExport);
+        }
     }
 }
 
@@ -723,10 +1310,9 @@ QString WCueMenuPopup::buildExportPath(const QString& trackId,
     if (safeTitle.isEmpty()) {
         safeTitle = QStringLiteral("Untitled");
     }
-    // Replace filesystem-unsafe characters with '_'
-    static const QRegularExpression unsafe(QStringLiteral(R"([\\/:*?"<>|])"));
-    safeArtist.replace(unsafe, QStringLiteral("_"));
-    safeTitle.replace(unsafe, QStringLiteral("_"));
+
+    safeArtist.replace(kUnsafeFilenameChars, QStringLiteral("_"));
+    safeTitle.replace(kUnsafeFilenameChars, QStringLiteral("_"));
 
     const QString baseName = QStringLiteral("%1_%2-%3-[%4]")
                                      .arg(trackId,
@@ -792,17 +1378,19 @@ bool WCueMenuPopup::exportLoopByStreamCopy(const QString& src,
          << QStringLiteral("-i") << src;
 
     if (isStemFile) {
-        // Mixdown is stream 0 in the stem container.
+        // stream 0 in the stem container
         args << QStringLiteral("-map") << QStringLiteral("0:0");
     } else {
-        // Pick the first audio stream only, ignoring video/cover-art streams.
+        // 1st audio stream, ignore video/cover-art
         args << QStringLiteral("-map") << QStringLiteral("0:a:0");
     }
 
-    // Set the container metadata title so the exported sample is
-    // distinguishable from the original track in the library.
+    // set metadata title to distinguish the exported sample from the original track in the library
+    // add a Mixxx-genre tag to easu retrieve & delete exported samples from the library later
     args << QStringLiteral("-metadata")
-         << QStringLiteral("title=%1").arg(title);
+         << QStringLiteral("title=%1").arg(title)
+         << QStringLiteral("-metadata")
+         << QStringLiteral("genre=Mixxx-Exported-HotCue-To-Sampler");
 
     args << QStringLiteral("-c:a") << QStringLiteral("copy")
          << QStringLiteral("-y") << dst;
@@ -835,7 +1423,7 @@ bool WCueMenuPopup::exportLoopByStreamCopy(const QString& src,
                     qWarning() << "[WCUEMENUPOPUP] -> Sample Export: ffmpeg error"
                                << proc->readAllStandardError();
                 } else {
-                    qDebug() << "[WCUEMENUPOPUP] -> Sample Export: wrote" << dst;
+                    qDebug() << "[WCUEMENUPOPUP] -> Sample Export: " << dst;
                 }
                 proc->deleteLater();
             });
@@ -891,10 +1479,17 @@ bool WCueMenuPopup::exportLoopByRendering(const mixxx::audio::FramePos& start,
          << QStringLiteral("-t") << QString::number(durationSec, 'f', 6)
          << QStringLiteral("-i") << src;
 
-    // amix divides each input by the number of inputs (default in all
-    // ffmpeg versions, including those that lack the 'normalize' option
-    // added in 5.0). Pre-multiply each gain by numInputs so amix's
+    // stream 0 is original premix, streams 1..4 the individual stems.
+    // only use render path when 1+ stems are muted or have a volume other than 1.0.
+    // -> original premix is ignored
+    //
+    // not all ffmpeg versions support normalize in amix,
+    // -> we need to compensate for the division by the number of inputs ourselves.
+    // amix divides each input by the number of inputs
+    // = default in all ffmpeg versions
+    // -> pre-multiply each gain by numInputs so amix
     // division cancels out and the output is the plain weighted sum.
+
     constexpr int numInputs = 5;
     constexpr double amixCompensation = static_cast<double>(numInputs);
 
@@ -910,10 +1505,12 @@ bool WCueMenuPopup::exportLoopByRendering(const mixxx::audio::FramePos& start,
     args << QStringLiteral("-filter_complex") << filterParts.join(';')
          << QStringLiteral("-map") << QStringLiteral("[out]");
 
-    // Set the container metadata title so the exported sample is
-    // distinguishable from the original track in the library.
+    // set metadata title to distinguish the exported sample from the original track in the library
+    // add a Mixxx-genre tag to easu retrieve & delete exported samples from the library later
     args << QStringLiteral("-metadata")
-         << QStringLiteral("title=%1").arg(title);
+         << QStringLiteral("title=%1").arg(title)
+         << QStringLiteral("-metadata")
+         << QStringLiteral("genre=Mixxx-Exported-HotCue-To-Sampler");
 
     args << QStringLiteral("-c:a") << QStringLiteral("pcm_f32le")
          << QStringLiteral("-y") << dst;
@@ -948,7 +1545,7 @@ bool WCueMenuPopup::exportLoopByRendering(const mixxx::audio::FramePos& start,
                     qWarning() << "[WCUEMENUPOPUP] -> Sample Export: ffmpeg error"
                                << proc->readAllStandardError();
                 } else {
-                    qDebug() << "[WCUEMENUPOPUP] -> Sample Export: wrote" << dst;
+                    qDebug() << "[WCUEMENUPOPUP] -> Sample Export: " << dst;
                 }
                 proc->deleteLater();
             });
@@ -974,12 +1571,14 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
         return QString();
     }
 
-    // Compute the export range.
-    // -> Loop with a valid forward range: use the loop range
-    // -> Everything else (plain hotcue, jump, loop with broken range):
-    // -> Hardcoded 5 seconds from the cue position
+    // compute the export range.
+    // -> loop with a valid forward range: use the loop range
+    // -> savedjump with a valid (positive) range: use the jump range
+    // -> else: normal hotcue =  loop with broken range
+    // -> preference sample length from the cue position
     mixxx::audio::FramePos endPosition;
-    if (m_pCue->getType() == mixxx::CueType::Loop &&
+    if (((m_pCue->getType() == mixxx::CueType::Loop) ||
+                (m_pCue->getType() == mixxx::CueType::Jump)) &&
             pos.endPosition.isValid() &&
             pos.endPosition > pos.startPosition) {
         endPosition = pos.endPosition;
@@ -988,8 +1587,10 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
         if (sampleRate <= 0.0) {
             return QString();
         }
+        const int sampleLengthSec = m_pConfig->getValue(
+                ConfigKey("[Controls]", "NonLoopSampleLengthSec"), 5);
         endPosition = pos.startPosition +
-                mixxx::audio::FrameDiff_t(sampleRate * 5.0);
+                mixxx::audio::FrameDiff_t(sampleRate * sampleLengthSec);
     }
 
     if (endPosition <= pos.startPosition) {
@@ -1019,7 +1620,7 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
     const TrackId trackId = m_pTrack->getId();
     const QString artist = m_pTrack->getArtist();
     const QString title = m_pTrack->getTitle();
-    const int hotcueNumber = m_pCue->getHotCue() + 1; // 1-based
+    const int hotcueNumber = m_pCue->getHotCue() + 1;
 
     QString tag;
     if (m_pCue->getType() == mixxx::CueType::Loop) {
@@ -1030,6 +1631,24 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
                       .arg(hotcueNumber, 2, 10, QChar('0'));
     }
 
+    // a changed cue produces a different signature, if eg the file is locked on windows
+    // we can't replacethe previous exported sample.
+    // To check if the existing file can be reused we add a hash,
+    // if new cue parameters produce a different hash, we export a new file
+    // -> all done to avoid a lot of samples being imported in the library
+    QString sigInput = QStringLiteral("%1|%2|%3")
+                               .arg(pos.startPosition.value())
+                               .arg(endPosition.value())
+                               .arg(untouchedMix ? 1 : 0);
+    for (double g : stemGains) {
+        sigInput += QStringLiteral("|%1").arg(g, 0, 'f', 4);
+    }
+    const QByteArray sigHash = QCryptographicHash::hash(
+            sigInput.toUtf8(), QCryptographicHash::Sha1);
+    const QString signature = QString::fromLatin1(sigHash.toHex().left(6));
+
+    const QString tagWithSig = tag + QStringLiteral("-") + signature;
+
     const QString exportTitle = QStringLiteral("%1 [%2]")
                                         .arg(title, tag);
 
@@ -1037,12 +1656,12 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
             ? buildExportPath(trackId.toString(),
                       artist,
                       title,
-                      tag,
+                      tagWithSig,
                       srcInfo.suffix())
             : buildExportPath(trackId.toString(),
                       artist,
                       title,
-                      tag,
+                      tagWithSig,
                       QStringLiteral("wav"));
 
     if (dst.isEmpty()) {
@@ -1050,15 +1669,14 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
         return QString();
     }
 
-    // If the file is already loaded in a sampler, reuse it. This avoids
-    // the Windows "file is open" lock and skips redundant ffmpeg work.
-    // Note: reusing also means a changed cue won't be re-exported if
-    // a sampler still holds the old file. That's an acceptable
-    // limitation for now -- users who need a fresh export can eject
-    // the sampler first.
-    if (QFile::exists(dst) && isFileLoadedInAnySampler(dst)) {
-        qDebug() << "[WCUEMENUPOPUP] -> Sample Export: file already loaded"
-                 << "in a sampler, reusing" << dst;
+    // If the file already exists with this exact signature,
+    // the export is unchanged
+    // -> reuse it as it is.
+    // -> when the file is currently loaded in a sampler: no need to eject or reload.
+
+    if (QFile::exists(dst)) {
+        qDebug() << "[WCUEMENUPOPUP] -> Sample Export: unchanged export exists,"
+                 << "reusing" << dst;
         return dst;
     }
 
@@ -1069,7 +1687,8 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
              << "untouchedMix=" << untouchedMix
              << "hasStems=" << hasStems
              << "start=" << pos.startPosition.value()
-             << "end=" << endPosition.value();
+             << "end=" << endPosition.value()
+             << "signature=" << signature;
 
     bool ok = false;
     if (untouchedMix) {
@@ -1091,7 +1710,12 @@ QString WCueMenuPopup::exportCueToFile(bool blocking) {
                 blocking);
     }
 
-    return ok ? dst : QString();
+    if (!ok) {
+        qWarning() << "[WCUEMENUPOPUP] -> Sample Export: export failed";
+        return QString();
+    }
+
+    return dst;
 }
 
 void WCueMenuPopup::slotExportCue() {
@@ -1108,6 +1732,37 @@ void WCueMenuPopup::slotExportToSampler(int samplerIndex) {
         return;
     }
 
+    PlayerManager* pPlayerManager = PlayerManager::instance();
+    if (!pPlayerManager) {
+        qWarning() << "[WCUEMENUPOPUP] -> Sample Export: No PlayerManager instance available";
+        hide();
+        return;
+    }
+
+    // Block export to a sampler that's currently playing.
+    // Loading a track into a playing sampler stops playback, which is
+    // disruptive during a live set and will make the audience booing,
+    // DJs don't like boohoo.
+
+    // const QString targetGroup = PlayerManager::groupForSampler(samplerIndex);
+    // ControlObject* pPlay = ControlObject::getControl(
+    //         ConfigKey(targetGroup, QStringLiteral("play")),
+    //         ControlFlag::AllowMissingOrInvalid);
+    // if (pPlay && pPlay->toBool()) {
+    //     qWarning() << "[WCUEMENUPOPUP] -> Sample Export: target sampler"
+    //                << (samplerIndex + 1) << "is playing, refusing to export";
+    //     hide();
+    //     return;
+    // }
+
+    const QString targetGroup = PlayerManager::groupForSampler(samplerIndex);
+    if (samplerIsPlaying(targetGroup)) {
+        qWarning() << "[WCUEMENUPOPUP] -> Sample Export: target sampler"
+                   << (samplerIndex + 1) << "is playing, refusing to export";
+        hide();
+        return;
+    }
+
     const QString path = exportCueToFile(/*blocking=*/true);
     if (path.isEmpty()) {
         qWarning() << "[WCUEMENUPOPUP] -> Sample Export to sampler"
@@ -1116,24 +1771,14 @@ void WCueMenuPopup::slotExportToSampler(int samplerIndex) {
         return;
     }
 
-    PlayerManager* pPlayerManager = PlayerManager::instance();
-    if (!pPlayerManager) {
-        qWarning() << "[WCUEMENUPOPUP] -> Sample Export: No PlayerManager instance available";
-        hide();
-        return;
-    }
-
     pPlayerManager->slotLoadToSampler(path, samplerIndex + 1);
 
-    // Enable repeat on the sampler for loop cues so it loops instead of
-    // playing once. groupForSampler takes a 0-indexed argument.
-    const QString samplerGroup = PlayerManager::groupForSampler(samplerIndex);
+    // enable repeat on the sampler for loop cues
     const double repeatValue =
             (m_pCue->getType() == mixxx::CueType::Loop) ? 1.0 : 0.0;
-    ControlObject::set(ConfigKey(samplerGroup, QStringLiteral("repeat")),
+    ControlObject::set(ConfigKey(targetGroup, QStringLiteral("repeat")),
             repeatValue);
-    ControlObject::set(ConfigKey("[Playlist]", QStringLiteral("ToggleSelectedSidebarItem")),
-            1);
+    ControlObject::set(ConfigKey("[Playlist]", QStringLiteral("ToggleSelectedSidebarItem")), 1);
 
     hide();
 }
@@ -1146,11 +1791,14 @@ bool WCueMenuPopup::isFileLoadedInAnySampler(const QString& path) const {
 
     const unsigned int numSamplers = pPlayerManager->numberOfSamplers();
     for (unsigned int i = 1; i <= numSamplers; ++i) {
-        Sampler* pSampler = pPlayerManager->getSampler(i);
-        if (!pSampler) {
+        // only call getSampler when we know the index is valid
+        // -> numberOfSamplers() = configured count
+        const QString group = PlayerManager::groupForSampler(i - 1);
+        BaseTrackPlayer* pPlayer = pPlayerManager->getPlayer(group);
+        if (!pPlayer) {
             continue;
         }
-        TrackPointer pLoadedTrack = pSampler->getLoadedTrack();
+        TrackPointer pLoadedTrack = pPlayer->getLoadedTrack();
         if (pLoadedTrack && pLoadedTrack->getLocation() == path) {
             return true;
         }

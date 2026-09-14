@@ -103,6 +103,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
 
     void slotDownSampleUpSampleModeSelected(QAbstractButton*);
 
+    void slotNonLoopSampleLengthChanged(int value);
+
   private:
     // Because the CueDefault list is out of order, we have to set the combo
     // box using the user data, not the index.  Returns the index of the item
@@ -162,4 +164,6 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
     bool m_bUpSampleStems;
+
+    int m_iNonLoopSampleLengthSec;
 };

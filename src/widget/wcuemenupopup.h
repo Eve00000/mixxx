@@ -1,9 +1,11 @@
 #pragma once
 
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QVBoxLayout>
 #include <array>
 #include <vector>
 
@@ -16,6 +18,11 @@
 
 class ControlProxy;
 class PlayerManager;
+
+struct SamplerLayout {
+    QList<int> samplerNumbers; // sampler nrs in visual order
+    QList<int> columnsPerRow;  // columns in each row
+};
 
 // Custom PushButton which emit a custom signal when right-clicked
 class CueMenuPushButton : public QPushButton {
@@ -156,8 +163,20 @@ class WCueMenuPopup : public QWidget {
 
     bool isFileLoadedInAnySampler(const QString& path) const;
 
-    std::vector<std::unique_ptr<CueMenuPushButton>> m_pExportToSamplerButtons;
     PlayerManager* m_pPlayerManager = nullptr;
+
+    SamplerLayout currentSamplerLayout() const;
+    void rebuildExportToSamplerButtons();
+    void clearExportToSamplerButtons();
+
+    std::vector<std::unique_ptr<CueMenuPushButton>> m_pExportToSamplerButtons;
+    std::vector<QHBoxLayout*> m_pSamplerButtonRows;
+    QVBoxLayout* m_pLeftLayout = nullptr;
+
+    bool samplerIsPlaying(const QString& group) const;
+    bool samplerHasLoadedTrack(PlayerManager* pPlayerManager,
+            const QString& group) const;
+    bool samplerIsLooping(const QString& group) const;
 
   protected:
     void closeEvent(QCloseEvent* event) override;

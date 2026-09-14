@@ -1,6 +1,7 @@
 #include "preferences/dialog/dlgprefdeck.h"
 
 #include <QDoubleSpinBox>
+#include <QSpinBox>
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
@@ -45,6 +46,8 @@ const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems =
 
 constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems = false;
 
+const QString kDefaultNonLoopSampleLengthConfigKey = QStringLiteral("NonLoopSampleLengthSec");
+constexpr int kDefaultNonLoopSampleLengthSec = 5;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -239,6 +242,19 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotCloneDeckOnLoadDoubleTapCheckbox);
 
+    // Non-loop sample export length
+    m_iNonLoopSampleLengthSec = m_pConfig->getValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            kDefaultNonLoopSampleLengthSec);
+    if (m_iNonLoopSampleLengthSec <= 0) {
+        m_iNonLoopSampleLengthSec = kDefaultNonLoopSampleLengthSec;
+    }
+    spinBoxNonLoopSampleLength->setValue(m_iNonLoopSampleLengthSec);
+    connect(spinBoxNonLoopSampleLength,
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            &DlgPrefDeck::slotNonLoopSampleLengthChanged);
+
     m_bRateDownIncreasesSpeed = m_pConfig->getValue(ConfigKey("[Controls]", "RateDir"), true);
     setRateDirectionForAllDecks(m_bRateDownIncreasesSpeed);
     checkBoxInvertSpeedSlider->setChecked(m_bRateDownIncreasesSpeed);
@@ -432,6 +448,10 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
 
+    spinBoxNonLoopSampleLength->setValue(
+            m_pConfig->getValue(ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+                    kDefaultNonLoopSampleLengthSec));
+
     // NowPlaying settings
     m_bNowPlayingEnabled = m_pConfig->getValue(
             kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
@@ -579,6 +599,8 @@ void DlgPrefDeck::slotUpdate() {
     } else {
         radioButtonResetUnlockedKey->setChecked(true);
     }
+
+    spinBoxNonLoopSampleLength->setValue(kDefaultNonLoopSampleLengthSec);
 
     int reset = m_pConfig->getValue(ConfigKey("[Controls]", "SpeedAutoReset"),
             static_cast<int>(BaseTrackPlayer::RESET_PITCH));
@@ -928,6 +950,9 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(ConfigKey("[Controls]", "RateTempRight"), m_dRateTempFine);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermLeft"), m_dRatePermCoarse);
     m_pConfig->setValue(ConfigKey("[Controls]", "RatePermRight"), m_dRatePermFine);
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            m_iNonLoopSampleLengthSec);
 
     // nowPlaying
     m_pConfig->setValue(kConfigKeyNowPlayingEnabled, m_bNowPlayingEnabled);
@@ -1026,6 +1051,10 @@ void DlgPrefDeck::slotUpdateSpeedAutoReset(bool b) {
 
 void DlgPrefDeck::slotUpdatePitchAutoReset(bool b) {
     m_pitchAutoReset = b;
+}
+
+void DlgPrefDeck::slotNonLoopSampleLengthChanged(int value) {
+    m_iNonLoopSampleLengthSec = value;
 }
 
 int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
