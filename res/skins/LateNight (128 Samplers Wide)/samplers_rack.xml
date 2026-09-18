@@ -1,0 +1,541 @@
+<Template>
+  <SetVariable name="BtnType"><Variable name="SubRegion_BtnType"/></SetVariable>
+
+  <!-- Create Singletons for samplers 1-4 because they're needed when
+    showing 4 or 8 samplers... -->
+  <Template src="skins:LateNight/samplers/singletons.xml"/>
+  <!-- ...the create a singleton for samplers_8decks.xml because it's used
+    when showing 8 or 16 samplers. -->
+  <SingletonDefinition>
+    <ObjectName>Samplers_1-8</ObjectName>
+    <Children>
+      <Template src="skins:LateNight/samplers/samplers_8decks.xml">
+        <SetVariable name="Count">1-8</SetVariable>
+      </Template>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_9-16</ObjectName>
+    <Children>
+      <Template src="skins:LateNight/samplers/samplers_row.xml">
+        <SetVariable name="Count">9-16</SetVariable>
+        <SetVariable name="Sampler1">9</SetVariable>
+        <SetVariable name="Sampler2">10</SetVariable>
+        <SetVariable name="Sampler3">11</SetVariable>
+        <SetVariable name="Sampler4">12</SetVariable>
+        <SetVariable name="Sampler5">13</SetVariable>
+        <SetVariable name="Sampler6">14</SetVariable>
+        <SetVariable name="Sampler7">15</SetVariable>
+        <SetVariable name="Sampler8">16</SetVariable>
+      </Template>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_17-32</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">17-24</SetVariable>
+            <SetVariable name="Sampler1">17</SetVariable>
+            <SetVariable name="Sampler2">18</SetVariable>
+            <SetVariable name="Sampler3">19</SetVariable>
+            <SetVariable name="Sampler4">20</SetVariable>
+            <SetVariable name="Sampler5">21</SetVariable>
+            <SetVariable name="Sampler6">22</SetVariable>
+            <SetVariable name="Sampler7">23</SetVariable>
+            <SetVariable name="Sampler8">24</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">25-32</SetVariable>
+            <SetVariable name="Sampler1">25</SetVariable>
+            <SetVariable name="Sampler2">26</SetVariable>
+            <SetVariable name="Sampler3">27</SetVariable>
+            <SetVariable name="Sampler4">28</SetVariable>
+            <SetVariable name="Sampler5">29</SetVariable>
+            <SetVariable name="Sampler6">30</SetVariable>
+            <SetVariable name="Sampler7">31</SetVariable>
+            <SetVariable name="Sampler8">32</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_33-48</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">33-40</SetVariable>
+            <SetVariable name="Sampler1">33</SetVariable>
+            <SetVariable name="Sampler2">34</SetVariable>
+            <SetVariable name="Sampler3">35</SetVariable>
+            <SetVariable name="Sampler4">36</SetVariable>
+            <SetVariable name="Sampler5">37</SetVariable>
+            <SetVariable name="Sampler6">38</SetVariable>
+            <SetVariable name="Sampler7">39</SetVariable>
+            <SetVariable name="Sampler8">40</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">41-48</SetVariable>
+            <SetVariable name="Sampler1">41</SetVariable>
+            <SetVariable name="Sampler2">42</SetVariable>
+            <SetVariable name="Sampler3">43</SetVariable>
+            <SetVariable name="Sampler4">44</SetVariable>
+            <SetVariable name="Sampler5">45</SetVariable>
+            <SetVariable name="Sampler6">46</SetVariable>
+            <SetVariable name="Sampler7">47</SetVariable>
+            <SetVariable name="Sampler8">48</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_49-64</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">49-56</SetVariable>
+            <SetVariable name="Sampler1">49</SetVariable>
+            <SetVariable name="Sampler2">50</SetVariable>
+            <SetVariable name="Sampler3">51</SetVariable>
+            <SetVariable name="Sampler4">52</SetVariable>
+            <SetVariable name="Sampler5">53</SetVariable>
+            <SetVariable name="Sampler6">54</SetVariable>
+            <SetVariable name="Sampler7">55</SetVariable>
+            <SetVariable name="Sampler8">56</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">57-64</SetVariable>
+            <SetVariable name="Sampler1">57</SetVariable>
+            <SetVariable name="Sampler2">58</SetVariable>
+            <SetVariable name="Sampler3">59</SetVariable>
+            <SetVariable name="Sampler4">60</SetVariable>
+            <SetVariable name="Sampler5">61</SetVariable>
+            <SetVariable name="Sampler6">62</SetVariable>
+            <SetVariable name="Sampler7">63</SetVariable>
+            <SetVariable name="Sampler8">64</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_65-80</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">65-72</SetVariable>
+            <SetVariable name="Sampler1">65</SetVariable>
+            <SetVariable name="Sampler2">66</SetVariable>
+            <SetVariable name="Sampler3">67</SetVariable>
+            <SetVariable name="Sampler4">68</SetVariable>
+            <SetVariable name="Sampler5">69</SetVariable>
+            <SetVariable name="Sampler6">70</SetVariable>
+            <SetVariable name="Sampler7">71</SetVariable>
+            <SetVariable name="Sampler8">72</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">73-80</SetVariable>
+            <SetVariable name="Sampler1">73</SetVariable>
+            <SetVariable name="Sampler2">74</SetVariable>
+            <SetVariable name="Sampler3">75</SetVariable>
+            <SetVariable name="Sampler4">76</SetVariable>
+            <SetVariable name="Sampler5">77</SetVariable>
+            <SetVariable name="Sampler6">78</SetVariable>
+            <SetVariable name="Sampler7">79</SetVariable>
+            <SetVariable name="Sampler8">80</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_81-96</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">81-88</SetVariable>
+            <SetVariable name="Sampler1">81</SetVariable>
+            <SetVariable name="Sampler2">82</SetVariable>
+            <SetVariable name="Sampler3">83</SetVariable>
+            <SetVariable name="Sampler4">84</SetVariable>
+            <SetVariable name="Sampler5">85</SetVariable>
+            <SetVariable name="Sampler6">86</SetVariable>
+            <SetVariable name="Sampler7">87</SetVariable>
+            <SetVariable name="Sampler8">88</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">89-96</SetVariable>
+            <SetVariable name="Sampler1">89</SetVariable>
+            <SetVariable name="Sampler2">90</SetVariable>
+            <SetVariable name="Sampler3">91</SetVariable>
+            <SetVariable name="Sampler4">92</SetVariable>
+            <SetVariable name="Sampler5">93</SetVariable>
+            <SetVariable name="Sampler6">94</SetVariable>
+            <SetVariable name="Sampler7">95</SetVariable>
+            <SetVariable name="Sampler8">96</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_97-112</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">97-104</SetVariable>
+            <SetVariable name="Sampler1">97</SetVariable>
+            <SetVariable name="Sampler2">98</SetVariable>
+            <SetVariable name="Sampler3">99</SetVariable>
+            <SetVariable name="Sampler4">100</SetVariable>
+            <SetVariable name="Sampler5">101</SetVariable>
+            <SetVariable name="Sampler6">102</SetVariable>
+            <SetVariable name="Sampler7">103</SetVariable>
+            <SetVariable name="Sampler8">104</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">105-112</SetVariable>
+            <SetVariable name="Sampler1">105</SetVariable>
+            <SetVariable name="Sampler2">106</SetVariable>
+            <SetVariable name="Sampler3">107</SetVariable>
+            <SetVariable name="Sampler4">108</SetVariable>
+            <SetVariable name="Sampler5">109</SetVariable>
+            <SetVariable name="Sampler6">110</SetVariable>
+            <SetVariable name="Sampler7">111</SetVariable>
+            <SetVariable name="Sampler8">112</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>
+
+  <SingletonDefinition>
+    <ObjectName>Samplers_113-128</ObjectName>
+    <Children>
+      <WidgetGroup>
+        <ObjectName></ObjectName>
+        <Layout>vertical</Layout>
+        <SizePolicy>me,min</SizePolicy>
+        <Children>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">113-128</SetVariable>
+            <SetVariable name="Sampler1">113</SetVariable>
+            <SetVariable name="Sampler2">114</SetVariable>
+            <SetVariable name="Sampler3">115</SetVariable>
+            <SetVariable name="Sampler4">116</SetVariable>
+            <SetVariable name="Sampler5">117</SetVariable>
+            <SetVariable name="Sampler6">118</SetVariable>
+            <SetVariable name="Sampler7">119</SetVariable>
+            <SetVariable name="Sampler8">120</SetVariable>
+          </Template>
+          <Template src="skins:LateNight/samplers/samplers_row.xml">
+            <SetVariable name="Count">121-128</SetVariable>
+            <SetVariable name="Sampler1">121</SetVariable>
+            <SetVariable name="Sampler2">122</SetVariable>
+            <SetVariable name="Sampler3">123</SetVariable>
+            <SetVariable name="Sampler4">124</SetVariable>
+            <SetVariable name="Sampler5">125</SetVariable>
+            <SetVariable name="Sampler6">126</SetVariable>
+            <SetVariable name="Sampler7">127</SetVariable>
+            <SetVariable name="Sampler8">128</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </SingletonDefinition>-->
+
+  <WidgetGroup>
+    <Layout>horizontal</Layout>
+    <SizePolicy>me,max</SizePolicy>
+    <Children>
+
+      <WidgetStack currentpage="[LateNight],sampler_rows" persist="true">
+        <Children>
+
+          <!--4 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_4samplers" on_hide_select="1">
+            <Layout>vertical</Layout>
+            <Children>
+              <Template src="skins:LateNight/samplers/samplers_4decks.xml"/>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_4samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--8 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_8samplers" on_hide_select="0">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_8samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--16 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_16samplers" on_hide_select="1">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_16samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--32 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_32samplers" on_hide_select="2">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_32samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--48 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_48samplers" on_hide_select="3">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_48samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--64 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_64samplers" on_hide_select="4">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_49-64</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_64samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--80 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_80samplers" on_hide_select="4">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_49-64</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_65-80</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_80samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--96 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_96samplers" on_hide_select="4">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_49-64</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_65-80</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_81-96</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_96samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--112 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_112samplers" on_hide_select="4">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_49-64</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_65-80</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_81-96</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_97-112</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_112samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+
+          <!--128 Samplers -->
+          <WidgetGroup trigger="[LateNight],show_128samplers" on_hide_select="4">
+            <Layout>vertical</Layout>
+            <Children>
+              <SingletonContainer>
+                <ObjectName>Samplers_1-8</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_9-16</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_17-32</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_33-48</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_49-64</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_65-80</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_81-96</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_97-112</ObjectName>
+              </SingletonContainer>
+              <SingletonContainer>
+                <ObjectName>Samplers_113-128</ObjectName>
+              </SingletonContainer>
+            </Children>
+            <Connection>
+              <ConfigKey>[LateNight],show_128samplers</ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+        </Children>
+      </WidgetStack>
+    </Children>
+    <Connection>
+      <ConfigKey>[Skin],show_samplers</ConfigKey>
+      <BindProperty>visible</BindProperty>
+    </Connection>
+  </WidgetGroup>
+</Template>

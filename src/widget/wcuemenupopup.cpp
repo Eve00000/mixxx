@@ -36,6 +36,10 @@ struct ShowKey {
 };
 
 const ShowKey kShowKeys[] = {
+        {"show_128samplers", 128, 16},
+        {"show_112samplers", 112, 14},
+        {"show_96samplers", 96, 12},
+        {"show_80samplers", 80, 10},
         {"show_64samplers", 64, 8},
         {"show_48samplers", 48, 6},
         {"show_32samplers", 32, 4},
@@ -53,13 +57,21 @@ static const char* const kExpandKeys[] = {
         "expand_samplers_41-48",
         "expand_samplers_49-56",
         "expand_samplers_57-64",
+        "expand_samplers_65-72",
+        "expand_samplers_73-80",
+        "expand_samplers_81-88",
+        "expand_samplers_89-96",
+        "expand_samplers_97-104",
+        "expand_samplers_105-112",
+        "expand_samplers_113-120",
+        "expand_samplers_121-128",
 };
 
 constexpr int kNumExpandKeys = static_cast<int>(std::size(kExpandKeys));
 
 constexpr double kMuteThreshold = 0.0;
 // constexpr int kMaxVisibleSamplerButtons = 16;
-constexpr int kMaxVisibleSamplerButtons = 64;
+constexpr int kMaxVisibleSamplerButtons = 128;
 
 const QRegularExpression kUnsafeFilenameChars(
         QStringLiteral(R"([\\/:*?"<>|])"));
@@ -681,7 +693,15 @@ SamplerLayout WCueMenuPopup::currentSamplerLayout() const {
              << "expand_33_40=" << expandStates[4]
              << "expand_41_48=" << expandStates[5]
              << "expand_49_56=" << expandStates[6]
-             << "expand_57_64=" << expandStates[7];
+             << "expand_57_64=" << expandStates[7]
+             << "expand_65_72=" << expandStates[8]
+             << "expand_73_80=" << expandStates[9]
+             << "expand_81_88=" << expandStates[10]
+             << "expand_89_96=" << expandStates[11]
+             << "expand_97_104=" << expandStates[12]
+             << "expand_105_112=" << expandStates[13]
+             << "expand_113_120=" << expandStates[14]
+             << "expand_121_128=" << expandStates[15];
 
     if (blockCount < 0) {
         return layout;
