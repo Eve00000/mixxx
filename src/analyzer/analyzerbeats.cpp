@@ -23,13 +23,21 @@
 constexpr bool showDebugWAnalyzerBeats = false;
 
 // static
+// QList<mixxx::AnalyzerPluginInfo> AnalyzerBeats::availablePlugins() {
+//    QList<mixxx::AnalyzerPluginInfo> plugins;
+//    // First one below is the default
+//    // Eve added extended as default
+//    // extended = defining segments for curves
+//    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
+//    plugins.append(mixxx::AnalyzerQueenMaryBeats::pluginInfo());
+//    plugins.append(mixxx::AnalyzerSoundTouchBeats::pluginInfo());
+//    return plugins;
+//}
 QList<mixxx::AnalyzerPluginInfo> AnalyzerBeats::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> plugins;
     // First one below is the default
-    // Eve added extended as default
-    // extended = defining segments for curves
-    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
     plugins.append(mixxx::AnalyzerQueenMaryBeats::pluginInfo());
+    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
     plugins.append(mixxx::AnalyzerSoundTouchBeats::pluginInfo());
     return plugins;
 }
@@ -80,10 +88,45 @@ bool AnalyzerBeats::initialize(const AnalyzerTrack& track,
     m_bPreferencesReanalyzeImported = m_bpmSettings.getReanalyzeImported();
     m_bPreferencesFastAnalysis = m_bpmSettings.getFastAnalysis();
 
+    // const auto plugins = availablePlugins();
+    // if (!plugins.isEmpty()) {
+    //     m_pluginId = defaultPlugin().id();
+    //     QString pluginId = m_bpmSettings.getBeatPluginId();
+    //     for (const auto& info : plugins) {
+    //         if (info.id() == pluginId) {
+    //             m_pluginId = pluginId; // configured Plug-In available
+    //             break;
+    //         }
+    //     }
+    // }
+
     const auto plugins = availablePlugins();
     if (!plugins.isEmpty()) {
         m_pluginId = defaultPlugin().id();
         QString pluginId = m_bpmSettings.getBeatPluginId();
+
+        // Short tracks (e.g. sampler hits) don't produce meaningful BPM
+        // segments and have historically crashed the extended analyzer.
+        // Fall back to the plain Queen Mary plugin for them.
+        // constexpr double kMinExtendedAnalysisSeconds = 2.0;
+
+        // Extended analysis produces key/BPM *segments*. Below ~10 s a
+        // track is almost certainly a sampler hit, where segments are
+        // meaningless and have historically produced degenerate data
+        // (empty key text, INVALID keys, 1-beat grids).
+        constexpr double kMinExtendedAnalysisSeconds = 10.0;
+
+        const double trackDurationSeconds =
+                static_cast<double>(frameLength) / sampleRate.toDouble();
+        if (trackDurationSeconds < kMinExtendedAnalysisSeconds &&
+                pluginId ==
+                        mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo().id()) {
+            pluginId = mixxx::AnalyzerQueenMaryBeats::pluginInfo().id();
+            qDebug() << "[AnalyzerBeats] Track is" << trackDurationSeconds
+                     << "s - too short for extended BPM analysis, using"
+                     << pluginId;
+        }
+
         for (const auto& info : plugins) {
             if (info.id() == pluginId) {
                 m_pluginId = pluginId; // configured Plug-In available
@@ -318,9 +361,41 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
         return;
     }
 
+    // mixxx::BeatsPointer pBeats;
+    // if (m_pPlugin->supportsBeatTracking()) {
+    //     QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
+
+    //    // Export beats to CSV
+    //    // uncomment to get the file created
+    //    // exportBeatsToCsv(pTrack, beats, m_sampleRate);
+    //    QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
+    //            m_pluginId, m_bPreferencesFastAnalysis);
+    //    pBeats = BeatFactory::makePreferredBeats(
+    //            beats,
+    //            extraVersionInfo,
+    //            m_bPreferencesFixedTempo,
+    //            m_sampleRate);
+    //    qDebug() << "AnalyzerBeats plugin detected" << beats.size()
+    //             << "beats. Predominant BPM:"
+    //             << (pBeats ? pBeats->getBpmInRange(
+    //                                  mixxx::audio::kStartFramePos,
+    //                                  mixxx::audio::FramePos{
+    //                                          pTrack->getDuration() *
+    //                                          pBeats->getSampleRate()})
+    //                        : mixxx::Bpm());
+    //} else {
     mixxx::BeatsPointer pBeats;
     if (m_pPlugin->supportsBeatTracking()) {
         QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
+
+        // A beat grid needs at least two beats to have a meaningful tempo.
+        // A single beat (common on very short samples) yields Bpm(Invalid)
+        // and corrupts the track's beat grid.
+        if (beats.size() < 2) {
+            qWarning() << "AnalyzerBeats: too few beats (" << beats.size()
+                       << ") - skipping beat grid storage";
+            return;
+        }
 
         // Export beats to CSV
         // uncomment to get the file created
@@ -363,6 +438,24 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
         if (!segmentsArray.isEmpty()) {
             QList<BpmSegmentsPointer> dbSegments;
 
+            // for (const QJsonValue& val : std::as_const(segmentsArray)) {
+            //     if (!val.isObject()) {
+            //         continue;
+            //     }
+
+            //    QJsonObject obj = val.toObject();
+
+            //    BpmSegmentsPointer pSegment(new BpmSegments(
+            //            obj["position"].toDouble(),
+            //            obj["duration"].toDouble(),
+            //            obj["bpm_start"].toDouble(),
+            //            obj["bpm_end"].toDouble(),
+            //            obj["range_start"].toDouble(),
+            //            obj["range_end"].toDouble(),
+            //            obj["type"].toString()));
+            //    dbSegments.append(pSegment);
+            //}
+
             for (const QJsonValue& val : std::as_const(segmentsArray)) {
                 if (!val.isObject()) {
                     continue;
@@ -370,11 +463,22 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
 
                 QJsonObject obj = val.toObject();
 
+                const double bpmStart = obj["bpm_start"].toDouble();
+                const double bpmEnd = obj["bpm_end"].toDouble();
+                const double duration = obj["duration"].toDouble();
+                if (bpmStart <= 0.0 || bpmEnd <= 0.0 || duration <= 0.0) {
+                    qWarning() << "[AnalyzerBeats] Skipping invalid BPM segment:"
+                               << "bpm_start" << bpmStart
+                               << "bpm_end" << bpmEnd
+                               << "duration" << duration;
+                    continue;
+                }
+
                 BpmSegmentsPointer pSegment(new BpmSegments(
                         obj["position"].toDouble(),
-                        obj["duration"].toDouble(),
-                        obj["bpm_start"].toDouble(),
-                        obj["bpm_end"].toDouble(),
+                        duration,
+                        bpmStart,
+                        bpmEnd,
                         obj["range_start"].toDouble(),
                         obj["range_end"].toDouble(),
                         obj["type"].toString()));

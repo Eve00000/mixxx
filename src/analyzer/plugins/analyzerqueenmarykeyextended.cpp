@@ -22,6 +22,7 @@ using mixxx::track::io::key::ChromaticKey;
 namespace mixxx {
 namespace {
 constexpr int kTuningFrequencyHertz = 440;
+constexpr double kMinSegmentDurationSeconds = 2.0;
 } // namespace
 
 AnalyzerPluginInfo AnalyzerQueenMaryKeyExtended::pluginInfo() {
@@ -118,6 +119,13 @@ bool AnalyzerQueenMaryKeyExtended::processSamples(const CSAMPLE* pIn, SINT iLen)
 bool AnalyzerQueenMaryKeyExtended::finalize() {
     m_helper.finalize();
     m_trackDuration = static_cast<double>(m_currentFrame) / m_sampleRate;
+
+    // added to avoid crash when computing segments in small samples exported from hotcues
+    if (m_trackDuration < kMinSegmentDurationSeconds) {
+        qDebug() << "[QueenMaryKeyExtended] Track too short for key segments ("
+                 << m_trackDuration << "s) - skipping";
+        return true;
+    }
 
     // smoothing
     smoothKeyResults();
@@ -228,12 +236,32 @@ void AnalyzerQueenMaryKeyExtended::smoothKeyResults() {
 }
 
 void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
-    if (m_keyResults.empty()) {
+    // added to avoid crash when computing segments in small samples exported from hotcues
+    /*if (m_keyResults.empty()) {
         qDebug() << "[QueenMaryKeyExtended] No key results to build segments";
+        return;
+    }*/
+
+    if (m_keyResults.empty() || m_trackDuration <= 0.0) {
+        qDebug() << "[QueenMaryKeyExtended] No key results to build segments "
+                    "or audiofile is too small";
         return;
     }
 
     m_keySegments.clear();
+
+    /*double lastTime = 0.0;
+    ChromaticKey lastKey = m_keyResults[0].key;
+    double confidenceSum = m_keyResults[0].confidence;
+    int confidenceCount = 1;*/
+
+    // Segments shorter than this are noise, not a key change.
+    constexpr double kMinSegmentSeconds = 0.5;
+
+    auto isUsableKey = [](ChromaticKey key) {
+        const int k = static_cast<int>(key);
+        return k >= 0 && k <= 23;
+    };
 
     double lastTime = 0.0;
     ChromaticKey lastKey = m_keyResults[0].key;
@@ -257,7 +285,20 @@ void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
             seg.confidence = confidenceSum / confidenceCount;
 
             // Only add segments with minimum duration
-            if (seg.duration > 0.1) {
+            /*if (seg.duration > 0.1) {
+                m_keySegments.append(seg);
+
+                qDebug() << "[QueenMaryKeyExtended] Segment:" << seg.startTime << "-" << seg.endTime
+                         << "KeyId:" << static_cast<int>(seg.keyId)
+                         << "KeyText:" << seg.keyText
+                         << "Confidence:" << seg.confidence
+                         << "Duration:" << seg.duration;
+            }*/
+
+            // Only add segments with minimum duration and a valid key
+            if (seg.duration >= kMinSegmentSeconds &&
+                    isUsableKey(seg.keyId) &&
+                    !seg.keyText.isEmpty()) {
                 m_keySegments.append(seg);
 
                 qDebug() << "[QueenMaryKeyExtended] Segment:" << seg.startTime << "-" << seg.endTime
@@ -289,7 +330,19 @@ void AnalyzerQueenMaryKeyExtended::buildKeySegments() {
         seg.type = "STABLE";
         seg.confidence = confidenceSum / confidenceCount;
 
-        if (seg.duration > 0.1) {
+        // if (seg.duration > 0.1) {
+        //     m_keySegments.append(seg);
+        //     qDebug() << "[QueenMaryKeyExtended] Final segment:" << seg.startTime
+        //              << "-" << seg.endTime
+        //              << "KeyId:" << static_cast<int>(seg.keyId)
+        //              << "KeyText:" << seg.keyText
+        //              << "Confidence:" << seg.confidence
+        //              << "Duration:" << seg.duration;
+        // }
+
+        if (seg.duration >= kMinSegmentSeconds &&
+                isUsableKey(seg.keyId) &&
+                !seg.keyText.isEmpty()) {
             m_keySegments.append(seg);
             qDebug() << "[QueenMaryKeyExtended] Final segment:" << seg.startTime
                      << "-" << seg.endTime

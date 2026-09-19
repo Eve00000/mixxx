@@ -512,147 +512,6 @@ Description:
             <ObjectName>SkinSettingsSeparator</ObjectName>
             <Size>1min,12f</Size>
           </WidgetGroup>
-          <!-- Wide / Original Layout --><!--
-          <WidgetGroup>
-            <ObjectName></ObjectName>
-            <SizePolicy>me,f</SizePolicy>
-            <Layout>stacked</Layout>
-            <Children>
-              --><!-- translucent cover when Library is maximized --><!--
-              <Template src="skins:LateNight/helpers/skin_settings_cover.xml">
-                <SetVariable name="Setting">[Skin],show_maximized_library</SetVariable>
-              </Template>
-
-              <WidgetGroup>
-                <SizePolicy>me,min</SizePolicy>
-                <Layout>vertical</Layout>
-                <Children>
-                  <Template src="skins:LateNight/helpers/skin_settings_labelbutton_2state.xml">
-                    <SetVariable name="Text">Wide Layout</SetVariable>
-                    <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
-                    <SetVariable name="TooltipId">toggle_4decks</SetVariable>
-                    <SetVariable name="Width">190me</SetVariable>
-                  </Template>
-                  <WidgetGroup>
-                    <ObjectName>SkinSettingsCategory</ObjectName>
-                    <SizePolicy>me,f</SizePolicy>
-                    <Layout>stacked</Layout>
-                    <Children>
-                      --><!-- translucent cover when Wide layout is not active --><!--
-                      <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
-                        <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <SizePolicy>me,min</SizePolicy>
-                        <Layout>vertical</Layout>
-                        <Children>
-                          <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
-                            <SetVariable name="Text">Library left</SetVariable>
-                            <SetVariable name="Setting">[Skin],wide_layout_library_left</SetVariable>
-                          </Template>
-                          <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
-                            <SetVariable name="Text">Waveforms Bottom</SetVariable>
-                            <SetVariable name="Setting">[Skin],wide_layout_waveforms_bottom</SetVariable>
-                          </Template>
-                        </Children>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
-                </Children>
-              </WidgetGroup>
-            </Children>
-          </WidgetGroup>
-          --><!-- Wide / Original Layout -->
-
-          <!-- Wide / Original Layout --><!--
-          <WidgetGroup>
-            <ObjectName></ObjectName>
-            <SizePolicy>me,f</SizePolicy>
-            <Layout>stacked</Layout>
-            <Children>
-              --><!-- translucent cover when Library is maximized --><!--
-              <Template src="skins:LateNight/helpers/skin_settings_cover.xml">
-                <SetVariable name="Setting">[Skin],show_maximized_library</SetVariable>
-              </Template>
-
-              <WidgetGroup>
-                <SizePolicy>me,min</SizePolicy>
-                <Layout>vertical</Layout>
-                <Children>
-                  <Template src="skins:LateNight/helpers/skin_settings_labelbutton_2state.xml">
-                    <SetVariable name="Text">Wide Layout</SetVariable>
-                    <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
-                    <SetVariable name="TooltipId">toggle_4decks</SetVariable>
-                    <SetVariable name="Width">190me</SetVariable>
-                  </Template>
-                  <WidgetGroup>
-                    <ObjectName>SkinSettingsCategory</ObjectName>
-                    <SizePolicy>me,f</SizePolicy>
-                    <Layout>stacked</Layout>
-                    <Children>
-                      --><!-- translucent cover when Wide layout is not active --><!--
-                      <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
-                        <SetVariable name="Setting">[Skin],show_wide_layout</SetVariable>
-                      </Template>
-                      <WidgetGroup>
-                        <SizePolicy>me,min</SizePolicy>
-                        <Layout>vertical</Layout>
-                        <Children>
-
-                          --><!-- NEW: 3-pane waveform panel toggle --><!--
-                          <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
-                            <SetVariable name="Text">Waveform Panel (3 panes)</SetVariable>
-                            <SetVariable name="Setting">[Skin],wide_layout_waveforms_panel</SetVariable>
-                          </Template>
-
-                          --><!-- 2-pane sub-options --><!--
-                          <WidgetGroup>
-                            <ObjectName>SkinSettingsSubMenu</ObjectName>
-                            <Layout>stacked</Layout>
-                            <Size>180min,36f</Size>
-                            <Children>
-                              --><!-- cover the 2-pane-only sub-option when in 3-pane mode --><!--
-                              <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
-                                <SetVariable name="Setting">[Skin],wide_layout_waveforms_panel</SetVariable>
-                              </Template>
-                              <WidgetGroup>
-                                <Layout>vertical</Layout>
-                                <Children>
-                                  --><!-- applies in both modes --><!--
-                                  <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
-                                    <SetVariable name="Text">Library left</SetVariable>
-                                    <SetVariable name="Setting">[Skin],wide_layout_library_left</SetVariable>
-                                  </Template>
-
-                                  --><!-- 2-pane only: hide behind its own cover --><!--
-                                  <WidgetGroup>
-                                    <ObjectName>SkinSettingsSubMenu</ObjectName>
-                                    <Layout>stacked</Layout>
-                                    <Size>180min,18f</Size>
-                                    <Children>
-                                      <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
-                                        <SetVariable name="Setting">[Skin],wide_layout_waveforms_panel</SetVariable>
-                                      </Template>
-                                      <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
-                                        <SetVariable name="Text">Waveforms Bottom</SetVariable>
-                                        <SetVariable name="Setting">[Skin],wide_layout_waveforms_bottom</SetVariable>
-                                      </Template>
-                                    </Children>
-                                  </WidgetGroup>
-                                </Children>
-                              </WidgetGroup>
-                            </Children>
-                          </WidgetGroup>
-
-                        </Children>
-                      </WidgetGroup>
-                    </Children>
-                  </WidgetGroup>
-                </Children>
-              </WidgetGroup>
-            </Children>
-          </WidgetGroup>
-          --><!-- Wide / Original Layout -->
           <!-- Wide / Original Layout -->
           <WidgetGroup>
             <ObjectName></ObjectName>
@@ -728,6 +587,19 @@ Description:
                               </Template>
                             </Children>
                           </WidgetGroup>
+
+                          <!-- Waveform column height: 3-pane only. -->
+                          <WidgetGroup>
+                            <Layout>stacked</Layout>
+                            <Size>180min,54f</Size>
+                            <Children>
+                              <!-- cover when not in 3-pane mode -->
+                              <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
+                                <SetVariable name="Setting">[Skin],wide_layout_waveforms_panel</SetVariable>
+                              </Template>
+                            </Children>
+                          </WidgetGroup>
+
                         </Children>
                       </WidgetGroup>
                     </Children>

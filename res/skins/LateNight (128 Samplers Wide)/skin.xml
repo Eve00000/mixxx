@@ -955,6 +955,7 @@
                     <!-- Toolbar lives INSIDE the controls/library column. -->
                     <!-- Waveforms pane can be left (pane 1, default) or right (pane 3), -->
                     <!-- controlled by [Skin],wide_layout_waveforms_right. -->
+                    <!-- Waveforms column height is controlled by [Skin],waveforms_split_height. -->
                     <!-- ========================================================= -->
                     <WidgetStack currentpage="[Skin],wide_layout_waveforms_right">
                       <Children>
@@ -967,23 +968,49 @@
                           <Orientation>horizontal</Orientation>
                           <SizePolicy>me,me</SizePolicy>
                           <!-- 3 children: waveforms | toolbar+controls/library | skin_settings -->
-                          <!--<SplitSizes>40,60,0</SplitSizes>-->
                           <SplitSizes>50,50,50,50</SplitSizes>
                           <Collapsible>0,0,0,0</Collapsible>
                           <Children>
 
-                            <!-- Column 1: waveforms -->
-                            <WidgetGroup>
-                              <Layout>vertical</Layout>
-                              <SizePolicy>me,me</SizePolicy>
-                              <Children>
-                                <Template src="skins:LateNight/waveforms_container.xml"/>
-                              </Children>
-                              <Connection>
-                                <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
-                                <BindProperty>visible</BindProperty>
-                              </Connection>
-                            </WidgetGroup>
+                            <!-- Column 1: waveforms, top-anchored, height-bound -->
+                              <!-- Waveforms column: splitter between waveform container and blank -->
+                              <WidgetGroup>
+                                <Layout>vertical</Layout>
+                                <SizePolicy>me,me</SizePolicy>
+                                <Children>
+
+                                  <Splitter>
+                                    <ObjectName>WaveformPanelHeightSplitter</ObjectName>
+                                    <Orientation>vertical</Orientation>
+                                    <SizePolicy>me,me</SizePolicy>
+                                    <SplitSizes>70,30</SplitSizes>
+                                    <Collapsible>0,0</Collapsible>
+                                    <Children>
+
+                                      <!-- waveform container -->
+                                      <WidgetGroup>
+                                        <Layout>vertical</Layout>
+                                        <SizePolicy>me,min</SizePolicy>
+                                        <Children>
+                                          <Template src="skins:LateNight/waveforms_container.xml"/>
+                                        </Children>
+                                      </WidgetGroup>
+
+                                      <!-- blank template: drag the handle to resize the waveform area -->
+                                      <WidgetGroup>
+                                        <Layout>vertical</Layout>
+                                        <SizePolicy>me,me</SizePolicy>
+                                      </WidgetGroup>
+
+                                    </Children>
+                                  </Splitter>
+
+                                </Children>
+                                <Connection>
+                                  <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
+                                  <BindProperty>visible</BindProperty>
+                                </Connection>
+                              </WidgetGroup>
 
                             <!-- Columns 2 & 3: toolbar + controls and library, swapped via -->
                             <!--wide_layout_library_left. Each page is itself a Splitter so the -->
@@ -1033,9 +1060,16 @@
                                                 <Template src="skins:LateNight/decks/decks_right.xml"/>
                                               </Children>
                                             </WidgetGroup>
+
                                             <Template src="skins:LateNight/wide_fx_rack.xml"/>
                                             <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                             <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                            <!-- bottom spacer: top-aligns controls -->
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,me</SizePolicy>
+                                            </WidgetGroup>
                                           </Children>
                                         </WidgetGroup>
 
@@ -1116,9 +1150,16 @@
                                                 <Template src="skins:LateNight/decks/decks_right.xml"/>
                                               </Children>
                                             </WidgetGroup>
+
                                             <Template src="skins:LateNight/wide_fx_rack.xml"/>
                                             <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                             <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                            <!-- bottom spacer: top-aligns controls -->
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,me</SizePolicy>
+                                            </WidgetGroup>
                                           </Children>
                                         </WidgetGroup>
 
@@ -1147,7 +1188,6 @@
                           <Orientation>horizontal</Orientation>
                           <SizePolicy>me,me</SizePolicy>
                           <!-- 3 children: toolbar+controls/library | waveforms | skin_settings -->
-                          <!--<SplitSizes>40,60,0</SplitSizes>-->
                           <SplitSizes>50,50,50,50</SplitSizes>
                           <Collapsible>0,0,0,0</Collapsible>
                           <Children>
@@ -1199,9 +1239,16 @@
                                                 <Template src="skins:LateNight/decks/decks_right.xml"/>
                                               </Children>
                                             </WidgetGroup>
+
                                             <Template src="skins:LateNight/wide_fx_rack.xml"/>
                                             <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                             <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                            <!-- bottom spacer: top-aligns controls -->
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,me</SizePolicy>
+                                            </WidgetGroup>
                                           </Children>
                                         </WidgetGroup>
 
@@ -1282,9 +1329,16 @@
                                                 <Template src="skins:LateNight/decks/decks_right.xml"/>
                                               </Children>
                                             </WidgetGroup>
+
                                             <Template src="skins:LateNight/wide_fx_rack.xml"/>
                                             <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                             <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                            <!-- bottom spacer: top-aligns controls -->
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,me</SizePolicy>
+                                            </WidgetGroup>
                                           </Children>
                                         </WidgetGroup>
 
@@ -1300,20 +1354,45 @@
                             <!-- skin settings, always last -->
                             <Template src="skins:LateNight (128 Samplers Wide)/skin_settings.xml"/>
 
-                            <!-- Column 3: waveforms -->
+                            <!-- Column 3: waveforms, top-anchored, height-bound -->
+                            <!-- Waveforms column: splitter between waveform container and blank -->
                             <WidgetGroup>
                               <Layout>vertical</Layout>
                               <SizePolicy>me,me</SizePolicy>
                               <Children>
-                                <Template src="skins:LateNight/waveforms_container.xml"/>
+
+                                <Splitter>
+                                  <ObjectName>WaveformPanelHeightSplitter</ObjectName>
+                                  <Orientation>vertical</Orientation>
+                                  <SizePolicy>me,me</SizePolicy>
+                                  <SplitSizes>70,30</SplitSizes>
+                                  <Collapsible>0,0</Collapsible>
+                                  <Children>
+
+                                    <!-- waveform container -->
+                                    <WidgetGroup>
+                                      <Layout>vertical</Layout>
+                                      <SizePolicy>me,min</SizePolicy>
+                                      <Children>
+                                        <Template src="skins:LateNight/waveforms_container.xml"/>
+                                      </Children>
+                                    </WidgetGroup>
+
+                                    <!-- blank template: drag the handle to resize the waveform area -->
+                                    <WidgetGroup>
+                                      <Layout>vertical</Layout>
+                                      <SizePolicy>me,me</SizePolicy>
+                                    </WidgetGroup>
+
+                                  </Children>
+                                </Splitter>
+
                               </Children>
                               <Connection>
                                 <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
                                 <BindProperty>visible</BindProperty>
                               </Connection>
                             </WidgetGroup>
-
-
 
                           </Children>
                         </Splitter>
@@ -1332,6 +1411,7 @@
               </Children>
             </WidgetGroup>
             <!-- Wide layout end -->
+
 
           </Children>
         </WidgetStack>

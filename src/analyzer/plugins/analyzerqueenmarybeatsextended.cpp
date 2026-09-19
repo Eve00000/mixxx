@@ -18,6 +18,7 @@ namespace {
 
 constexpr float kStepSecs = 0.01161f;
 constexpr int kMaximumBinSizeHz = 50;
+constexpr double kMinSegmentDurationSeconds = 2.0;
 
 DFConfig makeDetectionFunctionConfig(int stepSizeFrames, int windowSize) {
     DFConfig config;
@@ -86,6 +87,12 @@ double AnalyzerQueenMaryBeatsExtended::calculateLocalBpm(const std::vector<doubl
     }
 
     double totalInterval = beatTimes[startIdx + windowSize] - beatTimes[startIdx];
+
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (totalInterval <= 0.0) {
+        return 0.0;
+    }
+
     double avgInterval = totalInterval / windowSize;
     return 60.0 / avgInterval;
 }
@@ -142,7 +149,18 @@ void AnalyzerQueenMaryBeatsExtended::detectMusicalContext() {
 
     // Calculate average BPM
     double totalInterval = m_beatTimes.back() - m_beatTimes.front();
+
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (m_beatTimes.size() < 2 || totalInterval <= 0.0) {
+        return;
+    }
+
     double avgInterval = totalInterval / (m_beatTimes.size() - 1);
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (avgInterval <= 0.0) {
+        return;
+    }
+
     double avgBpm = 60.0 / avgInterval;
 
     qDebug() << "[QueenMaryBeatsExtended] Average BPM:" << avgBpm;
@@ -327,7 +345,12 @@ void AnalyzerQueenMaryBeatsExtended::snapSegmentsToBeats() {
 }
 
 void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
-    if (m_resultBeats.size() < kWindowSizeBeats) {
+    // changed to avoid crash when computing segments in small samples exported from hotcues
+    /*if (m_resultBeats.size() < kWindowSizeBeats) {
+        qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM analysis";
+        return;
+    }*/
+    if (m_resultBeats.size() < kWindowSizeBeats || m_sampleRate <= 0.0) {
         qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM analysis";
         return;
     }
@@ -336,6 +359,10 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
     m_beatTimes.clear();
     for (const auto& beat : std::as_const(m_resultBeats)) {
         m_beatTimes.push_back(beat.value() / m_sampleRate);
+    }
+
+    if (m_beatTimes.size() < 4) {
+        return;
     }
 
     m_trackDuration = m_beatTimes.back();
@@ -501,6 +528,19 @@ bool AnalyzerQueenMaryBeatsExtended::finalize() {
         const auto result = mixxx::audio::FramePos(
                 (beats.at(i) * m_stepSizeFrames) + m_stepSizeFrames / 2);
         m_resultBeats.push_back(result);
+    }
+
+    // added to avoid crash when computing segments in small samples exported from hotcues
+    const double trackDuration =
+            m_resultBeats.isEmpty()
+            ? 0.0
+            : m_resultBeats.back().value() / m_sampleRate.toDouble();
+
+    if (trackDuration < kMinSegmentDurationSeconds) {
+        qDebug() << "[QueenMaryBeatsExtended] Track too short for BPM segments ("
+                 << trackDuration << "s) - skipping";
+        m_pDetectionFunction.reset();
+        return true;
     }
 
     analyzeBpmChanges();

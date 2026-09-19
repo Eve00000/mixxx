@@ -27,11 +27,21 @@ constexpr bool showDebugWAnalyzerKey = false;
 } // namespace
 
 // static
+// QList<mixxx::AnalyzerPluginInfo> AnalyzerKey::availablePlugins() {
+//    QList<mixxx::AnalyzerPluginInfo> analyzers;
+//    // First one below is the default
+//    analyzers.push_back(mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo());
+//    analyzers.push_back(mixxx::AnalyzerQueenMaryKey::pluginInfo());
+// #if defined __KEYFINDER__
+//    analyzers.push_back(mixxx::AnalyzerKeyFinder::pluginInfo());
+// #endif
+//    return analyzers;
+//}
 QList<mixxx::AnalyzerPluginInfo> AnalyzerKey::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> analyzers;
     // First one below is the default
-    analyzers.push_back(mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo());
     analyzers.push_back(mixxx::AnalyzerQueenMaryKey::pluginInfo());
+    analyzers.push_back(mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo());
 #if defined __KEYFINDER__
     analyzers.push_back(mixxx::AnalyzerKeyFinder::pluginInfo());
 #endif
@@ -74,10 +84,45 @@ bool AnalyzerKey::initialize(const AnalyzerTrack& track,
     m_bPreferencesFastAnalysisEnabled = m_keySettings.getFastAnalysis();
     m_bPreferencesReanalyzeEnabled = m_keySettings.getReanalyzeWhenSettingsChange();
 
+    // const auto plugins = availablePlugins();
+    // if (!plugins.isEmpty()) {
+    //     m_pluginId = defaultPlugin().id();
+    //     QString pluginId = m_keySettings.getKeyPluginId();
+    //     for (const auto& info : plugins) {
+    //         if (info.id() == pluginId) {
+    //             m_pluginId = pluginId; // configured Plug-In available
+    //             break;
+    //         }
+    //     }
+    // }
+
     const auto plugins = availablePlugins();
     if (!plugins.isEmpty()) {
         m_pluginId = defaultPlugin().id();
         QString pluginId = m_keySettings.getKeyPluginId();
+
+        // Short tracks (e.g. sampler hits) don't produce meaningful key
+        // segments and have historically crashed the extended analyzer.
+        // Fall back to the plain Queen Mary plugin for them.
+        // constexpr double kMinExtendedAnalysisSeconds = 2.0;
+
+        // Extended analysis produces key/BPM *segments*. Below ~10 s a
+        // track is almost certainly a sampler hit, where segments are
+        // meaningless and have historically produced degenerate data
+        // (empty key text, INVALID keys, 1-beat grids).
+        constexpr double kMinExtendedAnalysisSeconds = 10.0;
+
+        const double trackDurationSeconds =
+                static_cast<double>(frameLength) / sampleRate.toDouble();
+        if (trackDurationSeconds < kMinExtendedAnalysisSeconds &&
+                pluginId ==
+                        mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo().id()) {
+            pluginId = mixxx::AnalyzerQueenMaryKey::pluginInfo().id();
+            qDebug() << "[AnalyzerKey] Track is" << trackDurationSeconds
+                     << "s - too short for extended key analysis, using"
+                     << pluginId;
+        }
+
         for (const auto& info : plugins) {
             if (info.id() == pluginId) {
                 m_pluginId = pluginId; // configured Plug-In available
@@ -303,6 +348,25 @@ void AnalyzerKey::storeResults(TrackPointer pTrack) {
         if (!segmentsArray.isEmpty()) {
             QList<KeySegmentsPointer> dbSegments;
 
+            // for (const QJsonValue& val : std::as_const(segmentsArray)) {
+            //     if (!val.isObject()) {
+            //         continue;
+            //     }
+
+            //    QJsonObject obj = val.toObject();
+
+            //    KeySegmentsPointer pSegment(new KeySegments(
+            //            obj["position"].toDouble(),
+            //            obj["duration"].toDouble(),
+            //            obj["keyId"].toInt(),
+            //            obj["keyText"].toString(),
+            //            obj["range_start"].toDouble(),
+            //            obj["range_end"].toDouble(),
+            //            obj["type"].toString(),
+            //            obj["confidence"].toDouble()));
+            //    dbSegments.append(pSegment);
+            //}
+
             for (const QJsonValue& val : std::as_const(segmentsArray)) {
                 if (!val.isObject()) {
                     continue;
@@ -310,11 +374,22 @@ void AnalyzerKey::storeResults(TrackPointer pTrack) {
 
                 QJsonObject obj = val.toObject();
 
+                const int keyId = obj["keyId"].toInt();
+                const QString keyText = obj["keyText"].toString();
+                const double duration = obj["duration"].toDouble();
+                if (keyId < 0 || keyId > 23 || keyText.isEmpty() || duration <= 0.0) {
+                    qWarning() << "[AnalyzerKey] Skipping invalid key segment:"
+                               << "keyId" << keyId
+                               << "keyText" << keyText
+                               << "duration" << duration;
+                    continue;
+                }
+
                 KeySegmentsPointer pSegment(new KeySegments(
                         obj["position"].toDouble(),
-                        obj["duration"].toDouble(),
-                        obj["keyId"].toInt(),
-                        obj["keyText"].toString(),
+                        duration,
+                        keyId,
+                        keyText,
                         obj["range_start"].toDouble(),
                         obj["range_end"].toDouble(),
                         obj["type"].toString(),
