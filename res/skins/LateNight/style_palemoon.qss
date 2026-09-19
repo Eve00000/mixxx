@@ -3750,8 +3750,13 @@ WSearchLineEdit {
 #LibraryMainSplitter,
 #WaveformSplitter,
 #WaveformSplitter_Swapped,
+#WaveformPanelSplitter,
+#WaveformPanelSplitter_Right,
+#WaveformPanelSplitter_Right_Swapped,
 #WideScreenSplitter,
 #WideScreenSplitter_Swapped,
+#WideScreenSplitter_WaveformPanel,
+#WideScreenSplitter_WaveformPanel_Right,
 #SidebarCoverSplitter {
   padding: 0px;
   margin: 0px;
@@ -3759,8 +3764,13 @@ WSearchLineEdit {
   #LibraryMainSplitter::handle,
   #WaveformSplitter::handle,
   #WaveformSplitter_Swapped::handle,
+  #WaveformPanelSplitter:handle,
+  #WaveformPanelSplitter_Right:handle,
+  #WaveformPanelSplitter_Right_Swapped:handle,
   #WideScreenSplitter::handle,
   #WideScreenSplitter_Swapped::handle,
+  #WideScreenSplitter_WaveformPanel::handle,
+  #WideScreenSplitter_WaveformPanel_Right:handle,
   #SidebarCoverSplitter::handle {
       image: url(skins:LateNight/palemoon/style/splitter_handle_horizontal.svg);
       height: 9px;
@@ -3768,8 +3778,13 @@ WSearchLineEdit {
 	#LibraryMainSplitter::handle:pressed,
     #WaveformSplitter::handle:pressed,
 	#WaveformSplitter_Swapped::handle:pressed,
+	#WaveformPanelSplitter:handle:pressed,
+	#WaveformPanelSplitter_Right:handle:pressed,
+	#WaveformPanelSplitter_Right_Swapped:handle:pressed,
 	#WideScreenSplitter::handle:pressed,
 	#WideScreenSplitter_Swapped::handle:pressed,
+    #WideScreenSplitter_WaveformPanel::handle:pressed,
+    #WideScreenSplitter_WaveformPanel_Right:handle:pressed,
     #SidebarCoverSplitter::handle:pressed {
     /* doesn't catch hover state:
     #HorizontalSplitter::handle:hover,
