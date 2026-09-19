@@ -1017,7 +1017,10 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
         };
 
         // calc stem volume values
-        pass2CueCreationStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
+        // stem1 = original premix, only (un-)muted, no volume control
+        pass2CueCreationStem1Vol = getMuteMultiplier(stemGroups[0]);
+
+        // pass2CueCreationStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
         pass2CueCreationStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
         pass2CueCreationStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
         pass2CueCreationStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
