@@ -116,6 +116,10 @@
            1 = waveforms in pane 3 / right -->
       <attribute config_key="[Skin],wide_layout_waveforms_right">0</attribute>
 
+      <!-- Normal layout: waveforms in a separate column -->
+      <attribute config_key="[Skin],normal_layout_waveforms_separate">0</attribute>
+      <attribute config_key="[Skin],normal_layout_waveforms_right">0</attribute>
+
       <!-- Disable hidden effect routing Buttons -->
       <attribute persist="false" config_key="[EffectRack1_EffectUnit1],group_[MasterOutput]_enable">0</attribute>
       <attribute persist="false" config_key="[EffectRack1_EffectUnit1],group_[BusLeft]_enable">0</attribute>
@@ -523,44 +527,210 @@
         <WidgetStack currentpage="[Skin],show_wide_layout">
           <Children>
             <!-- Normal layout (original) begin  -->
-            <WidgetGroup>
-              <Layout>vertical</Layout>
-              <SizePolicy>me,me</SizePolicy>
+            <WidgetStack currentpage="[Skin],normal_layout_waveforms_separate">
               <Children>
-                <!-- regular/maximized library  |  skin settings menu -->
-                <Template src="skins:LateNight (128 Samplers Wide)/toolbar.xml"/>
+
+                <!-- ========================================================= -->
+                <!-- PAGE 0: current normal layout (waveforms stacked on top) -->
+                <!-- ========================================================= -->
                 <WidgetGroup>
-                  <Layout>horizontal</Layout>
+                  <Layout>vertical</Layout>
                   <SizePolicy>me,me</SizePolicy>
                   <Children>
-                    <!-- regular or maximized library -->
-                    <WidgetStack currentpage="[Skin],show_maximized_library">
+                    <!-- regular/maximized library  |  skin settings menu -->
+                    <Template src="skins:LateNight (128 Samplers Wide)/toolbar.xml"/>
+                    <WidgetGroup>
+                      <Layout>horizontal</Layout>
+                      <SizePolicy>me,me</SizePolicy>
                       <Children>
-                        <!-- regular/maximized library  |  skin settings menu -->
-                        <WidgetGroup>
-                          <Layout>horizontal</Layout>
-                          <SizePolicy>me,me</SizePolicy>
+                        <!-- regular or maximized library -->
+                        <WidgetStack currentpage="[Skin],show_maximized_library">
                           <Children>
-                            <!-- regular or maximized library -->
-                            <WidgetStack currentpage="[Skin],show_maximized_library">
+                            <!-- regular/maximized library  |  skin settings menu -->
+                            <WidgetGroup>
+                              <Layout>horizontal</Layout>
+                              <SizePolicy>me,me</SizePolicy>
                               <Children>
-                                <!-- Waveforms, Decks, Effects... /  Library
-                                   This view needs to be set up first because it instantiates
-                                   the mini deck Singletons we need in maximized library view. -->
+                                <!-- regular or maximized library -->
+                                <WidgetStack currentpage="[Skin],show_maximized_library">
+                                  <Children>
+                                    <!-- Waveforms, Decks, Effects... /  Library
+                                       This view needs to be set up first because it instantiates
+                                       the mini deck Singletons we need in maximized library view. -->
+                                    <Splitter>
+                                      <ObjectName>WaveformSplitter</ObjectName>
+                                      <Orientation>vertical</Orientation>
+                                      <SizePolicy>me,min</SizePolicy>
+                                      <SplitSizes>100,550</SplitSizes>
+                                      <SplitSizesConfigKey>[Skin],stackedWaveforms_splitSize</SplitSizesConfigKey>
+                                      <Collapsible>0,0</Collapsible>
+                                      <Children>
+
+                                        <WidgetGroup>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,me</SizePolicy>
+                                          <Children>
+                                            <Template src="skins:LateNight/waveforms_container.xml"/>
+                                          </Children>
+                                          <Connection>
+                                            <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
+                                            <BindProperty>visible</BindProperty>
+                                          </Connection>
+                                        </WidgetGroup>
+
+                                        <WidgetGroup>
+                                          <ObjectName>DecksMixerContainer</ObjectName>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,me</SizePolicy>
+                                          <Children>
+                                            <WidgetGroup>
+                                              <!-- Top spacer when waveforms are hidden -->
+                                              <ObjectName>ToolbarDeckSpacer</ObjectName>
+                                              <Connection>
+                                                <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
+                                                <Transform>
+                                                  <Not/>
+                                                </Transform>
+                                                <BindProperty>visible</BindProperty>
+                                              </Connection>
+                                            </WidgetGroup>
+                                            <!-- ToolbarDeckSpacer -->
+
+                                            <WidgetGroup>
+                                              <Layout>horizontal</Layout>
+                                              <SizePolicy>me,max</SizePolicy>
+                                              <Children>
+                                                <Template src="skins:LateNight/decks/decks_left.xml"/>
+                                                <Template src="skins:LateNight/mixer.xml"/>
+                                                <Template src="skins:LateNight/decks/decks_right.xml"/>
+                                              </Children>
+                                            </WidgetGroup>
+
+                                            <Template src="skins:LateNight/fx_rack.xml"/>
+                                            <Template src="skins:LateNight (128 Samplers Wide)/samplers_rack.xml"/>
+                                            <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                            <SingletonContainer>
+                                              <ObjectName>LibrarySingleton</ObjectName>
+                                            </SingletonContainer>
+                                          </Children>
+                                        </WidgetGroup>
+
+                                      </Children>
+                                    </Splitter>
+                                    <!-- Decks, Effects, Samplers, Mic/Aux, Library -->
+
+                                    <!-- Maximized Library & mini decks only -->
+                                    <WidgetGroup trigger="[Skin],show_maximized_library" on_hide_select="0">
+                                      <Layout>vertical</Layout>
+                                      <SizePolicy>me,me</SizePolicy>
+                                      <Children>
+
+                                        <WidgetGroup>
+                                          <Layout>horizontal</Layout>
+                                          <SizePolicy>me,max</SizePolicy>
+                                          <Children>
+                                            <Template src="skins:LateNight/decks/decks_left_mini.xml"/>
+                                            <Template src="skins:LateNight/decks/decks_right_mini.xml"/>
+                                          </Children>
+                                          <Connection>
+                                            <ConfigKey persist="true">[LateNight],max_lib_show_decks</ConfigKey>
+                                            <BindProperty>visible</BindProperty>
+                                          </Connection>
+                                        </WidgetGroup>
+
+                                        <SingletonContainer>
+                                          <ObjectName>LibrarySingleton</ObjectName>
+                                        </SingletonContainer>
+                                      </Children>
+                                    </WidgetGroup>
+                                    <!-- Maximized Library & mini decks only -->
+
+                                  </Children>
+                                </WidgetStack>
+
+                              </Children>
+                            </WidgetGroup>
+                            <!-- regular/maximized library + skin settings menu -->
+                          </Children>
+                        </WidgetStack>
+                        <Template src="skins:LateNight (128 Samplers Wide)/skin_settings.xml"/>
+
+
+                      </Children>
+                    </WidgetGroup>
+                    <!-- regular/maximized library + skin settings menu -->
+                  </Children>
+                </WidgetGroup>
+                <!-- PAGE 0 end -->
+
+
+                <!-- ========================================================= -->
+                <!-- PAGE 1: normal layout with waveforms in a separate column -->
+                <!-- Waveforms | controls+library  (or swapped, see below) -->
+                <!-- ========================================================= -->
+                <WidgetGroup>
+                  <Layout>vertical</Layout>
+                  <SizePolicy>me,me</SizePolicy>
+                  <Children>
+
+                    <!-- toolbar on top, spanning both columns --><!--
+                    <Template src="skins:LateNight (128 Samplers Wide)/toolbar.xml"/>-->
+
+                    <WidgetGroup>
+                      <Layout>horizontal</Layout>
+                      <SizePolicy>me,me</SizePolicy>
+                      <Children>
+
+                        <!-- swap waveforms left/right -->
+                        <WidgetStack currentpage="[Skin],normal_layout_waveforms_right">
+                          <Children>
+
+                            <!-- ============================================================ -->
+                            <!-- PAGE 0 (DEFAULT): waveforms LEFT                              -->
+                            <!-- Layout: [ waveforms | controls+library ] [ settings ]          -->
+                            <!-- ============================================================ -->
+                            <WidgetGroup>
+                              <Layout>horizontal</Layout>
+                              <SizePolicy>me,me</SizePolicy>
+                              <Children>
+
                                 <Splitter>
-                                  <ObjectName>WaveformSplitter</ObjectName>
-                                  <Orientation>vertical</Orientation>
-                                  <SizePolicy>me,min</SizePolicy>
-                                  <SplitSizes>100,550</SplitSizes>
-                                  <SplitSizesConfigKey>[Skin],stackedWaveforms_splitSize</SplitSizesConfigKey>
+                                  <ObjectName>NormalLayoutSplitter</ObjectName>
+                                  <Orientation>horizontal</Orientation>
+                                  <SizePolicy>me,me</SizePolicy>
+                                  <SplitSizes>30,70</SplitSizes>
                                   <Collapsible>0,0</Collapsible>
                                   <Children>
 
+                                    <!-- waveforms column (left), top-anchored -->
                                     <WidgetGroup>
                                       <Layout>vertical</Layout>
                                       <SizePolicy>me,me</SizePolicy>
                                       <Children>
-                                        <Template src="skins:LateNight/waveforms_container.xml"/>
+                                        <Splitter>
+                                          <ObjectName>WaveformPanelHeightSplitter</ObjectName>
+                                          <Orientation>vertical</Orientation>
+                                          <SizePolicy>me,me</SizePolicy>
+                                          <SplitSizes>70,30</SplitSizes>
+                                          <Collapsible>0,0</Collapsible>
+                                          <Children>
+
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,min</SizePolicy>
+                                              <Children>
+                                                <Template src="skins:LateNight/waveforms_container.xml"/>
+                                              </Children>
+                                            </WidgetGroup>
+
+                                            <WidgetGroup>
+                                              <Layout>vertical</Layout>
+                                              <SizePolicy>me,me</SizePolicy>
+                                            </WidgetGroup>
+
+                                          </Children>
+                                        </Splitter>
                                       </Children>
                                       <Connection>
                                         <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
@@ -568,13 +738,16 @@
                                       </Connection>
                                     </WidgetGroup>
 
+                                    <!-- controls + library column (right), top-anchored -->
                                     <WidgetGroup>
                                       <ObjectName>DecksMixerContainer</ObjectName>
                                       <Layout>vertical</Layout>
                                       <SizePolicy>me,me</SizePolicy>
                                       <Children>
+
+                                        <Template src="skins:LateNight (128 Samplers Wide)/toolbar.xml"/>
+
                                         <WidgetGroup>
-                                          <!-- Top spacer when waveforms are hidden -->
                                           <ObjectName>ToolbarDeckSpacer</ObjectName>
                                           <Connection>
                                             <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
@@ -584,7 +757,6 @@
                                             <BindProperty>visible</BindProperty>
                                           </Connection>
                                         </WidgetGroup>
-                                        <!-- ToolbarDeckSpacer -->
 
                                         <WidgetGroup>
                                           <Layout>horizontal</Layout>
@@ -600,58 +772,155 @@
                                         <Template src="skins:LateNight (128 Samplers Wide)/samplers_rack.xml"/>
                                         <Template src="skins:LateNight/mic_aux_rack.xml"/>
 
-                                        <SingletonContainer>
-                                          <ObjectName>LibrarySingleton</ObjectName>
-                                        </SingletonContainer>
+                                        <!-- library: fills all remaining vertical space -->
+                                        <WidgetGroup>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,me</SizePolicy>
+                                          <Children>
+                                            <SingletonContainer>
+                                              <ObjectName>LibrarySingleton</ObjectName>
+                                            </SingletonContainer>
+                                          </Children>
+                                        </WidgetGroup>
+
                                       </Children>
                                     </WidgetGroup>
 
                                   </Children>
                                 </Splitter>
-                                <!-- Decks, Effects, Samplers, Mic/Aux, Library -->
 
-                                <!-- Maximized Library & mini decks only -->
-                                <WidgetGroup trigger="[Skin],show_maximized_library" on_hide_select="0">
-                                  <Layout>vertical</Layout>
+                                <!-- settings: on the far right, stays on the controls monitor -->
+                                <Template src="skins:LateNight (128 Samplers Wide)/skin_settings.xml"/>
+
+                              </Children>
+                            </WidgetGroup>
+                            <!-- end PAGE 0 (waveforms left) -->
+
+
+                            <!-- ============================================================ -->
+                            <!-- PAGE 1: waveforms RIGHT                                       -->
+                            <!-- Layout: [ controls+library | settings ] [ waveforms ]           -->
+                            <!-- ============================================================ -->
+                            <Splitter>
+                              <ObjectName>NormalLayoutSplitter_Right</ObjectName>
+                              <Orientation>horizontal</Orientation>
+                              <SizePolicy>me,me</SizePolicy>
+                              <SplitSizes>70,30</SplitSizes>
+                              <Collapsible>0,0</Collapsible>
+                              <Children>
+
+                                <!-- controls + library + settings (left) -->
+                                <WidgetGroup>
+                                  <Layout>horizontal</Layout>
                                   <SizePolicy>me,me</SizePolicy>
                                   <Children>
 
+                                    <!-- controls + library column -->
                                     <WidgetGroup>
-                                      <Layout>horizontal</Layout>
-                                      <SizePolicy>me,max</SizePolicy>
+                                      <ObjectName>DecksMixerContainer_Right</ObjectName>
+                                      <Layout>vertical</Layout>
+                                      <SizePolicy>me,me</SizePolicy>
                                       <Children>
-                                        <Template src="skins:LateNight/decks/decks_left_mini.xml"/>
-                                        <Template src="skins:LateNight/decks/decks_right_mini.xml"/>
+
+                                        <Template src="skins:LateNight (128 Samplers Wide)/toolbar.xml"/>
+
+                                        <WidgetGroup>
+                                          <ObjectName>ToolbarDeckSpacer_Right</ObjectName>
+                                          <Connection>
+                                            <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
+                                            <Transform>
+                                              <Not/>
+                                            </Transform>
+                                            <BindProperty>visible</BindProperty>
+                                          </Connection>
+                                        </WidgetGroup>
+
+                                        <WidgetGroup>
+                                          <Layout>horizontal</Layout>
+                                          <SizePolicy>me,max</SizePolicy>
+                                          <Children>
+                                            <Template src="skins:LateNight/decks/decks_left.xml"/>
+                                            <Template src="skins:LateNight/mixer.xml"/>
+                                            <Template src="skins:LateNight/decks/decks_right.xml"/>
+                                          </Children>
+                                        </WidgetGroup>
+
+                                        <Template src="skins:LateNight/fx_rack.xml"/>
+                                        <Template src="skins:LateNight (128 Samplers Wide)/samplers_rack.xml"/>
+                                        <Template src="skins:LateNight/mic_aux_rack.xml"/>
+
+                                        <!-- library: fills all remaining vertical space -->
+                                        <WidgetGroup>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,me</SizePolicy>
+                                          <Children>
+                                            <SingletonContainer>
+                                              <ObjectName>LibrarySingleton</ObjectName>
+                                            </SingletonContainer>
+                                          </Children>
+                                        </WidgetGroup>
+
                                       </Children>
-                                      <Connection>
-                                        <ConfigKey persist="true">[LateNight],max_lib_show_decks</ConfigKey>
-                                        <BindProperty>visible</BindProperty>
-                                      </Connection>
                                     </WidgetGroup>
 
-                                    <SingletonContainer>
-                                      <ObjectName>LibrarySingleton</ObjectName>
-                                    </SingletonContainer>
+                                    <!-- settings: inside the left half, so it stays on the controls monitor -->
+                                    <Template src="skins:LateNight (128 Samplers Wide)/skin_settings.xml"/>
+
                                   </Children>
                                 </WidgetGroup>
-                                <!-- Maximized Library & mini decks only -->
+
+                                <!-- waveforms column (right), top-anchored -->
+                                <WidgetGroup>
+                                  <Layout>vertical</Layout>
+                                  <SizePolicy>me,me</SizePolicy>
+                                  <Children>
+                                    <Splitter>
+                                      <ObjectName>WaveformPanelHeightSplitter</ObjectName>
+                                      <Orientation>vertical</Orientation>
+                                      <SizePolicy>me,me</SizePolicy>
+                                      <SplitSizes>70,30</SplitSizes>
+                                      <Collapsible>0,0</Collapsible>
+                                      <Children>
+
+                                        <WidgetGroup>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,min</SizePolicy>
+                                          <Children>
+                                            <Template src="skins:LateNight/waveforms_container.xml"/>
+                                          </Children>
+                                        </WidgetGroup>
+
+                                        <WidgetGroup>
+                                          <Layout>vertical</Layout>
+                                          <SizePolicy>me,me</SizePolicy>
+                                        </WidgetGroup>
+
+                                      </Children>
+                                    </Splitter>
+                                  </Children>
+                                  <Connection>
+                                    <ConfigKey persist="true">[Skin],show_waveforms</ConfigKey>
+                                    <BindProperty>visible</BindProperty>
+                                  </Connection>
+                                </WidgetGroup>
 
                               </Children>
-                            </WidgetStack>
+                            </Splitter>
+                            <!-- end PAGE 1 (waveforms right) -->
 
                           </Children>
-                        </WidgetGroup>
-                        <!-- regular/maximized library + skin settings menu -->
-                      </Children>
-                    </WidgetStack>
-                    <Template src="skins:LateNight (128 Samplers Wide)/skin_settings.xml"/>
+                        </WidgetStack>
 
+
+                      </Children>
+                    </WidgetGroup>
 
                   </Children>
                 </WidgetGroup>
-                <!-- regular/maximized library + skin settings menu -->
+                <!-- PAGE 1 end -->
+
               </Children>
-            </WidgetGroup>
+            </WidgetStack>
             <!-- Normal layout (original) end  -->
 
             <!-- Wide layout begin -->

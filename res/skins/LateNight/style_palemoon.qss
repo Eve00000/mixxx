@@ -3748,6 +3748,8 @@ WSearchLineEdit {
   - Waveforms / Decks/FX/etc
   - Library sidebar / Lib Coverart */
 #LibraryMainSplitter,
+#NormalLayoutSplitter,
+#NormalLayoutSplitter_Right,
 #WaveformSplitter,
 #WaveformSplitter_Swapped,
 #WaveformPanelHeightSplitter,
@@ -3763,6 +3765,8 @@ WSearchLineEdit {
   margin: 0px;
   }
   #LibraryMainSplitter::handle,
+  #NormalLayoutSplitter:handle,
+  #NormalLayoutSplitter_Right:handle,
   #WaveformSplitter::handle,
   #WaveformSplitter_Swapped::handle,
   #WaveformPanelHeightSplitter::handle,
@@ -3778,6 +3782,8 @@ WSearchLineEdit {
       height: 9px;
     }
 	#LibraryMainSplitter::handle:pressed,
+    #NormalLayoutSplitter:handle:pressed,
+    #NormalLayoutSplitter_Right:handle:pressed,
     #WaveformSplitter::handle:pressed,
 	#WaveformSplitter_Swapped::handle:pressed,
     #WaveformPanelHeightSplitter::handler:pressed,

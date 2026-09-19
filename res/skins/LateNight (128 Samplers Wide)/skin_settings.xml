@@ -512,6 +512,60 @@ Description:
             <ObjectName>SkinSettingsSeparator</ObjectName>
             <Size>1min,12f</Size>
           </WidgetGroup>
+
+          <!-- Normal Layout -->
+          <WidgetGroup>
+            <ObjectName></ObjectName>
+            <SizePolicy>me,f</SizePolicy>
+            <Layout>stacked</Layout>
+            <Children>
+              <!-- translucent cover when Library is maximized -->
+              <Template src="skins:LateNight/helpers/skin_settings_cover.xml">
+                <SetVariable name="Setting">[Skin],show_maximized_library</SetVariable>
+              </Template>
+
+              <WidgetGroup>
+                <SizePolicy>me,min</SizePolicy>
+                <Layout>vertical</Layout>
+                <Children>
+
+                  <Label>
+                    <ObjectName>CategoryLabel</ObjectName>
+                    <Text>Normal Layout</Text>
+                    <Size>180min,23f</Size>
+                  </Label>
+
+                  <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
+                    <SetVariable name="Text">Waveforms in separate pane</SetVariable>
+                    <SetVariable name="Setting">[Skin],normal_layout_waveforms_separate</SetVariable>
+                  </Template>
+
+                  <!-- Waveforms right: only meaningful when separate is on -->
+                  <WidgetGroup>
+                    <Layout>stacked</Layout>
+                    <Size>180min,18f</Size>
+                    <Children>
+                      <Template src="skins:LateNight/helpers/skin_settings_cover_inverted.xml">
+                        <SetVariable name="Setting">[Skin],normal_layout_waveforms_separate</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
+                        <SetVariable name="Text">Waveforms Right</SetVariable>
+                        <SetVariable name="Setting">[Skin],normal_layout_waveforms_right</SetVariable>
+                      </Template>
+                    </Children>
+                  </WidgetGroup>
+
+                </Children>
+              </WidgetGroup>
+            </Children>
+          </WidgetGroup>
+          <!-- /Normal Layout -->
+
+          <WidgetGroup>
+            <ObjectName>SkinSettingsSeparator</ObjectName>
+            <Size>1min,12f</Size>
+          </WidgetGroup>
+
           <!-- Wide / Original Layout -->
           <WidgetGroup>
             <ObjectName></ObjectName>
