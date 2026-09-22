@@ -19,6 +19,8 @@ Item {
     property alias fileLoadDeck3: fileLoadDeck3Action
     property alias fileLoadDeck4: fileLoadDeck4Action
     property alias fileQuit: fileQuitAction
+    property alias layoutWaveformsSeparate: layoutWaveformsSeparateAction
+    property alias layoutWaveformsRight: layoutWaveformsRightAction
     property alias helpAbout: helpAboutAction
     property alias helpCommunitySupport: helpCommunitySupportAction
     property alias helpKeyboardShortcuts: helpKeyboardShortcutsAction
@@ -50,6 +52,8 @@ Item {
     property alias viewShowMicrophone: viewShowMicrophoneAction
     property alias viewShowPreviewDeck: viewShowPreviewDeckAction
     property alias viewShowVinylControl: viewShowVinylControlAction
+    property alias layoutLibrarySeparate: layoutLibrarySeparateAction
+    property alias layoutLibraryRight: layoutLibraryRightAction
 
     signal focusLibrarySearchRequested
 
@@ -487,5 +491,81 @@ Item {
 
         group: "[Shoutcast]"
         key: "enabled"
+    }
+    Action {
+        id: layoutWaveformsSeparateAction
+
+        checkable: true
+        checked: normalLayoutWaveformsSeparateControl.value > 0
+        text: qsTranslate("WMainMenuBar", "Waveforms in separate pane")
+
+        onTriggered: normalLayoutWaveformsSeparateControl.toggle()
+    }
+    Action {
+        id: layoutWaveformsRightAction
+
+        checkable: true
+        checked: normalLayoutWaveformsRightControl.value > 0
+        enabled: normalLayoutWaveformsSeparateControl.value > 0
+        text: qsTranslate("WMainMenuBar", "Waveforms on the right")
+
+        onTriggered: normalLayoutWaveformsRightControl.toggle()
+    }
+        Action {
+        id: layoutLibrarySeparateAction
+
+        checkable: true
+        checked: normalLayoutLibrarySeparateControl.value > 0
+        text: qsTranslate("WMainMenuBar", "Library in separate pane")
+
+        onTriggered: normalLayoutLibrarySeparateControl.toggle()
+    }
+
+    Action {
+        id: layoutLibraryRightAction
+
+        checkable: true
+        checked: normalLayoutLibraryRightControl.value > 0
+        enabled: normalLayoutLibrarySeparateControl.value > 0
+        text: qsTranslate("WMainMenuBar", "Library on the right")
+
+        onTriggered: normalLayoutLibraryRightControl.toggle()
+    }
+    /*
+    Action {
+        id: layoutLibraryRightAction
+
+        checkable: true
+        checked: normalLayoutLibraryRightControl.value > 0
+        enabled: normalLayoutLibrarySeparateControl.value > 0
+                && normalLayoutWaveformsSeparateControl.value <= 0
+        text: qsTranslate("WMainMenuBar", "Library on the right")
+
+        onTriggered: normalLayoutLibraryRightControl.toggle()
+    }
+    */
+    Mixxx.ControlProxy {
+        id: normalLayoutLibrarySeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_separate"
+    }
+    Mixxx.ControlProxy {
+        id: normalLayoutLibraryRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_right"
+    }
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsSeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_separate"
+    }
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_right"
     }
 }
