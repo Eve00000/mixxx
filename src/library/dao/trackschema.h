@@ -9,6 +9,7 @@
 #define PLAYLIST_TRACKS_TABLE "PlaylistTracks"
 
 #define AUTODJ_TABLE "Auto DJ"
+#define AUTOSUGGESTIONS_TABLE "AutoSuggestions"
 
 const QString LIBRARYTABLE_ID = QStringLiteral("id");
 const QString LIBRARYTABLE_ARTIST = QStringLiteral("artist");

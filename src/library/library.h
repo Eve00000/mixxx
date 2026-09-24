@@ -17,6 +17,7 @@
 
 class AnalysisFeature;
 class AutoDJFeature;
+class AutoSuggestionsFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
@@ -107,8 +108,10 @@ class Library: public QObject {
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
     void showAutoDJ();
+    void showAutoSuggestions();
 
     static const QString kAutoDJViewName;
+    static const QString kAutoSuggestionsViewName;
 
     bool requestAddDir(const QString& directory);
     bool requestRemoveDir(const QString& directory, LibraryRemovalType removalType);
@@ -199,6 +202,7 @@ class Library: public QObject {
     WLibrary* m_pLibraryWidget;
     parented_ptr<MixxxLibraryFeature> m_pMixxxLibraryFeature;
     parented_ptr<AutoDJFeature> m_pAutoDJFeature;
+    parented_ptr<AutoSuggestionsFeature> m_pAutoSuggestionsFeature;
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;

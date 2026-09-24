@@ -905,6 +905,12 @@ WEffectChainPresetButton::menu-indicator {
     QPushButton#pushButtonAutoDJ {
       min-width: 40px;
     }
+  #DlgAutoSuggestions #LibraryFeatureControls QPushButton {
+    padding: 0px;
+    }
+    QPushButton#pushButtonAutoSuggestions {
+      min-width: 40px;
+    }
 
 /* Extra declaration for QRadioButton otherwise it shows up with wrong colors in
    Linux with Gnome */
@@ -931,6 +937,9 @@ QLabel#labelTransitionAppendix {
 }
 QLabel#labelProgress, /* Analysis progress */
 QLabel#labelSelectionInfo /* AutoDJ track selection info */ {
+  margin: 2px 5px 5px 1px;
+}
+QLabel#labelSelectionInfo /* AutoSuggestions track selection info */ {
   margin: 2px 5px 5px 1px;
 }
 QLabel#labelRecPrefix,
