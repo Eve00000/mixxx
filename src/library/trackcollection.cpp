@@ -2,6 +2,7 @@
 
 #include "library/basetrackcache.h"
 #include "library/trackset/crate/crate.h"
+#include "library/trackset/searchcrate/searchcrate.h"
 #include "moc_trackcollection.cpp"
 #include "track/globaltrackcache.h"
 #include "util/assert.h"
@@ -63,6 +64,7 @@ void TrackCollection::repairDatabase(const QSqlDatabase& database) {
 
     kLogger.info() << "Repairing database";
     m_crates.repairDatabase(database);
+    m_searchCrates.repairDatabase(database);
     m_directoryDao.repairDatabase(database);
 }
 
@@ -79,6 +81,7 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_analysisDao.initialize(database);
     m_libraryHashDao.initialize(database);
     m_crates.connectDatabase(database);
+    m_searchCrates.connectDatabase(database);
 }
 
 void TrackCollection::disconnectDatabase() {
@@ -88,6 +91,7 @@ void TrackCollection::disconnectDatabase() {
     m_database = QSqlDatabase();
     m_trackDao.finish();
     m_crates.disconnectDatabase();
+    m_searchCrates.disconnectDatabase();
 }
 
 void TrackCollection::connectTrackSource(QSharedPointer<BaseTrackCache> pTrackSource) {
@@ -344,10 +348,12 @@ bool TrackCollection::hideTracks(const QList<TrackId>& trackIds) {
     m_trackDao.afterHidingTracks(trackIds);
     QSet<CrateId> modifiedCrateSummaries(
             m_crates.collectCrateIdsOfTracks(trackIds));
-
+    QSet<SearchCrateId> modifiedSearchCrateSummaries(
+            m_searchCrates.collectSearchCrateIdsOfTracks(trackIds));
     // Emit signal(s)
     // TODO(XXX): Emit signals here instead of from DAOs
     emit crateSummaryChanged(modifiedCrateSummaries);
+    emit searchCrateSummaryChanged(modifiedSearchCrateSummaries);
 
     return true;
 }
@@ -378,6 +384,10 @@ bool TrackCollection::unhideTracks(const QList<TrackId>& trackIds) {
             m_crates.collectCrateIdsOfTracks(trackIds);
     emit crateSummaryChanged(modifiedCrateSummaries);
 
+    QSet<SearchCrateId> modifiedSearchCrateSummaries =
+            m_searchCrates.collectSearchCrateIdsOfTracks(trackIds);
+    emit searchCrateSummaryChanged(modifiedSearchCrateSummaries);
+
     return true;
 }
 
@@ -398,6 +408,8 @@ bool TrackCollection::purgeTracks(
     // all crates on purging.
     QSet<CrateId> modifiedCrateSummaries(
             m_crates.collectCrateIdsOfTracks(trackIds));
+    QSet<SearchCrateId> modifiedSearchCrateSummaries(
+            m_searchCrates.collectSearchCrateIdsOfTracks(trackIds));
     VERIFY_OR_DEBUG_ASSERT(m_crates.onPurgingTracks(trackIds)) {
         return false;
     }
@@ -416,6 +428,7 @@ bool TrackCollection::purgeTracks(
     // Emit signal(s)
     // TODO(XXX): Emit signals here instead of from DAOs
     emit crateSummaryChanged(modifiedCrateSummaries);
+    emit searchCrateSummaryChanged(modifiedSearchCrateSummaries);
 
     return true;
 }
@@ -462,6 +475,34 @@ bool TrackCollection::insertCrate(
     return true;
 }
 
+bool TrackCollection::insertSearchCrate(
+        const SearchCrate& searchCrate,
+        SearchCrateId* pSearchCrateId) {
+    DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+
+    // Transactional
+    SqlTransaction transaction(m_database);
+    VERIFY_OR_DEBUG_ASSERT(transaction) {
+        return false;
+    }
+    SearchCrateId searchCrateId;
+    VERIFY_OR_DEBUG_ASSERT(m_searchCrates.onInsertingSearchCrate(searchCrate, &searchCrateId)) {
+        return false;
+    }
+    DEBUG_ASSERT(searchCrateId.isValid());
+    VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
+        return false;
+    }
+
+    // Emit signals
+    emit searchCrateInserted(searchCrateId);
+
+    if (pSearchCrateId != nullptr) {
+        *pSearchCrateId = searchCrateId;
+    }
+    return true;
+}
+
 bool TrackCollection::updateCrate(
         const Crate& crate) {
     DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
@@ -484,6 +525,28 @@ bool TrackCollection::updateCrate(
     return true;
 }
 
+bool TrackCollection::updateSearchCrate(
+        const SearchCrate& searchCrate) {
+    DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+
+    // Transactional
+    SqlTransaction transaction(m_database);
+    VERIFY_OR_DEBUG_ASSERT(transaction) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(m_searchCrates.onUpdatingSearchCrate(searchCrate)) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
+        return false;
+    }
+
+    // Emit signals
+    emit searchCrateUpdated(searchCrate.getId());
+
+    return true;
+}
+
 bool TrackCollection::deleteCrate(
         CrateId crateId) {
     DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
@@ -502,6 +565,28 @@ bool TrackCollection::deleteCrate(
 
     // Emit signals
     emit crateDeleted(crateId);
+
+    return true;
+}
+
+bool TrackCollection::deleteSearchCrate(
+        SearchCrateId searchCrateId) {
+    DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+
+    // Transactional
+    SqlTransaction transaction(m_database);
+    VERIFY_OR_DEBUG_ASSERT(transaction) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(m_searchCrates.onDeletingSearchCrate(searchCrateId)) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
+        return false;
+    }
+
+    // Emit signals
+    emit searchCrateDeleted(searchCrateId);
 
     return true;
 }
@@ -529,6 +614,29 @@ bool TrackCollection::addCrateTracks(
     return true;
 }
 
+bool TrackCollection::addSearchCrateTracks(
+        SearchCrateId searchCrateId,
+        const QList<TrackId>& trackIds) {
+    DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+
+    // Transactional
+    SqlTransaction transaction(m_database);
+    VERIFY_OR_DEBUG_ASSERT(transaction) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(m_searchCrates.onAddingSearchCrateTracks(searchCrateId, trackIds)) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
+        return false;
+    }
+
+    // Emit signals
+    emit searchCrateTracksChanged(searchCrateId, trackIds, QList<TrackId>());
+
+    return true;
+}
+
 bool TrackCollection::removeCrateTracks(
         CrateId crateId,
         const QList<TrackId>& trackIds) {
@@ -548,6 +656,29 @@ bool TrackCollection::removeCrateTracks(
 
     // Emit signals
     emit crateTracksChanged(crateId, QList<TrackId>(), trackIds);
+
+    return true;
+}
+
+bool TrackCollection::removeSearchCrateTracks(
+        SearchCrateId searchCrateId,
+        const QList<TrackId>& trackIds) {
+    DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+
+    // Transactional
+    SqlTransaction transaction(m_database);
+    VERIFY_OR_DEBUG_ASSERT(transaction) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(m_searchCrates.onRemovingSearchCrateTracks(searchCrateId, trackIds)) {
+        return false;
+    }
+    VERIFY_OR_DEBUG_ASSERT(transaction.commit()) {
+        return false;
+    }
+
+    // Emit signals
+    emit searchCrateTracksChanged(searchCrateId, QList<TrackId>(), trackIds);
 
     return true;
 }
