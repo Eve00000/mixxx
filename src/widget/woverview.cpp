@@ -983,7 +983,7 @@ void WOverview::slotLoadingTrack(TrackPointer pNewTrack, TrackPointer pOldTrack)
                 &Track::cuesUpdated,
                 this,
                 &WOverview::receiveCuesUpdated,
-                Qt::QueuedConnection);      
+                Qt::QueuedConnection);
 
         m_bpmCurvePoints.clear();
         m_keyCurvePoints.clear();

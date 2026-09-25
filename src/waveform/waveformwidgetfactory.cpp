@@ -155,7 +155,6 @@ WaveformWidgetFactory::WaveformWidgetFactory()
           m_showKeyMarkers(true),
           m_showKeyLabels(true),
           m_showLancelotWheel(true) {
-
     m_pStemSplitTracksControl = std::make_unique<ControlObject>(
             ConfigKey(kWaveformGroup, QStringLiteral("stem_split_tracks")));
     connect(m_pStemSplitTracksControl.get(),

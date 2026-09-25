@@ -16,7 +16,7 @@ class WaveformRenderMark;
 class WaveformRenderMarkRange;
 class WaveformRenderBpmCurve;
 class WaveformRenderKeyCurve;
-}
+} // namespace allshader
 
 class allshader::WaveformWidget final : public ::WGLWidget,
                                         public ::WaveformWidgetAbstract {

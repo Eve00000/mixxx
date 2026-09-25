@@ -2630,4 +2630,3 @@ void TrackDAO::saveTrackKeySegments(Track* pTrack) const {
         pTrack->m_keySegmentsDirty = false;
     }
 }
-
