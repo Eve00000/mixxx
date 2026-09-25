@@ -1432,6 +1432,7 @@ add_library(
   src/library/coverart.cpp
   src/library/coverartcache.cpp
   src/library/coverartutils.cpp
+  src/library/dateformatbroadcaster.cpp
   src/library/dao/analysisdao.cpp
   src/library/dao/autodjcratesdao.cpp
   src/library/dao/cuedao.cpp
@@ -1812,6 +1813,8 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarybasewindow.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
