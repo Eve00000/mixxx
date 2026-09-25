@@ -18,6 +18,7 @@ namespace {
 
 constexpr float kStepSecs = 0.01161f;
 constexpr int kMaximumBinSizeHz = 50;
+constexpr double kMinSegmentDurationSeconds = 2.0;
 
 DFConfig makeDetectionFunctionConfig(int stepSizeFrames, int windowSize) {
     DFConfig config;
@@ -86,6 +87,12 @@ double AnalyzerQueenMaryBeatsExtended::calculateLocalBpm(const std::vector<doubl
     }
 
     double totalInterval = beatTimes[startIdx + windowSize] - beatTimes[startIdx];
+
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (totalInterval <= 0.0) {
+        return 0.0;
+    }
+
     double avgInterval = totalInterval / windowSize;
     return 60.0 / avgInterval;
 }
@@ -142,7 +149,18 @@ void AnalyzerQueenMaryBeatsExtended::detectMusicalContext() {
 
     // Calculate average BPM
     double totalInterval = m_beatTimes.back() - m_beatTimes.front();
+
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (m_beatTimes.size() < 2 || totalInterval <= 0.0) {
+        return;
+    }
+
     double avgInterval = totalInterval / (m_beatTimes.size() - 1);
+    // added to avoid crash on analyzing small samples exported from hotcues
+    if (avgInterval <= 0.0) {
+        return;
+    }
+
     double avgBpm = 60.0 / avgInterval;
 
     qDebug() << "[QueenMaryBeatsExtended] Average BPM:" << avgBpm;
@@ -327,7 +345,12 @@ void AnalyzerQueenMaryBeatsExtended::snapSegmentsToBeats() {
 }
 
 void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
-    if (m_resultBeats.size() < kWindowSizeBeats) {
+    // changed to avoid crash when computing segments in small samples exported from hotcues
+    /*if (m_resultBeats.size() < kWindowSizeBeats) {
+        qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM analysis";
+        return;
+    }*/
+    if (m_resultBeats.size() < kWindowSizeBeats || m_sampleRate <= 0.0) {
         qDebug() << "[QueenMaryBeatsExtended] Not enough beats for BPM analysis";
         return;
     }
@@ -336,6 +359,10 @@ void AnalyzerQueenMaryBeatsExtended::analyzeBpmChanges() {
     m_beatTimes.clear();
     for (const auto& beat : std::as_const(m_resultBeats)) {
         m_beatTimes.push_back(beat.value() / m_sampleRate);
+    }
+
+    if (m_beatTimes.size() < 4) {
+        return;
     }
 
     m_trackDuration = m_beatTimes.back();
@@ -490,6 +517,7 @@ bool AnalyzerQueenMaryBeatsExtended::finalize() {
     }
 
     TempoTrackV2 tt(m_sampleRate, m_stepSizeFrames);
+    // tt.calculateBeatPeriod(df, beatPeriod, tempi);
     tt.calculateBeatPeriod(df, beatPeriod);
 
     std::vector<double> beats;
@@ -502,11 +530,104 @@ bool AnalyzerQueenMaryBeatsExtended::finalize() {
         m_resultBeats.push_back(result);
     }
 
+    // added to avoid crash when computing segments in small samples exported from hotcues
+    const double trackDuration =
+            m_resultBeats.isEmpty()
+            ? 0.0
+            : m_resultBeats.back().value() / m_sampleRate.toDouble();
+
+    if (trackDuration < kMinSegmentDurationSeconds) {
+        qDebug() << "[QueenMaryBeatsExtended] Track too short for BPM segments ("
+                 << trackDuration << "s) - skipping";
+        m_pDetectionFunction.reset();
+        return true;
+    }
+
     analyzeBpmChanges();
 
     m_pDetectionFunction.reset();
     return true;
 }
+
+// bool AnalyzerQueenMaryBeatsExtended::finalize() {
+//     m_helper.finalize();
+//
+//     int nonZeroCount = static_cast<int>(m_detectionResults.size());
+//     while (nonZeroCount > 0 && m_detectionResults.at(nonZeroCount - 1) <= 0.0) {
+//         --nonZeroCount;
+//     }
+//
+//     std::vector<double> df;
+//     std::vector<double> beatPeriod;
+//     std::vector<double> tempi;
+//     const auto required_size = std::max(0, nonZeroCount - 2);
+//     df.reserve(required_size);
+//     beatPeriod.reserve(required_size);
+//
+//     // skip first 2 results as it might have detect noise as onset
+//     // that's how vamp does and seems works best this way
+//     for (int i = 2; i < nonZeroCount; ++i) {
+//         df.push_back(m_detectionResults.at(i));
+//         beatPeriod.push_back(0.0);
+//     }
+//
+//     TempoTrackV2 tt(m_sampleRate, m_stepSizeFrames);
+//     tt.calculateBeatPeriod(df, beatPeriod);
+//
+//     std::vector<double> beats;
+//     tt.calculateBeats(df, beatPeriod);
+//
+//     m_resultBeats.reserve(static_cast<int>(beats.size()));
+//     for (size_t i = 0; i < beats.size(); ++i) {
+//         // we add the halve m_stepSizeFrames here, because the beat
+//         // is detected between the two samples.
+//         const auto result = mixxx::audio::FramePos(
+//                 (beats.at(i) * m_stepSizeFrames) + m_stepSizeFrames / 2);
+//         m_resultBeats.push_back(result);
+//     }
+//
+//     m_pDetectionFunction.reset();
+//     return true;
+// }
+
+// bool AnalyzerQueenMaryBeatsExtended::finalize() {
+//     m_helper.finalize();
+//
+//     std::size_t nonZeroCount = m_detectionResults.size();
+//     while (nonZeroCount > 0 && m_detectionResults.at(nonZeroCount - 1) <= 0.0) {
+//         --nonZeroCount;
+//     }
+//
+//     std::size_t required_size = std::max(static_cast<std::size_t>(2), nonZeroCount) - 2;
+//
+//     std::vector<double> df;
+//     df.reserve(required_size);
+//     auto beatPeriod = std::vector<int>(required_size / 128 + 1);
+//
+//     // skip first 2 results as it might have detect noise as onset
+//     // that's how vamp does and seems works best this way
+//     for (std::size_t i = 2; i < nonZeroCount; ++i) {
+//         df.push_back(m_detectionResults.at(i));
+//     }
+//
+//     TempoTrackV2 tt(m_sampleRate, m_stepSizeFrames);
+//     tt.calculateBeatPeriod(df, beatPeriod);
+//
+//     std::vector<double> beats;
+//     tt.calculateBeats(df, beatPeriod, beats);
+//
+//     m_resultBeats.reserve(static_cast<int>(beats.size()));
+//     for (std::size_t i = 0; i < beats.size(); ++i) {
+//         // we add the halve m_stepSizeFrames here, because the beat
+//         // is detected between the two samples.
+//         const auto result = mixxx::audio::FramePos(
+//                 (beats.at(i) * m_stepSizeFrames) + m_stepSizeFrames / 2);
+//         m_resultBeats.push_back(result);
+//     }
+//
+//     m_pDetectionFunction.reset();
+//     return true;
+// }
 
 QJsonArray AnalyzerQueenMaryBeatsExtended::getBpmSegmentsJson() const {
     QJsonArray segmentsArray;

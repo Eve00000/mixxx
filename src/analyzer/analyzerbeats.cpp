@@ -28,8 +28,8 @@ QList<mixxx::AnalyzerPluginInfo> AnalyzerBeats::availablePlugins() {
     // First one below is the default
     // Eve added extended as default
     // extended = defining segments for curves
-    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
     plugins.append(mixxx::AnalyzerQueenMaryBeats::pluginInfo());
+    plugins.append(mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo());
     plugins.append(mixxx::AnalyzerSoundTouchBeats::pluginInfo());
     return plugins;
 }
@@ -84,6 +84,29 @@ bool AnalyzerBeats::initialize(const AnalyzerTrack& track,
     if (!plugins.isEmpty()) {
         m_pluginId = defaultPlugin().id();
         QString pluginId = m_bpmSettings.getBeatPluginId();
+
+        // Short tracks (e.g. sampler hits) don't produce meaningful BPM
+        // segments and have historically crashed the extended analyzer.
+        // Fall back to the plain Queen Mary plugin for them.
+        // constexpr double kMinExtendedAnalysisSeconds = 2.0;
+
+        // Extended analysis produces key/BPM *segments*. Below ~10 s a
+        // track is almost certainly a sampler hit, where segments are
+        // meaningless and have historically produced degenerate data
+        // (empty key text, INVALID keys, 1-beat grids).
+        constexpr double kMinExtendedAnalysisSeconds = 10.0;
+
+        const double trackDurationSeconds =
+                static_cast<double>(frameLength) / sampleRate.toDouble();
+        if (trackDurationSeconds < kMinExtendedAnalysisSeconds &&
+                pluginId ==
+                        mixxx::AnalyzerQueenMaryBeatsExtended::pluginInfo().id()) {
+            pluginId = mixxx::AnalyzerQueenMaryBeats::pluginInfo().id();
+            qDebug() << "[AnalyzerBeats] Track is" << trackDurationSeconds
+                     << "s - too short for extended BPM analysis, using"
+                     << pluginId;
+        }
+
         for (const auto& info : plugins) {
             if (info.id() == pluginId) {
                 m_pluginId = pluginId; // configured Plug-In available
@@ -165,7 +188,7 @@ bool AnalyzerBeats::shouldAnalyze(TrackPointer pTrack) const {
     // dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
 
     // if (pExtendedPlugin) {
-    qDebug() << "[AnalyzerBeats] - -------- ------------- - ---PluginID: " << pluginID;
+    // qDebug() << "[AnalyzerBeats] - -------- ------------- - ---PluginID: " << pluginID;
 
     bool isExtendedPlugin = (pluginID == "qm-tempotracker-extended:0");
 
@@ -323,10 +346,18 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     if (m_pPlugin->supportsBeatTracking()) {
         QVector<mixxx::audio::FramePos> beats = m_pPlugin->getBeats();
 
+        // A beat grid needs at least two beats to have a meaningful tempo.
+        // A single beat (common on very short samples) yields Bpm(Invalid)
+        // and corrupts the track's beat grid.
+        if (beats.size() < 2) {
+            qWarning() << "AnalyzerBeats: too few beats (" << beats.size()
+                       << ") - skipping beat grid storage";
+            return;
+        }
+
         // Export beats to CSV
         // uncomment to get the file created
         // exportBeatsToCsv(pTrack, beats, m_sampleRate);
-
         QHash<QString, QString> extraVersionInfo = getExtraVersionInfo(
                 m_pluginId, m_bPreferencesFastAnalysis);
         pBeats = BeatFactory::makePreferredBeats(
@@ -349,7 +380,6 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
     }
 
     pTrack->trySetBeats(pBeats);
-
     // BPM SEGMENTS -> JSON & DB
     auto* pExtendedPlugin = dynamic_cast<mixxx::AnalyzerQueenMaryBeatsExtended*>(m_pPlugin.get());
     if (pExtendedPlugin) {
@@ -373,11 +403,22 @@ void AnalyzerBeats::storeResults(TrackPointer pTrack) {
 
                 QJsonObject obj = val.toObject();
 
+                const double bpmStart = obj["bpm_start"].toDouble();
+                const double bpmEnd = obj["bpm_end"].toDouble();
+                const double duration = obj["duration"].toDouble();
+                if (bpmStart <= 0.0 || bpmEnd <= 0.0 || duration <= 0.0) {
+                    qWarning() << "[AnalyzerBeats] Skipping invalid BPM segment:"
+                               << "bpm_start" << bpmStart
+                               << "bpm_end" << bpmEnd
+                               << "duration" << duration;
+                    continue;
+                }
+
                 BpmSegmentsPointer pSegment(new BpmSegments(
                         obj["position"].toDouble(),
-                        obj["duration"].toDouble(),
-                        obj["bpm_start"].toDouble(),
-                        obj["bpm_end"].toDouble(),
+                        duration,
+                        bpmStart,
+                        bpmEnd,
                         obj["range_start"].toDouble(),
                         obj["range_end"].toDouble(),
                         obj["type"].toString()));
