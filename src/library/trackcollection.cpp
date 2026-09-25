@@ -66,6 +66,7 @@ void TrackCollection::repairDatabase(const QSqlDatabase& database) {
 
     kLogger.info() << "Repairing database";
     m_crates.repairDatabase(database);
+    m_directoryDao.repairDatabase(database);
 }
 
 void TrackCollection::connectDatabase(const QSqlDatabase& database) {
@@ -145,7 +146,15 @@ QList<mixxx::FileInfo> TrackCollection::loadRootDirs(bool skipInvalidOrMissing) 
 }
 
 QStringList TrackCollection::getRootDirStrings() const {
-    return m_directoryDao.getRootDirStrings();
+    QStringList rootDirStrings;
+    for (auto& rootDirectory : m_directoryDao.getRootDirectories()) {
+        rootDirStrings.append(rootDirectory.path);
+    }
+    return rootDirStrings;
+}
+
+QList<DirectoryDAO::RootDirectoryInfo> TrackCollection::getRootDirectories() const {
+    return m_directoryDao.getRootDirectories();
 }
 
 DirectoryDAO::AddResult TrackCollection::addDirectory(const mixxx::FileInfo& rootDir) {

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <gtest/gtest_prod.h>
+
 #include <QList>
 #include <QObject>
 #include <QSet>
 #include <QString>
+#include <QtSql/QSqlQuery>
 #include <memory>
 
 #include "library/dao/dao.h"
@@ -133,6 +136,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
 
     void progressVerifyTracksOutside(const QString& path);
     void progressCoverArt(const QString& file);
+    void progressLookingForSubstituteTracks(const QString& path);
     void forceModelUpdate();
     void removeTrackRows(const QSet<TrackId>& trackIds);
 
@@ -148,6 +152,9 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     friend class LibraryScanner;
     friend class TrackCollection;
     friend class TrackAnalysisScheduler;
+    FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
+
+    QString findLastTimeAddedToHistory(TrackId trackId) const;
 
     QList<TrackId> resolveTrackIds(
             const QStringList& pathList,
@@ -197,7 +204,6 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
 
     // Scanning related calls.
     void markTrackLocationsAsVerified(const QStringList& locations) const;
-    void markTracksInDirectoriesAsVerified(const QStringList& directories) const;
     void cleanupTrackLocationsDirectory() const;
     void invalidateTrackLocationsInLibrary() const;
     void markUnverifiedTracksAsDeleted();
@@ -234,6 +240,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     std::unique_ptr<SegmentsDAO> m_pSegmentsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);
+    mutable QSqlQuery m_lastAddedToHistoryQuery;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(TrackDAO::ResolveTrackIdFlags)
