@@ -78,6 +78,7 @@
 #SidebarCoverSplitter,
 #SidebarCoverSplitter:handle,
 #LibrarySplitter::handle,
+#LibraryMainSplitter::handle,
 #LibraryFeatureControls,
 QAbstractScrollArea::corner {
   border-top: 1px solid #212123;
@@ -110,6 +111,8 @@ QAbstractScrollArea::corner {
   #SidebarCoverSplitter,
   #SidebarCoverSplitter::handle,
   #LibrarySplitter,
+  #LibraryMainSplitter,
+  #LibraryMainSplitter::handle,
   #LibrarySplitter::handle {
     border-radius: 0px;
     }
@@ -118,9 +121,11 @@ QAbstractScrollArea::corner {
       border-width: 0px;
     }
     /* Some tweaks to create a frameless library table */
+    #LibraryMainSplitter,
     #LibrarySplitter {
       border-width: 0px;
       }
+      #LibraryMainSplitter::handle,
       #LibrarySplitter::handle {
         border-width: 1px 0px 0px 0px;
       }
@@ -3306,10 +3311,12 @@ WSearchLineEdit {
 /* VerticalSplitter (the splitter itself is vertical)
   splits
   * Library sidebar / Tracks table */
+#LibraryMainSplitter,
 #LibrarySplitter {
   padding: 0px;
   margin: 0px;
   }
+  #LibraryMainSplitter::handle,
   #LibrarySplitter::handle {
     image: url(skins:LateNight/palemoon/style/splitter_handle_vertical.svg);
     padding: 0px;
@@ -3317,6 +3324,7 @@ WSearchLineEdit {
     /* 'height' works although it's actually the width of the handle */
     height: 6px;
   }
+  #LibraryMainSplitter::handle:pressed,
   #LibrarySplitter::handle:pressed {
     image: url(skins:LateNight/palemoon/style/splitter_handle_vertical_pressed.svg);
   }

@@ -20,7 +20,13 @@ class PlaylistDAO : public QObject, public virtual DAO {
         PLHT_NOT_HIDDEN = 0,
         PLHT_AUTO_DJ = 1,
         PLHT_SET_LOG = 2,
+        PLHT_SET_PREPARATION = 3,
         PLHT_UNKNOWN = -1
+    };
+
+    enum class PreparationListSendLoc {
+        TOP,
+        BOTTOM,
     };
 
     enum class AutoDJSendLoc {
@@ -106,6 +112,10 @@ class PlaylistDAO : public QObject, public virtual DAO {
     void addTracksToAutoDJQueue(const QList<TrackId>& trackIds, AutoDJSendLoc loc);
     // Get the preceding playlist of currentPlaylistId with the HiddenType
     // hidden. Returns -1 if no such playlist exists.
+    // Add a list of tracks to the active PreparationList
+    void addTracksToPreparationList(int playlistId,
+            const QList<TrackId>& trackIds,
+            PreparationListSendLoc loc);
     int getPreviousPlaylist(const int currentPlaylistId, HiddenType hidden) const;
     // Get the following playlist of currentPlaylistId with the HiddenType
     // hidden. Returns -1 if no such playlist exists.
@@ -160,6 +170,7 @@ class PlaylistDAO : public QObject, public virtual DAO {
                                  const QHash<int,TrackId>* pTrackPositionIds,
                                  int* pTrackDistance);
     void populatePlaylistMembershipCache();
+    int getLatestPreparationList() const;
 
     QMultiHash<TrackId, int> m_playlistsTrackIsIn;
     int m_currentHistoryPlaylist;
