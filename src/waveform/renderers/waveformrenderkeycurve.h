@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QFont>
+#include <QSizeF>
 #include <QVector>
 #include <memory>
 
@@ -186,4 +187,6 @@ class WaveformRenderKeyCurve : public WaveformRendererAbstract {
     bool m_showLancelotWheel = true;
     bool m_showKeyMarkers = true;
     bool m_showKeyLabels = true;
+
+    QSizeF m_previousRendererSize;
 };

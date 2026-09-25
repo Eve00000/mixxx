@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QImage>
+#include <QSizeF>
 #include <memory>
 
 #include "control/controlproxy.h"
@@ -117,6 +118,8 @@ class allshader::WaveformRenderBpmCurve : public WaveformRenderBpmCurveBase,
     bool m_showBpmCurve = true;
     bool m_showBpmMarkers = true;
     bool m_showBpmLabels = true;
+
+    QSizeF m_previousRendererSize;
 };
 
 inline BpmCurveStyle::BpmCurveStyle()

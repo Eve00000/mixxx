@@ -5,6 +5,7 @@
 #include <QElapsedTimer>
 #include <QFont>
 #include <QLineF>
+#include <QSizeF>
 #include <QVector>
 
 #include "control/controlproxy.h"
@@ -140,4 +141,6 @@ class WaveformRenderBpmCurve : public WaveformRendererAbstract {
     bool m_showBpmCurve = true;
     bool m_showBpmMarkers = true;
     bool m_showBpmLabels = true;
+
+    QSizeF m_previousRendererSize;
 };
