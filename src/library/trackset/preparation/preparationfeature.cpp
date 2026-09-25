@@ -18,6 +18,7 @@
 #include "moc_preparationfeature.cpp"
 #include "sources/soundsourceproxy.h"
 #include "track/track.h"
+#include "util/dnd.h"
 #include "util/make_const_iterator.h"
 #include "widget/wlibrary.h"
 #include "widget/wlibrarysidebar.h"
@@ -189,13 +190,17 @@ bool PreparationFeature::dropAcceptChild(
     return m_playlistDao.appendTracksToPlaylist(trackIds, playlistId);
 }
 
-bool PreparationFeature::dragMoveAcceptChild(const QModelIndex& index, const QUrl& url) {
+bool PreparationFeature::dragMoveAcceptChild(const QModelIndex& index, const QList<QUrl>& urls) {
     int playlistId = playlistIdFromIndex(index);
     bool locked = m_playlistDao.isPlaylistLocked(playlistId);
+    if (playlistId == kInvalidPlaylistId) {
+        return false;
+    }
+    if (m_playlistDao.isPlaylistLocked(playlistId)) {
+        return false;
+    }
 
-    bool formatSupported = SoundSourceProxy::isUrlSupported(url) ||
-            Parser::isPlaylistFilenameSupported(url.toLocalFile());
-    return !locked && formatSupported;
+    return !locked && DragAndDropHelper::urlsContainSupportedTrackFiles(urls, true);
 }
 
 void PreparationFeature::onRightClick(const QPoint& globalPos) {
