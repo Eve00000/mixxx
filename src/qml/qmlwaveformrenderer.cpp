@@ -18,11 +18,48 @@
 #include "waveform/renderers/allshader/waveformrenderersignalbase.h"
 #include "waveform/renderers/allshader/waveformrenderersimple.h"
 // #include "waveform/renderers/allshader/waveformrenderertextured.h"
+#include "waveform/renderers/waveformmark.h"
 #ifdef __STEM__
 #include "waveform/renderers/allshader/waveformrendererstem.h"
 #endif
 #include "waveform/renderers/allshader/waveformrendermark.h"
 #include "waveform/renderers/allshader/waveformrendermarkrange.h"
+
+namespace {
+QString waveformMarkerErrorToString(
+        const WaveformMark::WaveformMarkConstructionError error,
+        const QString& endIcon,
+        const QString& pixmap,
+        const QString& endPixmap,
+        const QString& icon) {
+    QString errorMessage = QObject::tr("Invalid marker: ");
+    switch (error) {
+    case WaveformMark::WaveformMarkConstructionError::EndIconInvalidArgumentCount:
+        errorMessage.append(
+                QObject::tr("unexpected number of arguments in endIcon: %1")
+                        .arg(endIcon));
+        break;
+    case WaveformMark::WaveformMarkConstructionError::PixmapNotFound:
+        errorMessage.append(QObject::tr("path %1 for pixmap cannot be found").arg(pixmap));
+        break;
+    case WaveformMark::WaveformMarkConstructionError::EndPixmapNotFound:
+        errorMessage.append(
+                QObject::tr("path %1 for end pixmap cannot be found")
+                        .arg(endPixmap));
+        break;
+    case WaveformMark::WaveformMarkConstructionError::IconNotFound:
+        errorMessage.append(QObject::tr("path %1 for icon cannot be found").arg(icon));
+        break;
+    case WaveformMark::WaveformMarkConstructionError::EndIconNotFound:
+        errorMessage.append(QObject::tr("path %1 for end icon cannot be found").arg(endIcon));
+        break;
+    default:
+        DEBUG_ASSERT(!"unreachable");
+        errorMessage.append("unknown error");
+    }
+    return errorMessage;
+}
+} // namespace
 
 namespace mixxx {
 namespace qml {
@@ -238,13 +275,13 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererBeat::create(
     auto pRenderer = std::make_unique<allshader::WaveformRenderBeat>(
             waveformWidget, m_position);
     waveformWidget->setDisplayBeatGridAlpha(m_color.alphaF() * 100);
-    pRenderer->setColor(m_color.rgb());
+    pRenderer->setColor(m_color);
     connect(this,
             &QmlWaveformRendererBeat::colorChanged,
             pRenderer.get(),
             [waveformWidget, pRenderer = pRenderer.get()](const QColor& color) {
                 waveformWidget->setDisplayBeatGridAlpha(color.alphaF() * 100);
-                pRenderer->setColor(color.rgb());
+                pRenderer->setColor(color);
             });
     return QmlWaveformRendererFactory::Renderer{pRenderer.get(), std::move(pRenderer)};
 }
@@ -280,11 +317,32 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererStem::create(
             waveformWidget, m_position);
 
     pRenderer->setAllChannelVisualGain(m_gainAll);
+    pRenderer->setOpacity(static_cast<float>(m_opacity));
+    pRenderer->setOutlineOpacity(static_cast<float>(m_outlineOpacity));
+    pRenderer->setReorderOnChange(m_reorderOnChange);
     pRenderer->setSplitStemTracks(m_splitStemTracks);
     connect(this,
             &QmlWaveformRendererStem::gainAllChanged,
             pRenderer.get(),
             &allshader::WaveformRendererStem::setAllChannelVisualGain);
+    connect(this,
+            &QmlWaveformRendererStem::opacityChanged,
+            pRenderer.get(),
+            [renderer = pRenderer.get()](double value) {
+                renderer->setOpacity(static_cast<float>(value));
+            });
+    connect(this,
+            &QmlWaveformRendererStem::outlineOpacityChanged,
+            pRenderer.get(),
+            [renderer = pRenderer.get()](double value) {
+                renderer->setOutlineOpacity(static_cast<float>(value));
+            });
+    connect(this,
+            &QmlWaveformRendererStem::reorderOnChangeChanged,
+            pRenderer.get(),
+            [renderer = pRenderer.get()](bool value) {
+                renderer->setReorderOnChange(value);
+            });
     connect(this,
             &QmlWaveformRendererStem::splitStemTracksChanged,
             pRenderer.get(),
@@ -306,8 +364,8 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMark::create(
     pRenderer->setPlayMarkerBackgroundColor(m_playMarkerBackground);
     waveformWidget->setPlayMarkerPosition(m_playMarkerPosition);
 
-    pRenderer->setUntilMarkShowBeats(m_untilMark->showTime());
-    pRenderer->setUntilMarkShowTime(m_untilMark->showBeats());
+    pRenderer->setUntilMarkShowBeats(m_untilMark->showBeats());
+    pRenderer->setUntilMarkShowTime(m_untilMark->showTime());
     pRenderer->setUntilMarkAlign(m_untilMark->align());
     pRenderer->setUntilMarkTextSize(m_untilMark->textSize());
     pRenderer->setUntilMarkTextHeightLimit(m_untilMark->textHeightLimit());
@@ -329,6 +387,10 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMark::create(
             &QmlWaveformUntilMark::textSizeChanged,
             pRenderer.get(),
             &allshader::WaveformRenderMark::setUntilMarkTextSize);
+    connect(m_untilMark.get(),
+            &QmlWaveformUntilMark::textHeightLimitChanged,
+            pRenderer.get(),
+            &allshader::WaveformRenderMark::setUntilMarkTextHeightLimit);
     connect(m_untilMark.get(),
             &QmlWaveformUntilMark::defaultNextMarkPositionChanged,
             pRenderer.get(),
@@ -352,23 +414,40 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMark::create(
     // The initialisation is closely inspired from WaveformMarkSet::setup
     int priority = 0;
     for (const auto* pMark : std::as_const(m_marks)) {
-        pRenderer->addMark(WaveformMarkPointer(new WaveformMark(
+        const QString pixmap = pMark->pixmap().toLocalFile();
+        const QString icon = pMark->icon().toLocalFile();
+        const QString endPixmap = pMark->endPixmap().toLocalFile();
+        const QString endIcon = pMark->endIcon().toLocalFile();
+        auto maybeMarker = WaveformMark::create(
                 waveformWidget->getGroup(),
                 pMark->control(),
                 pMark->visibilityControl(),
                 pMark->textColor(),
                 pMark->align(),
                 pMark->text(),
-                pMark->pixmap().toLocalFile(),
-                pMark->icon().toLocalFile(),
+                pixmap,
+                icon,
                 pMark->color(),
                 priority,
                 Cue::kNoHotCue,
                 {},
-                pMark->endPixmap().toLocalFile(),
-                pMark->endIcon().toLocalFile(),
+                endPixmap,
+                endIcon,
                 pMark->disabledOpacity(),
-                pMark->enabledOpacity())));
+                pMark->enabledOpacity());
+
+        if (std::holds_alternative<WaveformMark::WaveformMarkConstructionError>(maybeMarker)) {
+            qmlEngine(this)->throwError(waveformMarkerErrorToString(
+                    std::get<WaveformMark::WaveformMarkConstructionError>(
+                            maybeMarker),
+                    endIcon,
+                    pixmap,
+                    endPixmap,
+                    icon));
+            continue;
+        }
+        auto pMarker = std::get<WaveformMarkPointer>(maybeMarker);
+        pRenderer->addMark(pMarker);
         priority--;
     }
     const auto* pMark = defaultMark();
@@ -377,26 +456,7 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMark::create(
         const QString endPixmap = pMark->endPixmap().toLocalFile();
         const QString icon = pMark->icon().toLocalFile();
         const QString endIcon = pMark->endIcon().toLocalFile();
-        // FIXME: the following checks should be done on the WaveformMarker
-        // setter (depends of #14515)
-        if (!pixmap.isEmpty() && !QFileInfo::exists(pixmap)) {
-            qmlEngine(this)->throwError(tr("Cannot find the marker pixmap") + " \"" + pixmap + '"');
-        }
-
-        if (!endPixmap.isEmpty() && !QFileInfo::exists(endPixmap)) {
-            qmlEngine(this)->throwError(tr("Cannot find the marker endPixmap") +
-                    " \"" + endPixmap + '"');
-        }
-
-        if (!icon.isEmpty() && !QFileInfo::exists(icon)) {
-            qmlEngine(this)->throwError(tr("Cannot find the marker icon") + " \"" + icon + '"');
-        }
-
-        if (!endIcon.isEmpty() && !QFileInfo::exists(endIcon)) {
-            qmlEngine(this)->throwError(tr("Cannot find the marker endIcon") +
-                    " \"" + endIcon + '"');
-        }
-        pRenderer->setDefaultMark(
+        auto error = pRenderer->setDefaultMark(
                 waveformWidget->getGroup(),
                 WaveformMarkSet::DefaultMarkerStyle{
                         pMark->control(),
@@ -412,6 +472,10 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMark::create(
                         pMark->enabledOpacity(),
                         pMark->disabledOpacity(),
                 });
+        if (error.has_value()) {
+            qmlEngine(this)->throwError(waveformMarkerErrorToString(
+                    error.value(), endIcon, pixmap, endPixmap, icon));
+        }
     }
     return QmlWaveformRendererFactory::Renderer{pRenderer.get(), std::move(pRenderer)};
 }

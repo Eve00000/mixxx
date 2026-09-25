@@ -32,8 +32,10 @@
 #include <cmath>
 #include <utility>
 
+#include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "control/controlpushbutton.h"
+#include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
 #include "mixer/playermanager.h"
@@ -55,9 +57,47 @@ namespace qml {
 
 namespace {
 const QColor kLegacyLibraryBackgroundColor(0x1e, 0x1e, 0x1e);
+
+struct SchemeStyle {
+    QString qssName;
+    QString signalColor;
+    QString scrollbarHandleStyle;
+    QString scrollbarVerticalStyle;
+};
+
+SchemeStyle getActiveSchemeStyle() {
+    UserSettingsPointer pConfig = QmlConfigProxy::get();
+    QString configScheme = pConfig->getValue(
+            ConfigKey(QStringLiteral("[Config]"), QStringLiteral("Scheme")));
+    if (configScheme.compare(QStringLiteral("Classic"), Qt::CaseInsensitive) == 0) {
+        return {
+                QStringLiteral("style_classic.qss"),
+                QStringLiteral("#e7c413"),
+                QStringLiteral(
+                        "border-radius: 2px;\n"
+                        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+                        "stop:0 #725309, stop:1 #412f05);"),
+                QString()};
+    } else {
+        return {
+                QStringLiteral("style_palemoon.qss"),
+                QStringLiteral("#d9b28c"),
+                QStringLiteral("background-color: #333338;"),
+                QStringLiteral("border-top: 1px solid #212123;")};
+    }
+}
 } // namespace
 
 QmlLegacyLibraryItem::~QmlLegacyLibraryItem() = default;
+
+void QmlLegacyLibraryItem::focusSearch() {
+    VERIFY_OR_DEBUG_ASSERT(m_pSearchLineEdit) {
+        return;
+    }
+    forceActiveFocus(Qt::ShortcutFocusReason);
+    updateEmbeddedFocus(m_pSearchLineEdit, Qt::ShortcutFocusReason);
+    requestRender();
+}
 
 QmlLegacyLibraryItem::QmlLegacyLibraryItem(QQuickItem* pParent)
         : QQuickPaintedItem(pParent),
@@ -162,10 +202,15 @@ QmlLegacyLibraryItem::QmlLegacyLibraryItem(QQuickItem* pParent)
     VERIFY_OR_DEBUG_ASSERT(pLibrary) {
         return;
     }
+    KeyboardEventFilter* pKeyboard = QmlLibraryProxy::getKeyboard();
+    VERIFY_OR_DEBUG_ASSERT(pKeyboard) {
+        return;
+    }
 
+    pKeyboard->registerSearchBar(m_pSearchLineEdit);
     pLibrary->bindSearchboxWidget(m_pSearchLineEdit);
     pLibrary->bindSidebarWidget(m_pSidebar);
-    pLibrary->bindLibraryWidget(m_pLibraryWidget, QmlLibraryProxy::getKeyboard());
+    pLibrary->bindLibraryWidget(m_pLibraryWidget, pKeyboard);
 
     // The legacy skin parser makes this connection in parseLibrary().
     // Without it the search signal never reaches WLibrary and the
@@ -208,6 +253,20 @@ QmlLegacyLibraryItem::QmlLegacyLibraryItem(QQuickItem* pParent)
     //    and QML palette bindings once the library panel is ported to QML.
     applyLegacyStylesheet();
     repolishEmbeddedWidgets();
+
+    if (QmlConfigProxyBase::s_pInstance) {
+        connect(QmlConfigProxyBase::s_pInstance,
+                &QmlConfigProxyBase::configSchemeChanged,
+                this,
+                [this]() {
+                    applyLegacyLibrarySkinConfiguration();
+                    applyLegacyStylesheet();
+                    repolishEmbeddedWidgets();
+                    applyLegacyScrollbarStyles();
+                    repaintEmbeddedViews();
+                });
+    }
+
     enableEmbeddedWidgetInputTracking();
     applyLegacyScrollbarStyles();
     applyLegacyTableViewBridgeOptions();
@@ -977,6 +1036,7 @@ void QmlLegacyLibraryItem::applyLegacyScrollbarStyle(QScrollBar* pScrollBar) {
         return;
     }
 
+    const SchemeStyle scheme = getActiveSchemeStyle();
     const QString scrollBarStyle = QStringLiteral(R"MIXXXQSS(
 QScrollBar {
   border: 0px solid #585858;
@@ -999,6 +1059,7 @@ QScrollBar:vertical {
   border-bottom-left-radius: 0px;
   color: #b3b3b3;
   background-color: #000;
+  %1
 }
 QScrollBar::groove:horizontal {
   height: 15px;
@@ -1012,13 +1073,11 @@ QScrollBar::groove:vertical {
 }
 QScrollBar::handle:horizontal {
   min-width: 25px;
-  border-radius: 2px;
-  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #725309, stop:1 #412f05);
+  %2
 }
 QScrollBar::handle:vertical {
   min-height: 25px;
-  border-radius: 2px;
-  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #725309, stop:1 #412f05);
+  %2
 }
 QScrollBar::add-page, QScrollBar::sub-page {
   min-width: 15px;
@@ -1031,7 +1090,9 @@ QScrollBar::add-line, QScrollBar::sub-line {
   height: 0px;
   border: 0px;
 }
-)MIXXXQSS");
+)MIXXXQSS")
+                                           .arg(scheme.scrollbarVerticalStyle,
+                                                   scheme.scrollbarHandleStyle);
 
     pScrollBar->setAttribute(Qt::WA_StyledBackground, true);
     pScrollBar->setAutoFillBackground(true);
@@ -1367,6 +1428,16 @@ void QmlLegacyLibraryItem::updateEmbeddedFocus(
         pFocusTarget = pFocusTarget->parentWidget();
     }
 
+    if (m_pSearchLineEdit) {
+        const bool searchFocused = pFocusTarget == m_pSearchLineEdit;
+        if (m_pSearchLineEdit->property("qmlBridgeFocused").toBool() != searchFocused) {
+            m_pSearchLineEdit->setProperty("qmlBridgeFocused", searchFocused);
+            m_pSearchLineEdit->style()->unpolish(m_pSearchLineEdit);
+            m_pSearchLineEdit->style()->polish(m_pSearchLineEdit);
+            m_pSearchLineEdit->update();
+        }
+    }
+
     if (pFocusTarget == m_pFocusedWidget) {
         return;
     }
@@ -1451,13 +1522,16 @@ void QmlLegacyLibraryItem::applyLegacyLibrarySkinConfiguration() {
     SkinContext context(QmlConfigProxy::get(), lateNightSkinPath + QStringLiteral("/skin.xml"));
     context.setSkinBasePath(lateNightSkinPath);
 
+    const SchemeStyle scheme = getActiveSchemeStyle();
+
     QDomDocument document(QStringLiteral("QmlLegacyLibraryItemLibrarySetup"));
     const QString libraryXml = QStringLiteral(
             "<Library>"
             "<ShowButtonText>false</ShowButtonText>"
             "<TrackTableBackgroundColorOpacity>0.175</TrackTableBackgroundColorOpacity>"
-            "<SignalColor>#e7c413</SignalColor>"
-            "</Library>");
+            "<SignalColor>%1</SignalColor>"
+            "</Library>")
+                                       .arg(scheme.signalColor);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     const QDomDocument::ParseResult parseResult = document.setContent(libraryXml);
     if (!parseResult) {
@@ -1499,8 +1573,9 @@ void QmlLegacyLibraryItem::applyLegacyStylesheet() {
             resourcePath + QStringLiteral("skins/LateNight"));
     QDir::setSearchPaths(QStringLiteral("skins"), {skinsRoot});
     QDir::setSearchPaths(QStringLiteral("skin"), {lateNightSkinRoot});
+    const SchemeStyle scheme = getActiveSchemeStyle();
     const QString styleFilePath =
-            skinsRoot + QStringLiteral("LateNight/style_classic.qss");
+            skinsRoot + QStringLiteral("LateNight/") + scheme.qssName;
 
     QFile styleFile(styleFilePath);
     if (!styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -1561,6 +1636,10 @@ void QmlLegacyLibraryItem::initializeOverviewTypeControl() {
     const ConfigKey overviewTypeCfgKey(
             QStringLiteral("[Waveform]"),
             QStringLiteral("WaveformOverviewType"));
+
+    if (ControlObject::exists(overviewTypeCfgKey)) {
+        return;
+    }
 
     m_pOverviewTypeControl = std::make_unique<ControlPushButton>(overviewTypeCfgKey);
     m_pOverviewTypeControl->setStates(

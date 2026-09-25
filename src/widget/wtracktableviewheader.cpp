@@ -2,6 +2,7 @@
 
 #include <QCheckBox>
 #include <QContextMenuEvent>
+#include <QLabel>
 #include <QPainter>
 #include <QStyleOptionHeader>
 #include <QTextOption>
@@ -298,7 +299,7 @@ void WTrackTableViewHeader::restoreHeaderState() {
     }
 
     const QString headerStateString = pTrackModel->getModelSetting("header_state_pb");
-    if (headerStateString.isNull()) {
+    if (headerStateString.isEmpty()) {
         loadDefaultHeaderState();
     } else {
         // Load the previous header state (stored as serialized protobuf).
@@ -451,6 +452,13 @@ void WTrackTableViewHeader::leaveEvent(QEvent* pEvent) {
     }
 
     QHeaderView::leaveEvent(pEvent);
+}
+
+void WTrackTableViewHeader::mousePressEvent(QMouseEvent* pEvent) {
+    QHeaderView::mousePressEvent(pEvent);
+    if (QLabel* pIndicator = viewport()->findChild<QLabel*>()) {
+        pIndicator->hide();
+    }
 }
 
 void WTrackTableViewHeader::mouseMoveEvent(QMouseEvent* pEvent) {
