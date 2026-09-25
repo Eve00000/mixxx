@@ -20,7 +20,7 @@ DlgPrefBeats::DlgPrefBeats(QWidget* parent, UserSettingsPointer pConfig)
         comboBoxBeatPlugin->addItem(info.name(), info.id());
     }
 
-    loadSettings();
+    slotUpdate();
 
     // TODO (#13466) Keeping the setting hidden for now
     comboBoxStemStrategy->hide();
@@ -32,23 +32,43 @@ DlgPrefBeats::DlgPrefBeats(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefBeats::pluginSelected);
     connect(checkBoxAnalyzerEnabled,
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            &QCheckBox::checkStateChanged,
+#else
             &QCheckBox::stateChanged,
+#endif
             this,
             &DlgPrefBeats::analyzerEnabled);
     connect(checkBoxFixedTempo,
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            &QCheckBox::checkStateChanged,
+#else
             &QCheckBox::stateChanged,
+#endif
             this,
             &DlgPrefBeats::fixedtempoEnabled);
     connect(checkBoxFastAnalysis,
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            &QCheckBox::checkStateChanged,
+#else
             &QCheckBox::stateChanged,
+#endif
             this,
             &DlgPrefBeats::fastAnalysisEnabled);
     connect(checkBoxReanalyze,
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            &QCheckBox::checkStateChanged,
+#else
             &QCheckBox::stateChanged,
+#endif
             this,
             &DlgPrefBeats::slotReanalyzeChanged);
     connect(checkBoxReanalyzeImported,
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            &QCheckBox::checkStateChanged,
+#else
             &QCheckBox::stateChanged,
+#endif
             this,
             &DlgPrefBeats::slotReanalyzeImportedChanged);
     connect(comboBoxStemStrategy,
@@ -66,18 +86,6 @@ QUrl DlgPrefBeats::helpUrl() const {
     return QUrl(MIXXX_MANUAL_BEATS_URL);
 }
 
-void DlgPrefBeats::loadSettings() {
-    m_selectedAnalyzerId = m_bpmSettings.getBeatPluginId();
-    m_bAnalyzerEnabled = m_bpmSettings.getBpmDetectionEnabled();
-    m_bFixedTempoEnabled = m_bpmSettings.getFixedTempoAssumption();
-    m_bReanalyze =  m_bpmSettings.getReanalyzeWhenSettingsChange();
-    m_bReanalyzeImported = m_bpmSettings.getReanalyzeImported();
-    m_bFastAnalysisEnabled = m_bpmSettings.getFastAnalysis();
-    m_stemStrategy = m_bpmSettings.getStemStrategy();
-
-    slotUpdate();
-}
-
 void DlgPrefBeats::slotResetToDefaults() {
     if (m_availablePlugins.size() > 0) {
         m_selectedAnalyzerId = m_availablePlugins[0].id();
@@ -89,7 +97,7 @@ void DlgPrefBeats::slotResetToDefaults() {
     m_bReanalyzeImported = m_bpmSettings.getReanalyzeImportedDefault();
     m_stemStrategy = m_bpmSettings.getStemStrategyDefault();
 
-    slotUpdate();
+    updateGui();
 }
 
 void DlgPrefBeats::pluginSelected(int i) {
@@ -97,20 +105,43 @@ void DlgPrefBeats::pluginSelected(int i) {
         return;
     }
     m_selectedAnalyzerId = m_availablePlugins[i].id();
-    slotUpdate();
+    updateGui();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void DlgPrefBeats::analyzerEnabled(Qt::CheckState state) {
+    m_bAnalyzerEnabled = (state == Qt::Checked);
+#else
 void DlgPrefBeats::analyzerEnabled(int i) {
     m_bAnalyzerEnabled = static_cast<bool>(i);
-    slotUpdate();
+#endif
+    updateGui();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void DlgPrefBeats::fixedtempoEnabled(Qt::CheckState state) {
+    m_bFixedTempoEnabled = (state == Qt::Checked);
+#else
 void DlgPrefBeats::fixedtempoEnabled(int i) {
     m_bFixedTempoEnabled = static_cast<bool>(i);
-    slotUpdate();
+#endif
+    updateGui();
 }
 
 void DlgPrefBeats::slotUpdate() {
+    // Read true values from config
+    m_selectedAnalyzerId = m_bpmSettings.getBeatPluginId();
+    m_bAnalyzerEnabled = m_bpmSettings.getBpmDetectionEnabled();
+    m_bFixedTempoEnabled = m_bpmSettings.getFixedTempoAssumption();
+    m_bReanalyze = m_bpmSettings.getReanalyzeWhenSettingsChange();
+    m_bReanalyzeImported = m_bpmSettings.getReanalyzeImported();
+    m_bFastAnalysisEnabled = m_bpmSettings.getFastAnalysis();
+    m_stemStrategy = m_bpmSettings.getStemStrategy();
+
+    updateGui();
+}
+
+void DlgPrefBeats::updateGui() {
     checkBoxFixedTempo->setEnabled(m_bAnalyzerEnabled);
     comboBoxBeatPlugin->setEnabled(m_bAnalyzerEnabled);
     checkBoxAnalyzerEnabled->setChecked(m_bAnalyzerEnabled);
@@ -155,19 +186,34 @@ void DlgPrefBeats::slotUpdate() {
                     : 0);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void DlgPrefBeats::slotReanalyzeChanged(Qt::CheckState state) {
+    m_bReanalyze = (state == Qt::Checked);
+#else
 void DlgPrefBeats::slotReanalyzeChanged(int value) {
     m_bReanalyze = static_cast<bool>(value);
-    slotUpdate();
+#endif
+    updateGui();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void DlgPrefBeats::slotReanalyzeImportedChanged(Qt::CheckState state) {
+    m_bReanalyzeImported = (state == Qt::Checked);
+#else
 void DlgPrefBeats::slotReanalyzeImportedChanged(int value) {
     m_bReanalyzeImported = static_cast<bool>(value);
-    slotUpdate();
+#endif
+    updateGui();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void DlgPrefBeats::fastAnalysisEnabled(Qt::CheckState state) {
+    m_bFastAnalysisEnabled = (state == Qt::Checked);
+#else
 void DlgPrefBeats::fastAnalysisEnabled(int i) {
     m_bFastAnalysisEnabled = static_cast<bool>(i);
-    slotUpdate();
+#endif
+    updateGui();
 }
 
 void DlgPrefBeats::slotStemStrategyChanged(int index) {
@@ -179,7 +225,7 @@ void DlgPrefBeats::slotStemStrategyChanged(int index) {
         m_stemStrategy = BeatDetectionSettings::StemStrategy::Disabled;
         break;
     }
-    slotUpdate();
+    updateGui();
 }
 
 void DlgPrefBeats::slotApply() {

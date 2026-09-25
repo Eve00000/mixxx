@@ -22,6 +22,7 @@ class TrackCollectionManager;
 class Library;
 class SkinControls;
 class ControlPushButton;
+struct LibraryScanResultSummary;
 
 namespace mixxx {
 
@@ -43,9 +44,7 @@ class CoreServices : public QObject {
         return m_pKeyboardEventFilter;
     }
 
-    std::shared_ptr<ConfigObject<ConfigValueKbd>> getKeyboardConfig() const {
-        return m_pKbdConfig;
-    }
+    std::shared_ptr<ConfigObject<ConfigValueKbd>> getKeyboardConfig() const;
 
     std::shared_ptr<mixxx::ControlIndicatorTimer> getControlIndicatorTimer() const {
         return m_pControlIndicatorTimer;
@@ -101,13 +100,15 @@ class CoreServices : public QObject {
         return m_pScreensaverManager;
     }
 
-    std::shared_ptr<QDialog> makeDlgPreferences() const;
+    // Creates the native preferences dialog. QML can temporarily suppress
+    // the legacy Waveforms page while its dedicated settings page is being
+    // implemented.
+    std::shared_ptr<QDialog> makeDlgPreferences(
+            bool includeWaveformPreferences = true) const;
 
   signals:
     void initializationProgressUpdate(int progress, const QString& serviceName);
-
-  public slots:
-    void slotOptionsKeyboard(bool toggle);
+    void libraryScanSummary(const LibraryScanResultSummary& result);
 
   private:
     bool initializeDatabase();
@@ -141,8 +142,6 @@ class CoreServices : public QObject {
     std::shared_ptr<Library> m_pLibrary;
 
     std::shared_ptr<KeyboardEventFilter> m_pKeyboardEventFilter;
-    std::shared_ptr<ConfigObject<ConfigValueKbd>> m_pKbdConfig;
-    std::shared_ptr<ConfigObject<ConfigValueKbd>> m_pKbdConfigEmpty;
 
     std::shared_ptr<mixxx::ScreensaverManager> m_pScreensaverManager;
 

@@ -11,6 +11,7 @@
 #include "controllers/scripting/legacy/controllerscriptenginelegacy.h"
 #include "defs_urls.h"
 #include "errordialoghandler.h"
+#include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
 #include "moc_midicontroller.cpp"
 #include "util/make_const_iterator.h"
@@ -21,19 +22,19 @@ const QString kMakeInputHandlerError = QStringLiteral(
         "Please pass a function and make sure that your code contains no syntax errors.");
 
 MidiInputHandleJSProxy::MidiInputHandleJSProxy(
-        const std::shared_ptr<LegacyMidiControllerMapping> mapping,
+        MidiController* pMidiController,
         const MidiInputMapping& inputMapping)
-        : m_mapping(mapping), m_inputMapping(inputMapping) {
+        : m_pMidiController(pMidiController),
+          m_inputMapping(inputMapping) {
 }
 
 bool MidiInputHandleJSProxy::disconnect() {
     // We want to remove only this mapping when disconnecting
-    return m_mapping->removeInputMapping(m_inputMapping.key.key, m_inputMapping);
+    return m_pMidiController->removeInputMapping(m_inputMapping.key.key, m_inputMapping);
 }
 
 MidiController::MidiController(const QString& deviceName)
         : Controller(deviceName) {
-    setDeviceCategory(tr("MIDI Controller"));
 }
 
 void MidiController::slotBeforeEngineShutdown() {
@@ -56,15 +57,39 @@ QString MidiController::mappingExtension() {
 }
 
 void MidiController::setMapping(std::shared_ptr<LegacyControllerMapping> pMapping) {
-    m_pMapping = downcastAndTakeOwnership<LegacyMidiControllerMapping>(std::move(pMapping));
+    m_pMutableMapping = pMapping;
+    m_pMapping = downcastAndClone<LegacyMidiControllerMapping>(pMapping.get());
 }
 
-std::shared_ptr<LegacyControllerMapping> MidiController::cloneMapping() {
+QList<LegacyControllerMapping::ScriptFileInfo> MidiController::getMappingScriptFiles() {
     if (!m_pMapping) {
-        return nullptr;
+        return {};
     }
-    return m_pMapping->clone();
+    return m_pMapping->getScriptFiles();
 }
+
+QList<std::shared_ptr<AbstractLegacyControllerSetting>> MidiController::getMappingSettings() {
+    if (!m_pMapping) {
+        return {};
+    }
+    return m_pMapping->getSettings();
+}
+
+#ifdef MIXXX_USE_QML
+QList<LegacyControllerMapping::QMLModuleInfo> MidiController::getMappingModules() {
+    if (!m_pMapping) {
+        return {};
+    }
+    return m_pMapping->getModules();
+}
+
+QList<LegacyControllerMapping::ScreenInfo> MidiController::getMappingInfoScreens() {
+    if (!m_pMapping) {
+        return {};
+    }
+    return m_pMapping->getInfoScreens();
+}
+#endif
 
 int MidiController::close() {
     destroyOutputHandlers();
@@ -146,7 +171,7 @@ void MidiController::createOutputHandlers() {
             if (m_logBase().isDebugEnabled()) {
                 failures.append(errorLog);
             } else if (PlayerManager::isDeckGroup(group, &deckNum)) {
-                int numDecks = PlayerManager::numDecks();
+                int numDecks = PlayerInfo::instance().numDecks();
                 if (deckNum <= numDecks) {
                     failures.append(errorLog);
                 }
@@ -287,8 +312,10 @@ void MidiController::receivedShortMessage(unsigned char status,
         }
     }
 
-    auto it = m_pMapping->getInputMappings().constFind(mappingKey.key);
-    for (; it != m_pMapping->getInputMappings().constEnd() && it.key() == mappingKey.key; ++it) {
+    for (auto [it, end] =
+                    m_pMapping->getInputMappings().equal_range(mappingKey.key);
+            it != end;
+            ++it) {
         processInputMapping(it.value(), status, control, value, timestamp);
     }
 }
@@ -475,7 +502,7 @@ double MidiController::computeValue(
     }
 
     if (options.testFlag(MidiOption::Invert)) {
-        return 127. - newmidivalue;
+        newmidivalue = 127. - newmidivalue;
     }
 
     if (options & (MidiOption::Rot64 | MidiOption::Rot64Invert)) {
@@ -491,73 +518,53 @@ double MidiController::computeValue(
         } else {
             tempval -= diff;
         }
-        return (tempval < 0. ? 0. : (tempval > 127. ? 127.0 : tempval));
-    }
-
-    if (options.testFlag(MidiOption::Rot64Fast)) {
+        newmidivalue = tempval < 0. ? 0. : (tempval > 127. ? 127.0 : tempval);
+    } else if (options.testFlag(MidiOption::Rot64Fast)) {
         tempval = prevmidivalue;
         diff = newmidivalue - 64.;
         diff *= 1.5;
         tempval += diff;
-        return (tempval < 0. ? 0. : (tempval > 127. ? 127.0 : tempval));
-    }
-
-    if (options.testFlag(MidiOption::Diff)) {
-        //Interpret 7-bit signed value using two's compliment.
+        newmidivalue = tempval < 0. ? 0. : (tempval > 127. ? 127.0 : tempval);
+    } else if (options.testFlag(MidiOption::Diff)) {
+        // Interpret 7-bit signed value using two's compliment.
         if (newmidivalue >= 64.) {
             newmidivalue = newmidivalue - 128.;
         }
-        //Apply sensitivity to signed value. FIXME
-       // if(sensitivity > 0)
+        // Apply sensitivity to signed value. FIXME
+        // if(sensitivity > 0)
         //    _newmidivalue = _newmidivalue * ((double)sensitivity / 50.);
-        //Apply new value to current value.
+        // Apply new value to current value.
         newmidivalue = prevmidivalue + newmidivalue;
-    }
-
-    if (options.testFlag(MidiOption::SelectKnob)) {
-        //Interpret 7-bit signed value using two's compliment.
+    } else if (options.testFlag(MidiOption::SelectKnob)) {
+        // Interpret 7-bit signed value using two's compliment.
+        // Since this is a selection knob, we do not want to inherit previous values.
         if (newmidivalue >= 64.) {
             newmidivalue = newmidivalue - 128.;
         }
-        //Apply sensitivity to signed value. FIXME
-        //if(sensitivity > 0)
+        // FIXME Apply sensitivity to signed value
+        // if (sensitivity > 0)
         //    _newmidivalue = _newmidivalue * ((double)sensitivity / 50.);
-        //Since this is a selection knob, we do not want to inherit previous values.
-    }
-
-    if (options.testFlag(MidiOption::Button)) {
-        newmidivalue = newmidivalue != 0;
-    }
-
-    if (options.testFlag(MidiOption::Switch)) {
-        newmidivalue = 1;
-    }
-
-    if (options.testFlag(MidiOption::Spread64)) {
-        //qDebug() << "MIDI_OPT_SPREAD64";
-        // BJW: Spread64: Distance away from centre point (aka "relative CC")
-        // Uses a similar non-linear scaling formula as ControlTTRotary::getValueFromWidget()
-        // but with added sensitivity adjustment. This formula is still experimental.
-
+    } else if (options.testFlag(MidiOption::Button)) {
+        return newmidivalue != 0;
+    } else if (options.testFlag(MidiOption::Switch)) {
+        return 1;
+    } else if (options.testFlag(MidiOption::Spread64)) {
+        // Distance away from centre point (aka "relative CC")
         newmidivalue = newmidivalue - 64.;
-        //FIXME
-        //double distance = _newmidivalue - 64.;
+
+        // FIXME
+        // Use a similar non-linear scaling formula as ControlTTRotary::getValueFromWidget()
+        // but with added sensitivity adjustment. This formula is still experimental.
+        // double distance = _newmidivalue - 64.;
         // _newmidivalue = distance * distance * sensitivity / 50000.;
-        //if (distance < 0.)
+        // if (distance < 0.)
         //    _newmidivalue = -newmidivalue;
-
-        //qDebug() << "Spread64: in " << distance << "  out " << newmidivalue;
-    }
-
-    if (options.testFlag(MidiOption::HercJog)) {
+    } else if (options.testFlag(MidiOption::HercJog)) {
         if (newmidivalue > 64.) {
             newmidivalue -= 128.;
         }
         newmidivalue += prevmidivalue;
-        //if (_prevmidivalue != 0.0) { qDebug() << "AAAAAAAAAAAA" << prevmidivalue; }
-    }
-
-    if (options.testFlag(MidiOption::HercJogFast)) {
+    } else if (options.testFlag(MidiOption::HercJogFast)) {
         if (newmidivalue > 64.) {
             newmidivalue -= 128.;
         }
@@ -589,11 +596,12 @@ void MidiController::receive(const QByteArray& data, mixxx::Duration timestamp) 
         }
     }
 
-    const auto [inputMappingsBegin, inputMappingsEnd] =
-            m_pMapping->getInputMappings().equal_range(mappingKey.key);
-    std::for_each(inputMappingsBegin, inputMappingsEnd, [&](const auto& inputMapping) {
-        processInputMapping(inputMapping, data, timestamp);
-    });
+    for (auto [it, end] =
+                    m_pMapping->getInputMappings().equal_range(mappingKey.key);
+            it != end;
+            ++it) {
+        processInputMapping(it.value(), data, timestamp);
+    };
 }
 
 void MidiController::processInputMapping(const MidiInputMapping& mapping,
@@ -612,8 +620,14 @@ void MidiController::processInputMapping(const MidiInputMapping& mapping,
                          << MidiUtils::formatSysexMessage(getName(), data, timestamp);
 }
 
-QJSValue MidiController::makeInputHandler(int status, int midino, const QJSValue& scriptCode) {
-    auto pJsEngine = getScriptEngine()->jsEngine();
+QJSValue MidiController::makeInputHandler(unsigned char status,
+        unsigned char control,
+        const QJSValue& scriptCode) {
+    auto pEngine = getScriptEngine();
+    if (pEngine == nullptr) {
+        return QJSValue();
+    }
+    auto pJsEngine = pEngine->jsEngine();
     VERIFY_OR_DEBUG_ASSERT(pJsEngine) {
         return QJSValue();
     }
@@ -627,28 +641,28 @@ QJSValue MidiController::makeInputHandler(int status, int midino, const QJSValue
         return QJSValue();
     }
 
-    if (status <= 0 || midino <= 0) {
+    if (status < 0x80 || control > 0x7F) {
         auto mStatusError = QStringLiteral(
-                "Invalid status or midino passed to midi.makeInputHandler. "
-                "Please pass a strictly positive integer. status=%1,midino=%2")
+                "Invalid status or control passed to midi.makeInputHandler. "
+                "Please pass status >= 0x80 and control <= 0x7F. status=%1,control=%2")
                                     .arg(status)
-                                    .arg(midino);
+                                    .arg(control);
 
         getScriptEngine()->throwJSError(mStatusError);
         return QJSValue();
     }
 
-    const auto midiKey = MidiKey(status, midino);
+    const auto midiKey = MidiKey(status, control);
 
     auto it = m_pMapping->getInputMappings().constFind(midiKey.key);
     if (it != m_pMapping->getInputMappings().constEnd() &&
             it.value().options.testFlag(MidiOption::Script) &&
             std::holds_alternative<ConfigKey>(it.value().control)) {
         qCWarning(m_logBase) << QStringLiteral(
-                "Ignoring anonymous JS function for status=%1,midino=%2 "
+                "Ignoring anonymous JS function for status=%1,control=%2 "
                 "because a previous XML binding exists")
                                         .arg(status)
-                                        .arg(midino);
+                                        .arg(control);
         return QJSValue();
     }
 
@@ -658,5 +672,13 @@ QJSValue MidiController::makeInputHandler(int status, int midino, const QJSValue
             std::make_shared<QJSValue>(scriptCode));
 
     m_pMapping->addInputMapping(inputMapping.key.key, inputMapping);
-    return pJsEngine->newQObject(new MidiInputHandleJSProxy(m_pMapping, inputMapping));
+    // The returned object can be used for disconnecting like this:
+    // var connection = midi.makeInputHandler();
+    // connection.disconnect();
+    return pJsEngine->newQObject(new MidiInputHandleJSProxy(this, inputMapping));
+}
+
+bool MidiController::removeInputMapping(
+        uint16_t key, const MidiInputMapping& mapping) {
+    return m_pMapping->removeInputMapping(key, mapping);
 }

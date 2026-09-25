@@ -46,6 +46,7 @@ class TrackCollection : public QObject,
     QList<mixxx::FileInfo> loadRootDirs(
             bool skipInvalidOrMissing = false) const;
     QStringList getRootDirStrings() const;
+    QList<DirectoryDAO::RootDirectoryInfo> getRootDirectories() const;
 
     const CrateStorage& crates() const {
         DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
@@ -85,15 +86,11 @@ class TrackCollection : public QObject,
 
     bool updateAutoDjCrate(CrateId crateId, bool isAutoDjSource);
 
-    TrackId getTrackIdByRef(
-            const TrackRef& trackRef) const;
-
   signals:
     // Forwarded signals from LibraryScanner
     void scanTrackAdded(TrackPointer pTrack);
 
     // Forwarded signals from TrackDAO
-    void trackClean(TrackId trackId);
     void trackDirty(TrackId trackId);
     void tracksAdded(const QSet<TrackId>& trackIds);
     void tracksChanged(const QSet<TrackId>& trackIds);
@@ -132,6 +129,12 @@ class TrackCollection : public QObject,
     QList<TrackId> resolveTrackIds(
             const QList<mixxx::FileInfo>& trackFiles,
             TrackDAO::ResolveTrackIdFlags flags);
+    QList<TrackId> resolveTrackIds(
+            const QList<mixxx::FileInfo>& trackFiles,
+            QObject* pSource);
+    QList<TrackId> resolveTrackIds(
+            const QList<QUrl>& urls,
+            TrackDAO::ResolveTrackIdFlags flags);
     QList<TrackId> resolveTrackIdsFromUrls(
             const QList<QUrl>& urls,
             bool addMissing);
@@ -148,6 +151,8 @@ class TrackCollection : public QObject,
             bool* pAlreadyInLibrary = nullptr);
     FRIEND_TEST(DirectoryDAOTest, relocateDirectory);
     FRIEND_TEST(TrackDAOTest, detectMovedTracks);
+    FRIEND_TEST(TrackDAOTest, bpmLockPreservedForTrackWithoutBeats);
+    FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
     TrackId addTrack(
             const TrackPointer& pTrack,
             bool unremove);

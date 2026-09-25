@@ -9,6 +9,7 @@
 #include "audio/frame.h"
 #include "audio/types.h"
 #include "control/controlvalue.h"
+#include "control/pollingcontrolproxy.h"
 #include "engine/cachingreader/cachingreader.h"
 #include "engine/engineobject.h"
 #include "engine/slipmodestate.h"
@@ -87,15 +88,18 @@ class EngineBuffer : public EngineObject {
 #ifdef __RUBBERBAND__
         RubberBandFaster = 1,
         RubberBandFiner = 2,
+        RubberBandR3ShortWindow = 3,
 #endif
     };
+    Q_ENUM(KeylockEngine);
 
     // intended for iteration over the KeylockEngine enum
     constexpr static std::initializer_list<KeylockEngine> kKeylockEngines = {
             KeylockEngine::SoundTouch,
 #ifdef __RUBBERBAND__
             KeylockEngine::RubberBandFaster,
-            KeylockEngine::RubberBandFiner
+            KeylockEngine::RubberBandFiner,
+            KeylockEngine::RubberBandR3ShortWindow,
 #endif
     };
 
@@ -113,6 +117,9 @@ class EngineBuffer : public EngineObject {
     double getSpeed() const;
     mixxx::audio::ChannelCount getChannelCount() const {
         return m_channelCount;
+    }
+    mixxx::audio::FramePos getPlayPos() const {
+        return m_playPos;
     }
     bool getScratching() const;
     bool isReverse() const;
@@ -136,10 +143,10 @@ class EngineBuffer : public EngineObject {
     void requestSyncMode(SyncMode mode);
 
     // The process methods all run in the audio callback.
-    void process(CSAMPLE* pOut, const int iBufferSize) override;
-    void processSlip(int iBufferSize);
+    void process(CSAMPLE* pOut, const std::size_t bufferSize) override;
+    void processSlip(std::size_t bufferSize);
     void postProcessLocalBpm();
-    void postProcess(const int iBufferSize);
+    void postProcess(const std::size_t bufferSize);
 
     /// Returns the seek position iff a seek is currently queued but not yet
     /// processed. If no seek was queued, and invalid frame position is returned.
@@ -150,7 +157,6 @@ class EngineBuffer : public EngineObject {
     void ejectTrack();
 
     mixxx::audio::FramePos getExactPlayPos() const;
-    double getVisualPlayPos() const;
     mixxx::audio::FramePos getTrackEndPosition() const;
     void setTrackEndPosition(mixxx::audio::FramePos position);
     double getUserOffset() const;
@@ -170,21 +176,26 @@ class EngineBuffer : public EngineObject {
     static QString getKeylockEngineName(KeylockEngine engine) {
         switch (engine) {
         case KeylockEngine::SoundTouch:
-            return tr("Soundtouch (faster)");
+            return tr("Soundtouch (fastest, low quality)");
 #ifdef __RUBBERBAND__
         case KeylockEngine::RubberBandFaster:
-            return tr("Rubberband (better)");
+            return tr("Rubberband (fast, medium quality)");
         case KeylockEngine::RubberBandFiner:
             if (EngineBufferScaleRubberBand::isEngineFinerAvailable()) {
-                return tr("Rubberband R3 (near-hi-fi quality)");
+                return tr("Rubberband R3 MW (slow, highest quality)");
+            }
+            [[fallthrough]];
+        case KeylockEngine::RubberBandR3ShortWindow:
+            if (EngineBufferScaleRubberBand::isEngineFinerAvailable()) {
+                return tr("Rubberband R3 SW (fast, high quality)");
             }
             [[fallthrough]];
 #endif
         default:
 #ifdef __RUBBERBAND__
-            return tr("Unknown, using Rubberband (better)");
+            return tr("Unknown, using Rubberband (fast, medium quality)");
 #else
-            return tr("Unknown, using Soundtouch");
+            return tr("Unknown, using Soundtouch (fastest, low quality)");
 #endif
         }
     }
@@ -197,6 +208,7 @@ class EngineBuffer : public EngineObject {
         case KeylockEngine::RubberBandFaster:
             return true;
         case KeylockEngine::RubberBandFiner:
+        case KeylockEngine::RubberBandR3ShortWindow:
             return EngineBufferScaleRubberBand::isEngineFinerAvailable();
 #endif
         default:
@@ -215,7 +227,20 @@ class EngineBuffer : public EngineObject {
     // Request that the EngineBuffer load a track. Since the process is
     // asynchronous, EngineBuffer will emit a trackLoaded signal when the load
     // has completed.
-    void loadTrack(TrackPointer pTrack, bool play, EngineChannel* pChannelToCloneFrom);
+#ifdef __STEM__
+    void loadTrack(TrackPointer pTrack,
+            mixxx::StemChannelSelection stemMask,
+            bool play,
+            EngineChannel* pChannelToCloneFrom);
+
+    mixxx::StemChannelSelection getStemMask() const {
+        return m_stemMask;
+    }
+#else
+    void loadTrack(TrackPointer pTrack,
+            bool play,
+            EngineChannel* pChannelToCloneFrom);
+#endif
 
     void setChannelIndex(int channelIndex) {
         m_channelIndex = channelIndex;
@@ -223,6 +248,10 @@ class EngineBuffer : public EngineObject {
 
     void seekAbs(mixxx::audio::FramePos);
     void seekExact(mixxx::audio::FramePos);
+
+    void verifyPlay();
+
+    void slipQuitAndAdopt();
 
   public slots:
     void slotControlPlayRequest(double);
@@ -237,6 +266,7 @@ class EngineBuffer : public EngineObject {
   signals:
     void trackLoaded(TrackPointer pNewTrack, TrackPointer pOldTrack);
     void trackLoadFailed(TrackPointer pTrack, const QString& reason);
+    void noVinylControlInputConfigured();
 
   private slots:
     void slotTrackLoading();
@@ -262,9 +292,9 @@ class EngineBuffer : public EngineObject {
     void addControl(EngineControl* pControl);
 
     void enableIndependentPitchTempoScaling(bool bEnable,
-                                            const int iBufferSize);
+            const std::size_t bufferSize);
 
-    void updateIndicators(double rate, int iBufferSize);
+    void updateIndicators(double rate, std::size_t bufferSize);
 
     void hintReader(const double rate);
 
@@ -276,7 +306,7 @@ class EngineBuffer : public EngineObject {
     // Read one buffer from the current scaler into the crossfade buffer.  Used
     // for transitioning from one scaler to another, or reseeking a scaler
     // to prevent pops.
-    void readToCrossfadeBuffer(const int iBufferSize);
+    void readToCrossfadeBuffer(const std::size_t bufferSize);
 
     // Reset buffer playpos and set file playpos.
     void setNewPlaypos(mixxx::audio::FramePos playpos);
@@ -289,10 +319,9 @@ class EngineBuffer : public EngineObject {
         return m_previousBufferSeek;
     }
     bool updateIndicatorsAndModifyPlay(bool newPlay, bool oldPlay);
-    void verifyPlay();
     void notifyTrackLoaded(TrackPointer pNewTrack, TrackPointer pOldTrack);
     void processTrackLocked(CSAMPLE* pOutput,
-            const int iBufferSize,
+            const std::size_t bufferSize,
             mixxx::audio::SampleRate sampleRate);
 
     // Holds the name of the control group
@@ -379,7 +408,7 @@ class EngineBuffer : public EngineObject {
     // during seek and loading of a new track
     QMutex m_pause;
     // Used in update of playpos slider
-    int m_iSamplesSinceLastIndicatorUpdate;
+    std::size_t m_samplesSinceLastIndicatorUpdate;
 
     // The location where the track would have been had slip not been engaged
     mixxx::audio::FramePos m_slipPos;
@@ -401,7 +430,7 @@ class EngineBuffer : public EngineObject {
 
     ControlPushButton* m_pSlipButton;
 
-    ControlObject* m_pQuantize;
+    PollingControlProxy m_quantize;
     ControlPotmeter* m_playposSlider;
     ControlProxy* m_pSampleRate;
     ControlProxy* m_pKeylockEngine;
@@ -455,6 +484,7 @@ class EngineBuffer : public EngineObject {
     ControlValueAtomic<QueuedSeek> m_queuedSeek;
     bool m_previousBufferSeek = false;
 
+    QAtomicInt m_slipQuitAndAdopt;
     /// Indicates that no seek is queued
     static constexpr QueuedSeek kNoQueuedSeek = {mixxx::audio::kInvalidFramePos, SEEK_NONE};
     /// indicates a clone seek on a bosition from another deck
@@ -481,9 +511,13 @@ class EngineBuffer : public EngineObject {
     // to eliminate clicks and pops.
     CSAMPLE* m_pCrossfadeBuffer;
     bool m_bCrossfadeReady;
-    int m_iLastBufferSize;
+    std::size_t m_lastBufferSize;
 
     QSharedPointer<VisualPlayPosition> m_visualPlayPos;
+
+#ifdef __STEM__
+    mixxx::StemChannelSelection m_stemMask;
+#endif
 };
 
 Q_DECLARE_METATYPE(EngineBuffer::KeylockEngine)

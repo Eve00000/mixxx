@@ -27,8 +27,8 @@
 
 namespace {
 
-const QString kTrackLocationTest1 = QStringLiteral("id3-test-data/cover-test-png.mp3");
-const QString kTrackLocationTest2 = QStringLiteral("id3-test-data/cover-test-vbr.mp3");
+const QString kTrackLocationTest1 = QStringLiteral("id3-test-data/cover-test-øé~ł€˚-png.mp3");
+const QString kTrackLocationTest2 = QStringLiteral("id3-test-data/cover-test-øé~ł€˚-vbr.mp3");
 
 void deleteTrack(Track* pTrack) {
     // Delete track objects directly in unit tests with
@@ -99,7 +99,9 @@ class PlayerManagerTest : public MixxxDbTest, SoundSourceProviderRegistration {
                 m_pRecordingManager.get());
 
         m_pPlayerManager->bindToLibrary(m_pLibrary.get());
+#ifdef __RUBBERBAND__
         RubberBandWorkerPool::createInstance();
+#endif
     }
 
     void TearDown() override {
@@ -140,7 +142,7 @@ class PlayerManagerTest : public MixxxDbTest, SoundSourceProviderRegistration {
 
 TEST_F(PlayerManagerTest, UnEjectTest) {
     // Ejecting an empty deck with no previously-recorded ejected track has no effect.
-    auto deck1 = m_pPlayerManager->getDeck(1);
+    auto deck1 = m_pPlayerManager->getDeck(0);
     deck1->slotEjectTrack(1.0);
     ASSERT_EQ(nullptr, deck1->getLoadedTrack());
 
@@ -149,7 +151,11 @@ TEST_F(PlayerManagerTest, UnEjectTest) {
     ASSERT_NE(nullptr, pTrack1);
     TrackId testId1 = pTrack1->getId();
     ASSERT_TRUE(testId1.isValid());
-    deck1->slotLoadTrack(pTrack1, false);
+    deck1->slotLoadTrack(pTrack1,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
     ASSERT_NE(nullptr, deck1->getLoadedTrack());
 
     m_pEngine->process(1024);
@@ -162,10 +168,14 @@ TEST_F(PlayerManagerTest, UnEjectTest) {
     // Load another track.
     TrackPointer pTrack2 = getOrAddTrackByLocation(getTestDir().filePath(kTrackLocationTest2));
     ASSERT_NE(nullptr, pTrack2);
-    deck1->slotLoadTrack(pTrack2, false);
+    deck1->slotLoadTrack(pTrack2,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
 
     // Ejecting in an empty deck loads the last-ejected track.
-    auto deck2 = m_pPlayerManager->getDeck(2);
+    auto deck2 = m_pPlayerManager->getDeck(1);
     ASSERT_EQ(nullptr, deck2->getLoadedTrack());
     // make sure eject does not trigger 'unreplace'
     QTest::qSleep(kUnreplaceDelay); // millis
@@ -177,13 +187,17 @@ TEST_F(PlayerManagerTest, UnEjectTest) {
 // Loading a new track in a deck causes the old one to be ejected.
 // That old track can be unejected into a different deck.
 TEST_F(PlayerManagerTest, UnEjectReplaceTrackTest) {
-    auto deck1 = m_pPlayerManager->getDeck(1);
+    auto deck1 = m_pPlayerManager->getDeck(0);
     // Load a track and the load another one
     TrackPointer pTrack1 = getOrAddTrackByLocation(getTestDir().filePath(kTrackLocationTest1));
     ASSERT_NE(nullptr, pTrack1);
     TrackId testId1 = pTrack1->getId();
     ASSERT_TRUE(testId1.isValid());
-    deck1->slotLoadTrack(pTrack1, false);
+    deck1->slotLoadTrack(pTrack1,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
     ASSERT_NE(nullptr, deck1->getLoadedTrack());
 
     m_pEngine->process(1024);
@@ -192,12 +206,16 @@ TEST_F(PlayerManagerTest, UnEjectReplaceTrackTest) {
     // Load another track, replacing the first, causing it to be unloaded.
     TrackPointer pTrack2 = getOrAddTrackByLocation(getTestDir().filePath(kTrackLocationTest2));
     ASSERT_NE(nullptr, pTrack2);
-    deck1->slotLoadTrack(pTrack2, false);
+    deck1->slotLoadTrack(pTrack2,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
     m_pEngine->process(1024);
     waitForTrackToBeLoaded(deck1);
 
     // Ejecting in an empty deck loads the last-ejected track.
-    auto deck2 = m_pPlayerManager->getDeck(2);
+    auto deck2 = m_pPlayerManager->getDeck(1);
     ASSERT_EQ(nullptr, deck2->getLoadedTrack());
     // make sure eject does not trigger 'unreplace'
     QTest::qSleep(kUnreplaceDelay);
@@ -212,7 +230,7 @@ TEST_F(PlayerManagerTest, UnEjectInvalidTrackIdTest) {
             getTestDir().filePath(kTrackLocationTest1), TrackId(QVariant(10)));
     ASSERT_NE(nullptr, pTrack);
     m_pPlayerManager->slotSaveEjectedTrack(pTrack);
-    auto deck1 = m_pPlayerManager->getDeck(1);
+    auto deck1 = m_pPlayerManager->getDeck(0);
     // Does nothing -- no crash.
     // make sure eject does not trigger 'unreplace'
     QTest::qSleep(kUnreplaceDelay);
@@ -222,13 +240,17 @@ TEST_F(PlayerManagerTest, UnEjectInvalidTrackIdTest) {
 
 TEST_F(PlayerManagerTest, UnReplaceTest) {
     // Trigger eject twice within 500 ms to undo track replacement
-    auto deck1 = m_pPlayerManager->getDeck(1);
+    auto deck1 = m_pPlayerManager->getDeck(0);
     // Load a track
     TrackPointer pTrack1 = getOrAddTrackByLocation(getTestDir().filePath(kTrackLocationTest1));
     ASSERT_NE(nullptr, pTrack1);
     TrackId testId1 = pTrack1->getId();
     ASSERT_TRUE(testId1.isValid());
-    deck1->slotLoadTrack(pTrack1, false);
+    deck1->slotLoadTrack(pTrack1,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
     m_pEngine->process(1024);
     waitForTrackToBeLoaded(deck1);
     ASSERT_NE(nullptr, deck1->getLoadedTrack());
@@ -236,7 +258,11 @@ TEST_F(PlayerManagerTest, UnReplaceTest) {
     // Load another track.
     TrackPointer pTrack2 = getOrAddTrackByLocation(getTestDir().filePath(kTrackLocationTest2));
     ASSERT_NE(nullptr, pTrack2);
-    deck1->slotLoadTrack(pTrack2, false);
+    deck1->slotLoadTrack(pTrack2,
+#ifdef __STEM__
+            mixxx::StemChannelSelection(),
+#endif
+            false);
     m_pEngine->process(1024);
     waitForTrackToBeLoaded(deck1);
     ASSERT_NE(nullptr, deck1->getLoadedTrack());

@@ -191,7 +191,8 @@ void WTrackProperty::mouseDoubleClickEvent(QMouseEvent* pEvent) {
     }
     ensureTrackMenuIsCreated();
     m_pTrackMenu->loadTrack(m_pCurrentTrack, m_group);
-    m_pTrackMenu->showDlgTrackInfo(m_displayProperty);
+    m_pTrackMenu->setTrackPropertyName(m_displayProperty);
+    m_pTrackMenu->slotShowDlgTrackInfo();
 }
 
 void WTrackProperty::dragEnterEvent(QDragEnterEvent* pEvent) {
@@ -207,7 +208,9 @@ void WTrackProperty::contextMenuEvent(QContextMenuEvent* pEvent) {
     if (m_pCurrentTrack) {
         ensureTrackMenuIsCreated();
         m_pTrackMenu->loadTrack(m_pCurrentTrack, m_group);
+        m_pTrackMenu->updateMenus();
         // Show the right-click menu
+        m_pTrackMenu->setTrackPropertyName(m_displayProperty);
         m_pTrackMenu->popup(pEvent->globalPos());
         // Unset the hover state manually (stuck state is probably a Qt bug)
         // TODO(ronso0) Test whether this is still required with Qt6
@@ -365,8 +368,13 @@ bool WTrackPropertyEditor::eventFilter(QObject* pObj, QEvent* pEvent) {
     } else if (pEvent->type() == QEvent::FocusOut) {
         // Close and commit if any other widget gets focus
         if (isVisible()) {
-            hide();
-            emit commitEditorData(text());
+            QFocusEvent* fe = static_cast<QFocusEvent*>(pEvent);
+            // For any FocusOut, except when showing the QLineEdit's menu,
+            // we hide() and commit the current text.
+            if (fe->reason() != Qt::PopupFocusReason) {
+                hide();
+                emit commitEditorData(text());
+            }
         }
     }
     return QLineEdit::eventFilter(pObj, pEvent);

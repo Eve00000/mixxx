@@ -2,8 +2,10 @@
 
 #include <QCheckBox>
 #include <QMouseEvent>
+#include <QPalette>
 #include <QScreen>
 #include <QStyleOptionButton>
+#include <QStylePainter>
 #include <QWidgetAction>
 
 #include "library/searchquery.h"
@@ -20,7 +22,7 @@ namespace {
 // a viable upper bound for the context menu.
 constexpr double kMaxMenuToAvailableScreenWidthRatio = 0.2;
 
-const QString kActionTextPrefixSuffixSeparator = QStringLiteral(" | ");
+const QString kActionTextPrefixSuffixSeparator = QStringLiteral(": ");
 
 inline QString quoteSearchQueryText(const QString& text) {
     return QChar('"') + text + QChar('"');
@@ -75,7 +77,7 @@ void WSearchRelatedTracksMenu::addTriggerSearchAction(
                     actionTextPrefix,
                     elidableTextSuffix);
 
-    auto pCheckBox = make_parented<QCheckBox>(
+    auto pCheckBox = make_parented<WSearchRelatedCheckBox>(
             mixxx::escapeTextPropertyWithoutShortcuts(elidedActionText),
             this);
     pCheckBox->setProperty("query", searchQuery);
@@ -130,7 +132,8 @@ QString WSearchRelatedTracksMenu::elideActionText(
                     // TODO: Customize the suffix elision?
                     Qt::ElideMiddle,
                     maxWidthInPixels - prefixWidthInPixels);
-    return actionTextPrefixWithSeparator + elidedTextSuffix;
+    // Add some margin between the label and the separator bar (see paintEvent())
+    return QStringLiteral("  ") + actionTextPrefixWithSeparator + elidedTextSuffix;
 }
 
 void WSearchRelatedTracksMenu::addActionsForTrack(
@@ -164,14 +167,14 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
             double bpmUpperBound = 0.0;
             std::tie(bpmLowerBound, bpmUpperBound) = pBpmNode->getBpmRange();
             const QString searchQuery =
-                    QStringLiteral("bpm:>=") +
+                    QStringLiteral("bpm:") +
                     QString::number(bpmLowerBound) +
-                    QStringLiteral(" bpm:<=") +
+                    QStringLiteral("-") +
                     QString::number(bpmUpperBound);
             addTriggerSearchAction(&addSeparatorBeforeNextAction,
                     searchQuery,
                     tr("BPM"),
-                    tr("between %1 and %2")
+                    tr("%1 - %2")
                             .arg(QString::number(bpmLowerBound),
                                     QString::number(bpmUpperBound)));
         }
@@ -202,7 +205,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
             // Search tracks with similar artist(s)
             {
                 const auto actionTextPrefix = tr("Artist");
-                const auto searchQueryPrefix = QStringLiteral("artist:");
+                const auto searchQueryPrefix = QStringLiteral("a:");
                 {
                     const QString searchQuery =
                             searchQueryPrefix +
@@ -226,7 +229,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
             }
             {
                 const auto actionTextPrefix = tr("Album Artist");
-                const auto searchQueryPrefix = QStringLiteral("album_artist:");
+                const auto searchQueryPrefix = QStringLiteral("aa:");
                 {
                     const QString searchQuery =
                             searchQueryPrefix +
@@ -254,7 +257,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
         const auto composer = track.getComposer();
         if (!composer.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("composer:") +
+                    QStringLiteral("cp:") +
                     quoteSearchQueryText(composer);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -270,7 +273,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
         const auto title = track.getTitle();
         if (!title.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("title:") +
+                    QStringLiteral("t:") +
                     quoteSearchQueryText(title);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -283,7 +286,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
         const auto album = track.getAlbum();
         if (!album.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("album:") +
+                    QStringLiteral("al:") +
                     quoteSearchQueryText(album);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -296,7 +299,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
         const auto grouping = track.getGrouping();
         if (!grouping.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("grouping:") +
+                    QStringLiteral("gr:") +
                     quoteSearchQueryText(grouping);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -313,7 +316,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
                 extractCalendarYearNumberFromReleaseDate(track.getYear());
         if (!releaseYearNumber.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("year:") +
+                    QStringLiteral("y:") +
                     releaseYearNumber;
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -326,7 +329,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
         const auto genre = track.getGenre();
         if (!genre.isEmpty()) {
             const QString searchQuery =
-                    QStringLiteral("genre:") +
+                    QStringLiteral("g:") +
                     quoteSearchQueryText(genre);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -344,7 +347,7 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
             const QString locationPathWithTerminator =
                     locationPath + QChar('/');
             const QString searchQuery =
-                    QStringLiteral("location:") +
+                    QStringLiteral("lo:") +
                     quoteSearchQueryText(locationPathWithTerminator);
             addTriggerSearchAction(
                     &addSeparatorBeforeNextAction,
@@ -358,7 +361,8 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
 
     // Make the Search button a checkbox to simplify setting an icon via qss.
     // This is not possible with a QAction, and tedious with a QPushButton.
-    auto pCheckBox = make_parented<QCheckBox>(tr("&Search selected"), this);
+    // Use a custom QCheckBox with fixed hover behavior.
+    auto pCheckBox = make_parented<WMenuCheckBox>(tr("&Search selected"), this);
     pCheckBox->setObjectName("SearchSelectedAction");
     m_pSearchAction = make_parented<QWidgetAction>(this);
     m_pSearchAction->setDefaultWidget(pCheckBox.get());
@@ -372,47 +376,50 @@ void WSearchRelatedTracksMenu::addActionsForTrack(
             &WSearchRelatedTracksMenu::combineQueriesTriggerSearch);
     // This is for click and Space key
     connect(pCheckBox.get(),
-            &QCheckBox::clicked,
+            &QCheckBox::toggled,
             this,
             &WSearchRelatedTracksMenu::combineQueriesTriggerSearch);
 }
 
 bool WSearchRelatedTracksMenu::eventFilter(QObject* pObj, QEvent* e) {
-    if (e->type() == QEvent::MouseButtonPress) {
-        // Clicking any spot in the checkbox that is not inside the indicator's
-        // 'click' rectangle triggers the search, ignoring other checked boxes.
-        // Clicks on the indicator are passed on to the event filter, hence
-        // toggling the checkbox happens as usual.
+    if (e->type() == QEvent::MouseButtonRelease) {
+        // Note: QCheckBox/QAbstractButton and QMenu act on release, not on click.
+        // Since we want tp provide a toggle function that allows to check multiple
+        // criteria (ie. don't auto-close the menu on first click) we need to
+        // figure the intended click target.
+        // Simply checking whether the click is inside the indicator's rectangle
+        // is not sufficient: the indicator's width & height is only about 60%
+        // of the item's total height, so there's top/left/bottom margin that
+        // would activate the action.
+        // Let's simply check if the click's x position is in the label region.
+        // If it is, trigger search ignoring other checked boxes. Else toggle it.
         QCheckBox* pBox = qobject_cast<QCheckBox*>(pObj);
         if (pBox) {
-            QMouseEvent* pMe = static_cast<QMouseEvent*>(e);
-            VERIFY_OR_DEBUG_ASSERT(pMe) {
-                return true;
-            }
+            auto* pStyle = pBox->style();
             QStyleOptionButton option;
             option.initFrom(pBox);
-            auto* pStyle = pBox->style();
-            if (!pStyle) {
-                return true;
-            }
-            const QRect indicatorClickRect = pStyle->subElementRect(QStyle::SE_CheckBoxClickRect,
+            const QRect labelRect = pStyle->subElementRect(QStyle::SE_CheckBoxContents,
                     &option,
                     pBox);
-            if (!indicatorClickRect.contains(pMe->pos())) {
-                // Text ('border' ractangle) was clicked, trigger the search.
+            QMouseEvent* pMe = static_cast<QMouseEvent*>(e);
+            if (pMe->pos().x() > labelRect.left()) {
+                // Label region was clicked, trigger the search.
                 const QString query = pBox->property("query").toString();
                 emit triggerSearch(query);
                 // Note that this click will not emit QAction::triggered like
                 // when pressing Return on a selected action, hence we need to
                 // make sure WTrackMenu closes when receiving triggerSearch().
+            } else {
+                pBox->toggle();
             }
+            return true;
         }
     }
     return QObject::eventFilter(pObj, e);
 }
 
 void WSearchRelatedTracksMenu::updateSearchButton() {
-    // Enable the Search button if at least opChildbox is checked.
+    // Enable the Search button if at least one checkbox is ticked
     VERIFY_OR_DEBUG_ASSERT(m_pSearchAction) {
         return;
     }
@@ -447,4 +454,32 @@ void WSearchRelatedTracksMenu::combineQueriesTriggerSearch() {
         QString queryCombo = queries.join(QChar(' '));
         emit triggerSearch(queryCombo);
     }
+}
+
+void WSearchRelatedCheckBox::paintEvent(QPaintEvent*) {
+    // start original QCheckBox implementation
+    QStylePainter painter(this);
+    QStyleOptionButton opt;
+    initStyleOption(&opt);
+    painter.drawControl(QStyle::CE_CheckBox, opt);
+    // end
+
+    // Draw a vertical bar over the entire height at the left edge of the label
+    const QStyle* pStyle = style();
+    const QRect labelRect = pStyle->subElementRect(QStyle::SE_CheckBoxContents,
+            &opt,
+            this);
+    const QRect frameRect = opt.rect;
+    const QPoint top(labelRect.left(), frameRect.top());
+    const QPoint bottom(labelRect.left(), frameRect.bottom());
+    // We draw with the separator color from qss or, if that's not set,
+    // with the palette's inactive text color.
+    const QPen linePen(
+            m_separatorColor.isValid() ? m_separatorColor
+                                       : opt.palette.color(QPalette::Disabled, QPalette::Text),
+            1,
+            Qt::SolidLine,
+            Qt::SquareCap);
+    painter.setPen(linePen);
+    painter.drawLine(top, bottom);
 }

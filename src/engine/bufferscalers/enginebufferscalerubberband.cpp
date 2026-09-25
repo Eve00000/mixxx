@@ -14,7 +14,8 @@
 
 using RubberBand::RubberBandStretcher;
 
-#define RUBBERBANDV3 (RUBBERBAND_API_MAJOR_VERSION >= 2 && RUBBERBAND_API_MINOR_VERSION >= 7)
+#define RUBBERBANDV3 (RUBBERBAND_API_MAJOR_VERSION >= 3 || \
+        (RUBBERBAND_API_MAJOR_VERSION == 2 && RUBBERBAND_API_MINOR_VERSION >= 7))
 
 EngineBufferScaleRubberBand::EngineBufferScaleRubberBand(
         ReadAheadManager* pReadAheadManager)
@@ -23,7 +24,8 @@ EngineBufferScaleRubberBand::EngineBufferScaleRubberBand(
           m_bufferPtrs(),
           m_interleavedReadBuffer(MAX_BUFFER_LEN),
           m_bBackwards(false),
-          m_useEngineFiner(false) {
+          m_useEngineFiner(false),
+          m_useOptionWindowShort(false) {
     // Initialize the internal buffers to prevent re-allocations
     // in the real-time thread.
     onSignalChanged();
@@ -97,17 +99,20 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
     // TODO: Resetting the sample rate will cause internal
     // memory allocations that may block the real-time thread.
     // When is this function actually invoked??
-    m_rubberBand.clear();
     if (!getOutputSignal().isValid()) {
         return;
     }
 
+    // We only upscale the memory allocation to reduce the likelihood of
+    // impacting the real-time thread. This way, on first load of a STEM (8
+    // channels), we reallocate the right size and keep it allocated till the
+    // scaler is destroyed.
     uint8_t channelCount = getOutputSignal().getChannelCount();
-    if (m_buffers.size() != channelCount) {
+    if (m_buffers.size() < channelCount) {
         m_buffers.resize(channelCount);
     }
 
-    if (m_bufferPtrs.size() != channelCount) {
+    if (m_bufferPtrs.size() < channelCount) {
         m_bufferPtrs.resize(channelCount);
     }
 
@@ -130,6 +135,9 @@ void EngineBufferScaleRubberBand::onSignalChanged() {
                 // Process Channels Together. otherwise the result is not
                 // mono-compatible. See #11361
                 RubberBandStretcher::OptionChannelsTogether;
+        if (m_useOptionWindowShort) {
+            rubberbandOptions |= RubberBandStretcher::OptionWindowShort;
+        }
     }
 #endif
 
@@ -373,6 +381,13 @@ bool EngineBufferScaleRubberBand::isEngineFinerAvailable() {
 void EngineBufferScaleRubberBand::useEngineFiner(bool enable) {
     if (isEngineFinerAvailable()) {
         m_useEngineFiner = enable;
+        onSignalChanged();
+    }
+}
+
+void EngineBufferScaleRubberBand::useOptionWindowShort(bool enable) {
+    if (isEngineFinerAvailable()) {
+        m_useOptionWindowShort = enable;
         onSignalChanged();
     }
 }

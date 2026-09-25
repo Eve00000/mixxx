@@ -26,9 +26,20 @@ EngineBufferScaleLinear::~EngineBufferScaleLinear() {
 }
 
 void EngineBufferScaleLinear::onSignalChanged() {
-    m_floorSampleOld = mixxx::SampleBuffer(getOutputSignal().getChannelCount());
-    m_floorSample = mixxx::SampleBuffer(getOutputSignal().getChannelCount());
-    m_ceilSample = mixxx::SampleBuffer(getOutputSignal().getChannelCount());
+    // We only upscale the memory allocation to reduce the likelihood of
+    // impacting the real-time thread. This way, on first load of a STEM (8
+    // channels), we reallocate the right size and keep it allocated till the
+    // scaler is destroyed.
+    const auto channelCount = getOutputSignal().getChannelCount();
+    if (m_floorSampleOld.size() < channelCount) {
+        m_floorSampleOld = mixxx::SampleBuffer(channelCount);
+    }
+    if (m_floorSample.size() < channelCount) {
+        m_floorSample = mixxx::SampleBuffer(channelCount);
+    }
+    if (m_ceilSample.size() < channelCount) {
+        m_ceilSample = mixxx::SampleBuffer(channelCount);
+    }
 }
 
 void EngineBufferScaleLinear::setScaleParameters(double base_rate,
@@ -90,8 +101,10 @@ double EngineBufferScaleLinear::scaleBuffer(
         // the other direction
         SINT iNextSample = getOutputSignal().frames2samples(static_cast<SINT>(ceil(m_dNextFrame)));
         int chCount = getOutputSignal().getChannelCount();
-        if (iNextSample + chCount <= m_bufferIntSize) {
+        if (iNextSample >= 0 && iNextSample + chCount <= m_bufferIntSize) {
             SampleUtil::copy(m_floorSampleOld.data(), &m_bufferInt[iNextSample], chCount);
+        } else {
+            SampleUtil::clear(m_floorSampleOld.data(), chCount);
         }
 
         // if the buffer has extra samples, do a read so RAMAN ends up back where

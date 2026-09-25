@@ -30,11 +30,11 @@ class EngineEffect final : public EffectsRequestHandler {
     ~EngineEffect();
 
     /// Called from the main thread to make sure that the channel already has states
-    void initalizeInputChannel(ChannelHandle inputChannel);
+    void initializeInputChannel(ChannelHandle inputChannel);
 
     /// Called in audio thread
     bool processEffectsRequest(
-            EffectsRequest& message,
+            const EffectsRequest& message,
             EffectsResponsePipe* pResponsePipe) override;
 
     /// Called in audio thread
@@ -42,7 +42,7 @@ class EngineEffect final : public EffectsRequestHandler {
             const ChannelHandle& outputHandle,
             const CSAMPLE* pInput,
             CSAMPLE* pOutput,
-            const unsigned int numSamples,
+            const std::size_t numSamples,
             const mixxx::audio::SampleRate sampleRate,
             const EffectEnableState chainEnableState,
             const GroupFeatureState& groupFeatures);

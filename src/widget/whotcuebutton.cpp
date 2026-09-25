@@ -1,17 +1,32 @@
 #include "widget/whotcuebutton.h"
 
+#include <widget/hotcuedrag.h>
+
+#include <QApplication>
+#include <QDrag>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <QMouseEvent>
 
+#include "engine/controls/cuecontrol.h"
 #include "mixer/playerinfo.h"
 #include "moc_whotcuebutton.cpp"
+#include "skin/legacy/skincontext.h"
 #include "track/track.h"
+#include "util/defs.h"
+#include "util/dnd.h"
+#include "util/valuetransformer.h"
 #include "widget/controlwidgetconnection.h"
+#include "widget/wbasewidget.h"
 
 namespace {
 constexpr int kDefaultDimBrightThreshold = 127;
-} // namespace
+} // anonymous namespace
 
-WHotcueButton::WHotcueButton(const QString& group, QWidget* pParent)
+using namespace mixxx::hotcuedrag;
+
+WHotcueButton::WHotcueButton(QWidget* pParent, const QString& group)
         : WPushButton(pParent),
           m_group(group),
           m_hotcue(Cue::kNoHotCue),
@@ -21,6 +36,7 @@ WHotcueButton::WHotcueButton(const QString& group, QWidget* pParent)
           m_bCueColorDimmed(false),
           m_bCueColorIsLight(false),
           m_bCueColorIsDark(false) {
+    setAcceptDrops(true);
 }
 
 void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
@@ -29,13 +45,15 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
 
     bool ok;
     int hotcue = context.selectInt(node, QStringLiteral("Hotcue"), &ok);
-    if (ok && hotcue > 0) {
+    if (ok && hotcue > 0 && hotcue <= kMaxNumberOfHotcues) {
         m_hotcue = hotcue - 1;
     } else {
+        // HotcueControls are created only for 0..kMaxNumberOfHotcues-1
         SKIN_WARNING(node,
                 context,
-                QStringLiteral("Hotcue index '%1' invalid")
-                        .arg(context.selectString(node, QStringLiteral("Hotcue"))));
+                QStringLiteral("Hotcue index '%1' invalid. Valid range is 1..%2")
+                        .arg(context.selectString(node, QStringLiteral("Hotcue")),
+                                kMaxNumberOfHotcues));
     }
 
     bool okay;
@@ -46,10 +64,18 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
 
     m_hoverCueColor = context.selectBool(node, QStringLiteral("Hover"), false);
 
-    m_pCueMenuPopup = make_parented<WCueMenuPopup>(context.getConfig(), this);
-    ColorPaletteSettings colorPaletteSettings(context.getConfig());
-    auto colorPalette = colorPaletteSettings.getHotcueColorPalette();
-    m_pCueMenuPopup->setColorPalette(colorPalette);
+    // For dnd/swapping hotcues we use the rendered widget pixmap as dnd cursor.
+    // Unfortnately the margin that constraints the bg color is not considered,
+    // so we shrink the rect by custom margins.
+    // TODO Turn this into a qproperty, set in qss
+    okay = false;
+    int dndMargin = context.selectInt(node, QStringLiteral("DndRectMargin"), &okay);
+    if (okay && dndMargin > 0) {
+        m_dndRectMargins = QMargins(dndMargin, dndMargin, dndMargin, dndMargin);
+    }
+
+    // Store config pointer in case we need to create a cue menu later on
+    m_pConfig = context.getConfig();
 
     setFocusPolicy(Qt::NoFocus);
 
@@ -67,31 +93,85 @@ void WHotcueButton::setup(const QDomNode& node, const SkinContext& context) {
     m_pCoType->connectValueChanged(this, &WHotcueButton::slotTypeChanged);
     slotTypeChanged(m_pCoType->get());
 
-    auto* pLeftConnection = new ControlParameterWidgetConnection(
+    m_pCoPosition = make_parented<ControlProxy>(
+            createConfigKey(QStringLiteral("position")),
             this,
-            getLeftClickConfigKey(), // "activate"
-            nullptr,
-            ControlParameterWidgetConnection::DIR_FROM_WIDGET,
-            ControlParameterWidgetConnection::EMIT_ON_PRESS_AND_RELEASE);
-    addLeftConnection(pLeftConnection);
+            ControlFlag::NoAssertIfMissing);
+    m_pCoPosition->connectValueChanged(this, &WHotcueButton::slotUpdateDirection);
+    m_pCoEndPosition = make_parented<ControlProxy>(
+            createConfigKey(QStringLiteral("endposition")),
+            this,
+            ControlFlag::NoAssertIfMissing);
+    m_pCoEndPosition->connectValueChanged(this, &WHotcueButton::slotUpdateDirection);
+    slotUpdateDirection();
 
-    auto* pDisplayConnection = new ControlParameterWidgetConnection(
-            this,
+    m_pCoActive = make_parented<ControlProxy>(
             createConfigKey(QStringLiteral("status")),
-            nullptr,
-            ControlParameterWidgetConnection::DIR_TO_WIDGET,
-            ControlParameterWidgetConnection::EMIT_NEVER);
-    addConnection(pDisplayConnection);
-    setDisplayConnection(pDisplayConnection);
+            this,
+            ControlFlag::NoAssertIfMissing);
+
+    addConnection(std::make_unique<ControlParameterWidgetConnection>(
+                          this,
+                          getLeftClickConfigKey(), // "activate"
+                          nullptr,
+                          ControlParameterWidgetConnection::DIR_FROM_WIDGET,
+                          ControlParameterWidgetConnection::EMIT_ON_PRESS_AND_RELEASE),
+            WBaseWidget::ConnectionSide::Left);
+
+    addAndSetDisplayConnection(std::make_unique<ControlParameterWidgetConnection>(
+                                       this,
+                                       createConfigKey(QStringLiteral("status")),
+                                       nullptr,
+                                       ControlParameterWidgetConnection::DIR_TO_WIDGET,
+                                       ControlParameterWidgetConnection::EMIT_NEVER),
+            WBaseWidget::ConnectionSide::None);
 
     QDomNode con = context.selectNode(node, QStringLiteral("Connection"));
     if (!con.isNull()) {
         SKIN_WARNING(node, context, QStringLiteral("Additional Connections are not allowed"));
     }
+
+    // Create the list of ConfigKeys and translatable command strings
+    // for the keyboard shortcut tooltip and store it in WBaseWidget.
+    // KeyboardEventFilter::updateWidgetShortcuts() will fetch it to
+    // update the tooltip when the keyboard mapping is (re)loaded.
+    QList<std::pair<ConfigKey, QString>> shortcutKeys;
+    shortcutKeys.emplace_back(getLeftClickConfigKey(), tr("activate"));
+    shortcutKeys.emplace_back(getClearConfigKey(), tr("clear"));
+    // Add dedicated cue/loop cue controls
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("set")), tr("set"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("setcue")), tr("set cue"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("setloop")), tr("set loop"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("goto")), tr("go to"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("gotoandplay")), tr("go to and play"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("gotoandstop")), tr("go to and stop"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("gotoandloop")), tr("go to and loop"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("cueloop")), tr("cue loop"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("activatecue")), tr("activat cue"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("activateloop")), tr("activate loop"));
+    shortcutKeys.emplace_back(
+            createConfigKey(QStringLiteral("activate_preview")), tr("activate preview"));
+    setShortcutControlsAndCommands(shortcutKeys);
 }
 
-void WHotcueButton::mousePressEvent(QMouseEvent* e) {
-    const bool rightClick = e->button() == Qt::RightButton;
+bool WHotcueButton::isActive() const {
+    return m_pCoActive &&
+            m_pCoActive->get() ==
+            static_cast<double>(HotcueControl::Status::Active);
+}
+
+void WHotcueButton::mousePressEvent(QMouseEvent* pEvent) {
+    const bool rightClick = pEvent->button() == Qt::RightButton;
     if (rightClick) {
         if (isPressed()) {
             // Discard right clicks when already left clicked.
@@ -107,7 +187,7 @@ void WHotcueButton::mousePressEvent(QMouseEvent* e) {
             }
 
             CuePointer pHotCue;
-            QList<CuePointer> cueList = pTrack->getCuePoints();
+            const QList<CuePointer> cueList = pTrack->getCuePoints();
             for (const auto& pCue : cueList) {
                 if (pCue->getHotCue() == m_hotcue) {
                     pHotCue = pCue;
@@ -117,28 +197,108 @@ void WHotcueButton::mousePressEvent(QMouseEvent* e) {
             if (!pHotCue) {
                 return;
             }
-            if (e->modifiers().testFlag(Qt::ShiftModifier)) {
+            if (pEvent->modifiers().testFlag(Qt::ShiftModifier)) {
                 pTrack->removeCue(pHotCue);
                 return;
             }
-            m_pCueMenuPopup->setTrackCueGroup(pTrack, pHotCue, m_group);
+            auto* pCueMenuPopup = getCueMenuPopup();
+            pCueMenuPopup->setTrackCueGroup(pTrack, pHotCue, m_group);
             // use the bottom left corner as starting point for popup
-            m_pCueMenuPopup->popup(mapToGlobal(QPoint(0, height())));
+            pCueMenuPopup->popup(mapToGlobal(QPoint(0, height())));
         }
         return;
     }
 
     // Pass all other press events to the base class.
-    WPushButton::mousePressEvent(e);
+    // Except when Shift is pressed which is used to swap hotcues without
+    // starting the preview.
+    if (!pEvent->modifiers().testFlag(Qt::ShiftModifier)) {
+        WPushButton::mousePressEvent(pEvent);
+        DragAndDropHelper::mousePressed(pEvent);
+    }
 }
 
-void WHotcueButton::mouseReleaseEvent(QMouseEvent* e) {
-    const bool rightClick = e->button() == Qt::RightButton;
+void WHotcueButton::mouseReleaseEvent(QMouseEvent* pEvent) {
+    const bool rightClick = pEvent->button() == Qt::RightButton;
     if (rightClick) {
         // Don't handle stray release events
         return;
     }
-    WPushButton::mouseReleaseEvent(e);
+    WPushButton::mouseReleaseEvent(pEvent);
+}
+
+void WHotcueButton::mouseMoveEvent(QMouseEvent* pEvent) {
+    TrackPointer pTrack = PlayerInfo::instance().getTrackInfo(m_group);
+    if (!pTrack) {
+        return;
+    }
+
+    // Maybe set up a QDrag for swapping hotcues.
+    // Only allow moving set hotcues to empty or set slots.
+    // Note that Track::swapHotcues() allows both directions.
+    if (m_hotcue == Cue::kNoHotCue) {
+        return;
+    }
+
+    if (DragAndDropHelper::mouseMoveInitiatesDrag(pEvent)) {
+        const TrackId id = pTrack->getId();
+        VERIFY_OR_DEBUG_ASSERT(id.isValid()) {
+            return;
+        }
+        QDrag* pDrag = new QDrag(this);
+        HotcueDragInfo dragData(id, m_hotcue);
+        auto mimeData = std::make_unique<QMimeData>();
+        mimeData->setData(kDragMimeType, dragData.toByteArray());
+        pDrag->setMimeData(mimeData.release());
+
+        // Use the currently rendered button as dnd cursor
+        // (incl. hover and pressed style).
+        // Note: both grab() and render() use the pure rect(),
+        // i.e. these render with sharp corners and qss 'border-radius'
+        // is not visible in the drag image.
+        const QPixmap currLook = grab(rect().marginsRemoved(m_dndRectMargins));
+        pDrag->setDragCursor(currLook, Qt::MoveAction);
+
+        m_dragging = true;
+        pDrag->exec();
+        m_dragging = false;
+
+        // Release this button afterwards.
+        // This prevents both the preview and the pressed state from getting stuck.
+        QEvent leaveEv(QEvent::Leave);
+        QApplication::sendEvent(this, &leaveEv);
+    }
+}
+
+void WHotcueButton::dragEnterEvent(QDragEnterEvent* pEvent) {
+    if (isValidHotcueDragEvent(pEvent, m_group, QList<int>{kMainCueIndex})) {
+        pEvent->acceptProposedAction();
+    } else {
+        pEvent->ignore();
+    }
+}
+
+void WHotcueButton::dropEvent(QDropEvent* pEvent) {
+    TrackPointer pTrack = PlayerInfo::instance().getTrackInfo(m_group);
+    HotcueDragInfo dragData = HotcueDragInfo();
+    if (pTrack &&
+            isValidHotcueDropEvent(
+                    pEvent,
+                    m_group,
+                    this,
+                    QList<int>{m_hotcue, kMainCueIndex},
+                    &dragData)) {
+        pTrack->swapHotcues(dragData.hotcue, m_hotcue);
+    } else {
+        pEvent->ignore();
+    }
+}
+
+WCueMenuPopup* WHotcueButton::getCueMenuPopup() {
+    if (m_pCueMenuPopup.get() == nullptr) {
+        m_pCueMenuPopup = make_parented<WCueMenuPopup>(m_pConfig, this);
+    }
+    return m_pCueMenuPopup.get();
 }
 
 ConfigKey WHotcueButton::createConfigKey(const QString& name) {
@@ -173,6 +333,13 @@ void WHotcueButton::slotColorChanged(double color) {
     }
 
     setStyleSheet(style);
+    restyleAndRepaint();
+}
+
+void WHotcueButton::slotUpdateDirection(double) {
+    m_direction = m_pCoPosition->get() >= m_pCoEndPosition->get()
+            ? QStringLiteral("forward")
+            : QStringLiteral("backward");
     restyleAndRepaint();
 }
 

@@ -1,5 +1,7 @@
 #include "encoder/encoderopus.h"
 
+#include <qglobal.h>
+
 #include <QByteArray>
 #include <QMapIterator>
 #include <QRandomGenerator>
@@ -136,7 +138,8 @@ void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
     }
 }
 
-int EncoderOpus::initEncoder(mixxx::audio::SampleRate sampleRate, QString* pUserErrorMessage) {
+int EncoderOpus::initEncoder(mixxx::audio::SampleRate sampleRate,
+        QString* pUserErrorMessage) {
     Q_UNUSED(pUserErrorMessage);
 
     if (sampleRate != kMainSampleRate) {
@@ -368,12 +371,12 @@ void EncoderOpus::pushTagsPacket() {
     }
 }
 
-void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
+void EncoderOpus::encodeBuffer(const CSAMPLE* samples, const std::size_t bufferSize) {
     if (!m_pOpus) {
         return;
     }
 
-    int writeRequired = size;
+    int writeRequired = static_cast<int>(bufferSize);
     int writeAvailable = m_fifoBuffer.writeAvailable();
     if (writeRequired > writeAvailable) {
         kLogger.warning() << "FIFO buffer too small, losing samples!"
@@ -460,10 +463,17 @@ void EncoderOpus::writePage(ogg_packet* pPacket) {
     } while(!ogg_page_eos(&m_oggPage));
 }
 
-void EncoderOpus::updateMetaData(const QString& artist, const QString& title, const QString& album) {
-    m_opusComments.insert("ARTIST", artist);
-    m_opusComments.insert("TITLE", title);
-    m_opusComments.insert("ALBUM", album);
+void EncoderOpus::updateMetaData(const QString& artist,
+        const QString& title,
+        const QString& album,
+        std::chrono::seconds) {
+    // We assume all the base tags are added at the same time, so only check for ARTIST presence
+    if (!m_opusComments.contains("ARTIST")) {
+        m_opusComments.insert("ARTIST", artist);
+        m_opusComments.insert("TITLE", title);
+        m_opusComments.insert("ALBUM", album);
+    }
+    // Tracklist tag not supported in OPUS
 }
 
 void EncoderOpus::flush() {

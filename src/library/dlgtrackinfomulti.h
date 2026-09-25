@@ -29,10 +29,14 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
     ~DlgTrackInfoMulti() override = default;
 
     void loadTracks(const QList<TrackPointer>& pTracks);
+    void focusField(const QString& property);
 
-    /// We need this to set the max width of the comment QComboBox which has
-    /// issues with long lines / multi-line content. See init() for details.
-    void resizeEvent(QResizeEvent* event) override;
+  protected:
+    /// These two call adjustWidgetSizes() in order to fix some layout
+    /// quirks and set the minimum height of the Comment editor
+    void resizeEvent(QResizeEvent* pEvent) override;
+    void showEvent(QShowEvent* pEvent) override;
+    bool eventFilter(QObject* pObj, QEvent* pEvent) override;
 
   private slots:
     void slotOk();
@@ -41,12 +45,14 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
 
     void slotImportMetadataFromFiles();
 
-    /// If only one track is changed while the dialog is open, re-populate
-    /// the dialog from all tracks. This discards pending changes.
+    /// If any of the loaded track has been changed while the dialog is open we
+    /// re-populate the dialog from all tracks. This discards pending changes.
     void slotTrackChanged(TrackId trackId);
 
     void slotTagBoxIndexChanged();
     void slotCommentBoxIndexChanged();
+    void commentTextChanged();
+    void slotEditingFinished(QComboBox* pBox, QLineEdit* pLine);
     void slotKeyTextChanged();
 
     void slotColorButtonClicked();
@@ -65,6 +71,9 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
 
   private:
     void init();
+    void adjustWidgetSizes();
+    void maybeMakeDialogScrollable();
+
     void loadTracksInternal(const QList<TrackPointer>& pTracks);
     void saveTracks();
 
@@ -81,6 +90,9 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
             QSet<T>& values,
             bool sort = false);
     void addValuesToCommentBox(QSet<QString>& comments);
+    void updateTagPlaceholder(QComboBox* pBox, bool dirty);
+    void updateCommentPlaceholder(bool dirty);
+
     void updateCoverArtFromTracks();
     void trackColorDialogSetColorStyleButton(const mixxx::RgbColor::optional_t& color,
             bool variousColors = false);
@@ -99,6 +111,8 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
     QHash<TrackId, TrackPointer> m_pLoadedTracks;
     QList<mixxx::TrackRecord> m_trackRecords;
 
+    QHash<QString, QWidget*> m_propertyWidgets;
+
     parented_ptr<WCoverArtMenu> m_pWCoverArtMenu;
     parented_ptr<WCoverArtLabel> m_pWCoverArtLabel;
     parented_ptr<WStarRating> m_pWStarRating;
@@ -107,4 +121,6 @@ class DlgTrackInfoMulti : public QDialog, public Ui::DlgTrackInfoMulti {
     bool m_colorChanged;
     mixxx::RgbColor::optional_t m_newColor;
     parented_ptr<WColorPickerAction> m_pColorPicker;
+
+    bool m_widgetSizesFixed;
 };

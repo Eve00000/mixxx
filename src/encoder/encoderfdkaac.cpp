@@ -247,7 +247,8 @@ void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
     }
 }
 
-int EncoderFdkAac::initEncoder(mixxx::audio::SampleRate sampleRate, QString* pUserErrorMessage) {
+int EncoderFdkAac::initEncoder(mixxx::audio::SampleRate sampleRate,
+        QString* pUserErrorMessage) {
     m_sampleRate = sampleRate;
 
     if (!m_pLibrary) {
@@ -351,11 +352,11 @@ int EncoderFdkAac::initEncoder(mixxx::audio::SampleRate sampleRate, QString* pUs
     return 0;
 }
 
-void EncoderFdkAac::encodeBuffer(const CSAMPLE* samples, const int sampleCount) {
+void EncoderFdkAac::encodeBuffer(const CSAMPLE* samples, const std::size_t bufferSize) {
     if (!m_pInputFifo) {
         return;
     }
-    int writeCount = sampleCount;
+    int writeCount = static_cast<int>(bufferSize);
     int writeAvailable = m_pInputFifo->writeAvailable();
     if (writeCount > writeAvailable) {
         kLogger.warning() << "FIFO buffer too small, losing samples!"
@@ -439,9 +440,10 @@ void EncoderFdkAac::processFIFO() {
     }
 }
 
-void EncoderFdkAac::updateMetaData(
-        const QString& artist, const QString& title, const QString& album) {
-    (void)artist, (void)title, (void)album;
+void EncoderFdkAac::updateMetaData(const QString&,
+        const QString&,
+        const QString&,
+        std::chrono::seconds) {
 }
 
 void EncoderFdkAac::flush() {

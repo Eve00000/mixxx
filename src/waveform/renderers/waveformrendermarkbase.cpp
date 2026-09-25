@@ -14,8 +14,6 @@ WaveformRenderMarkBase::WaveformRenderMarkBase(
 void WaveformRenderMarkBase::setup(const QDomNode& node, const SkinContext& context) {
     WaveformSignalColors signalColors = *m_waveformRenderer->getWaveformSignalColors();
     m_marks.setup(m_waveformRenderer->getGroup(), node, context, signalColors);
-    m_marks.connectSamplePositionChanged(this, &WaveformRenderMarkBase::onMarkChanged);
-    m_marks.connectSampleEndPositionChanged(this, &WaveformRenderMarkBase::onMarkChanged);
     m_marks.connectVisibleChanged(this, &WaveformRenderMarkBase::onMarkChanged);
 }
 
@@ -27,10 +25,14 @@ void WaveformRenderMarkBase::onSetTrack() {
         return;
     }
 
+    // IMPORTANT: make this a QueuedConnection so the slot is called AFTER
+    // objects with DirectConnection (eg. CueControl, which updates the position
+    // COs we need when we iterate over the cues and update marks)
     connect(pTrackInfo.get(),
             &Track::cuesUpdated,
             this,
-            &WaveformRenderMarkBase::slotCuesUpdated);
+            &WaveformRenderMarkBase::slotCuesUpdated,
+            Qt::QueuedConnection);
 }
 
 void WaveformRenderMarkBase::onResize() {
@@ -57,7 +59,7 @@ void WaveformRenderMarkBase::updateMarksFromCues() {
     }
 
     const int dimBrightThreshold = m_waveformRenderer->getDimBrightThreshold();
-    QList<CuePointer> loadedCues = pTrackInfo->getCuePoints();
+    const QList<CuePointer> loadedCues = pTrackInfo->getCuePoints();
     for (const CuePointer& pCue : loadedCues) {
         const int hotCue = pCue->getHotCue();
         if (hotCue == Cue::kNoHotCue) {
@@ -75,6 +77,9 @@ void WaveformRenderMarkBase::updateMarksFromCues() {
         QColor newColor = mixxx::RgbColor::toQColor(pCue->getColor());
         pMark->setText(newLabel);
         pMark->setBaseColor(newColor, dimBrightThreshold);
+        if (pMark->isJump()) {
+            pMark->setNeedsImageUpdate();
+        }
     }
 
     updateMarks();
@@ -91,6 +96,9 @@ void WaveformRenderMarkBase::updateMarkImages() {
     for (const auto& pMark : m_marks) {
         if (pMark->needsImageUpdate()) {
             updateMarkImage(pMark);
+        }
+        if (pMark->needsEndImageUpdate()) {
+            updateEndMarkImage(pMark);
         }
     }
 }

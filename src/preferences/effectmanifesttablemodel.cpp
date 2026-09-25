@@ -23,6 +23,9 @@ EffectManifestTableModel::EffectManifestTableModel(QObject* parent,
 
 void EffectManifestTableModel::setList(const QList<EffectManifestPointer>& newList) {
     removeRows(0, m_manifests.size());
+    if (newList.isEmpty()) {
+        return;
+    }
     beginInsertRows(QModelIndex(), 0, newList.size() - 1);
     m_manifests = newList;
     endInsertRows();
@@ -125,9 +128,11 @@ bool EffectManifestTableModel::dropMimeData(const QMimeData* data,
         return false;
     }
     if (row == -1) {
-        row = parent.row();
+        if (parent.isValid()) {
+            row = parent.row();
+        }
         // Dropping onto an empty model or dropping past the end of a model
-        if (parent.row() == -1) {
+        if (row == -1) {
             row = m_manifests.size();
         }
     }

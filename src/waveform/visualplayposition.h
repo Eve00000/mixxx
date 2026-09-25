@@ -3,13 +3,15 @@
 #include <QAtomicPointer>
 #include <QMap>
 #include <QTime>
+#include <atomic>
 
 #include "control/controlvalue.h"
 #include "engine/slipmodestate.h"
+#include "util/delayring.h"
 #include "util/performancetimer.h"
 
 class ControlProxy;
-class VSyncThread;
+class VSyncTimeProvider;
 
 // This class is for synchronizing the sound device DAC time with the waveforms, displayed on the
 // graphic device, using the CPU time
@@ -48,7 +50,7 @@ class VisualPlayPositionData {
 class VisualPlayPosition : public QObject {
     Q_OBJECT
   public:
-    VisualPlayPosition(const QString& m_key);
+    VisualPlayPosition(const QString& m_key = {});
     virtual ~VisualPlayPosition();
 
     // WARNING: Not thread safe. This function must be called only from the
@@ -67,8 +69,7 @@ class VisualPlayPosition : public QObject {
             double tempoTrackSeconds,
             double audioBufferMicroS);
 
-    double getAtNextVSync(VSyncThread* pVSyncThread);
-    void getPlaySlipAtNextVSync(VSyncThread* pVSyncThread,
+    bool getPlaySlipAtNextVSync(VSyncTimeProvider* pSyncTimeProvider,
             double* playPosition,
             double* slipPosition);
     double determinePlayPosInLoopBoundries(
@@ -83,15 +84,17 @@ class VisualPlayPosition : public QObject {
     // This is called by SoundDevicePortAudio just after the callback starts.
     static void setCallbackEntryToDacSecs(double secs, const PerformanceTimer& time);
 
-    void setInvalid() { m_valid = false; };
-    bool isValid() const {
-        return m_valid;
+    void setInvalid() {
+        m_data.reset();
+    };
+    const QString& key() const {
+        return m_key;
     }
 
   private:
-    double calcOffsetAtNextVSync(VSyncThread* pVSyncThread, const VisualPlayPositionData& data);
-    ControlValueAtomic<VisualPlayPositionData> m_data;
-    bool m_valid;
+    double calcOffsetAtNextVSync(VSyncTimeProvider* pSyncTimeProvider,
+            const VisualPlayPositionData& data);
+    DelayRing<VisualPlayPositionData, 16> m_data;
     QString m_key;
     bool m_noTransport;
 

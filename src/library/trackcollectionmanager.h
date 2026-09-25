@@ -3,9 +3,13 @@
 #include <QDir>
 #include <QList>
 #include <QSet>
+#include <atomic>
 #include <memory>
+#include <mutex>
+#include <optional>
 
 #include "library/dao/directorydao.h"
+#include "library/library_decl.h"
 #include "preferences/usersettings.h"
 #include "track/globaltrackcache.h"
 #include "util/db/dbconnectionpool.h"
@@ -25,8 +29,8 @@ class RelocatedTrack;
 //
 // Both crates and playlists are currently only supported by the internal
 // collection, which needs to be modified directly.
-class TrackCollectionManager: public QObject,
-    public virtual /*implements*/ GlobalTrackCacheSaver {
+class TrackCollectionManager : public QObject,
+                               public virtual /*implements*/ GlobalTrackCacheSaver {
     Q_OBJECT
 
   public:
@@ -51,6 +55,9 @@ class TrackCollectionManager: public QObject,
             TrackId trackId) const;
     TrackPointer getTrackByRef(
             const TrackRef& trackRef) const;
+    QList<TrackId> resolveTrackIds(
+            const QList<mixxx::FileInfo>& fileInfos,
+            QObject* pSource) const;
     QList<TrackId> resolveTrackIdsFromUrls(
             const QList<QUrl>& urls,
             bool addMissing) const;
@@ -91,10 +98,22 @@ class TrackCollectionManager: public QObject,
         Failed,
     };
     SaveTrackResult saveTrack(const TrackPointer& pTrack) const;
+    // Same as startLibraryScan() but don't emit the scan summary.
+    void startLibraryAutoScan();
+
+    LibraryScanner* scanner() const {
+        return m_pScanner.get();
+    }
+
+    bool isLibraryScanActive() const {
+        return m_libraryScanActive.load();
+    }
+    std::optional<LibraryScanResultSummary> takePendingLibraryScanSummary();
 
   signals:
     void libraryScanStarted();
     void libraryScanFinished();
+    void libraryScanSummary(const LibraryScanResultSummary& result);
 
   public slots:
     void startLibraryScan();
@@ -128,4 +147,7 @@ class TrackCollectionManager: public QObject,
 
     // TODO: Extract and decouple LibraryScanner from TrackCollectionManager
     std::unique_ptr<LibraryScanner> m_pScanner;
+    std::atomic_bool m_libraryScanActive{false};
+    std::mutex m_libraryScanSummaryMutex;
+    std::optional<LibraryScanResultSummary> m_pendingLibraryScanSummary;
 };

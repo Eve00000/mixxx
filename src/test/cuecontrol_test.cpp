@@ -39,7 +39,7 @@ class CueControlTest : public BaseSignalPathTest {
     }
 
     void loadTrack(TrackPointer pTrack) {
-        BaseSignalPathTest::loadTrack(m_pMixerDeck1, pTrack);
+        BaseSignalPathTest::loadTrack(m_pMixerDeck1.get(), pTrack);
         ProcessBuffer();
     }
 
@@ -48,7 +48,11 @@ class CueControlTest : public BaseSignalPathTest {
     }
 
     void unloadTrack() {
-        m_pMixerDeck1->slotLoadTrack(TrackPointer(), false);
+        m_pMixerDeck1->slotLoadTrack(TrackPointer(),
+#ifdef __STEM__
+                mixxx::StemChannelSelection(),
+#endif
+                false);
     }
 
     mixxx::audio::FramePos getCurrentFramePos() {
@@ -365,6 +369,7 @@ TEST_F(CueControlTest, SeekOnLoadDefault_CueInPreroll) {
 }
 
 TEST_F(CueControlTest, FollowCueOnQuantize) {
+    m_pQuantizeEnabled->set(0);
     config()->set(ConfigKey("[Controls]", "CueRecall"),
             ConfigValue(static_cast<int>(SeekOnLoadMode::MainCue)));
     TrackPointer pTrack = createTestTrack();

@@ -146,7 +146,14 @@ QList<StemInfo> StemInfoImporter::importStemInfos(
         return {};
     }
 
-    auto jsonData = QJsonDocument::fromJson(file.read(manifestSize));
+    QByteArray manifest = file.read(manifestSize);
+    // Though most MP4 atoms are usually not null-terminated, it looks like the
+    // STEM sometime is, resulting in extra null character(s) preventing JSON
+    // deserialization
+    while (manifest.endsWith('\0')) {
+        manifest.chop(1);
+    }
+    auto jsonData = QJsonDocument::fromJson(manifest);
     VERIFY_OR_DEBUG_ASSERT(jsonData.isObject()) {
         kLogger.warning()
                 << "Failed to extract the manifest data"
@@ -171,7 +178,7 @@ QList<StemInfo> StemInfoImporter::importStemInfos(
         kLogger.debug() << "Unexpected or missing stems value in STEM manifest";
         return {};
     }
-    auto stemArray = stems.toArray();
+    const auto stemArray = stems.toArray();
     QList<StemInfo> stemsList;
     stemsList.reserve(stemArray.size());
     int stemIdx = 0;

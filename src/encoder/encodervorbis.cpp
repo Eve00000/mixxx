@@ -1,5 +1,6 @@
 #include "encoder/encodervorbis.h"
 
+#include <qglobal.h>
 #include <stdlib.h> // needed for random num gen
 #include <time.h>   // needed for random num gen
 #include <vorbis/vorbisenc.h>
@@ -31,6 +32,9 @@ EncoderVorbis::EncoderVorbis(EncoderCallback* pCallback)
 
 EncoderVorbis::~EncoderVorbis() {
     if (m_bStreamInitialized) {
+        QString trackList = m_trackList.join("\n");
+        vorbis_comment_add_tag(&m_vcomment, "COMMENT", trackList.toUtf8().constData());
+
         ogg_stream_clear(&m_oggs);
         vorbis_block_clear(&m_vblock);
         vorbis_dsp_clear(&m_vdsp);
@@ -133,25 +137,25 @@ void EncoderVorbis::writePage() {
     }
 }
 
-void EncoderVorbis::encodeBuffer(const CSAMPLE *samples, const int size) {
-    float **buffer = vorbis_analysis_buffer(&m_vdsp, size);
+void EncoderVorbis::encodeBuffer(const CSAMPLE* samples, const std::size_t bufferSize) {
+    float** buffer = vorbis_analysis_buffer(&m_vdsp, static_cast<int>(bufferSize));
 
     // Deinterleave samples. We use normalized floats in the engine [-1.0, 1.0]
     // and libvorbis expects samples in the range [-1.0, 1.0] so no conversion
     // is required.
     if (m_channels == 2) {
-        for (int i = 0; i < size/2; ++i) {
+        for (std::size_t i = 0; i < bufferSize / 2; ++i) {
             buffer[0][i] = samples[i*2];
             buffer[1][i] = samples[i*2+1];
         }
     }
     else {
-        for (int i = 0; i < size/2; ++i) {
+        for (std::size_t i = 0; i < bufferSize / 2; ++i) {
             buffer[0][i] = (samples[i*2] + samples[i*2+1]) / 2.f;
         }
     }
     /** encodes audio **/
-    vorbis_analysis_wrote(&m_vdsp, size/2);
+    vorbis_analysis_wrote(&m_vdsp, static_cast<int>(bufferSize) / 2);
     /** writes the OGG page and sends it to file or stream **/
     writePage();
 }
@@ -161,10 +165,16 @@ void EncoderVorbis::encodeBuffer(const CSAMPLE *samples, const int size) {
  *
  * Currently this method is used before init() once to save artist, title and album
 */
-void EncoderVorbis::updateMetaData(const QString& artist, const QString& title, const QString& album) {
-    m_metaDataTitle = title;
-    m_metaDataArtist = artist;
-    m_metaDataAlbum = album;
+void EncoderVorbis::updateMetaData(const QString& artist,
+        const QString& title,
+        const QString& album,
+        std::chrono::seconds) {
+    if (!m_bStreamInitialized) {
+        m_metaDataTitle = title;
+        m_metaDataArtist = artist;
+        m_metaDataAlbum = album;
+    }
+    // Tracklist tag not supported in OGG
 }
 
 void EncoderVorbis::initStream() {
@@ -204,7 +214,8 @@ void EncoderVorbis::initStream() {
     m_bStreamInitialized = true;
 }
 
-int EncoderVorbis::initEncoder(mixxx::audio::SampleRate sampleRate, QString* pUserErrorMessage) {
+int EncoderVorbis::initEncoder(mixxx::audio::SampleRate sampleRate,
+        QString* pUserErrorMessage) {
     vorbis_info_init(&m_vinfo);
 
     // initialize VBR quality based mode

@@ -3,22 +3,22 @@
 #include <memory>
 
 #include "control/pollingcontrolproxy.h"
-#include "defs_urls.h"
+#include "preferences/constants.h"
 #include "preferences/dialog/dlgpreferencepage.h"
 #include "preferences/dialog/ui_dlgprefsounddlg.h"
 #include "preferences/usersettings.h"
 #include "soundio/sounddevice.h"
-#include "soundio/sounddevicestatus.h"
 #include "soundio/soundmanagerconfig.h"
+#include "soundio/soundmanagerutil.h"
 #include "util/parented_ptr.h"
 
-class SoundManager;
-class PlayerManager;
 class ControlObject;
+class ControlProxy;
+class DlgPrefSoundItem;
+class PlayerManager;
 class SoundDevice;
 class SoundDeviceId;
-class DlgPrefSoundItem;
-class ControlProxy;
+class SoundManager;
 
 // TODO(bkgood) (n-decks) establish a signal/slot connection with a signal
 // on EngineMaster that emits every time a channel is added, and a slot here
@@ -31,21 +31,31 @@ class DlgPrefSound : public DlgPreferencePage, public Ui::DlgPrefSoundDlg  {
             std::shared_ptr<SoundManager> soundManager,
             UserSettingsPointer pSettings);
 
+    void selectIOTab(mixxx::preferences::SoundHardwareTab tab);
+
     QUrl helpUrl() const override;
+    bool okayToClose() const override;
 
   signals:
     void loadPaths(const SoundManagerConfig &config);
+    void writePath(const AudioPath* pPath, SoundManagerConfig* config);
     void writePaths(SoundManagerConfig *config);
     void refreshOutputDevices(const QList<SoundDevicePointer>& devices);
     void refreshInputDevices(const QList<SoundDevicePointer>& devices);
+    void addOutputDevice(SoundDevicePointer pDevice);
+    void addInputDevice(SoundDevicePointer pDevice);
+    void removeOutputDevice(SoundDevicePointer pDevice);
+    void removeInputDevice(SoundDevicePointer pDevice);
     void updatingAPI();
     void updatedAPI();
+    void deviceChannelsUpdated(SoundDevicePointer devices);
 
   public slots:
     void slotUpdate() override; // called on show
     void slotApply() override;  // called on ok button
     void slotResetToDefaults() override;
     void bufferUnderflow(double count);
+    void slotResetUnderflowCounter();
     void outputLatencyChanged(double latency);
     void latencyCompensationSpinboxChanged(double value);
     void mainDelaySpinboxChanged(double value);
@@ -78,6 +88,11 @@ class DlgPrefSound : public DlgPreferencePage, public Ui::DlgPrefSoundDlg  {
     void updateKeylockDualThreadingCheckbox();
     void updateKeylockMultithreading(bool enabled);
 #endif
+    void addDevice(SoundDevicePointer pDevice);
+    void removeDevice(SoundDevicePointer pDevice);
+    void updateDeviceChannels(SoundDevicePointer pDevice);
+    void updateSampleRates(const QList<mixxx::audio::SampleRate>& sampleRates);
+    void invalidateConfig();
 
   private:
     void initializePaths();
@@ -110,4 +125,17 @@ class DlgPrefSound : public DlgPreferencePage, public Ui::DlgPrefSoundDlg  {
     bool m_bLatencyChanged;
     bool m_bSkipConfigClear;
     bool m_loading;
+    bool m_configValid;
+
+#ifdef __PIPEWIRE__
+    parented_ptr<QCheckBox> m_pipewireCheckBox;
+    parented_ptr<QCheckBox> m_pipewirePatchbayCheckBox;
+    parented_ptr<ControlProxy> m_pPipewirePatchbay;
+    parented_ptr<QCheckBox> m_forceBufferSize;
+    parented_ptr<QCheckBox> m_forceSamplerate;
+    parented_ptr<ControlProxy> m_cpSamplerate;
+    parented_ptr<ControlProxy> m_cpBufferSize;
+    parented_ptr<ControlProxy> m_cpLatencyParamsMismatch;
+    QLabel* m_latencyParamsMismatchText;
+#endif
 };

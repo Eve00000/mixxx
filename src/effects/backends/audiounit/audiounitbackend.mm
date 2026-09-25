@@ -3,10 +3,12 @@
 #import <AVFAudio/AVFAudio.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <Foundation/Foundation.h>
+#import <dispatch/dispatch.h>
 
 #include <QDebug>
 #include <QHash>
 #include <QList>
+#include <QMutex>
 #include <QString>
 #include <memory>
 
@@ -14,11 +16,12 @@
 #include "effects/backends/audiounit/audiouniteffectprocessor.h"
 #include "effects/backends/audiounit/audiounitmanifest.h"
 #include "effects/defs.h"
+#include "util/compatibility/qmutex.h"
 
 /// An effects backend for Audio Unit (AU) plugins. macOS-only.
 class AudioUnitBackend : public EffectsBackend {
   public:
-    AudioUnitBackend() : m_componentsById([[NSDictionary alloc] init]) {
+    AudioUnitBackend() : m_componentsById([NSMutableDictionary dictionary]) {
         loadAudioUnits();
     }
 
@@ -30,20 +33,22 @@ class AudioUnitBackend : public EffectsBackend {
     };
 
     const QList<QString> getEffectIds() const override {
-        QList<QString> effectIds;
-
-        for (NSString* effectId in m_componentsById) {
-            effectIds.append(QString::fromNSString(effectId));
-        }
-
-        return effectIds;
+        // Only report effects whose manifest actually finished loading.
+        // If loadAudioUnitsOfType() timed out, some components in
+        // m_componentsById may not have a corresponding manifest yet, and
+        // callers would get a null EffectManifestPointer from getManifest(),
+        // which crashes downstream (e.g. EffectManifest::sortLexigraphically).
+        auto locker = lockMutex(&m_mutex);
+        return m_manifestsById.keys();
     }
 
     EffectManifestPointer getManifest(const QString& effectId) const override {
-        return m_manifestsById[effectId];
+        auto locker = lockMutex(&m_mutex);
+        return m_manifestsById.value(effectId);
     }
 
     const QList<EffectManifestPointer> getManifests() const override {
+        auto locker = lockMutex(&m_mutex);
         return m_manifestsById.values();
     }
 
@@ -59,8 +64,9 @@ class AudioUnitBackend : public EffectsBackend {
     }
 
   private:
-    NSDictionary<NSString*, AVAudioUnitComponent*>* m_componentsById;
+    NSMutableDictionary<NSString*, AVAudioUnitComponent*>* m_componentsById;
     QHash<QString, EffectManifestPointer> m_manifestsById;
+    mutable QMutex m_mutex;
 
     void loadAudioUnits() {
         qDebug() << "Loading audio units...";
@@ -68,42 +74,87 @@ class AudioUnitBackend : public EffectsBackend {
         // See
         // https://developer.apple.com/documentation/audiotoolbox/audio_unit_v3_plug-ins/incorporating_audio_effects_and_instruments?language=objc
 
-        // Create a query for audio components
-        AudioComponentDescription description = {
-                .componentType = kAudioUnitType_Effect,
-                .componentSubType = 0,
-                .componentManufacturer = 0,
-                .componentFlags = 0,
-                .componentFlagsMask = 0,
-        };
-
-        // Find the audio units
-        // TODO: Should we perform this asynchronously (e.g. using Qt's
-        // threading or GCD)?
+        // Discover all AU components of both types first, then load all
+        // manifests in a single parallel batch. This avoids the performance
+        // penalty of two sequential discovery passes each with their own
+        // blocking wait.
         auto manager =
                 [AVAudioUnitComponentManager sharedAudioUnitComponentManager];
-        auto components = [manager componentsMatchingDescription:description];
 
-        // Assign ids to the components
-        NSMutableDictionary<NSString*, AVAudioUnitComponent*>* componentsById =
-                [[NSMutableDictionary alloc] init];
-        QHash<QString, EffectManifestPointer> manifestsById;
+        NSMutableArray<AVAudioUnitComponent*>* allComponents =
+                [NSMutableArray array];
 
-        for (AVAudioUnitComponent* component in components) {
+        for (OSType componentType :
+                {kAudioUnitType_Effect, kAudioUnitType_MusicEffect}) {
+            AudioComponentDescription description = {
+                    .componentType = componentType,
+                    .componentSubType = 0,
+                    .componentManufacturer = 0,
+                    .componentFlags = 0,
+                    .componentFlagsMask = 0,
+            };
+            auto components =
+                    [manager componentsMatchingDescription:description];
+            [allComponents addObjectsFromArray:components];
+        }
+
+        // Load component manifests (parameters etc.) concurrently since this
+        // requires instantiating the corresponding Audio Units. We use Grand
+        // Central Dispatch (GCD) for this instead of Qt's threading facilities
+        // since GCD is a bit more lightweight and generally preferred for
+        // Apple API-related stuff.
+        dispatch_group_t group = dispatch_group_create();
+
+        // Limit concurrent manifest loads to avoid exhausting the GCD thread
+        // pool. Each manifest load blocks its thread in waitForAudioUnit for
+        // up to 2 seconds, so without a limit, having 64+ AUs would hit
+        // the macOS dispatch thread soft limit and crash the process.
+        const long MAX_CONCURRENT_LOADS = 8;
+        dispatch_semaphore_t semaphore =
+                dispatch_semaphore_create(MAX_CONCURRENT_LOADS);
+
+        for (AVAudioUnitComponent* component in allComponents) {
             qDebug() << "Found audio unit" << [component name];
 
             QString effectId = QString::fromNSString(
                     [NSString stringWithFormat:@"%@~%@~%@",
-                              [component manufacturerName],
-                              [component name],
-                              [component versionString]]);
-            componentsById[effectId.toNSString()] = component;
-            manifestsById[effectId] = EffectManifestPointer(
-                    new AudioUnitManifest(effectId, component));
+                            [component manufacturerName],
+                            [component name],
+                            [component versionString]]);
+
+            // Register component
+            m_componentsById[effectId.toNSString()] = component;
+
+            // Use a concurrent background GCD queue to load manifest
+            dispatch_queue_t queue = dispatch_get_global_queue(
+                    DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+            dispatch_group_async(group, queue, ^{
+                dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+
+                // Load manifest (potentially slow blocking operation)
+                auto manifest = EffectManifestPointer(
+                        new AudioUnitManifest(effectId, component));
+
+                // Register manifest
+                auto locker = lockMutex(&m_mutex);
+                m_manifestsById[effectId] = manifest;
+                locker.unlock();
+
+                dispatch_semaphore_signal(semaphore);
+            });
         }
 
-        m_componentsById = componentsById;
-        m_manifestsById = manifestsById;
+        const int64_t TIMEOUT_MS = 6000;
+
+        qDebug() << "Waiting for audio unit manifests to be loaded...";
+        if (dispatch_group_wait(group,
+                    dispatch_time(DISPATCH_TIME_NOW, TIMEOUT_MS * 1000000)) ==
+                0) {
+            qDebug() << "Successfully loaded audio unit manifests";
+        } else {
+            qWarning() << "Timed out while loading audio unit manifests";
+        }
     }
 };
 

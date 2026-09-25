@@ -1,6 +1,7 @@
 #include "preferences/dialog/dlgpreferencepage.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QGroupBox>
@@ -21,39 +22,21 @@ QUrl DlgPreferencePage::helpUrl() const {
     return QUrl();
 }
 
-void DlgPreferencePage::setScrollSafeGuardForAllInputWidgets(QObject* obj) {
-    // Set the focus policy to for scrollable input widgets and connect them
-    // to the custom event filter
-    for (auto* ch : obj->children()) {
-        // children() does not descend into QGroupBox,
-        // so we need to do it manually
-        QGroupBox* gBox = qobject_cast<QGroupBox*>(ch);
-        if (gBox) {
-            setScrollSafeGuardForAllInputWidgets(gBox);
-            continue;
-        }
-
-        QComboBox* combo = qobject_cast<QComboBox*>(ch);
-        if (combo) {
-            setScrollSafeGuard(combo);
-            continue;
-        }
-        QSpinBox* spin = qobject_cast<QSpinBox*>(ch);
-        if (spin) {
-            setScrollSafeGuard(spin);
-            continue;
-        }
-        QDoubleSpinBox* spinDouble = qobject_cast<QDoubleSpinBox*>(ch);
-        if (spinDouble) {
-            setScrollSafeGuard(spinDouble);
-            continue;
-        }
-        QSlider* slider = qobject_cast<QSlider*>(ch);
-        if (slider) {
-            setScrollSafeGuard(slider);
-            continue;
-        }
-    }
+void DlgPreferencePage::setScrollSafeGuardForAllInputWidgets(QObject* pObj) {
+    // This ensures that scrollable input widgets react on wheel events only if
+    // they have focus. This avoid unintended value changes when scrolling the
+    // preferences pages.
+    // This works by setting the focus policy to Qt::StrongFocus and installing
+    // our custom event filter on them.
+    setScrollSafeGuardForChildrenOfType<QComboBox>(pObj);
+    setScrollSafeGuardForChildrenOfType<QSpinBox>(pObj);
+    setScrollSafeGuardForChildrenOfType<QDoubleSpinBox>(pObj);
+    setScrollSafeGuardForChildrenOfType<QSlider>(pObj);
+    // Note: there is a Qt quirk where scrolling stops if a disabled checkbox
+    // moves underneath the cursor. (seen with Qt 6.2.3 on Linux)
+    // We can avoid this by setting the same scrollguard on them, even though
+    // they don't act on wheel events like sliders etc. ¯\_(ツ)_/¯
+    setScrollSafeGuardForChildrenOfType<QCheckBox>(pObj);
 }
 
 void DlgPreferencePage::setScrollSafeGuard(QWidget* pWidget) {
@@ -61,22 +44,38 @@ void DlgPreferencePage::setScrollSafeGuard(QWidget* pWidget) {
     pWidget->installEventFilter(this);
 }
 
-bool DlgPreferencePage::eventFilter(QObject* obj, QEvent* e) {
-    if (e->type() == QEvent::Wheel) {
-        // Reject scrolling only if widget is unfocused.
+template<typename T>
+void DlgPreferencePage::setScrollSafeGuardForChildrenOfType(QObject* pObj) {
+    // Note: finding all relevant widgets with pObj->findchildren<Type*>
+    // is much faster than with
+    // for (auto* ch : pObj->children()) { qobject_cast<Type*>(ch); }
+    QList<T*> children = pObj->findChildren<T*>();
+    for (T* pChild : children) {
+        setScrollSafeGuard(pChild);
+    }
+}
+
+bool DlgPreferencePage::eventFilter(QObject* pObj, QEvent* pEvent) {
+    if (pEvent->type() == QEvent::Wheel) {
+        // Reject scrolling if widget is not focused.
         // Object to widget cast is needed to check the focus state.
-        QComboBox* combo = qobject_cast<QComboBox*>(obj);
-        QSpinBox* spin = qobject_cast<QSpinBox*>(obj);
-        QDoubleSpinBox* spinDbl = qobject_cast<QDoubleSpinBox*>(obj);
-        QSlider* slider = qobject_cast<QSlider*>(obj);
+        QComboBox* combo = qobject_cast<QComboBox*>(pObj);
+        QSpinBox* spin = qobject_cast<QSpinBox*>(pObj);
+        QDoubleSpinBox* spinDbl = qobject_cast<QDoubleSpinBox*>(pObj);
+        QSlider* slider = qobject_cast<QSlider*>(pObj);
+        QCheckBox* widget = qobject_cast<QCheckBox*>(pObj);
         if ((combo && !combo->hasFocus()) ||
                 (spin && !spin->hasFocus()) ||
                 (spinDbl && !spinDbl->hasFocus()) ||
-                (slider && !slider->hasFocus())) {
-            QApplication::sendEvent(qobject_cast<QObject*>(layout()), e);
-            // QApplication::sendEvent(layout()->parent(), e); ??
+                (slider && !slider->hasFocus()) ||
+                (widget && !widget->isEnabled())) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            QApplication::sendEvent(layout()->parent(), pEvent);
+#else
+            QApplication::sendEvent(qobject_cast<QObject*>(layout()), pEvent);
+#endif
             return true;
         }
     }
-    return QObject::eventFilter(obj, e);
+    return QObject::eventFilter(pObj, pEvent);
 }
