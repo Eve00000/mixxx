@@ -12,6 +12,7 @@
 #include "control/controlpushbutton.h"
 #include "library/library.h"
 #include "library/libraryview.h"
+#include "library/playlisttablemodel.h"
 #include "mixer/playermanager.h"
 #include "moc_librarycontrol.cpp"
 #include "util/cmdlineargs.h"
@@ -299,6 +300,34 @@ LibraryControl::LibraryControl(Library* pLibrary)
                 &ControlPushButton::valueChanged,
                 this,
                 &LibraryControl::slotGoToItem);
+    }
+    // Add to preparationlmist controls
+    m_pPreparationListAddTop = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "PreparationListAddTop"));
+    m_pPreparationListAddTop->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("PreparationListAddTop")));
+#ifdef MIXXX_USE_QML
+    if (!CmdlineArgs::Instance().isQml())
+#endif
+    {
+        connect(m_pPreparationListAddTop.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotPreparationListAddTop);
+    }
+
+    m_pPreparationListAddBottom = std::make_unique<ControlPushButton>(
+            ConfigKey("[Library]", "PreparationListAddBottom"));
+    m_pPreparationListAddBottom->addAlias(ConfigKey(
+            QStringLiteral("[Playlist]"), QStringLiteral("PreparationListAddBottom")));
+#ifdef MIXXX_USE_QML
+    if (!CmdlineArgs::Instance().isQml())
+#endif
+    {
+        connect(m_pPreparationListAddBottom.get(),
+                &ControlPushButton::valueChanged,
+                this,
+                &LibraryControl::slotPreparationListAddBottom);
     }
 
     // Auto DJ controls
@@ -749,6 +778,57 @@ void LibraryControl::slotLoadSelectedIntoFirstStopped(double v) {
     }
 }
 
+int LibraryControl::getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView) {
+    if (!pTrackTableView) {
+        return -1; // no table view
+    }
+
+    if (auto* pPlaylistModel = dynamic_cast<PlaylistTableModel*>(
+                pTrackTableView->getTrackModel())) {
+        int playlistId = pPlaylistModel->getPlaylist();
+        if (playlistId > 0) {
+            return playlistId;
+        } else {
+            // Another view in the PrepWin? -> we will add the tracks to the
+            // latest/newest preparationlist
+            return 0;
+        }
+    }
+    // dynamic_cast failed, not a playlist model
+    return 0;
+}
+
+void LibraryControl::slotPreparationListAddTop(double v) {
+    // qDebug() << "[LibraryControl] -> slotPreparationListAddTop toggled -> v = " << v;
+
+    if (!m_pLibraryWidget || v <= 0) {
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddTop no function";
+        return;
+    }
+
+    if (auto* pTrackTableView = m_pLibraryPreparationWindowWidget->getCurrentTrackTableView()) {
+        int playlistId = getShowedPreparationListIdOrLatestCreated(pTrackTableView);
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddTop: playlistId " << playlistId;
+        pTrackTableView->addToPreparationList(playlistId, PlaylistDAO::PreparationListSendLoc::TOP);
+    }
+}
+
+void LibraryControl::slotPreparationListAddBottom(double v) {
+    // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom toggled -> v = " << v;
+    if (!m_pLibraryWidget || v <= 0) {
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom no function";
+        return;
+    }
+
+    if (auto* pTrackTableView = m_pLibraryPreparationWindowWidget->getCurrentTrackTableView()) {
+        int playlistId = getShowedPreparationListIdOrLatestCreated(pTrackTableView);
+        // qDebug() << "[LibraryControl] -> slotPreparationListAddBottom:
+        // playlistId " << playlistId;
+        pTrackTableView->addToPreparationList(
+                playlistId, PlaylistDAO::PreparationListSendLoc::BOTTOM);
+    }
+}
+
 void LibraryControl::slotAutoDjAddTop(double v) {
     if (!m_pLibraryWidget || v <= 0) {
         return;
@@ -1053,15 +1133,7 @@ FocusWidget LibraryControl::getFocusedWidget() {
         // qt_edit_menuWindow    = QLineEdit/QCombobox context menu
         // QComboBoxPrivateContainerClassWindow
         //    = QComboBoxListView of WEffectSelector, WSearchLineEdit, ...
-        auto* pFocusWidget = QApplication::focusWidget();
-        if (pFocusWidget &&
-                qobject_cast<QCheckBox*>(pFocusWidget) &&
-                qobject_cast<WSearchRelatedTracksMenu*>(pFocusWidget->parent())) {
-            // TODO Also use this for the Crates menu?
-            return FocusWidget::SearchRelatedMenu;
-        } else {
-            return FocusWidget::ContextMenu;
-        }
+        return FocusWidget::ContextMenu;
     } else if (focusWindow->type() == Qt::Dialog) {
         // DlgPreferencesDlgWindow
         // DlgDeveloperToolsWindow
@@ -1080,14 +1152,33 @@ FocusWidget LibraryControl::getFocusedWidget() {
         return FocusWidget::None;
     }
 
+    // if (m_pSearchbox && m_pSearchbox->hasFocus()) {
+    //     return FocusWidget::Searchbar;
+    // } else if (m_pSidebarWidget && m_pSidebarWidget->hasFocus()) {
+    //     return FocusWidget::Sidebar;
+    // } else if (m_pLibraryWidget && m_pLibraryWidget->getActiveView()->hasFocus()) {
+    //     return FocusWidget::TracksTable;
+    // } else if (m_pLibraryPreparationWindowWidget &&
+    //         m_pLibraryPreparationWindowWidget->getActiveView()->hasFocus()) {
+    //     return FocusWidget::TracksTable;
+    // } else {
+    //     // Unknown widget, for example Clear button in WSearcLineEdit,
+    //     // some drop-down view, WBeatSpinBox or QLineEdit in WtrackTableView
+    //     return FocusWidget::Unknown;
+    // }
+
+    auto* pLibraryView = m_pLibraryWidget ? m_pLibraryWidget->getActiveView() : nullptr;
+    auto* pPrepView = m_pLibraryPreparationWindowWidget
+            ? m_pLibraryPreparationWindowWidget->getActiveView()
+            : nullptr;
+
     if (m_pSearchbox && m_pSearchbox->hasFocus()) {
         return FocusWidget::Searchbar;
     } else if (m_pSidebarWidget && m_pSidebarWidget->hasFocus()) {
         return FocusWidget::Sidebar;
-    } else if (m_pLibraryWidget && m_pLibraryWidget->getActiveView()->hasFocus()) {
+    } else if (pLibraryView && pLibraryView->hasFocus()) {
         return FocusWidget::TracksTable;
-    } else if (m_pLibraryPreparationWindowWidget &&
-            m_pLibraryPreparationWindowWidget->getActiveView()->hasFocus()) {
+    } else if (pPrepView && pPrepView->hasFocus()) {
         return FocusWidget::TracksTable;
     } else {
         // Unknown widget, for example Clear button in WSearcLineEdit,
@@ -1293,7 +1384,7 @@ void LibraryControl::slotSortColumnToggle(double v) {
         // Get the ID of the column with the cursor
         sortColumnId =
                 static_cast<int>(m_pLibraryWidget->getActiveView()
-                                         ->getColumnIdFromCurrentIndex());
+                                ->getColumnIdFromCurrentIndex());
     }
 
     if (static_cast<int>(m_pSortColumn->get()) == sortColumnId) {

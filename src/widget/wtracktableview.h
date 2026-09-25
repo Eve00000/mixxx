@@ -127,6 +127,9 @@ class WTrackTableView : public WLibraryTableView {
                             NOTIFY dropIndicatorColorChanged
                                     DESIGNABLE true);
 
+    // Returns the current TrackModel, or returns NULL if none is set.
+    TrackModel* getTrackModel() const;
+
   signals:
     void trackMenuVisible(bool visible);
     void focusBorderColorChanged(QColor col);
@@ -152,6 +155,7 @@ class WTrackTableView : public WLibraryTableView {
     void slotrestoreCurrentIndex() {
         restoreCurrentIndex();
     }
+    void addToPreparationList(int playlistId, PlaylistDAO::PreparationListSendLoc loc);
 
   private slots:
     void doSortByColumn(int headerSection, Qt::SortOrder sortOrder);
@@ -191,9 +195,6 @@ class WTrackTableView : public WLibraryTableView {
     QModelIndexList getSelectedRows() const;
     // Returns the list of selected row numbers, or an empty list if none are selected.
     QList<int> getSelectedRowNumbers() const;
-
-    // Returns the current TrackModel, or returns NULL if none is set.
-    TrackModel* getTrackModel() const;
 
     void initTrackMenu();
     void showTrackMenu(const QPoint pos, const QModelIndex& index);

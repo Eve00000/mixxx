@@ -29,6 +29,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/preparation/preparationfeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
@@ -99,6 +100,9 @@ Library::Library(
 
     m_pAutoDJFeature = make_parented<AutoDJFeature>(this, m_pConfig, pPlayerManager);
     addFeature(m_pAutoDJFeature);
+
+    m_pPreparationFeature = make_parented<PreparationFeature>(this, UserSettingsPointer(m_pConfig));
+    addFeature(m_pPreparationFeature);
 
     m_pPlaylistFeature = make_parented<PlaylistFeature>(this, UserSettingsPointer(m_pConfig));
     addFeature(m_pPlaylistFeature);
@@ -745,6 +749,7 @@ void Library::slotCreateCrate() {
 void Library::onSkinLoadFinished() {
     // Enable the default selection when a new skin is loaded.
     m_pSidebarModel->activateDefaultSelection();
+    m_pPreparationFeature->onPreparationWindowReady();
 }
 
 bool Library::requestAddDir(const QString& dir) {
