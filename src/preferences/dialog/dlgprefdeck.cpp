@@ -34,6 +34,18 @@ constexpr double kDefaultPositionDisplayType =
 // to playermanager.cpp
 const QString kAppGroup = QStringLiteral("[App]");
 const QString kControlsGroup = QStringLiteral("[Controls]");
+
+const ConfigKey kConfigKeyNowPlayingEnabled = ConfigKey("[NowPlaying]", "Enabled");
+const ConfigKey kConfigKeyNowPlayingAppendMode = ConfigKey("[NowPlaying]", "AppendMode");
+const ConfigKey kConfigKeyNowPlayingAddTimestamp = ConfigKey("[NowPlaying]", "AddTimestamp");
+const ConfigKey kConfigKeyNowPlayingArchive = ConfigKey("[NowPlaying]", "Archive");
+const ConfigKey kConfigKeyNowPlayingPollInterval = ConfigKey("[NowPlaying]", "PollInterval");
+
+constexpr bool kDefaultNowPlayingEnabled = true;
+constexpr bool kDefaultNowPlayingAppendMode = false;
+constexpr bool kDefaultNowPlayingAddTimestamp = true;
+constexpr bool kDefaultNowPlayingArchive = true;
+constexpr int kDefaultNowPlayingPollInterval = 1000;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -433,6 +445,77 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setTemporaryRateChangeFineAmount(m_dRateTempFine);
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
+
+    // NowPlaying settings
+    m_bNowPlayingEnabled = m_pConfig->getValue(
+            kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
+    m_bNowPlayingAppendMode = m_pConfig->getValue(
+            kConfigKeyNowPlayingAppendMode, kDefaultNowPlayingAppendMode);
+    m_bNowPlayingAddTimestamp = m_pConfig->getValue(
+            kConfigKeyNowPlayingAddTimestamp, kDefaultNowPlayingAddTimestamp);
+    m_bNowPlayingArchive = m_pConfig->getValue(
+            kConfigKeyNowPlayingArchive, kDefaultNowPlayingArchive);
+    m_iNowPlayingPollInterval = m_pConfig->getValue(
+            kConfigKeyNowPlayingPollInterval, kDefaultNowPlayingPollInterval);
+
+    checkBoxEnableNowPlaying->setChecked(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(m_bNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(m_bNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(m_bNowPlayingArchive);
+
+    // nowPlaying poll interval combo box
+    int intervalIndex = 1;
+    switch (m_iNowPlayingPollInterval) {
+    case 500:
+        intervalIndex = 0;
+        break;
+    case 1000:
+        intervalIndex = 1;
+        break;
+    case 2000:
+        intervalIndex = 2;
+        break;
+    case 5000:
+        intervalIndex = 3;
+        break;
+    case 10000:
+        intervalIndex = 4;
+        break;
+    default:
+        intervalIndex = 1;
+        break;
+    }
+    comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
+
+    checkBoxNowPlayingAppend->setEnabled(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAddTimestamp->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    checkBoxNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    labelNowPlayingAppend->setEnabled(m_bNowPlayingEnabled);
+    labelNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    labelNowPlayingPollInterval->setEnabled(m_bNowPlayingEnabled);
+    comboBoxNowPlayingPollInterval->setEnabled(m_bNowPlayingEnabled);
+
+    connect(checkBoxEnableNowPlaying,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotEnableNowPlayingChanged);
+    connect(checkBoxNowPlayingAppend,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingAppendChanged);
+    connect(checkBoxNowPlayingAddTimestamp,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingAddTimestampChanged);
+    connect(checkBoxNowPlayingArchive,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingArchiveChanged);
+    connect(comboBoxNowPlayingPollInterval,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefDeck::slotNowPlayingPollIntervalChanged);
+
     slotUpdate();
 
     // TrackFileCache
@@ -537,6 +620,45 @@ void DlgPrefDeck::slotUpdate() {
     spinBoxTemporaryRateFine->setValue(RateControl::getTemporaryRateChangeFineAmount());
     spinBoxPermanentRateCoarse->setValue(RateControl::getPermanentRateChangeCoarseAmount());
     spinBoxPermanentRateFine->setValue(RateControl::getPermanentRateChangeFineAmount());
+
+    m_bNowPlayingEnabled = m_pConfig->getValue(
+            kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
+    m_bNowPlayingAppendMode = m_pConfig->getValue(
+            kConfigKeyNowPlayingAppendMode, kDefaultNowPlayingAppendMode);
+    m_bNowPlayingAddTimestamp = m_pConfig->getValue(
+            kConfigKeyNowPlayingAddTimestamp, kDefaultNowPlayingAddTimestamp);
+    m_bNowPlayingArchive = m_pConfig->getValue(
+            kConfigKeyNowPlayingArchive, kDefaultNowPlayingArchive);
+    m_iNowPlayingPollInterval = m_pConfig->getValue(
+            kConfigKeyNowPlayingPollInterval, kDefaultNowPlayingPollInterval);
+
+    checkBoxEnableNowPlaying->setChecked(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(m_bNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(m_bNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(m_bNowPlayingArchive);
+
+    int intervalIndex = 1;
+    switch (m_iNowPlayingPollInterval) {
+    case 500:
+        intervalIndex = 0;
+        break;
+    case 1000:
+        intervalIndex = 1;
+        break;
+    case 2000:
+        intervalIndex = 2;
+        break;
+    case 5000:
+        intervalIndex = 3;
+        break;
+    case 10000:
+        intervalIndex = 4;
+        break;
+    default:
+        intervalIndex = 1;
+        break;
+    }
+    comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -580,6 +702,12 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     radioButtonOriginalKey->setChecked(true);
     radioButtonResetUnlockedKey->setChecked(true);
+
+    checkBoxEnableNowPlaying->setChecked(kDefaultNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(kDefaultNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(kDefaultNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(kDefaultNowPlayingArchive);
+    comboBoxNowPlayingPollInterval->setCurrentIndex(1);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -859,6 +987,13 @@ void DlgPrefDeck::saveTrackFileCacheSettings() {
             checkBoxTrackFileCacheSamplers->isChecked());
     m_pConfig->setValue(ConfigKey("[TrackFileCache]", "PreviewDeck"),
             checkBoxTrackFileCachePreviewDeck->isChecked());
+
+    // nowPlaying
+    m_pConfig->setValue(kConfigKeyNowPlayingEnabled, m_bNowPlayingEnabled);
+    m_pConfig->setValue(kConfigKeyNowPlayingAppendMode, m_bNowPlayingAppendMode);
+    m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
+    m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
+    m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1062,5 +1197,58 @@ void DlgPrefDeck::slotBrowseTrackFileCacheLocation() {
 
     if (!dir.isEmpty()) {
         lineEditTrackFileCacheLocation->setText(dir + "/MixxxTmp/");
+    }
+}
+
+void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
+    m_bNowPlayingEnabled = checked;
+
+    // Enable/disable dependent controls
+    checkBoxNowPlayingAppend->setEnabled(checked);
+    checkBoxNowPlayingAddTimestamp->setEnabled(checked && m_bNowPlayingAppendMode);
+    checkBoxNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
+    labelNowPlayingAppend->setEnabled(checked);
+    labelNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
+    labelNowPlayingPollInterval->setEnabled(checked);
+    comboBoxNowPlayingPollInterval->setEnabled(checked);
+}
+
+void DlgPrefDeck::slotNowPlayingAppendChanged(bool checked) {
+    m_bNowPlayingAppendMode = checked;
+
+    // Timestamp and archive only make sense in append mode
+    checkBoxNowPlayingAddTimestamp->setEnabled(m_bNowPlayingEnabled && checked);
+    checkBoxNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && checked);
+    labelNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && checked);
+}
+
+void DlgPrefDeck::slotNowPlayingAddTimestampChanged(bool checked) {
+    m_bNowPlayingAddTimestamp = checked;
+}
+
+void DlgPrefDeck::slotNowPlayingArchiveChanged(bool checked) {
+    m_bNowPlayingArchive = checked;
+}
+
+void DlgPrefDeck::slotNowPlayingPollIntervalChanged(int index) {
+    switch (index) {
+    case 0:
+        m_iNowPlayingPollInterval = 500;
+        break;
+    case 1:
+        m_iNowPlayingPollInterval = 1000;
+        break;
+    case 2:
+        m_iNowPlayingPollInterval = 2000;
+        break;
+    case 3:
+        m_iNowPlayingPollInterval = 5000;
+        break;
+    case 4:
+        m_iNowPlayingPollInterval = 10000;
+        break;
+    default:
+        m_iNowPlayingPollInterval = 1000;
+        break;
     }
 }

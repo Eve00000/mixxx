@@ -68,6 +68,11 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     // void slotTrackFileCacheEnabledChanged(int state);
     void slotTrackFileCacheEnabledChanged(bool enabled);
     void slotBrowseTrackFileCacheLocation();
+    void slotEnableNowPlayingChanged(bool checked);
+    void slotNowPlayingAppendChanged(bool checked);
+    void slotNowPlayingAddTimestampChanged(bool checked);
+    void slotNowPlayingArchiveChanged(bool checked);
+    void slotNowPlayingPollIntervalChanged(int index);
 
   private:
     void populateTrackFileCacheSizeComboBox();
@@ -124,4 +129,10 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     double m_dRateTempFine;
     double m_dRatePermCoarse;
     double m_dRatePermFine;
+
+    bool m_bNowPlayingEnabled;
+    bool m_bNowPlayingAppendMode;
+    bool m_bNowPlayingAddTimestamp;
+    bool m_bNowPlayingArchive;
+    int m_iNowPlayingPollInterval;
 };
