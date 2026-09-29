@@ -267,11 +267,11 @@ endfunction()
 
 #eve 20250524
 #to prevent mocs from getting bit7z defines
-add_definitions(
-  -DBIT7Z_AUTO_FORMAT
-  -DBIT7Z_AUTO_PREFIX_LONG_PATHS
-  -DBIT7Z_PATH_SANITIZATION
-)
+#add_definitions(
+#  -DBIT7Z_AUTO_FORMAT
+#  -DBIT7Z_AUTO_PREFIX_LONG_PATHS
+#  -DBIT7Z_PATH_SANITIZATION
+#)
 
 if(UNIX AND NOT APPLE)
   execute_process(
