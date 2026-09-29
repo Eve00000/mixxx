@@ -1746,3 +1746,56 @@ void MixxxMainWindow::cleanUpTrackFileCacheCache(UserSettingsPointer pConfig) {
     qDebug() << "Cleaning up TrackFileCache files from:" << trackFileCachePath;
     CachingReaderWorker::cleanupAllTrackFileCacheFiles(trackFileCachePath);
 }
+
+void MixxxMainWindow::createSkinProxies() {
+#ifdef __STEM__
+    if (!ControlObject::getControl(ConfigKey("[Skin]", "show_original_premix"))) {
+        auto* pControl = new ControlPushButton(
+                ConfigKey("[Skin]", "show_original_premix"),
+                /*bPersist*/ true);
+        pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+        pControl->setDefaultValue(1.0);
+        pControl->set(1.0);
+    }
+    if (!ControlObject::getControl(ConfigKey("[Skin]", "stem_premix_toggle_mode"))) {
+        auto* pControl = new ControlPushButton(
+                ConfigKey("[Skin]", "stem_premix_toggle_mode"),
+                /*bPersist*/ true);
+        pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+        pControl->setDefaultValue(1.0);
+        pControl->set(1.0);
+    }
+    // if (!ControlObject::getControl(ConfigKey("[Channel1]", "stem_controls_expanded"))) {
+    //     auto* pControl = new ControlPushButton(
+    //             ConfigKey("[Channel1]", "stem_controls_expanded"),
+    //             /*bPersist*/ true);
+    //     pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+    //     pControl->setDefaultValue(1.0);
+    //     pControl->set(1.0);
+    // }
+    // if (!ControlObject::getControl(ConfigKey("[Channel2]", "stem_controls_expanded"))) {
+    //     auto* pControl = new ControlPushButton(
+    //             ConfigKey("[Channel2]", "stem_controls_expanded"),
+    //             /*bPersist*/ true);
+    //     pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+    //     pControl->setDefaultValue(1.0);
+    //     pControl->set(1.0);
+    // }
+    // if (!ControlObject::getControl(ConfigKey("[Channel3]", "stem_controls_expanded"))) {
+    //     auto* pControl = new ControlPushButton(
+    //             ConfigKey("[Channel3]", "stem_controls_expanded"),
+    //             /*bPersist*/ true);
+    //     pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+    //     pControl->setDefaultValue(1.0);
+    //     pControl->set(1.0);
+    // }
+    // if (!ControlObject::getControl(ConfigKey("[Channel4]", "stem_controls_expanded"))) {
+    //     auto* pControl = new ControlPushButton(
+    //             ConfigKey("[Channel4]", "stem_controls_expanded"),
+    //             /*bPersist*/ true);
+    //     pControl->setButtonMode(mixxx::control::ButtonMode::Toggle);
+    //     pControl->setDefaultValue(1.0);
+    //     pControl->set(1.0);
+    // }
+#endif
+}

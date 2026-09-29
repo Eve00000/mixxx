@@ -144,6 +144,8 @@ class CachingReaderWorker : public EngineWorker {
     // called in mixxxmain to clean up cache
     static void cleanupAllTrackFileCacheFiles(const QString& trackFileCacheDiskPath);
 
+    void setPremixIncludedVars(bool premixIncluded, bool upSampleStems);
+
   signals:
     // Emitted once a new track is loaded and ready to be read from.
     void trackLoading();
@@ -258,4 +260,7 @@ class CachingReaderWorker : public EngineWorker {
     static bool isTrackFileCacheFileUsedByOtherGroups(
             const QString& filePath, const QString& currentGroup);
     static void cleanupTrackFileCacheFileIfUnused(const QString& filePath);
+
+    bool m_pPremixIncluded;
+    bool m_pUpSampleStems;
 };

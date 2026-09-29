@@ -121,6 +121,10 @@ class MixxxMainWindow : public QMainWindow {
 #endif
     static void cleanUpTrackFileCacheCache(UserSettingsPointer pConfig);
 
+#ifdef __STEM__
+    void createSkinProxies();
+#endif
+
     QDialog::DialogCode soundDeviceErrorDlg(
             const QString &title, const QString &text, bool* retryClicked);
     QDialog::DialogCode soundDeviceBusyDlg(bool* retryClicked);

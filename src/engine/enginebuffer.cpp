@@ -566,6 +566,70 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
 }
 
 // WARNING: Always called from the EngineWorker thread pool
+// void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
+//        mixxx::audio::SampleRate trackSampleRate,
+//        mixxx::audio::ChannelCount trackChannelCount,
+//        mixxx::audio::FramePos trackNumFrame) {
+//    if (kLogger.traceEnabled()) {
+//        kLogger.trace() << "slotTrackLoaded" << getGroup();
+//    }
+//    TrackPointer pOldTrack = m_pCurrentTrack;
+//    m_pause.lock();
+//
+//    m_visualPlayPos->setInvalid();
+//    m_playPos = kInitialPlayPosition; // for execute seeks to 0.0
+//    m_pCurrentTrack = pTrack;
+//
+//    m_channelCount = trackChannelCount;
+//    if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+//        // The sample count is indicated downmix. This means that for stem
+//        // track, we only consider the track in stereo, as it is perceived by
+//        // the user on deck output
+//        VERIFY_OR_DEBUG_ASSERT(m_channelCount % mixxx::audio::ChannelCount::stereo() == 0) {
+//            // Make it stereo for the frame calculation
+//            kLogger.warning() << "Odd number of channel in the track is not supported";
+//        };
+//    } else {
+//        // The EngineBuffer only works with stereo channels. If the track is
+//        // mono, it will be passed through the AudioSourceStereoProxy. See
+//        // CachingReaderChunk::bufferSampleFrames
+//        m_channelCount = mixxx::audio::ChannelCount::stereo();
+//    }
+//
+//    m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
+//    m_pTrackSampleRate->set(trackSampleRate.toDouble());
+//    m_pTrackLoaded->forceSet(1);
+//
+//    // Reset slip mode
+//    m_pSlipButton->set(0);
+//    m_bSlipEnabledProcessing = false;
+//    m_slipPos = mixxx::audio::kStartFramePos;
+//    m_dSlipRate = 0;
+//    m_slipModeState = SlipModeState::Disabled;
+//
+//    m_pReplayGain->set(pTrack->getReplayGain().getRatio());
+//
+//    m_queuedSeek.setValue(kNoQueuedSeek);
+//
+//    // Reset the pitch value for the new track.
+//    m_pause.unlock();
+//
+//    notifyTrackLoaded(pTrack, pOldTrack);
+//
+//    // Check if we are cloning another channel before doing any seeking.
+//    // This replaces m_queuedSeek populated form CueControl
+//    EngineChannel* pChannel = atomicLoadRelaxed(m_pChannelToCloneFrom);
+//    if (pChannel) {
+//        m_queuedSeek.setValue(kCloneSeek);
+//        m_iSeekPhaseQueued = 0;
+//    }
+//
+//    // Start buffer processing after all EngineContols are up to date
+//    // with the current track e.g track is seeked to Cue
+//    m_iTrackLoading = 0;
+//}
+
+// WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
         mixxx::audio::ChannelCount trackChannelCount,
@@ -594,6 +658,25 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         // mono, it will be passed through the AudioSourceStereoProxy. See
         // CachingReaderChunk::bufferSampleFrames
         m_channelCount = mixxx::audio::ChannelCount::stereo();
+    }
+
+    // Re-evaluate which scaler should be active for this track. The
+    // channel count now reflects the new track, so the RubberBand vs.
+    // SoundTouch decision can be made correctly. This runs on the
+    // EngineWorker thread, before m_iTrackLoading is cleared, so the audio
+    // thread will not observe a half-updated scaler selection.
+    //
+    // slotKeylockEngineChanged() also honours m_bScalerOverride, so any
+    // vinyl-control takeover of the scaler is preserved.
+    slotKeylockEngineChanged(m_pKeylockEngine->get());
+
+    if (kLogger.debugEnabled()) {
+        kLogger.debug()
+                << "Scaler selected for track"
+                << getGroup()
+                << "channels =" << m_channelCount
+                << "scaleRB =" << (m_pScaleKeylock == m_pScaleRB)
+                << "scaleST =" << (m_pScaleKeylock == m_pScaleST);
     }
 
     m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
@@ -895,34 +978,108 @@ void EngineBuffer::slotControlStop(double v) {
     }
 }
 
+bool EngineBuffer::canUseRubberBandForCurrentTrack() const {
+#ifdef __RUBBERBAND__
+    if (!m_pScaleRB) {
+        return false;
+    }
+    // RubberBand is safe for stereo and for 4-stems-only (8 channels).
+    // The 10-channel premix+stems layout forces SoundTouch.
+    //
+    // kStemOnlyChannelCount = 2 * (kMaxSupportedStems - 1) = 8
+    const mixxx::audio::ChannelCount kStemOnlyChannelCount(
+            2 * (mixxx::kMaxSupportedStems - 1));
+    return m_channelCount <= kStemOnlyChannelCount;
+#else
+    return false;
+#endif
+}
+
+// void EngineBuffer::slotKeylockEngineChanged(double dIndex) {
+//     if (m_bScalerOverride) {
+//         return;
+//     }
+//     const KeylockEngine engine = static_cast<KeylockEngine>(dIndex);
+//     switch (engine) {
+//     case KeylockEngine::SoundTouch:
+//         m_pScaleKeylock = m_pScaleST;
+//         break;
+// #ifdef __RUBBERBAND__
+//     case KeylockEngine::RubberBandFaster:
+//         m_pScaleRB->useEngineFiner(false);
+//         m_pScaleRB->useOptionWindowShort(false);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+//     case KeylockEngine::RubberBandFiner:
+//         m_pScaleRB->useEngineFiner(
+//                 true); // in case of Rubberband V2 it falls back to RUBBERBAND_FASTER
+//         m_pScaleRB->useOptionWindowShort(false);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+//     case KeylockEngine::RubberBandR3ShortWindow:
+//         m_pScaleRB->useEngineFiner(true);
+//         m_pScaleRB->useOptionWindowShort(true);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+// #endif
+//     default:
+//         slotKeylockEngineChanged(static_cast<double>(defaultKeylockEngine()));
+//         break;
+//     }
+// }
+
 void EngineBuffer::slotKeylockEngineChanged(double dIndex) {
     if (m_bScalerOverride) {
+        // Something (vinyl control, keylock override, ...) has taken over
+        // the scaler selection. Leave it alone.
         return;
     }
+
     const KeylockEngine engine = static_cast<KeylockEngine>(dIndex);
+
     switch (engine) {
     case KeylockEngine::SoundTouch:
+        // User asked for SoundTouch: always honour it.
         m_pScaleKeylock = m_pScaleST;
         break;
+
 #ifdef __RUBBERBAND__
     case KeylockEngine::RubberBandFaster:
+        if (!canUseRubberBandForCurrentTrack()) {
+            // 10-channel premix+stems layout: RubberBand would phase-drift
+            // premix against stems. Fall back to SoundTouch.
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
         m_pScaleRB->useEngineFiner(false);
         m_pScaleRB->useOptionWindowShort(false);
         m_pScaleKeylock = m_pScaleRB;
         break;
+
     case KeylockEngine::RubberBandFiner:
-        m_pScaleRB->useEngineFiner(
-                true); // in case of Rubberband V2 it falls back to RUBBERBAND_FASTER
+        if (!canUseRubberBandForCurrentTrack()) {
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
+        // In case of Rubberband V2 this falls back to RUBBERBAND_FASTER.
+        m_pScaleRB->useEngineFiner(true);
         m_pScaleRB->useOptionWindowShort(false);
         m_pScaleKeylock = m_pScaleRB;
         break;
+
     case KeylockEngine::RubberBandR3ShortWindow:
+        if (!canUseRubberBandForCurrentTrack()) {
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
         m_pScaleRB->useEngineFiner(true);
         m_pScaleRB->useOptionWindowShort(true);
         m_pScaleKeylock = m_pScaleRB;
         break;
 #endif
+
     default:
+        // Unknown value: fall back to the configured default and retry.
         slotKeylockEngineChanged(static_cast<double>(defaultKeylockEngine()));
         break;
     }

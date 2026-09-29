@@ -73,6 +73,7 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     void slotNowPlayingAddTimestampChanged(bool checked);
     void slotNowPlayingArchiveChanged(bool checked);
     void slotNowPlayingPollIntervalChanged(int index);
+    void slotDownSampleUpSampleModeSelected(QAbstractButton*);
 
   private:
     void populateTrackFileCacheSizeComboBox();
@@ -92,6 +93,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     const std::unique_ptr<ControlObject> m_pControlTrackTimeDisplay;
     const std::unique_ptr<ControlObject> m_pControlTrackTimeFormat;
+
+    const std::unique_ptr<ControlObject> m_pShowPremixInStemsContainer;
 
     const parented_ptr<ControlProxy> m_pNumDecks;
     const parented_ptr<ControlProxy> m_pNumSamplers;
@@ -135,4 +138,5 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     bool m_bNowPlayingAddTimestamp;
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
+    bool m_bUpSampleStems;
 };

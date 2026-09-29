@@ -46,6 +46,10 @@ constexpr bool kDefaultNowPlayingAppendMode = false;
 constexpr bool kDefaultNowPlayingAddTimestamp = true;
 constexpr bool kDefaultNowPlayingArchive = true;
 constexpr int kDefaultNowPlayingPollInterval = 1000;
+
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems = false;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -516,6 +520,22 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             this,
             &DlgPrefDeck::slotNowPlayingPollIntervalChanged);
 
+    // IncludeOriginalMasterWhenPlayingStems
+    connect(buttonGroupDownSampleUpSample,
+            QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
+            this,
+            &DlgPrefDeck::slotDownSampleUpSampleModeSelected);
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+
     slotUpdate();
 
     // TrackFileCache
@@ -659,6 +679,16 @@ void DlgPrefDeck::slotUpdate() {
         break;
     }
     comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -708,6 +738,9 @@ void DlgPrefDeck::slotResetToDefaults() {
     checkBoxNowPlayingAddTimestamp->setChecked(kDefaultNowPlayingAddTimestamp);
     checkBoxNowPlayingArchive->setChecked(kDefaultNowPlayingArchive);
     comboBoxNowPlayingPollInterval->setCurrentIndex(1);
+
+    radioButtonDownSampleOriginalMix->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -994,6 +1027,9 @@ void DlgPrefDeck::saveTrackFileCacheSettings() {
     m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
     m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
     m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
+
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            m_bUpSampleStems);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1250,5 +1286,13 @@ void DlgPrefDeck::slotNowPlayingPollIntervalChanged(int index) {
     default:
         m_iNowPlayingPollInterval = 1000;
         break;
+    }
+}
+
+void DlgPrefDeck::slotDownSampleUpSampleModeSelected(QAbstractButton* pressedButton) {
+    if (pressedButton == radioButtonUpSampleStems) {
+        m_bUpSampleStems = true;
+    } else if (pressedButton == radioButtonDownSampleOriginalMix) {
+        m_bUpSampleStems = false;
     }
 }
