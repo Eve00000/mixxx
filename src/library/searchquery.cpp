@@ -1,7 +1,9 @@
 #include "library/searchquery.h"
 
+#include <QLocale>
 #include <QRegularExpression>
 
+#include "library/basetracktablemodel.h"
 #include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "library/trackset/crate/crateschema.h"
@@ -55,6 +57,8 @@ QVariant getTrackValueForColumn(const TrackPointer& pTrack, const QString& colum
         return pTrack->getTrackNumber();
     } else if (column == TRACKLOCATIONSTABLE_LOCATION) {
         return QDir::toNativeSeparators(pTrack->getLocation());
+    } else if (column == TRACKLOCATIONSTABLE_DIRECTORY) {
+        return QDir::toNativeSeparators(pTrack->getDirectory());
     } else if (column == LIBRARYTABLE_COMMENT) {
         return pTrack->getComment();
     } else if (column == LIBRARYTABLE_DURATION) {
@@ -223,7 +227,7 @@ QString TextFilterNode::toSql() const {
     }
     QStringList searchClauses;
     for (const auto& sqlColumn : m_sqlColumns) {
-        searchClauses << QString("%1 LIKE %2").arg(sqlColumn, escapedArgument);
+        searchClauses << QString("%1 IS NOT NULL AND %1 LIKE %2").arg(sqlColumn, escapedArgument);
     }
     return concatSqlClauses(searchClauses, "OR");
 }
@@ -329,6 +333,12 @@ void NumericFilterNode::init(QString argument) {
     if (match.hasMatch()) {
         m_operator = match.captured(1);
         argument = match.captured(2);
+    } else if (argument.endsWith('+')) {
+        m_operator = QStringLiteral(">=");
+        argument.chop(1);
+    } else if (argument.endsWith('-')) {
+        m_operator = QStringLiteral("<=");
+        argument.chop(1);
     }
 
     bool parsed = false;
@@ -532,8 +542,13 @@ inline std::pair<double, double> rangeFromTrailingDecimal(double bpm) {
 
 } // namespace
 
-BpmFilterNode::BpmFilterNode(QString& argument, bool fuzzy, bool negate)
-        : m_matchMode(MatchMode::Invalid),
+BpmFilterNode::BpmFilterNode(
+        QString& argument,
+        bool fuzzy,
+        bool negate,
+        const QSqlDatabase& database)
+        : m_database(database),
+          m_matchMode(MatchMode::Invalid),
           m_operator("="),
           m_bpm(0.0),
           m_rangeLower(0.0),
@@ -555,8 +570,20 @@ BpmFilterNode::BpmFilterNode(QString& argument, bool fuzzy, bool negate)
         return;
     }
 
+    if (argument == QStringLiteral("const") || argument == QStringLiteral("constant")) {
+        VERIFY_OR_DEBUG_ASSERT(database.isValid()) {
+            qWarning() << "BpmFilterNode constructed with 'const' arg"
+                          "but no valid database provided!";
+            m_matchMode = MatchMode::Invalid;
+            return;
+        }
+        m_matchMode = MatchMode::Constant;
+        return;
+    }
+
     QRegularExpressionMatch opMatch = kNumericOperatorRegex.match(argument);
-    if (opMatch.hasMatch()) {
+    bool operatorMatch = opMatch.hasMatch();
+    if (operatorMatch) {
         if (fuzzy) {
             // fuzzy can't be combined with operators
             // m_matchMode is already Invalid.
@@ -564,6 +591,14 @@ BpmFilterNode::BpmFilterNode(QString& argument, bool fuzzy, bool negate)
         }
         m_operator = opMatch.captured(1);
         argument = opMatch.captured(2);
+    } else if (argument.endsWith('+')) {
+        m_operator = QStringLiteral(">=");
+        argument.chop(1);
+        operatorMatch = true;
+    } else if (argument.endsWith('-')) {
+        m_operator = QStringLiteral("<=");
+        argument.chop(1);
+        operatorMatch = true;
     }
 
     // Replace the locale's decimal separator with .
@@ -581,7 +616,7 @@ BpmFilterNode::BpmFilterNode(QString& argument, bool fuzzy, bool negate)
         if (fuzzy) {
             // fuzzy search +- n%
             m_matchMode = MatchMode::Fuzzy;
-        } else if (!opMatch.hasMatch() && !negate) {
+        } else if (!operatorMatch && !negate) {
             // Simple 'bpm:NNN' search.
             // Also searches for half/double matches (rounded up/down)
             // Center value is turned into range in order to ...
@@ -645,9 +680,15 @@ BpmFilterNode::BpmFilterNode(QString& argument, bool fuzzy, bool negate)
         std::tie(m_rangeLower, m_rangeUpper) = rangeFromTrailingDecimal(bpm);
         break;
     }
-    case MatchMode::Fuzzy: {
-        m_rangeLower = floor((1 - s_relativeRange) * bpm);
-        m_rangeUpper = ceil((1 + s_relativeRange) * bpm);
+    case MatchMode::Fuzzy: {                               // 100
+        m_rangeLower = floor((1 - s_relativeRange) * bpm); // 94
+        m_rangeUpper = ceil((1 + s_relativeRange) * bpm);  // 106
+        // Also add fuzzy half/double ranges
+        m_bpmHalfLower = floor((1 - s_relativeRange) * bpm / 2);   // 47
+        m_bpmHalfUpper = ceil((1 + s_relativeRange) * bpm / 2);    // 53
+        m_bpmDoubleLower = floor((1 - s_relativeRange) * bpm * 2); // 188
+        m_bpmDoubleUpper = ceil((1 + s_relativeRange) * bpm * 2);  // 212
+        qWarning() << toSql();
         break;
     }
     case MatchMode::HalveDouble: {
@@ -697,6 +738,12 @@ bool BpmFilterNode::match(const TrackPointer& pTrack) const {
         return pTrack->isBpmLocked();
     }
 
+    if (m_matchMode == MatchMode::Constant) {
+        const mixxx::BeatsPointer pBeats = pTrack->getBeats();
+        // Note: a track without a beatgrid cannot have a constant tempo.
+        return pBeats && pBeats->hasConstantTempo();
+    }
+
     double value = pTrack->getBpm();
 
     switch (m_matchMode) {
@@ -707,10 +754,10 @@ bool BpmFilterNode::match(const TrackPointer& pTrack) const {
         return value >= m_rangeLower && value < m_rangeUpper;
     }
     case MatchMode::ExplicitStrict:
-    case MatchMode::Fuzzy:
     case MatchMode::Range: {
         return value >= m_rangeLower && value <= m_rangeUpper;
     }
+    case MatchMode::Fuzzy:
     case MatchMode::HalveDouble: {
         return (value >= m_rangeLower && value <= m_rangeUpper) ||
                 (value >= m_bpmHalfLower && value <= m_bpmHalfUpper) ||
@@ -740,6 +787,15 @@ QString BpmFilterNode::toSql() const {
     case MatchMode::Locked: {
         return QStringLiteral("%1 IS 1").arg(LIBRARYTABLE_BPM_LOCK);
     }
+    case MatchMode::Constant: {
+        FieldEscaper escaper(m_database);
+        // 'BeatGrid-[version]' means we have constant BPM
+        // 'BeatMap-[version]' means (likely) variable BPM
+        const QString beatGridEscaped = escaper.escapeString(
+                kSqlLikeMatchAll + "BeatGrid" + kSqlLikeMatchAll);
+        return QStringLiteral("%1 LIKE %2")
+                .arg(LIBRARYTABLE_BEATS_VERSION, beatGridEscaped);
+    }
     case MatchMode::Null: {
         return QStringLiteral("bpm IS 0");
     }
@@ -749,10 +805,10 @@ QString BpmFilterNode::toSql() const {
                         QString::number(m_rangeUpper));
     }
     case MatchMode::ExplicitStrict:
-    case MatchMode::Fuzzy:
     case MatchMode::Range: {
         return rangeSqlString(m_rangeLower, m_rangeUpper);
     }
+    case MatchMode::Fuzzy:
     case MatchMode::HalveDouble: {
         QStringList searchClauses;
         searchClauses << rangeUpperExclusiveSqlString(m_rangeLower, m_rangeUpper);
@@ -765,6 +821,7 @@ QString BpmFilterNode::toSql() const {
         searchClauses << rangeSqlString(m_rangeLower, m_rangeUpper);
         searchClauses << rangeSqlString(m_bpmHalfLower, m_bpmHalfUpper);
         searchClauses << rangeSqlString(m_bpmDoubleLower, m_bpmDoubleUpper);
+        // qDebug() << "BpmFilterNode:" << concatSqlClauses(searchClauses, "OR");
         return concatSqlClauses(searchClauses, "OR");
     }
     case MatchMode::Operator: {
@@ -817,6 +874,154 @@ QString YearFilterNode::toSql() const {
                 QStringLiteral("CAST(substr(year,1,4) AS INTEGER) BETWEEN %1 AND %2"))
                 .arg(QString::number(m_dRangeLow),
                         QString::number(m_dRangeHigh));
+    }
+
+    return QString();
+}
+
+// TODO Convert to DateFilterNode and allow searching for "last_played"
+DateAddedFilterNode::DateAddedFilterNode(QString& argument)
+        : m_operatorQuery(false),
+          m_equalsQuery(false),
+          m_operator("=") {
+    if (argument.endsWith('+')) {
+        argument.chop(1);
+        argument.prepend(QStringLiteral(">="));
+    } else if (argument.endsWith('-')) {
+        argument.chop(1);
+        argument.prepend(QStringLiteral("<="));
+    }
+    QDateTime date;
+    QRegularExpressionMatch opMatch = kNumericOperatorRegex.match(argument);
+    if (opMatch.hasMatch()) {
+        // Explicit operator
+        m_operator = opMatch.captured(1);
+        date = parseDate(opMatch.captured(2));
+    } else {
+        // This is an implicit 'equals' filter with ':'.
+        // Try parsing the date and use default '=' operator.
+        date = parseDate(argument);
+    }
+
+    if (!date.isValid()) {
+        return;
+    }
+
+    if (m_operator == '=') {
+        // Note: due to literal = time comparison in Sql we need to set up
+        // a range from [date]T00:00:00.000 to [date]T23:59:59.999
+        m_equalsQuery = true;
+        m_dateStart = date;
+        m_dateEnd = date.addDays(1);
+        return;
+    }
+
+    m_operatorQuery = true;
+    if (m_operator == '>') {
+        // "added:>25.10.2025" would include any time from 2025-10-25T00:00:00Z001
+        // Add one day for >= 25.10.2026T00:00:00Z000 to exclude the whole day
+        date = date.addDays(1);
+        m_operator = ">=";
+    }
+
+    m_opDate = date;
+
+    // TODO Add literal parser, for example:
+    // added:7days
+    // added:4weeks-2weeks etc.
+}
+
+QDateTime DateAddedFilterNode::parseDate(const QString& dateStr) const {
+    // Try ISO format first (YYYY-MM-DD)
+    // This is used by the "New" filter of the Analyze feature
+    qWarning() << "--> parse date" << dateStr;
+    QDate date = QDate::fromString(dateStr, Qt::ISODate);
+
+    if (!date.isValid()) {
+        // Try user date format set in library preferences
+        const QString dateFormat = BaseTrackTableModel::dateFormat();
+        qWarning() << "--> invalid, try Lib format" << dateFormat;
+#if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
+        date = QDate::fromString(dateStr, dateFormat);
+        // The Mixxx project was started in 2001 :)
+        if (date.isValid() && date.year() < 2000) {
+            qWarning() << "--> -> year" << date.year() << "< 2000, add 100";
+            date = date.addYears(100);
+            qWarning() << "--> -> year < 2000, add 100" << date;
+        }
+#else
+        date = QDate::fromString(dateStr, dateFormat, 2000);
+#endif
+    }
+
+    if (!date.isValid()) {
+        qWarning() << "--> invalid, try locale format"
+                   << QLocale().dateFormat(QLocale::ShortFormat);
+        // Maybe custom user format is too esoteric, or user picked
+        // their locale's format.
+        // Fall back to locale-specific short format
+#if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
+        // If the year component has only two digits Qt assumes the base year is 1900.
+        date = QLocale().toDate(dateStr, QLocale::ShortFormat);
+        // The Mixxx project was started in 2001 :)
+        if (date.isValid() && date.year() < 2000) {
+            qWarning() << "--> -> year" << date.year() << "< 2000, add 100";
+            date = date.addYears(100);
+        }
+#else
+        // With Qt 6.7+ we need to specify the base year.
+        date = QLocale().toDate(dateStr, QLocale::ShortFormat, 2001);
+#endif
+    }
+    if (!date.isValid()) {
+        qWarning() << "--> invalid, return";
+        return {};
+    }
+    qWarning() << "--> valid date:" << date;
+
+    return QDateTime(date, QTime(0, 0)).toUTC();
+}
+
+QString DateAddedFilterNode::dateStringIsoNoZ(const QDateTime& date) const {
+    QString dateStr = date.toString(Qt::ISODateWithMs);
+    // sqlite can't handle 'Z' suffix, strip if present
+    if (dateStr.endsWith('Z')) {
+        dateStr.chop(1);
+    }
+    return dateStr;
+}
+
+bool DateAddedFilterNode::match(const TrackPointer& pTrack) const {
+    if (!m_operatorQuery && !m_equalsQuery) {
+        // invalid query, don't filter
+        return true;
+    }
+
+    QDateTime trackDate = pTrack->getDateAdded();
+    if (!trackDate.isValid()) {
+        return true;
+    }
+
+    if (m_operatorQuery &&
+            ((m_operator == "<" && trackDate < m_opDate) ||
+                    (m_operator == "<=" && trackDate <= m_opDate) ||
+                    (m_operator == ">=" && trackDate >= m_opDate))) {
+        return true;
+    } else if (m_equalsQuery && trackDate >= m_dateStart && trackDate < m_dateEnd) {
+        return true;
+    }
+
+    // valid query with no matches
+    return false;
+}
+
+QString DateAddedFilterNode::toSql() const {
+    if (m_operatorQuery) {
+        return QStringLiteral("datetime_added %1 '%2'")
+                .arg(m_operator, dateStringIsoNoZ(m_opDate));
+    } else if (m_equalsQuery) {
+        return QStringLiteral("datetime_added >= '%1' AND datetime_added < '%2'")
+                .arg(dateStringIsoNoZ(m_dateStart), dateStringIsoNoZ(m_dateEnd));
     }
 
     return QString();

@@ -9,6 +9,7 @@
 #include "library/trackmodel.h"
 #include "track/track_decl.h"
 #include "util/color/colorpalette.h"
+#include "util/datetime.h"
 
 class TrackCollectionManager;
 
@@ -131,6 +132,21 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     static constexpr bool kApplyPlayedTrackColorDefault = true;
     static void setApplyPlayedTrackColor(bool apply);
+
+    enum class DateFormat {
+        Native = 0,        // System Default
+        ISO8601 = 1,       // yyyy-MM-dd
+        RegionalShort = 2, // d/M/yy
+        RegionalLong = 3,  // dd.MM.yyyy
+        Custom = 4,
+    };
+    Q_ENUM(DateFormat)
+
+    static const QString kDateFormatDefault;
+    static void setDateFormat(const QString& format);
+    static QString dateFormat() {
+        return s_dateFormat;
+    }
 
   protected:
     // Build a map from the column names to their indices
@@ -257,10 +273,16 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     void slotRefreshAllRows();
 
+    void slotTracksRemoved(const QSet<TrackId>& trackIds);
+
     void slotCoverFound(
             const QObject* pRequester,
             const CoverInfo& coverInfo,
             const QPixmap& pixmap);
+
+    /// Called via signal from DateFormatChangedBroadcaster,
+    /// will tell the view(s) to repaint date columns when visible
+    void slotEmitDataChangedForDateColumns();
 
   private:
     QVariant rawSiblingValue(
@@ -307,4 +329,5 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     static std::optional<ColorPalette> s_keyColorPalette;
 
     static bool s_bApplyPlayedTrackColor;
+    static QString s_dateFormat;
 };
