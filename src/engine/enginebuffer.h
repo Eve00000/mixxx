@@ -518,6 +518,8 @@ class EngineBuffer : public EngineObject {
 #ifdef __STEM__
     mixxx::StemChannelSelection m_stemMask;
 #endif
+
+    bool canUseRubberBandForCurrentTrack() const;
 };
 
 Q_DECLARE_METATYPE(EngineBuffer::KeylockEngine)

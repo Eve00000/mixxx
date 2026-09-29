@@ -117,6 +117,10 @@ class MixxxMainWindow : public QMainWindow {
     void alwaysHideMenuBarDlg();
 #endif
 
+#ifdef __STEM__
+    void createSkinProxies();
+#endif
+
     QDialog::DialogCode soundDeviceErrorDlg(
             const QString &title, const QString &text, bool* retryClicked);
     QDialog::DialogCode soundDeviceBusyDlg(bool* retryClicked);
