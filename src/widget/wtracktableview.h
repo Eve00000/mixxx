@@ -10,6 +10,8 @@
 #include "preferences/usersettings.h"
 #include "util/duration.h"
 #include "util/parented_ptr.h"
+#include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wlibrarytableview.h"
 #ifdef __STEM__
 #include "engine/engine.h"
@@ -21,6 +23,8 @@ class DlgTrackInfo;
 class ExternalTrackCollection;
 class Library;
 class WTrackMenu;
+class WLibrary;
+class WLibraryPreparationWindow;
 
 class WTrackTableView : public WLibraryTableView {
     Q_OBJECT
@@ -34,13 +38,14 @@ class WTrackTableView : public WLibraryTableView {
 #ifdef __LINUX__
     void currentChanged(const QModelIndex& current, const QModelIndex& previous) override;
 #endif
-    void contextMenuEvent(QContextMenuEvent * event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
     QString columnNameOfIndex(const QModelIndex& index) const;
     void onSearch(const QString& text) override;
     void onShow() override;
     bool hasFocus() const override;
     void setFocus() override;
     void pasteFromSidebar() override;
+    void pasteFromSidebarInPreparationWindow();
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void editSelectedItem();
@@ -122,6 +127,9 @@ class WTrackTableView : public WLibraryTableView {
                             NOTIFY dropIndicatorColorChanged
                                     DESIGNABLE true);
 
+    // Returns the current TrackModel, or returns NULL if none is set.
+    TrackModel* getTrackModel() const;
+
   signals:
     void trackMenuVisible(bool visible);
     void focusBorderColorChanged(QColor col);
@@ -131,7 +139,8 @@ class WTrackTableView : public WLibraryTableView {
 
   public slots:
     void loadTrackModel(QAbstractItemModel* model, bool restoreState = false);
-    void slotMouseDoubleClicked(const QModelIndex &);
+    void loadTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = false);
+    void slotMouseDoubleClicked(const QModelIndex&);
     void slotUnhide();
     void slotPurge();
     void slotDeleteTracksFromDisk();
@@ -146,6 +155,7 @@ class WTrackTableView : public WLibraryTableView {
     void slotrestoreCurrentIndex() {
         restoreCurrentIndex();
     }
+    void addToPreparationList(int playlistId, PlaylistDAO::PreparationListSendLoc loc);
 
   private slots:
     void doSortByColumn(int headerSection, Qt::SortOrder sortOrder);
@@ -173,21 +183,18 @@ class WTrackTableView : public WLibraryTableView {
     void paintEvent(QPaintEvent* e) override;
 
     void enableCachedOnly();
-    void selectionChanged(const QItemSelection &selected,
-                          const QItemSelection &deselected) override;
+    void selectionChanged(const QItemSelection& selected,
+            const QItemSelection& deselected) override;
 
     void mousePressEvent(QMouseEvent* pEvent) override;
     // Mouse move event, implemented to hide the text and show an icon instead
     // when dragging.
-    void mouseMoveEvent(QMouseEvent *pEvent) override;
+    void mouseMoveEvent(QMouseEvent* pEvent) override;
 
     // Returns the list of selected row indices, or an empty list if none are selected.
     QModelIndexList getSelectedRows() const;
     // Returns the list of selected row numbers, or an empty list if none are selected.
     QList<int> getSelectedRowNumbers() const;
-
-    // Returns the current TrackModel, or returns NULL if none is set.
-    TrackModel* getTrackModel() const;
 
     void initTrackMenu();
     void showTrackMenu(const QPoint pos, const QModelIndex& index);

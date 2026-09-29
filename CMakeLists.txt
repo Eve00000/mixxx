@@ -1547,6 +1547,7 @@ add_library(
   src/library/trackset/searchcrate/searchcratestorage.cpp
   src/library/trackset/searchcrate/searchcratetablemodel.cpp
   src/library/trackset/playlistfeature.cpp
+  src/library/trackset/preparation/preparationfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
   src/library/traktor/traktorfeature.cpp
@@ -1849,6 +1850,8 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarybasewindow.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
