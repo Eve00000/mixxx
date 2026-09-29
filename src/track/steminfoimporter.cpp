@@ -10,9 +10,11 @@
 #include <QtEndian>
 #include <QtGlobal>
 
+#include "engine/engine.h"
 #include "util/logger.h"
 
 namespace mixxx {
+using mixxx::kMaxSupportedStems;
 
 namespace {
 
@@ -180,7 +182,19 @@ QList<StemInfo> StemInfoImporter::importStemInfos(
     }
     const auto stemArray = stems.toArray();
     QList<StemInfo> stemsList;
-    stemsList.reserve(stemArray.size());
+    // stemsList.reserve(stemArray.size());
+
+    stemsList.reserve(stemArray.size() + 1);
+
+    // including the premix = index 0
+    // The STEM manifest only describes the 4 decomposed stems. Mixxx's
+    // 5-stem model puts the premix at index 0, so we synthesize an entry
+    // here. The color is a neutral gray; the label is translatable.
+    stemsList.emplace_back(
+            QObject::tr("Premix"),
+            // QColor(0x88, 0x88, 0x88));
+            QColor(0xFF, 0xFF, 0xFF));
+
     int stemIdx = 0;
     for (const auto& stemRef : stemArray) {
         if (!stemRef.isObject()) {
@@ -192,7 +206,8 @@ QList<StemInfo> StemInfoImporter::importStemInfos(
         auto name = stem.value("name").toString();
         if (!color.isValid()) {
             kLogger.debug() << "Unexpected or missing stem color in STEM manifest. Using default";
-            color = kStemDefaultColor[stemIdx];
+            // color = kStemDefaultColor[stemIdx];
+            color = kStemDefaultColor[stemIdx % 4];
         }
         if (name.isEmpty()) {
             kLogger.debug() << "Unexpected or missing stem name in STEM manifest. Using default";

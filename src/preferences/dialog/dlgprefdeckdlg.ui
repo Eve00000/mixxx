@@ -181,17 +181,54 @@ CUP mode:
         </item>
        </layout>
       </item>
-      <item row="6" column="1" colspan="2">
-       <widget class="QCheckBox" name="checkBoxCloneDeckOnLoadDoubleTap">
-        <property name="toolTip">
-         <string>Create a playing clone of the first playing deck by double-tapping a Load button on a controller or keyboard.
-You can always drag-and-drop tracks on screen to clone a deck.</string>
-        </property>
-        <property name="text">
-         <string>Double-press Load button to clone playing track</string>
-        </property>
-       </widget>
-      </item>
+       <item row="6" column="1" colspan="2">
+         <widget class="QCheckBox" name="checkBoxCloneDeckOnLoadDoubleTap">
+           <property name="toolTip">
+             <string>
+               Create a playing clone of the first playing deck by double-tapping a Load button on a controller or keyboard.
+               You can always drag-and-drop tracks on screen to clone a deck.
+             </string>
+           </property>
+           <property name="text">
+             <string>Double-press Load button to clone playing track</string>
+           </property>
+         </widget>
+       </item>
+
+         <item row="7" column="0">
+           <widget class="QGroupBox" name="groupBoxIncludeOriginalMasterWhenPlayingStems">
+             <property name="title">
+               <string>Include Original Master when playing Stems</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayoutIncludeOriginalMasterWhenPlayingStems">
+               <property name="spacing">
+                 <number>10</number>
+               </property>
+               <item row="1" column="0">
+                 <widget class="QRadioButton" name="radioButtonDownSampleOriginalMix">
+                   <property name="text">
+                     <string>DownSample Original Master</string>
+                   </property>
+                   <attribute name="buttonGroup">
+                     <string notr="true">buttonGroupDownSampleUpSample</string>
+                   </attribute>
+                 </widget>
+               </item>
+               <item row="2" column="0">
+                 <widget class="QRadioButton" name="radioButtonUpSampleStems">
+                   <property name="text">
+                     <string>UpSample Stems</string>
+                   </property>
+                   <attribute name="buttonGroup">
+                     <string notr="true">buttonGroupDownSampleUpSample</string>
+                   </attribute>
+                 </widget>
+               </item>
+             </layout>
+           </widget>
+
+
+       </item>
      </layout>
     </widget>
    </item>
@@ -693,5 +730,6 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
   <buttongroup name="buttonGroupKeyLockMode"/>
   <buttongroup name="buttonGroupSpeedBendBehavior"/>
   <buttongroup name="buttonGroupSyncMode"/>
+  <buttongroup name="buttonGroupDownSampleUpSample"/>
  </buttongroups>
 </ui>

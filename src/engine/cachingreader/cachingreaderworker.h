@@ -116,6 +116,8 @@ class CachingReaderWorker : public EngineWorker {
 
     void quitWait();
 
+    void setPremixIncludedVars(bool premixIncluded, bool upSampleStems);
+
   signals:
     // Emitted once a new track is loaded and ready to be read from.
     void trackLoading();
@@ -186,4 +188,7 @@ class CachingReaderWorker : public EngineWorker {
     mixxx::audio::ChannelCount m_maxSupportedChannel;
 
     QAtomicInt m_stop;
+
+    bool m_pPremixIncluded;
+    bool m_pUpSampleStems;
 };

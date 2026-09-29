@@ -64,6 +64,12 @@ CachingReader::CachingReader(const QString& group,
                   &m_chunkReadRequestFIFO,
                   &m_readerStatusUpdateFIFO,
                   maxSupportedChannel) {
+    bool premixIncluded = m_pConfig->getValue<bool>(ConfigKey(
+            "[Skin]", "show_original_premix"));
+    bool upSampleStems = m_pConfig->getValue<bool>(ConfigKey(
+            "[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems"));
+    m_worker.setPremixIncludedVars(premixIncluded, upSampleStems);
+
     m_allocatedCachingReaderChunks.reserve(kNumberOfCachedChunksInMemory);
     // Divide up the allocated raw memory buffer into total_chunks
     // chunks. Initialize each chunk to hold nothing and add it to the free

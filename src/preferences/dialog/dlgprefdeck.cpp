@@ -29,6 +29,9 @@ constexpr double kDefaultPositionDisplayType =
 // to playermanager.cpp
 const QString kAppGroup = QStringLiteral("[App]");
 const QString kControlsGroup = QStringLiteral("[Controls]");
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems = false;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -429,6 +432,22 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
 
+    // IncludeOriginalMasterWhenPlayingStems
+    connect(buttonGroupDownSampleUpSample,
+            QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
+            this,
+            &DlgPrefDeck::slotDownSampleUpSampleModeSelected);
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+
     slotUpdate();
 }
 
@@ -521,6 +540,16 @@ void DlgPrefDeck::slotUpdate() {
     spinBoxTemporaryRateFine->setValue(RateControl::getTemporaryRateChangeFineAmount());
     spinBoxPermanentRateCoarse->setValue(RateControl::getPermanentRateChangeCoarseAmount());
     spinBoxPermanentRateFine->setValue(RateControl::getPermanentRateChangeFineAmount());
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -564,6 +593,9 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     radioButtonOriginalKey->setChecked(true);
     radioButtonResetUnlockedKey->setChecked(true);
+
+    radioButtonDownSampleOriginalMix->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -792,6 +824,8 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(
             ConfigKey(kControlsGroup, QStringLiteral("RatePermRight")),
             m_dRatePermFine);
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            m_bUpSampleStems);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -878,4 +912,12 @@ int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
     qWarning() << "No default cue behavior found for value" << userData
                << "returning default";
     return 0;
+}
+
+void DlgPrefDeck::slotDownSampleUpSampleModeSelected(QAbstractButton* pressedButton) {
+    if (pressedButton == radioButtonUpSampleStems) {
+        m_bUpSampleStems = true;
+    } else if (pressedButton == radioButtonDownSampleOriginalMix) {
+        m_bUpSampleStems = false;
+    }
 }
