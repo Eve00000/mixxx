@@ -74,6 +74,7 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     void slotNowPlayingArchiveChanged(bool checked);
     void slotNowPlayingPollIntervalChanged(int index);
     void slotDownSampleUpSampleModeSelected(QAbstractButton*);
+    void slotNonLoopSampleLengthChanged(int value);
 
   private:
     void populateTrackFileCacheSizeComboBox();
@@ -139,4 +140,6 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     bool m_bNowPlayingArchive;
     int m_iNowPlayingPollInterval;
     bool m_bUpSampleStems;
+
+    int m_iNonLoopSampleLengthSec;
 };

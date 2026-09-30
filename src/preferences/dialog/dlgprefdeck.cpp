@@ -4,6 +4,7 @@
 #include <QFileDialog>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
+#include <QSpinBox>
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
@@ -50,6 +51,9 @@ constexpr int kDefaultNowPlayingPollInterval = 1000;
 const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems =
         ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
 constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems = false;
+
+const QString kDefaultNonLoopSampleLengthConfigKey = QStringLiteral("NonLoopSampleLengthSec");
+constexpr int kDefaultNonLoopSampleLengthSec = 5;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -247,6 +251,19 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             &QCheckBox::toggled,
             this,
             &DlgPrefDeck::slotCloneDeckOnLoadDoubleTapCheckbox);
+
+    // Non-loop sample export length
+    m_iNonLoopSampleLengthSec = m_pConfig->getValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            kDefaultNonLoopSampleLengthSec);
+    if (m_iNonLoopSampleLengthSec <= 0) {
+        m_iNonLoopSampleLengthSec = kDefaultNonLoopSampleLengthSec;
+    }
+    spinBoxNonLoopSampleLength->setValue(m_iNonLoopSampleLengthSec);
+    connect(spinBoxNonLoopSampleLength,
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            &DlgPrefDeck::slotNonLoopSampleLengthChanged);
 
     m_bRateDownIncreasesSpeed = m_pConfig->getValue(
             ConfigKey(kControlsGroup, QStringLiteral("RateDir")), kDefaultRateDirectionInverted);
@@ -689,6 +706,10 @@ void DlgPrefDeck::slotUpdate() {
     } else {
         radioButtonDownSampleOriginalMix->setChecked(true);
     }
+
+    spinBoxNonLoopSampleLength->setValue(
+            m_pConfig->getValue(ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+                    kDefaultNonLoopSampleLengthSec));
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -741,6 +762,8 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     radioButtonDownSampleOriginalMix->setChecked(
             kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    spinBoxNonLoopSampleLength->setValue(kDefaultNonLoopSampleLengthSec);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -1030,6 +1053,10 @@ void DlgPrefDeck::saveTrackFileCacheSettings() {
 
     m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
             m_bUpSampleStems);
+
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            m_iNonLoopSampleLengthSec);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1105,6 +1132,10 @@ void DlgPrefDeck::slotUpdateSpeedAutoReset(bool b) {
 
 void DlgPrefDeck::slotUpdatePitchAutoReset(bool b) {
     m_pitchAutoReset = b;
+}
+
+void DlgPrefDeck::slotNonLoopSampleLengthChanged(int value) {
+    m_iNonLoopSampleLengthSec = value;
 }
 
 int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
