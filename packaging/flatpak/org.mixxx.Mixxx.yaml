@@ -59,6 +59,7 @@ modules:
   - modules/libkeyfinder.yaml
   - modules/libdjinterop.yaml
   - modules/liblo.yaml
+  - modules/7zip.yaml
   - name: mixxx
     buildsystem: cmake-ninja
     run-tests: true

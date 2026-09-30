@@ -348,7 +348,8 @@ class Track : public QObject {
                 stem1vol,
                 stem2vol,
                 stem3vol,
-                stem4vol);
+                stem4vol,
+                stem5vol);
     }
     CuePointer findCueByType(mixxx::CueType type) const; // NOTE: Cannot be used for hotcues.
     CuePointer findCueById(DbId id) const;

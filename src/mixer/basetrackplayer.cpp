@@ -831,8 +831,15 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
     QString DeckStatusTxtLine1 = "var TrackDeck" + trackInfoDeck + " = { ";
     QString DeckStatusTxtLine5 = "};";
     QFile DeckStatusFile(DeckStatusFileLocation);
-    DeckStatusFile.remove();
-    DeckStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+    // DeckStatusFile.remove();
+    if (DeckStatusFile.exists() && !DeckStatusFile.remove()) {
+        qWarning() << "Could not remove old file:" << DeckStatusFileLocation;
+    }
+    // DeckStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
+    if (!DeckStatusFile.open(QIODevice::ReadWrite | QIODevice::Append)) {
+        qWarning() << "Failed to open DeckStatus file:" << DeckStatusFileLocation;
+        return;
+    }
     // DeckStatusFile.open(QIODevice::ReadWrite | QIODevice::Append);
     QTextStream DeckStatusTxt(&DeckStatusFile);
     DeckStatusTxt << DeckStatusTxtLine1 << "\n";
