@@ -3344,15 +3344,13 @@ endif()
 # bit7z
 if(WIN32)
   find_package(unofficial-bit7z CONFIG REQUIRED)
+  # The bit7z CMake config exports the required BIT7Z_* definitions as
+  # INTERFACE compile definitions, so no manual target_compile_definitions
+  # is needed here. Adding them manually risks drifting out of sync with
+  # the version vendored by vcpkg (e.g. BIT7Z_DETECT_FROM_EXTENSION was
+  # added in bit7z 4.0.10).
   target_link_libraries(mixxx-lib PRIVATE unofficial::bit7z::bit7z64)
-  target_compile_definitions(
-    mixxx-lib
-    PUBLIC
-      BIT7Z_AUTO_FORMAT
-      BIT7Z_AUTO_PREFIX_LONG_PATHS
-      BIT7Z_PATH_SANITIZATION
-  )
-  message("bit7z package lines passed for windows")
+  message(STATUS "bit7z package lines passed for windows")
 endif()
 
 if(UNIX)
@@ -3367,44 +3365,10 @@ if(UNIX)
 
   cpmaddpackage("gh:rikyoz/bit7z@4.0.10")
 
+  # Same as above: the bit7z target carries the BIT7Z_* definitions as
+  # INTERFACE compile definitions.
   target_link_libraries(mixxx-lib PRIVATE bit7z)
-  target_compile_definitions(
-    mixxx-lib
-    PRIVATE
-      BIT7Z_AUTO_FORMAT
-      BIT7Z_AUTO_PREFIX_LONG_PATHS
-      BIT7Z_PATH_SANITIZATION
-  )
-
-  message("bit7z package lines passed for linux mac")
-endif()
-
-#7zip
-if(WIN32)
-  file(
-    GLOB SEVEN_ZIP_DLL
-    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/7zip.dll"
-  )
-  if(SEVEN_ZIP_DLL)
-    message(STATUS "Found 7zip.dll at: ${SEVEN_ZIP_DLL}")
-    set(
-      _dll_destinations
-      "${CMAKE_BINARY_DIR}/7z.dll"
-      "${CMAKE_INSTALL_PREFIX}/7z.dll"
-    )
-    foreach(dst IN LISTS _dll_destinations)
-      add_custom_command(
-        TARGET mixxx
-        POST_BUILD
-        COMMAND
-          ${CMAKE_COMMAND} -E copy_if_different "${SEVEN_ZIP_DLL}" "${dst}"
-        COMMENT "Copying 7zip.dll to ${dst}"
-      )
-      message(STATUS "Copied 7zip.dll to ${dst}")
-    endforeach()
-  else()
-    message(WARNING "7zip.dll not found, runtime compression may fail!")
-  endif()
+  message(STATUS "bit7z package lines passed for linux mac")
 endif()
 
 if(UNIX)
