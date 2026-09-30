@@ -675,4 +675,16 @@ reapplying those migrations.
       CREATE INDEX IF NOT EXISTS idx_key_segments_position ON track_key_segments(track_id, position);
     </sql>
   </revision>
+  <revision version="42" min_compatible="3">
+    <description>
+      Add StemVols to Cues Table.
+    </description>
+    <sql>
+      ALTER TABLE cues ADD COLUMN stem_1_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_2_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_3_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_4_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_5_vol REAL DEFAULT 1.00 NOT NULL;
+    </sql>
+  </revision>
 </schema>
