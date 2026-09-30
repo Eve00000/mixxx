@@ -121,6 +121,11 @@ void Tooltips::addStandardTooltips() {
             << tr("Indicates when the right signal on the main output is clipping,")
             << clippingHelp;
 
+    add("stem_peak_indicator")
+            << tr("Stem Peak Indicator")
+            << tr("Indicates when the signal on the channel is clipping,")
+            << clippingHelp;
+
     add("channel_VuMeter")
             << tr("Channel Volume Meter")
             << tr("Shows the current channel volume.");
@@ -132,6 +137,10 @@ void Tooltips::addStandardTooltips() {
     add("channel_VuMeterR")
             << tr("Channel R Volume Meter")
             << tr("Shows the current channel volume for the right channel.");
+
+    add("stem_VuMeter")
+            << tr("Stem Volume Meter")
+            << tr("Shows the current stem volume.");
 
     add("microphone_VuMeter")
             << tr("Microphone Volume Meter")
