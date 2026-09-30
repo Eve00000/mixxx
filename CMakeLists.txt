@@ -3347,7 +3347,7 @@ if(WIN32)
   target_link_libraries(mixxx-lib PRIVATE unofficial::bit7z::bit7z64)
   target_compile_definitions(
     mixxx-lib
-    PRIVATE
+    PUBLIC
       BIT7Z_AUTO_FORMAT
       BIT7Z_AUTO_PREFIX_LONG_PATHS
       BIT7Z_PATH_SANITIZATION
@@ -3376,7 +3376,6 @@ if(UNIX)
       BIT7Z_PATH_SANITIZATION
   )
 
-  target_link_libraries(mixxx-lib PRIVATE bit7z)
   message("bit7z package lines passed for linux mac")
 endif()
 
