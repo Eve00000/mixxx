@@ -201,6 +201,24 @@ EngineBuffer::EngineBuffer(const QString& group,
     m_pTrackSamples = new ControlObject(ConfigKey(m_group, "track_samples"));
     m_pTrackSampleRate = new ControlObject(ConfigKey(m_group, "track_samplerate"));
 
+    // EVE
+    auto makeCO = [&](const QString& name) {
+        return new ControlObject(ConfigKey(m_group, name));
+    };
+
+    m_pTrackType = makeCO("track_type");
+    m_pTrackTypeLength = makeCO("track_type_length");
+    m_pTrackArtistLength = makeCO("track_artist_length");
+    m_pTrackTitleLength = makeCO("track_title_length");
+
+    for (int i = 0; i < kArtistSlots; ++i) {
+        m_pTrackArtist[i] = makeCO(QString("track_artist_%1").arg(i + 1));
+    }
+    for (int i = 0; i < kTitleSlots; ++i) {
+        m_pTrackTitle[i] = makeCO(QString("track_title_%1").arg(i + 1));
+    }
+    // EVE
+
     m_pKeylock = new ControlPushButton(ConfigKey(m_group, "keylock"), true);
     m_pKeylock->setButtonMode(mixxx::control::ButtonMode::Toggle);
 
@@ -361,6 +379,20 @@ EngineBuffer::~EngineBuffer() {
     delete m_pReplayGain;
 
     SampleUtil::free(m_pCrossfadeBuffer);
+
+    // EVE cleanup
+    delete m_pTrackType;
+    delete m_pTrackTypeLength;
+    delete m_pTrackArtistLength;
+    delete m_pTrackTitleLength;
+
+    for (int i = 0; i < kArtistSlots; ++i) {
+        delete m_pTrackArtist[i];
+    }
+    for (int i = 0; i < kTitleSlots; ++i) {
+        delete m_pTrackTitle[i];
+    }
+    // EVE cleanup
 }
 
 void EngineBuffer::bindWorkers(EngineWorkerScheduler* pWorkerScheduler) {
@@ -629,6 +661,32 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
 //    m_iTrackLoading = 0;
 //}
 
+// Convert the latin1 values from the array to a double that combines the values
+// to a number of 15 digits input: int chararray, int offset
+double trackPartChar2CalculatedValue(const int* charArray, int offset) {
+    return (1.0 * charArray[offset] * 1000000000000) +
+            (1.0 * charArray[offset + 1] * 1000000000) +
+            (1.0 * charArray[offset + 2] * 1000000) +
+            (1.0 * charArray[offset + 3] * 1000) +
+            (1.0 * charArray[offset + 4] * 1);
+}
+
+// Convert the strings Type / Artist / Title to CharArray Latin1 values, add 300 to negative values
+// input: string string2convert, int chararray, int maximumlengte
+void convertArray2Latin1NoNegative(QString string2convert, int* charArray, int maximumLengte) {
+    if (string2convert.length() > maximumLengte) {
+        string2convert = string2convert.mid(0, maximumLengte);
+    };
+    int smallestLength = qMin(string2convert.length(), maximumLengte);
+    for (int i = 1; i <= smallestLength; i++) {
+        if ((string2convert.at(i - 1).toLatin1()) < 0) {
+            charArray[i - 1] = ((string2convert.at(i - 1).toLatin1()) + 300);
+        } else {
+            charArray[i - 1] = (string2convert.at(i - 1).toLatin1());
+        };
+    }
+}
+
 // WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
@@ -682,6 +740,43 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
     m_pTrackSampleRate->set(trackSampleRate.toDouble());
     m_pTrackLoaded->forceSet(1);
+
+    // EVE
+    auto fillSlots = [&](ControlObject* const* cos,
+                             int slotCount,
+                             const QString& text,
+                             ControlObject* lengthCO,
+                             int maxLen) {
+        lengthCO->set(qMin(text.length(), maxLen));
+        int chars[200] = {0};
+        convertArray2Latin1NoNegative(text, chars, maxLen);
+        for (int slot = 0; slot < slotCount; ++slot) {
+            cos[slot]->set(trackPartChar2CalculatedValue(chars, slot * 5));
+        }
+    };
+
+    fillSlots(m_pTrackTitle, kTitleSlots, pTrack->getTitle(), m_pTrackTitleLength, 25);
+    fillSlots(m_pTrackArtist, kArtistSlots, pTrack->getArtist(), m_pTrackArtistLength, 25);
+
+    QString type = pTrack->getType();
+    m_pTrackTypeLength->set(qMin(type.length(), 5));
+    int typeChars[5] = {0};
+    convertArray2Latin1NoNegative(type, typeChars, 5);
+    m_pTrackType->set(trackPartChar2CalculatedValue(typeChars, 0));
+
+    if (s_oscEnabled.load()) {
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendTrackInfoToOscClients(getGroup(),
+                pTrack->getArtist(),
+                pTrack->getTitle(),
+                pTrack->getLocation(),
+                pTrack->getAlbum(),
+                (float)pTrack->getBpm(),
+                1,
+                (float)pTrack->getDuration(),
+                0);
+    }
+    // EVE
 
     // OSC send TrackInfo PseudoCOs to OSC-Clients
     if (s_oscEnabled.load()) {
@@ -766,6 +861,18 @@ void EngineBuffer::ejectTrack() {
     setTrackEndPosition(mixxx::audio::kInvalidFramePos);
     m_pTrackSampleRate->set(0);
     m_pTrackLoaded->forceSet(0);
+
+    // EVE
+    m_pTrackType->set(0);
+    m_pTrackTypeLength->set(0);
+    m_pTrackArtistLength->set(0);
+    m_pTrackTitleLength->set(0);
+
+    for (int i = 0; i < kArtistSlots; ++i)
+        m_pTrackArtist[i]->set(0);
+    for (int i = 0; i < kTitleSlots; ++i)
+        m_pTrackTitle[i]->set(0);
+    // EVE
 
     // OSC Send message for displaying no track is loaded on COS-Clients
     if (s_oscEnabled.load()) {
