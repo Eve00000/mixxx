@@ -306,6 +306,7 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_itunes->setChecked(true);
     checkBox_show_traktor->setChecked(true);
     checkBox_show_rekordbox->setChecked(true);
+    checkBox_preparationlists_addallloadedtracks->setChecked(false);
 }
 
 void DlgPrefLibrary::slotUpdate() {
@@ -411,6 +412,8 @@ void DlgPrefLibrary::slotUpdate() {
         break;
     }
 
+    checkBox_preparationlists_addallloadedtracks->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true));
     bool editMetadataSelectedClick = m_pConfig->getValue(
             kEditMetadataSelectedClickConfigKey,
             kEditMetadataSelectedClickDefault);
@@ -679,6 +682,9 @@ void DlgPrefLibrary::slotApply() {
 
     m_pConfig->setValue(kDateFormatConfigKey, m_dateFormat);
     BaseTrackTableModel::setDateFormat(m_dateFormat);
+
+    m_pConfig->set(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"),
+            ConfigValue((int)checkBox_preparationlists_addallloadedtracks->isChecked()));
 
     BaseTrackTableModel::setApplyPlayedTrackColor(
             checkbox_played_track_color->isChecked());

@@ -58,6 +58,7 @@
 #include "widget/wknobcomposed.h"
 #include "widget/wlabel.h"
 #include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wlibrarysidebar.h"
 #include "widget/wnumber.h"
 #include "widget/wnumberdb.h"
@@ -81,6 +82,7 @@
 #include "widget/wstarrating.h"
 #include "widget/wstatuslight.h"
 #ifdef __STEM__
+#include "widget/wstemcontrolborder.h"
 #include "widget/wstemlabel.h"
 #endif
 #include "widget/wtime.h"
@@ -595,6 +597,8 @@ QList<QWidget*> LegacySkinParser::parseNode(const QDomElement& node) {
     } else if (nodeName == "StemLabel") {
 #ifdef __STEM__
         result = wrapWidget(parseStemLabelWidget(node));
+    } else if (nodeName == "StemControlBorder") {
+        result = wrapWidget(parseStemControlBorderWidget(node));
 #endif
     } else if (nodeName == "Knob") {
         result = wrapWidget(parseStandardWidget<WKnob>(node));
@@ -644,6 +648,8 @@ QList<QWidget*> LegacySkinParser::parseNode(const QDomElement& node) {
         result = wrapWidget(parseSplitter(node));
     } else if (nodeName == "LibrarySidebar") {
         result = wrapWidget(parseLibrarySidebar(node));
+    } else if (nodeName == "LibraryPreparationWindow") {
+        result = wrapWidget(parseLibraryPreparationWindow(node));
     } else if (nodeName == "Library") {
         result = wrapWidget(parseLibrary(node));
     } else if (nodeName == "Key") {
@@ -1041,6 +1047,40 @@ QWidget* LegacySkinParser::parseStemLabelWidget(const QDomElement& element) {
     }
 
     return pLabel;
+}
+
+QWidget* LegacySkinParser::parseStemControlBorderWidget(const QDomElement& element) {
+    WStemControlBorder* pBorder = new WStemControlBorder(m_pParent);
+
+    pBorder->setup(element, *m_pContext);
+
+    commonWidgetSetup(element, pBorder);
+
+    QString group = lookupNodeGroup(element);
+    BaseTrackPlayer* pPlayer = m_pPlayerManager->getPlayer(group);
+    if (!pPlayer) {
+        SKIN_WARNING(element,
+                *m_pContext,
+                QStringLiteral("No player found for group: %1").arg(group));
+        return nullptr;
+    }
+
+    connect(pPlayer,
+            &BaseTrackPlayer::newTrackLoaded,
+            pBorder,
+            &WStemControlBorder::slotTrackLoaded);
+
+    connect(pPlayer,
+            &BaseTrackPlayer::trackUnloaded,
+            pBorder,
+            &WStemControlBorder::slotTrackUnloaded);
+
+    TrackPointer pTrack = pPlayer->getLoadedTrack();
+    if (pTrack) {
+        pBorder->slotTrackLoaded(pTrack);
+    }
+
+    return pBorder;
 }
 #endif
 
@@ -1711,6 +1751,46 @@ QWidget* LegacySkinParser::parseLibrary(const QDomElement& node) {
     return pLibraryWidget;
 }
 
+// Eve Preparation Window
+QWidget* LegacySkinParser::parseLibraryPreparationWindow(const QDomElement& node) {
+    WLibraryPreparationWindow* pLibraryPreparationWindowWidget =
+            new WLibraryPreparationWindow(m_pParent);
+    pLibraryPreparationWindowWidget->installEventFilter(m_pKeyboard);
+    pLibraryPreparationWindowWidget->installEventFilter(
+            m_pControllerManager->getControllerLearningEventFilter());
+    pLibraryPreparationWindowWidget->setup(node, *m_pContext);
+
+    const auto bpmColumnPrecision =
+            m_pConfig->getValue(
+                    mixxx::library::prefs::kBpmColumnPrecisionConfigKey,
+                    BaseTrackTableModel::kBpmColumnPrecisionDefault);
+    BaseTrackTableModel::setBpmColumnPrecision(bpmColumnPrecision);
+
+    const auto keyColorsEnabled =
+            m_pConfig->getValue(
+                    ConfigKey("[Config]", "key_colors_enabled"),
+                    BaseTrackTableModel::kKeyColorsEnabledDefault);
+    BaseTrackTableModel::setKeyColorsEnabled(keyColorsEnabled);
+
+    ColorPaletteSettings colorPaletteSettings(m_pConfig);
+    ColorPalette colorPalette = colorPaletteSettings.getTrackColorPalette();
+    BaseTrackTableModel::setKeyColorPalette(colorPaletteSettings.getConfigKeyColorPalette());
+
+    const auto applyPlayedTrackColor =
+            m_pConfig->getValue(
+                    mixxx::library::prefs::kApplyPlayedTrackColorConfigKey,
+                    BaseTrackTableModel::kApplyPlayedTrackColorDefault);
+    BaseTrackTableModel::setApplyPlayedTrackColor(applyPlayedTrackColor);
+
+    m_pLibrary->bindLibraryPreparationWindowWidget(pLibraryPreparationWindowWidget, m_pKeyboard);
+
+    // This must come after the bindLibraryWidget or we will not style any of the
+    // LibraryView's because they have not been added yet.
+    commonWidgetSetup(node, pLibraryPreparationWindowWidget, false);
+
+    return pLibraryPreparationWindowWidget;
+}
+
 QWidget* LegacySkinParser::parseLibrarySidebar(const QDomElement& node) {
     WLibrarySidebar* pLibrarySidebar = new WLibrarySidebar(m_pParent);
     pLibrarySidebar->installEventFilter(m_pKeyboard);
@@ -1746,6 +1826,7 @@ QWidget* LegacySkinParser::parseTableView(const QDomElement& node) {
 
     m_pParent = pSplitter;
     QWidget* pLibraryWidget = parseLibrary(node);
+    QWidget* pLibraryPreparationWindowWidget = parseLibraryPreparationWindow(node);
 
     QWidget* pLibrarySidebarPage = new QWidget(pSplitter);
     m_pParent = pLibrarySidebarPage;
@@ -1764,11 +1845,13 @@ QWidget* LegacySkinParser::parseTableView(const QDomElement& node) {
 
     pSplitter->addWidget(pLibrarySidebarPage);
     pSplitter->addWidget(pLibraryWidget);
+    pSplitter->addWidget(pLibraryPreparationWindowWidget);
 
     // TODO(rryan) can we make this more elegant?
     QList<int> splitterSizes;
     splitterSizes.push_back(50);
     splitterSizes.push_back(500);
+    splitterSizes.push_back(0);
     pSplitter->setSizes(splitterSizes);
 
     // Add the splitter to the library page's layout, so it's
