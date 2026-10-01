@@ -83,6 +83,7 @@ case "$1" in
         fi
 
         sudo apt-get install -y --no-install-recommends -- \
+            p7zip-full \
             ccache \
             cmake \
             clazy \
@@ -108,6 +109,7 @@ case "$1" in
             libhidapi-dev \
             libid3tag0-dev \
             liblilv-dev \
+			liblo-dev \
             libmad0-dev \
             libmodplug-dev \
             libmp3lame-dev \

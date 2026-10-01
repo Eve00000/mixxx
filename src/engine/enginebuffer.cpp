@@ -24,6 +24,7 @@
 #include "engine/sync/synccontrol.h"
 #include "mixer/playermanager.h"
 #include "moc_enginebuffer.cpp"
+#include "osc/oscfunctions.h"
 #include "preferences/usersettings.h"
 #include "track/track.h"
 #include "util/assert.h"
@@ -52,8 +53,9 @@ constexpr double kLinearScalerElipsis =
 constexpr int kPlaypositionUpdateRate = 15; // updates per second
 
 const QString kAppGroup = QStringLiteral("[App]");
-
 } // anonymous namespace
+
+extern std::atomic<bool> s_oscEnabled;
 
 EngineBuffer::EngineBuffer(const QString& group,
         UserSettingsPointer pConfig,
@@ -114,61 +116,78 @@ EngineBuffer::EngineBuffer(const QString& group,
     SampleUtil::clear(m_pCrossfadeBuffer, kMaxEngineFrames * mixxx::kMaxEngineChannelInputCount);
 
     m_pReader = new CachingReader(group, pConfig, maxSupportedChannel);
-    connect(m_pReader, &CachingReader::trackLoading,
-            this, &EngineBuffer::slotTrackLoading,
+    connect(m_pReader,
+            &CachingReader::trackLoading,
+            this,
+            &EngineBuffer::slotTrackLoading,
             Qt::DirectConnection);
-    connect(m_pReader, &CachingReader::trackLoaded,
-            this, &EngineBuffer::slotTrackLoaded,
+    connect(m_pReader,
+            &CachingReader::trackLoaded,
+            this,
+            &EngineBuffer::slotTrackLoaded,
             Qt::DirectConnection);
-    connect(m_pReader, &CachingReader::trackLoadFailed,
-            this, &EngineBuffer::slotTrackLoadFailed,
+    connect(m_pReader,
+            &CachingReader::trackLoadFailed,
+            this,
+            &EngineBuffer::slotTrackLoadFailed,
             Qt::DirectConnection);
 
     // Play button
     m_playButton = new ControlPushButton(ConfigKey(m_group, "play"));
     m_playButton->setButtonMode(mixxx::control::ButtonMode::Toggle);
     m_playButton->connectValueChangeRequest(
-            this, &EngineBuffer::slotControlPlayRequest,
-            Qt::DirectConnection);
+            this, &EngineBuffer::slotControlPlayRequest, Qt::DirectConnection);
 
-    //Play from Start Button (for sampler)
+    // Play from Start Button (for sampler)
     m_playStartButton = new ControlPushButton(ConfigKey(m_group, "start_play"));
-    connect(m_playStartButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlPlayFromStart,
+    connect(m_playStartButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlPlayFromStart,
             Qt::DirectConnection);
 
     // Jump to start and stop button
     m_stopStartButton = new ControlPushButton(ConfigKey(m_group, "start_stop"));
-    connect(m_stopStartButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlJumpToStartAndStop,
+    connect(m_stopStartButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlJumpToStartAndStop,
             Qt::DirectConnection);
 
-    //Stop playback (for sampler)
+    // Stop playback (for sampler)
     m_stopButton = new ControlPushButton(ConfigKey(m_group, "stop"));
-    connect(m_stopButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlStop,
+    connect(m_stopButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlStop,
             Qt::DirectConnection);
 
     // Start button
     m_startButton = new ControlPushButton(ConfigKey(m_group, "start"));
     m_startButton->setButtonMode(mixxx::control::ButtonMode::Trigger);
-    connect(m_startButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlStart,
+    connect(m_startButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlStart,
             Qt::DirectConnection);
 
     // End button
     m_endButton = new ControlPushButton(ConfigKey(m_group, "end"));
-    connect(m_endButton, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlEnd,
+    connect(m_endButton,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlEnd,
             Qt::DirectConnection);
 
     m_pSlipButton = new ControlPushButton(ConfigKey(m_group, "slip_enabled"));
     m_pSlipButton->setButtonMode(mixxx::control::ButtonMode::Toggle);
 
     m_playposSlider = new ControlLinPotmeter(
-        ConfigKey(m_group, "playposition"), 0.0, 1.0, 0, 0, true);
-    connect(m_playposSlider, &ControlObject::valueChanged,
-            this, &EngineBuffer::slotControlSeek,
+            ConfigKey(m_group, "playposition"), 0.0, 1.0, 0, 0, true);
+    connect(m_playposSlider,
+            &ControlObject::valueChanged,
+            this,
+            &EngineBuffer::slotControlSeek,
             Qt::DirectConnection);
 
     // Control used to communicate ratio playpos to GUI thread
@@ -181,6 +200,24 @@ EngineBuffer::EngineBuffer(const QString& group,
 
     m_pTrackSamples = new ControlObject(ConfigKey(m_group, "track_samples"));
     m_pTrackSampleRate = new ControlObject(ConfigKey(m_group, "track_samplerate"));
+
+    // EVE
+    auto makeCO = [&](const QString& name) {
+        return new ControlObject(ConfigKey(m_group, name));
+    };
+
+    m_pTrackType = makeCO("track_type");
+    m_pTrackTypeLength = makeCO("track_type_length");
+    m_pTrackArtistLength = makeCO("track_artist_length");
+    m_pTrackTitleLength = makeCO("track_title_length");
+
+    for (int i = 0; i < kArtistSlots; ++i) {
+        m_pTrackArtist[i] = makeCO(QString("track_artist_%1").arg(i + 1));
+    }
+    for (int i = 0; i < kTitleSlots; ++i) {
+        m_pTrackTitle[i] = makeCO(QString("track_title_%1").arg(i + 1));
+    }
+    // EVE
 
     m_pKeylock = new ControlPushButton(ConfigKey(m_group, "keylock"), true);
     m_pKeylock->setButtonMode(mixxx::control::ButtonMode::Toggle);
@@ -288,8 +325,8 @@ EngineBuffer::EngineBuffer(const QString& group,
     m_bScalerChanged = true;
 
     m_pPassthroughEnabled = new ControlProxy(group, "passthrough", this);
-    m_pPassthroughEnabled->connectValueChanged(this, &EngineBuffer::slotPassthroughChanged,
-                                               Qt::DirectConnection);
+    m_pPassthroughEnabled->connectValueChanged(
+            this, &EngineBuffer::slotPassthroughChanged, Qt::DirectConnection);
 
 #ifdef __SCALER_DEBUG__
     df.setFileName("mixxx-debug.csv");
@@ -306,7 +343,7 @@ EngineBuffer::EngineBuffer(const QString& group,
 
 EngineBuffer::~EngineBuffer() {
 #ifdef __SCALER_DEBUG__
-    //close the writer
+    // close the writer
     df.close();
 #endif
 
@@ -342,6 +379,20 @@ EngineBuffer::~EngineBuffer() {
     delete m_pReplayGain;
 
     SampleUtil::free(m_pCrossfadeBuffer);
+
+    // EVE cleanup
+    delete m_pTrackType;
+    delete m_pTrackTypeLength;
+    delete m_pTrackArtistLength;
+    delete m_pTrackTitleLength;
+
+    for (int i = 0; i < kArtistSlots; ++i) {
+        delete m_pTrackArtist[i];
+    }
+    for (int i = 0; i < kTitleSlots; ++i) {
+        delete m_pTrackTitle[i];
+    }
+    // EVE cleanup
 }
 
 void EngineBuffer::bindWorkers(EngineWorkerScheduler* pWorkerScheduler) {
@@ -473,7 +524,7 @@ void EngineBuffer::readToCrossfadeBuffer(const std::size_t bufferSize) {
         // Restore the original position that was lost due to scaleBuffer() above
         m_pReadAheadManager->notifySeek(m_playPos.toSamplePos(m_channelCount));
         m_bCrossfadeReady = true;
-     }
+    }
 }
 
 // WARNING: This method is not thread safe and must not be called from outside
@@ -547,6 +598,96 @@ void EngineBuffer::loadFakeTrack(TrackPointer pTrack, bool bPlay) {
 }
 
 // WARNING: Always called from the EngineWorker thread pool
+// void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
+//        mixxx::audio::SampleRate trackSampleRate,
+//        mixxx::audio::ChannelCount trackChannelCount,
+//        mixxx::audio::FramePos trackNumFrame) {
+//    if (kLogger.traceEnabled()) {
+//        kLogger.trace() << "slotTrackLoaded" << getGroup();
+//    }
+//    TrackPointer pOldTrack = m_pCurrentTrack;
+//    m_pause.lock();
+//
+//    m_visualPlayPos->setInvalid();
+//    m_playPos = kInitialPlayPosition; // for execute seeks to 0.0
+//    m_pCurrentTrack = pTrack;
+//
+//    m_channelCount = trackChannelCount;
+//    if (m_channelCount > mixxx::audio::ChannelCount::stereo()) {
+//        // The sample count is indicated downmix. This means that for stem
+//        // track, we only consider the track in stereo, as it is perceived by
+//        // the user on deck output
+//        VERIFY_OR_DEBUG_ASSERT(m_channelCount % mixxx::audio::ChannelCount::stereo() == 0) {
+//            // Make it stereo for the frame calculation
+//            kLogger.warning() << "Odd number of channel in the track is not supported";
+//        };
+//    } else {
+//        // The EngineBuffer only works with stereo channels. If the track is
+//        // mono, it will be passed through the AudioSourceStereoProxy. See
+//        // CachingReaderChunk::bufferSampleFrames
+//        m_channelCount = mixxx::audio::ChannelCount::stereo();
+//    }
+//
+//    m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
+//    m_pTrackSampleRate->set(trackSampleRate.toDouble());
+//    m_pTrackLoaded->forceSet(1);
+//
+//    // Reset slip mode
+//    m_pSlipButton->set(0);
+//    m_bSlipEnabledProcessing = false;
+//    m_slipPos = mixxx::audio::kStartFramePos;
+//    m_dSlipRate = 0;
+//    m_slipModeState = SlipModeState::Disabled;
+//
+//    m_pReplayGain->set(pTrack->getReplayGain().getRatio());
+//
+//    m_queuedSeek.setValue(kNoQueuedSeek);
+//
+//    // Reset the pitch value for the new track.
+//    m_pause.unlock();
+//
+//    notifyTrackLoaded(pTrack, pOldTrack);
+//
+//    // Check if we are cloning another channel before doing any seeking.
+//    // This replaces m_queuedSeek populated form CueControl
+//    EngineChannel* pChannel = atomicLoadRelaxed(m_pChannelToCloneFrom);
+//    if (pChannel) {
+//        m_queuedSeek.setValue(kCloneSeek);
+//        m_iSeekPhaseQueued = 0;
+//    }
+//
+//    // Start buffer processing after all EngineContols are up to date
+//    // with the current track e.g track is seeked to Cue
+//    m_iTrackLoading = 0;
+//}
+
+// Convert the latin1 values from the array to a double that combines the values
+// to a number of 15 digits input: int chararray, int offset
+double trackPartChar2CalculatedValue(const int* charArray, int offset) {
+    return (1.0 * charArray[offset] * 1000000000000) +
+            (1.0 * charArray[offset + 1] * 1000000000) +
+            (1.0 * charArray[offset + 2] * 1000000) +
+            (1.0 * charArray[offset + 3] * 1000) +
+            (1.0 * charArray[offset + 4] * 1);
+}
+
+// Convert the strings Type / Artist / Title to CharArray Latin1 values, add 300 to negative values
+// input: string string2convert, int chararray, int maximumlengte
+void convertArray2Latin1NoNegative(QString string2convert, int* charArray, int maximumLengte) {
+    if (string2convert.length() > maximumLengte) {
+        string2convert = string2convert.mid(0, maximumLengte);
+    };
+    int smallestLength = qMin(string2convert.length(), maximumLengte);
+    for (int i = 1; i <= smallestLength; i++) {
+        if ((string2convert.at(i - 1).toLatin1()) < 0) {
+            charArray[i - 1] = ((string2convert.at(i - 1).toLatin1()) + 300);
+        } else {
+            charArray[i - 1] = (string2convert.at(i - 1).toLatin1());
+        };
+    }
+}
+
+// WARNING: Always called from the EngineWorker thread pool
 void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         mixxx::audio::SampleRate trackSampleRate,
         mixxx::audio::ChannelCount trackChannelCount,
@@ -577,9 +718,80 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
         m_channelCount = mixxx::audio::ChannelCount::stereo();
     }
 
+    // Re-evaluate which scaler should be active for this track. The
+    // channel count now reflects the new track, so the RubberBand vs.
+    // SoundTouch decision can be made correctly. This runs on the
+    // EngineWorker thread, before m_iTrackLoading is cleared, so the audio
+    // thread will not observe a half-updated scaler selection.
+    //
+    // slotKeylockEngineChanged() also honours m_bScalerOverride, so any
+    // vinyl-control takeover of the scaler is preserved.
+    slotKeylockEngineChanged(m_pKeylockEngine->get());
+
+    if (kLogger.debugEnabled()) {
+        kLogger.debug()
+                << "Scaler selected for track"
+                << getGroup()
+                << "channels =" << m_channelCount
+                << "scaleRB =" << (m_pScaleKeylock == m_pScaleRB)
+                << "scaleST =" << (m_pScaleKeylock == m_pScaleST);
+    }
+
     m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
     m_pTrackSampleRate->set(trackSampleRate.toDouble());
     m_pTrackLoaded->forceSet(1);
+
+    // EVE
+    auto fillSlots = [&](ControlObject* const* cos,
+                             int slotCount,
+                             const QString& text,
+                             ControlObject* lengthCO,
+                             int maxLen) {
+        lengthCO->set(qMin(text.length(), maxLen));
+        int chars[200] = {0};
+        convertArray2Latin1NoNegative(text, chars, maxLen);
+        for (int slot = 0; slot < slotCount; ++slot) {
+            cos[slot]->set(trackPartChar2CalculatedValue(chars, slot * 5));
+        }
+    };
+
+    fillSlots(m_pTrackTitle, kTitleSlots, pTrack->getTitle(), m_pTrackTitleLength, 25);
+    fillSlots(m_pTrackArtist, kArtistSlots, pTrack->getArtist(), m_pTrackArtistLength, 25);
+
+    QString type = pTrack->getType();
+    m_pTrackTypeLength->set(qMin(type.length(), 5));
+    int typeChars[5] = {0};
+    convertArray2Latin1NoNegative(type, typeChars, 5);
+    m_pTrackType->set(trackPartChar2CalculatedValue(typeChars, 0));
+
+    if (s_oscEnabled.load()) {
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendTrackInfoToOscClients(getGroup(),
+                pTrack->getArtist(),
+                pTrack->getTitle(),
+                pTrack->getLocation(),
+                pTrack->getAlbum(),
+                (float)pTrack->getBpm(),
+                1,
+                (float)pTrack->getDuration(),
+                0);
+    }
+    // EVE
+
+    // OSC send TrackInfo PseudoCOs to OSC-Clients
+    if (s_oscEnabled.load()) {
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendTrackInfoToOscClients(
+                getGroup(),
+                pTrack->getArtist(),
+                pTrack->getTitle(),
+                pTrack->getLocation(),
+                pTrack->getAlbum(),
+                (float)pTrack->getBpm(),
+                1,
+                (float)pTrack->getDuration(),
+                0);
+    }
 
     // Reset slip mode
     m_pSlipButton->set(0);
@@ -649,6 +861,24 @@ void EngineBuffer::ejectTrack() {
     setTrackEndPosition(mixxx::audio::kInvalidFramePos);
     m_pTrackSampleRate->set(0);
     m_pTrackLoaded->forceSet(0);
+
+    // EVE
+    m_pTrackType->set(0);
+    m_pTrackTypeLength->set(0);
+    m_pTrackArtistLength->set(0);
+    m_pTrackTitleLength->set(0);
+
+    for (int i = 0; i < kArtistSlots; ++i)
+        m_pTrackArtist[i]->set(0);
+    for (int i = 0; i < kTitleSlots; ++i)
+        m_pTrackTitle[i]->set(0);
+    // EVE
+
+    // OSC Send message for displaying no track is loaded on COS-Clients
+    if (s_oscEnabled.load()) {
+        OscFunctions oscFunctions(m_pConfig);
+        oscFunctions.sendNoTrackLoadedToOscClients(getGroup());
+    }
 
     m_playButton->set(0.0);
     m_playposSlider->set(0);
@@ -823,71 +1053,140 @@ void EngineBuffer::slotControlPlayRequest(double v) {
     m_playButton->setAndConfirm(verifiedPlay ? 1.0 : 0.0);
 }
 
-void EngineBuffer::slotControlStart(double v)
-{
+void EngineBuffer::slotControlStart(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
     }
 }
 
-void EngineBuffer::slotControlEnd(double v)
-{
+void EngineBuffer::slotControlEnd(double v) {
     if (v > 0.0) {
         doSeekFractional(1., SEEK_EXACT);
     }
 }
 
-void EngineBuffer::slotControlPlayFromStart(double v)
-{
+void EngineBuffer::slotControlPlayFromStart(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
         m_playButton->set(1);
     }
 }
 
-void EngineBuffer::slotControlJumpToStartAndStop(double v)
-{
+void EngineBuffer::slotControlJumpToStartAndStop(double v) {
     if (v > 0.0) {
         doSeekFractional(0., SEEK_EXACT);
         m_playButton->set(0);
     }
 }
 
-void EngineBuffer::slotControlStop(double v)
-{
+void EngineBuffer::slotControlStop(double v) {
     if (v > 0.0) {
         m_playButton->set(0);
     }
 }
 
+bool EngineBuffer::canUseRubberBandForCurrentTrack() const {
+#ifdef __RUBBERBAND__
+    if (!m_pScaleRB) {
+        return false;
+    }
+    // RubberBand is safe for stereo and for 4-stems-only (8 channels).
+    // The 10-channel premix+stems layout forces SoundTouch.
+    //
+    // kStemOnlyChannelCount = 2 * (kMaxSupportedStems - 1) = 8
+    const mixxx::audio::ChannelCount kStemOnlyChannelCount(
+            2 * (mixxx::kMaxSupportedStems - 1));
+    return m_channelCount <= kStemOnlyChannelCount;
+#else
+    return false;
+#endif
+}
+
+// void EngineBuffer::slotKeylockEngineChanged(double dIndex) {
+//     if (m_bScalerOverride) {
+//         return;
+//     }
+//     const KeylockEngine engine = static_cast<KeylockEngine>(dIndex);
+//     switch (engine) {
+//     case KeylockEngine::SoundTouch:
+//         m_pScaleKeylock = m_pScaleST;
+//         break;
+// #ifdef __RUBBERBAND__
+//     case KeylockEngine::RubberBandFaster:
+//         m_pScaleRB->useEngineFiner(false);
+//         m_pScaleRB->useOptionWindowShort(false);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+//     case KeylockEngine::RubberBandFiner:
+//         m_pScaleRB->useEngineFiner(
+//                 true); // in case of Rubberband V2 it falls back to RUBBERBAND_FASTER
+//         m_pScaleRB->useOptionWindowShort(false);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+//     case KeylockEngine::RubberBandR3ShortWindow:
+//         m_pScaleRB->useEngineFiner(true);
+//         m_pScaleRB->useOptionWindowShort(true);
+//         m_pScaleKeylock = m_pScaleRB;
+//         break;
+// #endif
+//     default:
+//         slotKeylockEngineChanged(static_cast<double>(defaultKeylockEngine()));
+//         break;
+//     }
+// }
+
 void EngineBuffer::slotKeylockEngineChanged(double dIndex) {
     if (m_bScalerOverride) {
+        // Something (vinyl control, keylock override, ...) has taken over
+        // the scaler selection. Leave it alone.
         return;
     }
+
     const KeylockEngine engine = static_cast<KeylockEngine>(dIndex);
+
     switch (engine) {
     case KeylockEngine::SoundTouch:
+        // User asked for SoundTouch: always honour it.
         m_pScaleKeylock = m_pScaleST;
         break;
+
 #ifdef __RUBBERBAND__
     case KeylockEngine::RubberBandFaster:
+        if (!canUseRubberBandForCurrentTrack()) {
+            // 10-channel premix+stems layout: RubberBand would phase-drift
+            // premix against stems. Fall back to SoundTouch.
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
         m_pScaleRB->useEngineFiner(false);
         m_pScaleRB->useOptionWindowShort(false);
         m_pScaleKeylock = m_pScaleRB;
         break;
+
     case KeylockEngine::RubberBandFiner:
-        m_pScaleRB->useEngineFiner(
-                true); // in case of Rubberband V2 it falls back to RUBBERBAND_FASTER
+        if (!canUseRubberBandForCurrentTrack()) {
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
+        // In case of Rubberband V2 this falls back to RUBBERBAND_FASTER.
+        m_pScaleRB->useEngineFiner(true);
         m_pScaleRB->useOptionWindowShort(false);
         m_pScaleKeylock = m_pScaleRB;
         break;
+
     case KeylockEngine::RubberBandR3ShortWindow:
+        if (!canUseRubberBandForCurrentTrack()) {
+            m_pScaleKeylock = m_pScaleST;
+            break;
+        }
         m_pScaleRB->useEngineFiner(true);
         m_pScaleRB->useOptionWindowShort(true);
         m_pScaleKeylock = m_pScaleRB;
         break;
 #endif
+
     default:
+        // Unknown value: fall back to the configured default and retry.
         slotKeylockEngineChanged(static_cast<double>(defaultKeylockEngine()));
         break;
     }
@@ -1064,11 +1363,13 @@ void EngineBuffer::processTrackLocked(
         // The linear scaler supports ramping though zero.
         // This is used for scratching, but not for reverse
         // For the other, crossfade forward and backward samples
-        if ((m_speed_old * speed < 0) &&  // Direction has changed!
-                (m_pScale != m_pScaleVinyl || // only m_pScaleLinear supports going though 0
-                       m_reverse_old != is_reverse)) { // no pitch change when reversing
-            //XXX: Trying to force RAMAN to read from correct
-            //     playpos when rate changes direction - Albert
+        if ((m_speed_old * speed < 0) &&      // Direction has changed!
+                (m_pScale != m_pScaleVinyl || // only m_pScaleLinear supports
+                                              // going though 0
+                        m_reverse_old !=
+                                is_reverse)) { // no pitch change when reversing
+            // XXX: Trying to force RAMAN to read from correct
+            //      playpos when rate changes direction - Albert
             readToCrossfadeBuffer(bufferSize);
             // Clear the scaler information
             m_pScale->clear();
@@ -1377,35 +1678,35 @@ void EngineBuffer::processSeek(bool paused) {
     }
 
     switch (seekType) {
-        case SEEK_NONE:
+    case SEEK_NONE:
+        return;
+    case SEEK_PHASE:
+        // only adjust phase
+        position = m_playPos;
+        break;
+    case SEEK_STANDARD:
+        if (m_quantize.toBool()) {
+            seekType |= SEEK_PHASE;
+        }
+        // new position was already set above
+        break;
+    case SEEK_EXACT:
+    case SEEK_EXACT_PHASE:    // artificial state = SEEK_EXACT | SEEK_PHASE
+    case SEEK_STANDARD_PHASE: // artificial state = SEEK_STANDARD | SEEK_PHASE
+        // new position was already set above
+        break;
+    case SEEK_CLONE: {
+        // Cloning another channels position.
+        EngineChannel* pOtherChannel = m_pChannelToCloneFrom.fetchAndStoreRelaxed(nullptr);
+        VERIFY_OR_DEBUG_ASSERT(pOtherChannel) {
             return;
-        case SEEK_PHASE:
-            // only adjust phase
-            position = m_playPos;
-            break;
-        case SEEK_STANDARD:
-            if (m_quantize.toBool()) {
-                seekType |= SEEK_PHASE;
-            }
-            // new position was already set above
-            break;
-        case SEEK_EXACT:
-        case SEEK_EXACT_PHASE: // artificial state = SEEK_EXACT | SEEK_PHASE
-        case SEEK_STANDARD_PHASE: // artificial state = SEEK_STANDARD | SEEK_PHASE
-            // new position was already set above
-            break;
-        case SEEK_CLONE: {
-            // Cloning another channels position.
-            EngineChannel* pOtherChannel = m_pChannelToCloneFrom.fetchAndStoreRelaxed(nullptr);
-            VERIFY_OR_DEBUG_ASSERT(pOtherChannel) {
-                return;
-            }
-            position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
-        } break;
-        default:
-            DEBUG_ASSERT(!"Unhandled seek request type");
-            m_queuedSeek.setValue(kNoQueuedSeek);
-            return;
+        }
+        position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
+    } break;
+    default:
+        DEBUG_ASSERT(!"Unhandled seek request type");
+        m_queuedSeek.setValue(kNoQueuedSeek);
+        return;
     }
 
     VERIFY_OR_DEBUG_ASSERT(position.isValid()) {
@@ -1569,7 +1870,7 @@ void EngineBuffer::hintReader(const double dRate) {
     m_hintList.clear();
     m_pReadAheadManager->hintReader(dRate, &m_hintList, m_channelCount);
 
-    //if slipping, hint about virtual position so we're ready for it
+    // if slipping, hint about virtual position so we're ready for it
     if (m_bSlipEnabledProcessing) {
         Hint hint;
         hint.frame = static_cast<SINT>(m_slipPos.toLowerFrameBoundary().value());
