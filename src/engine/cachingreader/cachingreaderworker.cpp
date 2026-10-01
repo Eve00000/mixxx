@@ -776,39 +776,69 @@ void CachingReaderWorker::openAudioSource(const TrackPointer& trackToOpen,
                           << trackToOpen->getFileInfo();
         m_pAudioSource.reset();
         emit trackLoadFailed(trackToOpen, tr("Unsupported number of channels."));
-        return;
+
+        ////////
+        //////////
+
+        // It is critical that the audio source doesn't contain more channels than
+        // requested as this could lead to overflow when reading chunks
+        VERIFY_OR_DEBUG_ASSERT(m_pAudioSource->getSignalInfo().getChannelCount() >=
+                        mixxx::audio::ChannelCount::mono() &&
+                m_pAudioSource->getSignalInfo().getChannelCount() <=
+                        m_maxSupportedChannel) {
+            // Cache the channel count before we reset the AudioSourcePointer
+            const int chCount = static_cast<int>(m_pAudioSource->getSignalInfo().getChannelCount());
+            m_pAudioSource.reset(); // Close open file handles
+            const auto update = ReaderStatusUpdate::trackUnloaded();
+            m_pReaderStatusFIFO->writeBlocking(&update, 1);
+            // emit trackLoadFailed(pTrack,
+            emit trackLoadFailed(trackToOpen,
+                    tr("The file '%1' could not be loaded because it contains %2 "
+                       "channels, and only 1 to %3 are supported.")
+                            .arg(QDir::toNativeSeparators(trackToOpen->getLocation()),
+                                    QString::number(chCount),
+                                    QString::number(m_maxSupportedChannel)));
+
+            ////////////////////
+            ///////////////////
+
+            return;
+        }
+
+        if (m_pAudioSource->frameIndexRange().empty()) {
+            kLogger.warning() << m_group << "Empty track:" << trackToOpen->getFileInfo();
+            m_pAudioSource.reset();
+            emit trackLoadFailed(trackToOpen, tr("Track is empty."));
+            return;
+        }
+
+        // -> 4: Prepare temp buffer for chunking ///
+        const SINT tempReadBufferSize =
+                m_pAudioSource->getSignalInfo().frames2samples(CachingReaderChunk::kFrames);
+        if (m_tempReadBuffer.size() != tempReadBufferSize) {
+            mixxx::SampleBuffer(tempReadBufferSize).swap(m_tempReadBuffer);
+        }
+
+        // -> 5: Notify engine/UI ///
+        const auto update = ReaderStatusUpdate::trackLoaded(m_pAudioSource->frameIndexRange());
+        m_pReaderStatusFIFO->writeBlocking(&update, 1);
+
+        CuePointer pN60dBSound = trackToOpen->findCueByType(mixxx::CueType::N60dBSound);
+        if (pN60dBSound) {
+            m_firstSoundFrameToVerify = pN60dBSound->getPosition();
+        }
+
+        DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
+
+        emit trackLoaded(
+                trackToOpen,
+                m_pAudioSource->getSignalInfo().getSampleRate(),
+                m_pAudioSource->getSignalInfo().getChannelCount(),
+                mixxx::audio::FramePos(m_pAudioSource->frameLength()));
+
+        ////////////
     }
-
-    if (m_pAudioSource->frameIndexRange().empty()) {
-        kLogger.warning() << m_group << "Empty track:" << trackToOpen->getFileInfo();
-        m_pAudioSource.reset();
-        emit trackLoadFailed(trackToOpen, tr("Track is empty."));
-        return;
-    }
-
-    // -> 4: Prepare temp buffer for chunking ///
-    const SINT tempReadBufferSize =
-            m_pAudioSource->getSignalInfo().frames2samples(CachingReaderChunk::kFrames);
-    if (m_tempReadBuffer.size() != tempReadBufferSize) {
-        mixxx::SampleBuffer(tempReadBufferSize).swap(m_tempReadBuffer);
-    }
-
-    // -> 5: Notify engine/UI ///
-    const auto update = ReaderStatusUpdate::trackLoaded(m_pAudioSource->frameIndexRange());
-    m_pReaderStatusFIFO->writeBlocking(&update, 1);
-
-    CuePointer pN60dBSound = trackToOpen->findCueByType(mixxx::CueType::N60dBSound);
-    if (pN60dBSound) {
-        m_firstSoundFrameToVerify = pN60dBSound->getPosition();
-    }
-
-    DEBUG_ASSERT(!m_pChunkReadRequestFIFO->readAvailable());
-
-    emit trackLoaded(
-            trackToOpen,
-            m_pAudioSource->getSignalInfo().getSampleRate(),
-            m_pAudioSource->getSignalInfo().getChannelCount(),
-            mixxx::audio::FramePos(m_pAudioSource->frameLength()));
+    /////////////
 }
 
 void CachingReaderWorker::clearAllTrackFileCacheEntries() {
