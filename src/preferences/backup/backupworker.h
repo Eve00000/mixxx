@@ -16,6 +16,8 @@ class BackUpWorker : public QObject {
             QObject* parent = nullptr);
     ~BackUpWorker() = default;
 
+    static QString resolveDocumentsDir();
+
   public slots:
     void performBackUp();
     void deleteOldBackUps();

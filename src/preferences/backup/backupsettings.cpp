@@ -161,6 +161,26 @@ void BackUpSettings::createSettingsBackUp() {
         qWarning() << "[BackUp] -> Settings directory not found:" << settingsDir;
         startBU = false;
     }
+
+    // Validate the destination before starting the worker
+    // On localized Windows QStandardPaths::DocumentsLocation
+    // can return a display name like "Documenten" in NL
+    // that Win32 tools like robocopy cannot resolve.
+    // BackUpWorker::resolveDocumentsDir() handles the fallback;
+    // here we just confirm the parent folder is usable so we can skip
+    // the backup cleanly instead of failing inside the worker.
+    if (startBU) {
+        const QString documentsDir = BackUpWorker::resolveDocumentsDir();
+        qDebug() << "[BackUp] -> resolved backup base directory:" << documentsDir;
+        if (documentsDir.isEmpty() ||
+                !QDir().mkpath(documentsDir + "/Mixxx-BackUps")) {
+            qWarning() << "[BackUp] -> Cannot create backup destination under:"
+                       << documentsDir
+                       << "- skipping backup.";
+            startBU = false;
+        }
+    }
+
     if (startBU) {
         startBackUpWorker();
         m_pConfig->setValue(ConfigKey(kConfigGroup, kLastBackUp), today.toString("yyyyMMdd"));
