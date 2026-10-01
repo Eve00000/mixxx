@@ -1,5 +1,6 @@
+#include "engine/cachingreader/cachingreader.h"
+
 #include <QDir>
-#include <QRegularExpression>
 #include <QtDebug>
 
 #include "moc_cachingreader.cpp"
@@ -12,7 +13,6 @@
 namespace {
 
 mixxx::Logger kLogger("CachingReader");
-static QRegularExpression s_trailingSlashesRegex("/+$");
 
 // This is the default hint frameCount that is adopted in case of Hint::kFrameCountForward and
 // Hint::kFrameCountBackward count is provided. It matches 23 ms @ 44.1 kHz
@@ -35,6 +35,15 @@ constexpr SINT kDefaultHintFrames = 1024;
 // to verify that the MRU/LRU cache works as expected. Even though
 // massive drop outs are expected to occur Mixxx should run reliably!
 constexpr SINT kNumberOfCachedChunksInMemory = 80;
+
+#ifdef Q_OS_WIN
+// Default trackFileCache directory on Windows.
+// Preferably a ramdriveletter
+const QString kDefaultTrackFileCachePath = QStringLiteral("R:/MixxxTmp/");
+#else
+// Default trackFileCache directory on Linux /dev/shm
+const QString kDefaultTrackFileCachePath = QStringLiteral("/dev/shm/MixxxTmp/");
+#endif
 
 } // anonymous namespace
 CachingReader::TrackFileCacheConfig CachingReader::s_trackFileCacheConfig;
@@ -67,7 +76,7 @@ CachingReader::CachingReader(const QString& group,
                   &m_chunkReadRequestFIFO,
                   &m_readerStatusUpdateFIFO,
                   maxSupportedChannel) {
-    // Initialize RAM play config (only once)
+    // Initialize TrackFileCache config (only once)
     initializeTrackFileCacheConfig(m_pConfig);
 
     // Pass config values to worker
@@ -127,47 +136,26 @@ CachingReader::~CachingReader() {
 }
 
 QString CachingReader::getTrackFileCachePathFromConfig(UserSettingsPointer pConfig) {
-    QString path;
+    if (!pConfig) {
+        return kDefaultTrackFileCachePath;
+    }
 
 #ifdef Q_OS_WIN
-    path = pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsPath"));
-    // Fallback to old format if new path is empty
-    if (path.isEmpty()) {
-        QString driveLetter = pConfig->getValueString(
-                ConfigKey("[TrackFileCache]", "WindowsDrive"));
-        driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
-        if (driveLetter.isEmpty()) {
-            driveLetter = "R";
-        }
-        QString dirName = pConfig->getValueString(ConfigKey("[TrackFileCache]", "DirectoryName"));
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp";
-        }
-        path = driveLetter + ":/" + dirName + "/";
-    }
+    const ConfigKey pathKey("[TrackFileCache]", "WindowsPath");
 #else
-    path = pConfig->getValueString(ConfigKey("[TrackFileCache]", "UnixPath"));
-    // Fallback to old format if new path is empty
-    if (path.isEmpty()) {
-        QString basePath = pConfig->getValueString(ConfigKey("[TrackFileCache]", "LinuxDrive"));
-        if (basePath.isEmpty()) {
-            basePath = "/dev/shm";
-        }
-        QString dirName = pConfig->getValueString(ConfigKey("[TrackFileCache]", "DirectoryName"));
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp";
-        }
-        while (basePath.endsWith('/')) {
-            basePath.chop(1);
-        }
-        path = basePath + "/" + dirName + "/";
-    }
+    const ConfigKey pathKey("[TrackFileCache]", "UnixPath");
 #endif
 
-    // Ensure path ends with slash
-    if (!path.endsWith('/')) {
-        path += '/';
+    QString path = pConfig->getValueString(pathKey);
+    if (path.isEmpty()) {
+        path = kDefaultTrackFileCachePath;
     }
+
+    // the path must always end with exactly one '/'.
+    while (path.endsWith('/')) {
+        path.chop(1);
+    }
+    path += '/';
 
     return path;
 }
@@ -176,56 +164,36 @@ void CachingReader::initializeTrackFileCacheConfig(UserSettingsPointer pConfig) 
     QMutexLocker locker(&s_configMutex);
 
     if (s_trackFileCacheConfig.initialized) {
-        return; // Already initialized
+        return;
     }
 
     if (!pConfig) {
-        // Set defaults
-#ifdef Q_OS_WIN
-        s_trackFileCacheConfig.trackFileCacheDiskPath = "R:/MixxxTmp/";
-#else
-        s_trackFileCacheConfig.trackFileCacheDiskPath = "/dev/shm/MixxxTmp/";
-#endif
+        // No config -> defaults
+        s_trackFileCacheConfig.enabled = kDefaultTrackFileCacheEnabled;
+        s_trackFileCacheConfig.maxSizeMB = kDefaultTrackFileCacheMaxSizeMB;
+        s_trackFileCacheConfig.decksEnabled = kDefaultTrackFileCacheDecks;
+        s_trackFileCacheConfig.samplersEnabled = kDefaultTrackFileCacheSamplers;
+        s_trackFileCacheConfig.previewEnabled = kDefaultTrackFileCachePreviewDeck;
+        s_trackFileCacheConfig.trackFileCacheDiskPath = kDefaultTrackFileCachePath;
         s_trackFileCacheConfig.initialized = true;
         return;
     }
 
-    // Check if config vars exist else create
     createTrackFileCacheConfigVars(pConfig);
 
-    s_trackFileCacheConfig.enabled =
-            pConfig->getValue<bool>(ConfigKey("[TrackFileCache]", "Enabled"));
-    s_trackFileCacheConfig.maxSizeMB =
-            pConfig->getValue<int>(ConfigKey("[TrackFileCache]", "MaxSizeMB"));
-    s_trackFileCacheConfig.decksEnabled =
-            pConfig->getValue<bool>(ConfigKey("[TrackFileCache]", "Decks"));
-    s_trackFileCacheConfig.samplersEnabled =
-            pConfig->getValue<bool>(ConfigKey("[TrackFileCache]", "Samplers"));
-    s_trackFileCacheConfig.previewEnabled =
-            pConfig->getValue<bool>(ConfigKey("[TrackFileCache]", "PreviewDeck"));
+    s_trackFileCacheConfig.enabled = pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Enabled"));
+    s_trackFileCacheConfig.maxSizeMB = pConfig->getValue<int>(
+            ConfigKey("[TrackFileCache]", "MaxSizeMB"));
+    s_trackFileCacheConfig.decksEnabled = pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Decks"));
+    s_trackFileCacheConfig.samplersEnabled = pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Samplers"));
+    s_trackFileCacheConfig.previewEnabled = pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "PreviewDeck"));
 
-    QString dirName = pConfig->getValueString(ConfigKey("[TrackFileCache]", "DirectoryName"));
-    if (dirName.isEmpty()) {
-        dirName = "MixxxTmp";
-    }
-
-#ifdef Q_OS_WIN
-    QString driveLetter = pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsDrive"));
-    driveLetter = driveLetter.replace(QRegularExpression("[^a-zA-Z]"), "").toUpper();
-    if (driveLetter.isEmpty()) {
-        driveLetter = "R";
-    }
-    s_trackFileCacheConfig.trackFileCacheDiskPath = driveLetter + ":/" + dirName + "/";
-#else
-    QString basePath = pConfig->getValueString(ConfigKey("[TrackFileCache]", "LinuxDrive"));
-    if (basePath.isEmpty()) {
-        basePath = "/dev/shm";
-    }
-    while (basePath.endsWith('/')) {
-        basePath.chop(1);
-    }
-    s_trackFileCacheConfig.trackFileCacheDiskPath = basePath + "/" + dirName + "/";
-#endif
+    s_trackFileCacheConfig.trackFileCacheDiskPath =
+            getTrackFileCachePathFromConfig(pConfig);
 
     s_trackFileCacheConfig.initialized = true;
 
@@ -245,41 +213,37 @@ void CachingReader::createTrackFileCacheConfigVars(UserSettingsPointer pConfig) 
 
     ConfigKey enabledKey("[TrackFileCache]", "Enabled");
     if (!pConfig->exists(enabledKey)) {
-        pConfig->setValue(enabledKey, false);
+        pConfig->setValue(enabledKey, kDefaultTrackFileCacheEnabled);
     }
 
     ConfigKey maxSizeKey("[TrackFileCache]", "MaxSizeMB");
     if (!pConfig->exists(maxSizeKey)) {
-        pConfig->setValue(maxSizeKey, 512);
+        pConfig->setValue(maxSizeKey, kDefaultTrackFileCacheMaxSizeMB);
     }
 
     ConfigKey decksKey("[TrackFileCache]", "Decks");
     if (!pConfig->exists(decksKey)) {
-        pConfig->setValue(decksKey, true);
+        pConfig->setValue(decksKey, kDefaultTrackFileCacheDecks);
     }
 
     ConfigKey samplersKey("[TrackFileCache]", "Samplers");
     if (!pConfig->exists(samplersKey)) {
-        pConfig->setValue(samplersKey, true);
+        pConfig->setValue(samplersKey, kDefaultTrackFileCacheSamplers);
     }
 
     ConfigKey previewKey("[TrackFileCache]", "PreviewDeck");
     if (!pConfig->exists(previewKey)) {
-        pConfig->setValue(previewKey, false);
+        pConfig->setValue(previewKey, kDefaultTrackFileCachePreviewDeck);
     }
 
-    // Add new path config vars with empty defaults (will use fallback logic)
 #ifdef Q_OS_WIN
-    ConfigKey windowsPathKey("[TrackFileCache]", "WindowsPath");
-    if (!pConfig->exists(windowsPathKey)) {
-        pConfig->setValue(windowsPathKey, QString(""));
-    }
+    ConfigKey pathKey("[TrackFileCache]", "WindowsPath");
 #else
-    ConfigKey unixPathKey("[TrackFileCache]", "UnixPath");
-    if (!pConfig->exists(unixPathKey)) {
-        pConfig->setValue(unixPathKey, QString(""));
-    }
+    ConfigKey pathKey("[TrackFileCache]", "UnixPath");
 #endif
+    if (!pConfig->exists(pathKey)) {
+        pConfig->setValue(pathKey, QString());
+    }
 }
 
 void CachingReader::freeChunkFromList(CachingReaderChunkForOwner* pChunk) {

@@ -1,5 +1,6 @@
 #include "preferences/dialog/dlgprefdeck.h"
 
+#include <QDir>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QRegularExpression>
@@ -764,6 +765,29 @@ void DlgPrefDeck::slotResetToDefaults() {
             kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
 
     spinBoxNonLoopSampleLength->setValue(kDefaultNonLoopSampleLengthSec);
+
+    // TrackFileCache
+    checkBoxTrackFileCacheEnabled->setChecked(CachingReader::kDefaultTrackFileCacheEnabled);
+
+    // Reset path to the platform default. Passing nullptr returns the default
+    // without touching the user's config; the value only gets persisted on
+    // Apply via saveTrackFileCacheSettings().
+    lineEditTrackFileCacheLocation->setText(
+            CachingReader::getTrackFileCachePathFromConfig(nullptr));
+
+    int defaultSizeIndex = comboBoxMaxTrackFileCacheSize->findData(
+            CachingReader::kDefaultTrackFileCacheMaxSizeMB);
+    if (defaultSizeIndex != -1) {
+        comboBoxMaxTrackFileCacheSize->setCurrentIndex(defaultSizeIndex);
+    }
+
+    checkBoxTrackFileCacheDecks->setChecked(CachingReader::kDefaultTrackFileCacheDecks);
+    checkBoxTrackFileCacheSamplers->setChecked(CachingReader::kDefaultTrackFileCacheSamplers);
+    checkBoxTrackFileCachePreviewDeck->setChecked(
+            CachingReader::kDefaultTrackFileCachePreviewDeck);
+
+    // Sync dependent widget enable/disable state with the checkbox.
+    slotTrackFileCacheEnabledChanged(CachingReader::kDefaultTrackFileCacheEnabled);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -993,7 +1017,23 @@ void DlgPrefDeck::slotApply() {
             ConfigKey(kControlsGroup, QStringLiteral("RatePermRight")),
             m_dRatePermFine);
 
-    // TrackFileCache
+    // NowPlaying
+    m_pConfig->setValue(kConfigKeyNowPlayingEnabled, m_bNowPlayingEnabled);
+    m_pConfig->setValue(kConfigKeyNowPlayingAppendMode, m_bNowPlayingAppendMode);
+    m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
+    m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
+    m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
+
+    // IncludeOriginalMasterWhenPlayingStems
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            m_bUpSampleStems);
+
+    // Non-loop sample export length
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            m_iNonLoopSampleLengthSec);
+
+    // TrackFileCache (only its own keys)
     saveTrackFileCacheSettings();
 }
 
@@ -1002,35 +1042,45 @@ void DlgPrefDeck::saveTrackFileCacheSettings() {
     m_pConfig->setValue(ConfigKey("[TrackFileCache]", "Enabled"), trackFileCacheEnabled);
 
     QString newTrackFileCachePath = lineEditTrackFileCacheLocation->text();
-    // Ensure path ends with slash
-    if (!newTrackFileCachePath.endsWith('/')) {
-        newTrackFileCachePath += '/';
+    // path -> ends with exactly one slash.
+    while (newTrackFileCachePath.endsWith('/')) {
+        newTrackFileCachePath.chop(1);
+    }
+    newTrackFileCachePath += '/';
+
+    // old path -> needed for clean up if changed.
+#ifdef Q_OS_WIN
+    QString oldTrackFileCachePath =
+            m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsPath"));
+#else
+    QString oldTrackFileCachePath =
+            m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "UnixPath"));
+#endif
+    if (oldTrackFileCachePath.isEmpty()) {
+        oldTrackFileCachePath = CachingReader::getTrackFileCachePathFromConfig(nullptr);
+    } else {
+        while (oldTrackFileCachePath.endsWith('/')) {
+            oldTrackFileCachePath.chop(1);
+        }
+        oldTrackFileCachePath += '/';
     }
 
-    // Get the old path -> needed for clean up if changed
-    QString oldTrackFileCachePath;
-#ifdef Q_OS_WIN
-    oldTrackFileCachePath = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsPath"));
-#else
-    oldTrackFileCachePath = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "UnixPath"));
-#endif
-
-    // Save new full path
+    // save new path
 #ifdef Q_OS_WIN
     m_pConfig->setValue(ConfigKey("[TrackFileCache]", "WindowsPath"), newTrackFileCachePath);
 #else
     m_pConfig->setValue(ConfigKey("[TrackFileCache]", "UnixPath"), newTrackFileCachePath);
 #endif
 
-    // If path changed, clean up old location and clear tracking
-    if (!oldTrackFileCachePath.isEmpty() && oldTrackFileCachePath != newTrackFileCachePath) {
+    // if path changed -> clean up old location and clear tracking
+    if (oldTrackFileCachePath != newTrackFileCachePath) {
         qDebug() << "TrackFileCache location changed from" << oldTrackFileCachePath
                  << "to" << newTrackFileCachePath << "- cleaning up old location";
 
-        // Clean up files in old location
+        // clean up files in old location
         CachingReaderWorker::cleanupAllTrackFileCacheFiles(oldTrackFileCachePath);
 
-        // Clear all tracking entries since they reference old paths
+        // clear all tracking entries
         CachingReaderWorker::clearAllTrackFileCacheEntries();
     }
 
@@ -1043,20 +1093,6 @@ void DlgPrefDeck::saveTrackFileCacheSettings() {
             checkBoxTrackFileCacheSamplers->isChecked());
     m_pConfig->setValue(ConfigKey("[TrackFileCache]", "PreviewDeck"),
             checkBoxTrackFileCachePreviewDeck->isChecked());
-
-    // nowPlaying
-    m_pConfig->setValue(kConfigKeyNowPlayingEnabled, m_bNowPlayingEnabled);
-    m_pConfig->setValue(kConfigKeyNowPlayingAppendMode, m_bNowPlayingAppendMode);
-    m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
-    m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
-    m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
-
-    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
-            m_bUpSampleStems);
-
-    m_pConfig->setValue(
-            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
-            m_iNonLoopSampleLengthSec);
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1167,45 +1203,17 @@ void DlgPrefDeck::populateTrackFileCacheSizeComboBox() {
 
 void DlgPrefDeck::loadTrackFileCacheSettings() {
     bool trackFileCacheEnabled = m_pConfig->getValue<bool>(
-            ConfigKey("[TrackFileCache]", "Enabled"), false);
+            ConfigKey("[TrackFileCache]", "Enabled"),
+            CachingReader::kDefaultTrackFileCacheEnabled);
     checkBoxTrackFileCacheEnabled->setChecked(trackFileCacheEnabled);
 
-    QString trackFileCachePath;
-#ifdef Q_OS_WIN
-    trackFileCachePath = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsPath"));
-    if (trackFileCachePath.isEmpty()) {
-        // Fallback to old format or default
-        QString driveLetter = m_pConfig->getValueString(
-                ConfigKey("[TrackFileCache]", "WindowsDrive"));
-        if (driveLetter.isEmpty()) {
-            driveLetter = "C";
-        }
-        QString dirName = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "DirectoryName"));
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp";
-        }
-        trackFileCachePath = driveLetter + ":/" + dirName + "/";
-    }
-#else
-    trackFileCachePath = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "UnixPath"));
-    if (trackFileCachePath.isEmpty()) {
-        // Fallback to old format or default
-        QString basePath = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "LinuxDrive"));
-        if (basePath.isEmpty()) {
-            basePath = "/dev/shm";
-        }
-        QString dirName = m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "DirectoryName"));
-        if (dirName.isEmpty()) {
-            dirName = "MixxxTmp";
-        }
-        trackFileCachePath = basePath + "/" + dirName + "/";
-    }
-#endif
-
+    QString trackFileCachePath =
+            CachingReader::getTrackFileCachePathFromConfig(m_pConfig);
     lineEditTrackFileCacheLocation->setText(trackFileCachePath);
 
     int trackFileCacheMaxSizeMB = m_pConfig->getValue<int>(
-            ConfigKey("[TrackFileCache]", "MaxSizeMB"), 256);
+            ConfigKey("[TrackFileCache]", "MaxSizeMB"),
+            CachingReader::kDefaultTrackFileCacheMaxSizeMB);
 
     int trackFileCacheIndex = comboBoxMaxTrackFileCacheSize->findData(trackFileCacheMaxSizeMB);
     if (trackFileCacheIndex != -1) {
@@ -1214,30 +1222,29 @@ void DlgPrefDeck::loadTrackFileCacheSettings() {
         comboBoxMaxTrackFileCacheSize->addItem(
                 QString("%1 MB").arg(trackFileCacheMaxSizeMB),
                 trackFileCacheMaxSizeMB);
-        comboBoxMaxTrackFileCacheSize->setCurrentIndex(comboBoxMaxTrackFileCacheSize->count() - 1);
+        comboBoxMaxTrackFileCacheSize->setCurrentIndex(
+                comboBoxMaxTrackFileCacheSize->count() - 1);
     }
 
     bool trackFileCacheDecksEnabled = m_pConfig->getValue<bool>(
-            ConfigKey("[TrackFileCache]", "Decks"), true);
+            ConfigKey("[TrackFileCache]", "Decks"),
+            CachingReader::kDefaultTrackFileCacheDecks);
     checkBoxTrackFileCacheDecks->setChecked(trackFileCacheDecksEnabled);
 
     bool trackFileCacheSamplersEnabled = m_pConfig->getValue<bool>(
-            ConfigKey("[TrackFileCache]", "Samplers"), true);
+            ConfigKey("[TrackFileCache]", "Samplers"),
+            CachingReader::kDefaultTrackFileCacheSamplers);
     checkBoxTrackFileCacheSamplers->setChecked(trackFileCacheSamplersEnabled);
 
     bool trackFileCachePreviewDeckEnabled = m_pConfig->getValue<bool>(
-            ConfigKey("[TrackFileCache]", "PreviewDeck"), false);
+            ConfigKey("[TrackFileCache]", "PreviewDeck"),
+            CachingReader::kDefaultTrackFileCachePreviewDeck);
     checkBoxTrackFileCachePreviewDeck->setChecked(trackFileCachePreviewDeckEnabled);
 
-    // Enable/disable controls based on main checkbox
-    // slotTrackFileCacheEnabledChanged(trackFileCacheEnabled ? Qt::Checked : Qt::Unchecked);
     slotTrackFileCacheEnabledChanged(trackFileCacheEnabled);
 }
 
-// void DlgPrefDeck::slotTrackFileCacheEnabledChanged(int state) {
 void DlgPrefDeck::slotTrackFileCacheEnabledChanged(bool enabled) {
-    // bool enabled = (state == Qt::Checked);
-
     lineEditTrackFileCacheLocation->setEnabled(enabled);
     pushButtonBrowseTrackFileCacheLocation->setEnabled(enabled);
     comboBoxMaxTrackFileCacheSize->setEnabled(enabled);
@@ -1263,14 +1270,19 @@ void DlgPrefDeck::slotBrowseTrackFileCacheLocation() {
             QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
     if (!dir.isEmpty()) {
-        lineEditTrackFileCacheLocation->setText(dir + "/MixxxTmp/");
+        while (dir.endsWith('/')) {
+            dir.chop(1);
+        }
+        if (!dir.endsWith(QStringLiteral("/MixxxTmp"))) {
+            dir += QStringLiteral("/MixxxTmp");
+        }
+        lineEditTrackFileCacheLocation->setText(dir + '/');
     }
 }
 
 void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
     m_bNowPlayingEnabled = checked;
 
-    // Enable/disable dependent controls
     checkBoxNowPlayingAppend->setEnabled(checked);
     checkBoxNowPlayingAddTimestamp->setEnabled(checked && m_bNowPlayingAppendMode);
     checkBoxNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
