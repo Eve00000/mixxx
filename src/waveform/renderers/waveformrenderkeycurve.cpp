@@ -506,8 +506,9 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(QPainter* painter,
         const QRectF& outerRect,
         const QRectF& innerRect,
         const QString& lancelot) {
-    if (lancelot.isEmpty())
+    if (lancelot.isEmpty()) {
         return;
+    }
 
     for (const auto& key : std::as_const(m_lancelotLayout)) {
         if (key.lancelot == lancelot) {
