@@ -17,6 +17,7 @@
 #include "util/assert.h"
 #include "util/logger.h"
 #include "util/parented_ptr.h"
+#include "widget/wfastsearch.h"
 #include "wskincolor.h"
 
 #define ENABLE_TRACE_LOG false
@@ -31,6 +32,8 @@ const QString kDisabledText = QStringLiteral("- - -");
 
 const QString kLibraryConfigGroup = QStringLiteral("[Library]");
 const QString kSavedQueriesConfigGroup = QStringLiteral("[SearchQueries]");
+const QString kSearchCrateConfigGroup = QStringLiteral("[SearchCrate]");
+const QString kSearchCrateQueriesConfigGroup = QStringLiteral("[SearchCrateQueries]");
 
 // Border width, max. 2 px when focused (in official skins)
 constexpr int kBorderWidth = 2;
@@ -88,6 +91,7 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
           m_pConfig(pConfig),
           m_completer(make_parented<QCompleter>(this)),
           m_clearButton(make_parented<QToolButton>(this)),
+          m_2SearchCrateButton(make_parented<QToolButton>(this)),
           m_queryEmitted(false) {
     qRegisterMetaType<FocusWidget>("FocusWidget");
     setAcceptDrops(false);
@@ -122,6 +126,14 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
             this,
             &WSearchLineEdit::slotClearSearch);
 
+    m_2SearchCrateButton->setCursor(Qt::PointingHandCursor);
+    m_2SearchCrateButton->setObjectName(QStringLiteral("2SearchCrateButton"));
+    m_2SearchCrateButton->hide();
+    connect(m_2SearchCrateButton,
+            &QAbstractButton::clicked,
+            this,
+            &WSearchLineEdit::slot2SearchCrate);
+
     // Set up a timer to search after a few hundred milliseconds timeout.  This
     // stops us from thrashing the database if you type really fast.
     m_debouncingTimer.setSingleShot(true);
@@ -138,6 +150,13 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
             &QComboBox::currentTextChanged,
             this,
             &WSearchLineEdit::slotTextChanged);
+    QShortcut* setFocusShortcut = new QShortcut(QKeySequence(tr("Ctrl+F3", "Search|Focus")), this);
+    // if (pConfig->getValue<bool>(ConfigKey("[Search]", "PopupSearch"))) {
+    connect(setFocusShortcut,
+            &QShortcut::activated,
+            this,
+            &WSearchLineEdit::slotShowFastSearchDialog);
+    //}
     connect(this,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -150,6 +169,49 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
 
 WSearchLineEdit::~WSearchLineEdit() {
     saveQueriesInConfig();
+}
+
+void WSearchLineEdit::slotShowFastSearchDialog() {
+    WFastSearch* dialog = new WFastSearch(m_pConfig, this);
+
+    connect(dialog, &WFastSearch::searchRequest, this, [this](const QString& result) {
+        QString query;
+        const QStringList parts = result.split("\n");
+        for (const QString& part : std::as_const(parts)) {
+            if (part.startsWith("query: ")) {
+                query = part.mid(7).trimmed();
+            }
+        }
+        if (query.isEmpty()) {
+            return;
+        }
+        setTextBlockSignals(query);
+        updateClearAndDropdownButton(query);
+        emit search(query);
+        m_queryEmitted = true;
+    });
+
+    connect(dialog, &WFastSearch::search2CrateRequest, this, [this](const QString& result) {
+        QString userInput, query;
+        const QStringList parts = result.split("\n");
+        for (const QString& part : std::as_const(parts)) {
+            if (part.startsWith("userinput: ")) {
+                userInput = part.mid(11).trimmed();
+            } else if (part.startsWith("query: ")) {
+                query = part.mid(7).trimmed();
+            }
+        }
+        if (query.isEmpty()) {
+            return;
+        }
+        setTextBlockSignals(query);
+        updateClearAndDropdownButton(query);
+        emit newSearchCrate(userInput);
+        m_queryEmitted = true;
+    });
+
+    dialog->exec();
+    dialog->deleteLater();
 }
 
 void WSearchLineEdit::setup(const QDomNode& node, const SkinContext& context) {
@@ -212,6 +274,10 @@ void WSearchLineEdit::setup(const QDomNode& node, const SkinContext& context) {
 
     m_clearButton->setToolTip(tr("Clear input") + "\n" +
             tr("Clear the search bar input field"));
+    m_2SearchCrateButton->setToolTip(tr("Moves the result of the query") + "\n" +
+            tr("to a new SearchCrate container") + "\n\n" +
+            tr("Shortcut") + ": \n" +
+            tr("None Yet"));
 }
 
 void WSearchLineEdit::setupToolTip(const QString& searchInCurrentViewShortcut,
@@ -280,6 +346,26 @@ void WSearchLineEdit::saveQueriesInConfig() {
     }
 }
 
+void WSearchLineEdit::slot2SearchCrate() {
+#if ENABLE_TRACE_LOG
+    kLogger.trace()
+            << "slot2SearchCrate";
+#endif // ENABLE_TRACE_LOG
+    if (!isEnabled()) {
+        return;
+    }
+
+    emit newSearchCrate(getSearchText());
+    m_queryEmitted = true;
+
+    setCurrentIndex(-1);
+    saveQueriesInConfig();
+    lineEdit()->clear();
+
+    // Refocus the edit field
+    // setFocus(Qt::OtherFocusReason);
+}
+
 void WSearchLineEdit::resizeEvent(QResizeEvent* e) {
     QComboBox::resizeEvent(e);
     int innerHeight = height() - 2 * kBorderWidth;
@@ -294,13 +380,24 @@ void WSearchLineEdit::resizeEvent(QResizeEvent* e) {
         // after skin change/reload.
         refreshState();
     }
+    if (m_2SearchCrateButton->size().height() != innerHeight) {
+        QSize newSize = QSize(innerHeight, innerHeight);
+        m_2SearchCrateButton->resize(newSize);
+        m_2SearchCrateButton->setIconSize(newSize);
+        refreshState();
+    }
     int top = rect().top() + kBorderWidth;
     if (layoutDirection() == Qt::LeftToRight) {
         m_clearButton->move(rect().right() -
                         static_cast<int>(1.7 * innerHeight) - kBorderWidth,
                 top);
+        m_2SearchCrateButton->move(rect().right() -
+                        static_cast<int>(1.7 * innerHeight) - kBorderWidth,
+                top);
     } else {
         m_clearButton->move(static_cast<int>(0.7 * innerHeight) + kBorderWidth,
+                top);
+        m_2SearchCrateButton->move(static_cast<int>(0.7 * innerHeight) + kBorderWidth,
                 top);
     }
 }
@@ -703,6 +800,7 @@ void WSearchLineEdit::updateClearAndDropdownButton(const QString& text) {
     // Hide clear button if the text is empty and while placeholder is shown,
     // see disableSearch()
     m_clearButton->setVisible(!text.isEmpty());
+    m_2SearchCrateButton->setVisible(!text.isEmpty());
 
     // Ensure the text is not obscured by the clear button. Otherwise no text,
     // no clear button, so the placeholder should use the entire width.
@@ -776,6 +874,14 @@ bool WSearchLineEdit::slotClearSearchIfClearButtonHasFocus() {
     return true;
 }
 
+bool WSearchLineEdit::slot2SearchCrateIf2SearchCrateButtonHasFocus() {
+    if (!m_2SearchCrateButton->hasFocus()) {
+        return false;
+    }
+    slot2SearchCrate();
+    return true;
+}
+
 void WSearchLineEdit::slotIndexChanged(int index) {
     if (index != -1) {
         m_saveTimer.stop();
@@ -811,6 +917,14 @@ void WSearchLineEdit::setFocus(Qt::FocusReason focusReason) {
         // presses the shortcut key while already in the searchbox),
         // we need to manually simulate this behavior instead.
         lineEdit()->selectAll();
+    }
+}
+
+void WSearchLineEdit::slotSetShortcutFocus() {
+    if (hasFocus()) {
+        lineEdit()->selectAll();
+    } else {
+        setFocus(Qt::ShortcutFocusReason);
     }
 }
 
