@@ -292,12 +292,13 @@ void WaveformRenderKeyCurve::calculateTransposedValues(int totalSemitones) {
     bool isMinor = (m_currentKeyId >= 13);
 
     int transposedRoot = (rootNote + totalSemitones) % 12;
-    if (transposedRoot < 0)
+    if (transposedRoot < 0) {
         transposedRoot += 12;
-
+    }
     int transposedKeyId = transposedRoot + 1;
-    if (isMinor)
+    if (isMinor) {
         transposedKeyId += 12;
+    }
 
     // Get Lancelot for the transposed key
     if (m_style.wheelType == KeyCurveStyle::WHEEL_MIXXX) {
@@ -528,10 +529,12 @@ void WaveformRenderKeyCurve::drawHighlightedWheelKey(QPainter* painter,
 }
 
 void WaveformRenderKeyCurve::drawLancelotWheel(QPainter* painter) {
-    if (!m_showLancelotWheel)
+    if (!m_showLancelotWheel) {
         return;
-    if (m_segments.isEmpty())
+    }
+    if (m_segments.isEmpty()) {
         return;
+    }
 
     m_wheelSize = static_cast<int>(m_waveformRenderer->getHeight() * 0.7);
     if (m_wheelSize < 60) {
@@ -835,13 +838,15 @@ void WaveformRenderKeyCurve::draw(QPainter* painter, QPaintEvent* /*event*/) {
         KeyUtils::KeyNotation notation = KeyUtils::keyNotationFromNumericValue(notationValue);
 
         for (const auto& seg : std::as_const(m_segments)) {
-            if (seg.confidence < 50.0)
+            if (seg.confidence < 50.0) {
                 continue;
+            }
 
             double startPos = seg.startTime * (trackSamples / trackLengthSeconds);
 
-            if (startPos < startSample || startPos > endSample)
+            if (startPos < startSample || startPos > endSample) {
                 continue;
+            }
 
             double x = m_waveformRenderer->transformSamplePositionInRendererWorld(
                     startPos, ::WaveformRendererAbstract::Play);

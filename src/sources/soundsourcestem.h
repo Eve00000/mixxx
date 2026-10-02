@@ -40,7 +40,7 @@ class SoundSourceSTEM : public SoundSource {
     int getReferenceSampleRate() const;
 
     void processPremixDownsampler(const WritableSampleFrames& globalSampleFrames,
-            CSAMPLE* pBuffer);
+            const CSAMPLE* pBuffer);
     bool validateBufferAccess(SINT sourceIndex, SINT inputFramesNeeded) const;
     void safeBufferCopy(const CSAMPLE* source,
             CSAMPLE* dest,

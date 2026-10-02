@@ -733,7 +733,7 @@ void SoundSourceSTEM::safeBufferCopy(const CSAMPLE* source,
 
 void SoundSourceSTEM::processPremixDownsampler(
         const WritableSampleFrames& globalSampleFrames,
-        CSAMPLE* pBuffer) {
+        const CSAMPLE* pBuffer) {
     // Kept for API compatibility; the current read path uses the generic
     // resampler for the premix stream as well.
     Q_UNUSED(globalSampleFrames);

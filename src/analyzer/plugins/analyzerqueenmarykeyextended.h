@@ -60,7 +60,7 @@ class AnalyzerQueenMaryKeyExtended : public AnalyzerKeyPlugin {
     void buildKeySegments();
     void smoothKeyResults();
     QString keyToString(int key) const;
-    double calculateConfidence(double* keyStrengths, int detectedKeyIndex) const;
+    double calculateConfidence(const double* keyStrengths, int detectedKeyIndex) const;
 
     std::unique_ptr<GetKeyMode> m_pKeyMode;
     DownmixAndOverlapHelper m_helper;

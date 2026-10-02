@@ -728,14 +728,14 @@ void EngineBuffer::slotTrackLoaded(TrackPointer pTrack,
     // vinyl-control takeover of the scaler is preserved.
     slotKeylockEngineChanged(m_pKeylockEngine->get());
 
-    // if (kLogger.debugEnabled()) {
-    //     kLogger.debug()
-    //             << "Scaler selected for track"
-    //             << getGroup()
-    //             << "channels =" << m_channelCount
-    //             << "scaleRB =" << (m_pScaleKeylock == m_pScaleRB)
-    //             << "scaleST =" << (m_pScaleKeylock == m_pScaleST);
-    // }
+    if (kLogger.debugEnabled()) {
+        kLogger.debug()
+                << "Scaler selected for track"
+                << getGroup()
+                << "channels =" << m_channelCount
+                << "scaleRB =" << (m_pScaleKeylock == m_pScaleRB)
+                << "scaleST =" << (m_pScaleKeylock == m_pScaleST);
+    }
 
     m_pTrackSamples->set(trackNumFrame.toEngineSamplePos());
     m_pTrackSampleRate->set(trackSampleRate.toDouble());
@@ -868,10 +868,12 @@ void EngineBuffer::ejectTrack() {
     m_pTrackArtistLength->set(0);
     m_pTrackTitleLength->set(0);
 
-    for (int i = 0; i < kArtistSlots; ++i)
+    for (int i = 0; i < kArtistSlots; ++i) {
         m_pTrackArtist[i]->set(0);
-    for (int i = 0; i < kTitleSlots; ++i)
+    }
+    for (int i = 0; i < kTitleSlots; ++i) {
         m_pTrackTitle[i]->set(0);
+    }
     // EVE
 
     // OSC Send message for displaying no track is loaded on COS-Clients

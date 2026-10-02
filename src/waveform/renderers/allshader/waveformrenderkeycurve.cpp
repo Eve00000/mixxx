@@ -687,8 +687,9 @@ void WaveformRenderKeyCurve::drawWheelText(
 
     QFont font = painter.font();
     int baseFontSize = static_cast<int>(m_waveformRenderer->getHeight() * 0.1);
-    if (baseFontSize < 8)
+    if (baseFontSize < 8) {
         baseFontSize = 8;
+    }
 
     // Calculate text width and adjust font size if needed
     int maxWidth = wheelSize;
