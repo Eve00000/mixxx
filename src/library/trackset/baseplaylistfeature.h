@@ -43,8 +43,6 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     void bindSidebarWidget(WLibrarySidebar* pSidebarWidget) override;
     void selectPlaylistInSidebar(int playlistId, bool select = true);
     int getSiblingPlaylistIdOf(QModelIndex& start);
-    int levenshteinDistance(const QString& s1, const QString& s2);
-    QString cleanString(const QString& input) const;
 
   public slots:
     void activateChild(const QModelIndex& index) override;
@@ -153,7 +151,6 @@ class BasePlaylistFeature : public BaseTrackSetFeature {
     virtual QString getRootViewHtml() const = 0;
     bool markTreeItem(TreeItem* pTreeItem);
     QString fetchPlaylistLabel(int playlistId);
-    QStringList parseCsvLine(const QString& line) const;
 
     const bool m_keepHiddenTracks;
 };
