@@ -80,6 +80,9 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
     void slotTriggerSearch();
     void slotSaveSearch();
 
+    void slotShowFastSearchDialog();
+    void slotSetShortcutFocus();
+
   private:
     // TODO(XXX): This setting shouldn't be static and the widget
     // should instead define a public slot for changing the value.
@@ -122,4 +125,5 @@ class WSearchLineEdit : public QComboBox, public WBaseWidget {
     QTimer m_debouncingTimer;
     QTimer m_saveTimer;
     bool m_queryEmitted;
+    parented_ptr<QAction> m_pFastSearchAction;
 };

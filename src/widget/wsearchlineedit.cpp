@@ -17,6 +17,7 @@
 #include "util/assert.h"
 #include "util/logger.h"
 #include "util/parented_ptr.h"
+#include "widget/wfastsearch.h"
 #include "wskincolor.h"
 
 #define ENABLE_TRACE_LOG false
@@ -149,6 +150,13 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
             &QComboBox::currentTextChanged,
             this,
             &WSearchLineEdit::slotTextChanged);
+    QShortcut* setFocusShortcut = new QShortcut(QKeySequence(tr("Ctrl+F3", "Search|Focus")), this);
+    // if (pConfig->getValue<bool>(ConfigKey("[Search]", "PopupSearch"))) {
+    connect(setFocusShortcut,
+            &QShortcut::activated,
+            this,
+            &WSearchLineEdit::slotShowFastSearchDialog);
+    //}
     connect(this,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -161,6 +169,49 @@ WSearchLineEdit::WSearchLineEdit(QWidget* pParent, UserSettingsPointer pConfig)
 
 WSearchLineEdit::~WSearchLineEdit() {
     saveQueriesInConfig();
+}
+
+void WSearchLineEdit::slotShowFastSearchDialog() {
+    WFastSearch* dialog = new WFastSearch(m_pConfig, this);
+
+    connect(dialog, &WFastSearch::searchRequest, this, [this](const QString& result) {
+        QString query;
+        const QStringList parts = result.split("\n");
+        for (const QString& part : std::as_const(parts)) {
+            if (part.startsWith("query: ")) {
+                query = part.mid(7).trimmed();
+            }
+        }
+        if (query.isEmpty()) {
+            return;
+        }
+        setTextBlockSignals(query);
+        updateClearAndDropdownButton(query);
+        emit search(query);
+        m_queryEmitted = true;
+    });
+
+    connect(dialog, &WFastSearch::search2CrateRequest, this, [this](const QString& result) {
+        QString userInput, query;
+        const QStringList parts = result.split("\n");
+        for (const QString& part : std::as_const(parts)) {
+            if (part.startsWith("userinput: ")) {
+                userInput = part.mid(11).trimmed();
+            } else if (part.startsWith("query: ")) {
+                query = part.mid(7).trimmed();
+            }
+        }
+        if (query.isEmpty()) {
+            return;
+        }
+        setTextBlockSignals(query);
+        updateClearAndDropdownButton(query);
+        emit newSearchCrate(userInput);
+        m_queryEmitted = true;
+    });
+
+    dialog->exec();
+    dialog->deleteLater();
 }
 
 void WSearchLineEdit::setup(const QDomNode& node, const SkinContext& context) {
@@ -866,6 +917,14 @@ void WSearchLineEdit::setFocus(Qt::FocusReason focusReason) {
         // presses the shortcut key while already in the searchbox),
         // we need to manually simulate this behavior instead.
         lineEdit()->selectAll();
+    }
+}
+
+void WSearchLineEdit::slotSetShortcutFocus() {
+    if (hasFocus()) {
+        lineEdit()->selectAll();
+    } else {
+        setFocus(Qt::ShortcutFocusReason);
     }
 }
 
