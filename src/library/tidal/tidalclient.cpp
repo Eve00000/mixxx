@@ -711,6 +711,11 @@ void TidalClient::downloadTrack(
                  QStringLiteral("FLAC_HIRES")}) {
         params.addQueryItem(QStringLiteral("formats"), format);
     }
+    // The v2 manifest endpoint requires both sessionId and countryCode, just
+    // like the v1 API; without them it responds with 404.
+    if (!m_sessionId.isEmpty()) {
+        params.addQueryItem(QStringLiteral("sessionId"), m_sessionId);
+    }
     if (!m_countryCode.isEmpty()) {
         params.addQueryItem(QStringLiteral("countryCode"), m_countryCode);
     }
