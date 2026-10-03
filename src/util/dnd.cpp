@@ -4,7 +4,7 @@
 
 #include "control/controlobject.h"
 #include "library/parser.h"
-#include "library/tidal/tidalmimedata.h"
+#include "library/streaming/streamingmimedata.h"
 #include "mixer/playermanager.h"
 #include "preferences/dialog/dlgprefdeck.h"
 #include "sources/soundsourceproxy.h"
@@ -147,27 +147,31 @@ bool DragAndDropHelper::urlsContainSupportedTrackFiles(
 }
 
 // static
-bool DragAndDropHelper::isTidalTracksMimeData(const QMimeData& mimeData) {
-    return mixxx::tidal::canDecodeTracks(&mimeData);
+bool DragAndDropHelper::isStreamingTracksMimeData(const QMimeData& mimeData) {
+    return mixxx::streaming::canDecodeTracks(&mimeData);
 }
 
 // static
-bool DragAndDropHelper::handleTidalDropEvent(
+bool DragAndDropHelper::handleStreamingDropEvent(
         QDropEvent* pEvent,
         TrackDropTarget& target,
         const QString& group,
         UserSettingsPointer pConfig) {
     if (!allowLoadToPlayer(group, pConfig) ||
-            !mixxx::tidal::canDecodeTracks(pEvent->mimeData())) {
+            !mixxx::streaming::canDecodeTracks(pEvent->mimeData())) {
         return false;
     }
-    const auto tracks = mixxx::tidal::decodeTracks(pEvent->mimeData());
-    auto dropCallback = mixxx::tidal::tidalDropCallback();
-    if (tracks.isEmpty() || !dropCallback) {
+    const auto tracks = mixxx::streaming::decodeTracks(pEvent->mimeData());
+    if (tracks.isEmpty()) {
+        return false;
+    }
+    // All tracks in one drag come from the same provider.
+    auto dropHandler = mixxx::streaming::dropHandler(tracks.first().providerId);
+    if (!dropHandler) {
         return false;
     }
     pEvent->acceptProposedAction();
-    dropCallback(tracks, group);
+    dropHandler(tracks, group);
     return true;
 }
 
@@ -281,7 +285,7 @@ bool DragAndDropHelper::dragEnterAccept(
         const QString& sourceIdentifier,
         bool stopOnFirstMatch,
         bool acceptPlaylists) {
-    if (isTidalTracksMimeData(mimeData)) {
+    if (isStreamingTracksMimeData(mimeData)) {
         return true;
     }
     // TODO(XXX): This operation blocks the UI when many
@@ -333,7 +337,7 @@ void DragAndDropHelper::handleTrackDropEvent(
         TrackDropTarget& target,
         const QString& group,
         UserSettingsPointer pConfig) {
-    if (handleTidalDropEvent(pEvent, target, group, pConfig)) {
+    if (handleStreamingDropEvent(pEvent, target, group, pConfig)) {
         return;
     }
     if (allowLoadToPlayer(group, pConfig)) {

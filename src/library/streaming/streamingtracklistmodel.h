@@ -3,17 +3,17 @@
 #include <QAbstractTableModel>
 #include <QList>
 
+#include "library/streaming/streamingprovider.h"
 #include "library/trackmodel.h"
-#include "library/tidal/tidalclient.h"
 
 class TrackCollectionManager;
 
-/// In-memory track model for TIDAL search results.
+/// In-memory track model for streaming search results.
 ///
-/// The tracks are not stored in the Mixxx database. Playback is handled by
-/// downloading the (unencrypted) MPEG-DASH stream to the local cache and then
-/// loading the resulting file into a deck.
-class TidalTrackListModel final : public QAbstractTableModel, public TrackModel {
+/// The tracks are not stored in the Mixxx database. Playback is handled by the
+/// provider, which downloads an unencrypted stream to a local cache file that
+/// is then loaded into a deck.
+class StreamingTrackListModel final : public QAbstractTableModel, public TrackModel {
     Q_OBJECT
 
   public:
@@ -26,15 +26,16 @@ class TidalTrackListModel final : public QAbstractTableModel, public TrackModel 
         ColumnCount,
     };
 
-    TidalTrackListModel(
+    StreamingTrackListModel(
             QObject* parent,
-            TrackCollectionManager* pTrackCollectionManager);
-    ~TidalTrackListModel() override = default;
+            TrackCollectionManager* pTrackCollectionManager,
+            const QString& providerId,
+            const QString& displayName);
 
-    void setTracks(const QList<mixxx::tidal::TidalTrack>& tracks);
+    void setTracks(const mixxx::streaming::TrackList& tracks);
     void clearTracks();
 
-    mixxx::tidal::TidalTrack trackAtRow(int row) const;
+    mixxx::streaming::Track trackAtRow(int row) const;
     bool hasTrackAtRow(int row) const;
 
     // Inherited from QAbstractItemModel
@@ -72,6 +73,10 @@ class TidalTrackListModel final : public QAbstractTableModel, public TrackModel 
             const QString& genre) const override;
 
   private:
-    QList<mixxx::tidal::TidalTrack> m_tracks;
+    QString placeholderUrl(const mixxx::streaming::Track& track) const;
+
+    mixxx::streaming::TrackList m_tracks;
+    const QString m_providerId;
+    const QString m_displayName;
     TrackCollectionManager* const m_pTrackCollectionManager;
 };

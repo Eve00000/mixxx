@@ -12,6 +12,12 @@
 #include <QTimer>
 #include <QXmlStreamReader>
 
+extern "C" {
+#if defined(__FFMPEG__)
+#include <libavformat/avformat.h>
+#endif
+} // extern "C"
+
 #include "moc_tidalclient.cpp"
 #include "util/logger.h"
 
@@ -32,6 +38,113 @@ const ConfigKey kQualityKey = ConfigKey("[Tidal]", "Quality");
 
 QUrl apiUrl(const QString& path) {
     return QUrl(kApiBaseUrl + path);
+}
+
+/// Rewraps a FLAC stream from a fragmented MP4 container into a native FLAC
+/// file. The audio frames are copied bit-exactly (lossless), only the
+/// container changes. Mixxx decodes native FLAC with its optimized reference
+/// decoder, whereas FLAC-in-MP4 falls back to the slower generic FFmpeg
+/// decoder, which is not suitable for real-time playback with keylock.
+///
+/// Returns true on success. This is only attempted when FFmpeg is available.
+bool remuxFlacToNative(const QString& inPath, const QString& outPath) {
+#if defined(__FFMPEG__)
+    AVFormatContext* pIn = nullptr;
+    if (avformat_open_input(&pIn, inPath.toUtf8().constData(), nullptr, nullptr) < 0) {
+        kLogger.warning() << "Failed to open for remux:" << inPath;
+        return false;
+    }
+    const auto closeInput = [&pIn]() {
+        if (pIn) {
+            avformat_close_input(&pIn);
+        }
+    };
+    if (avformat_find_stream_info(pIn, nullptr) < 0) {
+        kLogger.warning() << "Failed to read stream info for remux:" << inPath;
+        closeInput();
+        return false;
+    }
+    const int audioStreamIndex =
+            av_find_best_stream(pIn, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+    if (audioStreamIndex < 0) {
+        kLogger.warning() << "No audio stream found for remux:" << inPath;
+        closeInput();
+        return false;
+    }
+    AVStream* pInStream = pIn->streams[audioStreamIndex];
+    if (pInStream->codecpar->codec_id != AV_CODEC_ID_FLAC) {
+        // Only FLAC streams can be rewrapped losslessly into a FLAC file.
+        closeInput();
+        return false;
+    }
+
+    AVFormatContext* pOut = nullptr;
+    if (avformat_alloc_output_context2(
+                &pOut, nullptr, "flac", outPath.toUtf8().constData()) < 0 ||
+            !pOut) {
+        kLogger.warning() << "Failed to allocate FLAC output context";
+        closeInput();
+        return false;
+    }
+    AVStream* pOutStream = avformat_new_stream(pOut, nullptr);
+    if (!pOutStream ||
+            avcodec_parameters_copy(pOutStream->codecpar, pInStream->codecpar) < 0) {
+        kLogger.warning() << "Failed to copy stream parameters for remux";
+        avformat_free_context(pOut);
+        closeInput();
+        return false;
+    }
+    pOutStream->codecpar->codec_tag = 0;
+    pOutStream->time_base = pInStream->time_base;
+
+    if (!(pOut->oformat->flags & AVFMT_NOFILE) &&
+            avio_open(&pOut->pb, outPath.toUtf8().constData(), AVIO_FLAG_WRITE) < 0) {
+        kLogger.warning() << "Failed to open output for remux:" << outPath;
+        avformat_free_context(pOut);
+        closeInput();
+        return false;
+    }
+    if (avformat_write_header(pOut, nullptr) < 0) {
+        kLogger.warning() << "Failed to write FLAC header:" << outPath;
+        if (pOut->pb) {
+            avio_closep(&pOut->pb);
+        }
+        avformat_free_context(pOut);
+        closeInput();
+        return false;
+    }
+
+    bool success = true;
+    AVPacket* pPacket = av_packet_alloc();
+    while (av_read_frame(pIn, pPacket) >= 0) {
+        if (pPacket->stream_index == audioStreamIndex) {
+            pPacket->stream_index = pOutStream->index;
+            av_packet_rescale_ts(pPacket, pInStream->time_base, pOutStream->time_base);
+            if (av_interleaved_write_frame(pOut, pPacket) < 0) {
+                kLogger.warning() << "Failed to write FLAC packet during remux";
+                success = false;
+                av_packet_unref(pPacket);
+                break;
+            }
+        }
+        av_packet_unref(pPacket);
+    }
+    av_packet_free(&pPacket);
+    av_write_trailer(pOut);
+    if (pOut->pb) {
+        avio_closep(&pOut->pb);
+    }
+    avformat_free_context(pOut);
+    closeInput();
+    if (!success) {
+        QFile::remove(outPath);
+    }
+    return success;
+#else
+    Q_UNUSED(inPath);
+    Q_UNUSED(outPath);
+    return false;
+#endif
 }
 
 /// Derives the file suffix of the concatenated stream from the actual segment
@@ -69,9 +182,11 @@ QString parseYear(const QJsonObject& obj) {
     return QString();
 }
 
-TidalTrack parseTrack(const QJsonObject& obj) {
-    TidalTrack track;
-    track.id = static_cast<qint64>(obj.value(QLatin1String("id")).toDouble());
+mixxx::streaming::Track parseTrack(const QJsonObject& obj) {
+    mixxx::streaming::Track track;
+    track.providerId = QStringLiteral("tidal");
+    track.id = QString::number(static_cast<qint64>(
+            obj.value(QLatin1String("id")).toDouble()));
     track.title = jsonString(obj, "title");
     track.isrc = jsonString(obj, "isrc");
     track.audioQuality = jsonString(obj, "audioQuality");
@@ -288,7 +403,7 @@ DashManifest parseDashManifest(const QByteArray& xml, Quality quality) {
 } // anonymous namespace
 
 TidalClient::TidalClient(UserSettingsPointer pConfig, QObject* parent)
-        : QObject(parent),
+        : mixxx::streaming::Provider(parent),
           m_pConfig(std::move(pConfig)),
           m_pNetwork(new QNetworkAccessManager(this)) {
     loadSession();
@@ -307,6 +422,39 @@ void TidalClient::setQuality(Quality quality) {
     m_quality = quality;
     m_pConfig->setValue(kQualityKey, static_cast<int>(quality));
     saveSession();
+}
+
+namespace {
+// Display order of the quality tiers. The combo box index maps to this list.
+const Quality kQualityOrder[] = {
+        Quality::Lossless,
+        Quality::High,
+        Quality::Low,
+};
+constexpr int kQualityCount =
+        static_cast<int>(sizeof(kQualityOrder) / sizeof(kQualityOrder[0]));
+} // anonymous namespace
+
+QStringList TidalClient::qualityLabels() const {
+    return {QStringLiteral("Lossless (FLAC)"),
+            QStringLiteral("High (AAC 320 kbps)"),
+            QStringLiteral("Low (AAC 96 kbps)")};
+}
+
+int TidalClient::currentQualityIndex() const {
+    for (int i = 0; i < kQualityCount; ++i) {
+        if (kQualityOrder[i] == m_quality) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+void TidalClient::setQualityIndex(int index) {
+    if (index < 0 || index >= kQualityCount) {
+        return;
+    }
+    setQuality(kQualityOrder[index]);
 }
 
 QByteArray TidalClient::authHeader() const {
@@ -349,7 +497,7 @@ void TidalClient::logout() {
     emit sessionChanged(false);
 }
 
-void TidalClient::startDeviceLogin() {
+void TidalClient::startLogin() {
     if (m_deviceLoginRunning) {
         return;
     }
@@ -366,7 +514,7 @@ void TidalClient::startDeviceLogin() {
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            emit deviceLoginFinished(false, reply->errorString());
+            emit loginFinished(false, reply->errorString());
             return;
         }
         const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
@@ -377,7 +525,7 @@ void TidalClient::startDeviceLogin() {
         m_devicePollAttempts = 0;
         m_deviceLoginRunning = true;
 
-        emit deviceLoginStarted(m_deviceUserCode,
+        emit loginStarted(m_deviceUserCode,
                 obj.value(QLatin1String("verificationUriComplete")).toString(),
                 m_deviceExpiresIn);
         pollDeviceToken();
@@ -394,7 +542,7 @@ void TidalClient::pollDeviceToken() {
     }
     if (m_devicePollAttempts * m_deviceInterval > m_deviceExpiresIn) {
         m_deviceLoginRunning = false;
-        emit deviceLoginFinished(false, tr("The login code expired."));
+        emit loginFinished(false, tr("The login code expired."));
         return;
     }
     ++m_devicePollAttempts;
@@ -431,9 +579,9 @@ void TidalClient::pollDeviceToken() {
         }
         m_deviceLoginRunning = false;
         if (error == QLatin1String("expired_token")) {
-            emit deviceLoginFinished(false, tr("The login code expired."));
+            emit loginFinished(false, tr("The login code expired."));
         } else {
-            emit deviceLoginFinished(false,
+            emit loginFinished(false,
                     obj.value(QLatin1String("error_description")).toString(error));
         }
     });
@@ -452,17 +600,17 @@ void TidalClient::applyAuthToken(const QByteArray& json) {
         if (!ok) {
             kLogger.warning() << "Failed to fetch TIDAL session info:" << error;
             emit sessionChanged(false);
-            emit deviceLoginFinished(false,
+            emit loginFinished(false,
                     tr("Logged in but could not load the TIDAL session: %1")
                             .arg(error));
             return;
         }
         emit sessionChanged(true);
-        emit deviceLoginFinished(true, QString());
+        emit loginFinished(true, QString());
     });
 }
 
-void TidalClient::fetchSessionInfo(TidalResultCallback callback) {
+void TidalClient::fetchSessionInfo(mixxx::streaming::ResultCallback callback) {
     sendRequest(
             QStringLiteral("sessions"),
             QUrlQuery(),
@@ -635,7 +783,9 @@ void TidalClient::sendRequest(
             });
 }
 
-void TidalClient::search(const QString& query, TidalSearchCallback callback) {
+void TidalClient::search(
+        const QString& query,
+        mixxx::streaming::SearchCallback callback) {
     QUrlQuery params;
     params.addQueryItem(QStringLiteral("query"), query);
     params.addQueryItem(QStringLiteral("limit"), QStringLiteral("50"));
@@ -678,7 +828,7 @@ void TidalClient::search(const QString& query, TidalSearchCallback callback) {
                                                  .toObject()
                                                  .value(QLatin1String("items"))
                                                  .toArray();
-                QList<TidalTrack> tracks;
+                mixxx::streaming::TrackList tracks;
                 tracks.reserve(items.size());
                 for (const auto& item : items) {
                     tracks.append(parseTrack(item.toObject()));
@@ -687,16 +837,10 @@ void TidalClient::search(const QString& query, TidalSearchCallback callback) {
             });
 }
 
-void TidalClient::resolveStream(
-        const TidalTrack& track,
-        TidalStreamCallback callback) {
-    downloadTrack(track, std::move(callback));
-}
-
 void TidalClient::downloadTrack(
-        const TidalTrack& track,
-        TidalStreamCallback callback) {
-    const QString trackId = QString::number(track.id);
+        const mixxx::streaming::Track& track,
+        mixxx::streaming::StreamCallback callback) {
+    const QString trackId = track.id;
 
     // The v1 playbackinfopostpaywall endpoint is capped to AAC (HIGH) for our
     // OAuth client, so request the manifest from the v2 endpoint first. It
@@ -763,9 +907,9 @@ void TidalClient::downloadTrack(
 }
 
 void TidalClient::handleDashManifest(
-        const TidalTrack& track,
+        const mixxx::streaming::Track& track,
         const QByteArray& mpd,
-        TidalStreamCallback callback) {
+        mixxx::streaming::StreamCallback callback) {
     const DashManifest dash = parseDashManifest(mpd, m_quality);
     if (!dash.valid) {
         callback(false, {}, tr("Unsupported or empty DASH manifest."));
@@ -780,7 +924,7 @@ void TidalClient::handleDashManifest(
 }
 
 QString TidalClient::cacheFilePath(
-        const TidalTrack& track,
+        const mixxx::streaming::Track& track,
         const QString& suffix) const {
     QDir cacheDir(QStandardPaths::writableLocation(
             QStandardPaths::CacheLocation));
@@ -795,16 +939,32 @@ QString TidalClient::cacheFilePath(
 }
 
 void TidalClient::downloadSegments(
-        const TidalTrack& track,
+        const mixxx::streaming::Track& track,
         const QList<QUrl>& segmentUrls,
         const QString& fileSuffix,
-        TidalStreamCallback callback) {
+        mixxx::streaming::StreamCallback callback) {
     const QString filePath = cacheFilePath(track, fileSuffix);
+    // Lossless streams are FLAC wrapped in a fragmented MP4 container. After
+    // downloading, the FLAC frames are rewrapped into a native FLAC file so
+    // Mixxx can use its optimized decoder.
+    const QString nativeFlacPath = cacheFilePath(track, QStringLiteral("flac"));
+    const bool mayRemuxToFlac = (fileSuffix == QLatin1String("m4a"));
 
-    // Reuse an already downloaded file (offline cache).
+    // Reuse an already downloaded (and possibly already remuxed) file.
+    if (mayRemuxToFlac) {
+        QFile remuxed(nativeFlacPath);
+        if (remuxed.exists() && remuxed.size() > 0) {
+            callback(true, QUrl::fromLocalFile(nativeFlacPath), QString());
+            return;
+        }
+    }
     QFile existing(filePath);
     if (existing.exists() && existing.size() > 0) {
-        callback(true, QUrl::fromLocalFile(filePath), QString());
+        if (mayRemuxToFlac && remuxFlacToNative(filePath, nativeFlacPath)) {
+            callback(true, QUrl::fromLocalFile(nativeFlacPath), QString());
+        } else {
+            callback(true, QUrl::fromLocalFile(filePath), QString());
+        }
         return;
     }
 
@@ -844,6 +1004,8 @@ void TidalClient::downloadSegments(
     *pump = [this,
                     segmentUrls,
                     filePath,
+                    nativeFlacPath,
+                    mayRemuxToFlac,
                     state,
                     callback,
                     reportProgress,
@@ -874,6 +1036,8 @@ void TidalClient::downloadSegments(
                             index,
                             segmentUrls,
                             filePath,
+                            nativeFlacPath,
+                            mayRemuxToFlac,
                             state,
                             callback,
                             reportProgress,
@@ -907,6 +1071,16 @@ void TidalClient::downloadSegments(
                                 file.write(segment);
                             }
                             file.close();
+                            // Rewrap FLAC-in-MP4 into a native FLAC file for
+                            // efficient decoding. Falls back to the MP4 file
+                            // for lossy (AAC) streams.
+                            if (mayRemuxToFlac &&
+                                    remuxFlacToNative(filePath, nativeFlacPath)) {
+                                callback(true,
+                                        QUrl::fromLocalFile(nativeFlacPath),
+                                        QString());
+                                return;
+                            }
                             callback(true, QUrl::fromLocalFile(filePath), QString());
                             return;
                         }

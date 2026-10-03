@@ -1,16 +1,18 @@
-#include "library/tidal/tidaltracklistmodel.h"
+#include "library/streaming/streamingtracklistmodel.h"
 
 #include <QSqlDatabase>
 #include <QTime>
 #include <QUuid>
+#include <deque>
+#include <string>
 
-#include "library/tidal/tidalmimedata.h"
+#include "library/streaming/streamingmimedata.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
-#include "moc_tidaltracklistmodel.cpp"
+#include "moc_streamingtracklistmodel.cpp"
 #include "track/track.h"
 
-using mixxx::tidal::TidalTrack;
+using StreamingTrack = mixxx::streaming::Track;
 
 namespace {
 
@@ -29,6 +31,15 @@ QSqlDatabase cloneDatabase(TrackCollectionManager* pTrackCollectionManager) {
     return cloned;
 }
 
+/// Returns a process-lifetime stable namespace string for the given provider,
+/// suitable for the TrackModel(const char*) constructor. std::deque never
+/// invalidates references to existing elements when growing.
+const char* settingsNamespaceForProvider(const QString& providerId) {
+    static std::deque<std::string> storage;
+    storage.emplace_back("mixxx.db.model." + providerId.toStdString());
+    return storage.back().c_str();
+}
+
 QString formatDuration(int seconds) {
     if (seconds <= 0) {
         return QString();
@@ -37,7 +48,11 @@ QString formatDuration(int seconds) {
             seconds >= 3600 ? QStringLiteral("hh:mm:ss") : QStringLiteral("mm:ss"));
 }
 
+/// Human readable short quality derived from the provider-supplied string.
 QString shortQuality(const QString& audioQuality) {
+    if (audioQuality.isEmpty()) {
+        return {};
+    }
     if (audioQuality.contains(QLatin1String("HI_RES"), Qt::CaseInsensitive)) {
         return QStringLiteral("HI-RES");
     }
@@ -55,55 +70,59 @@ QString shortQuality(const QString& audioQuality) {
 
 } // anonymous namespace
 
-TidalTrackListModel::TidalTrackListModel(
+StreamingTrackListModel::StreamingTrackListModel(
         QObject* parent,
-        TrackCollectionManager* pTrackCollectionManager)
-        // The track model settings are stored in a settings namespace.
+        TrackCollectionManager* pTrackCollectionManager,
+        const QString& providerId,
+        const QString& displayName)
         : QAbstractTableModel(parent),
-          TrackModel(cloneDatabase(pTrackCollectionManager), "mixxx.db.model.tidal"),
+          TrackModel(cloneDatabase(pTrackCollectionManager),
+                  settingsNamespaceForProvider(providerId)),
+          m_providerId(providerId),
+          m_displayName(displayName),
           m_pTrackCollectionManager(pTrackCollectionManager) {
 }
 
-void TidalTrackListModel::setTracks(const QList<TidalTrack>& tracks) {
+void StreamingTrackListModel::setTracks(const mixxx::streaming::TrackList& tracks) {
     beginResetModel();
     m_tracks = tracks;
     endResetModel();
 }
 
-void TidalTrackListModel::clearTracks() {
+void StreamingTrackListModel::clearTracks() {
     setTracks({});
 }
 
-TidalTrack TidalTrackListModel::trackAtRow(int row) const {
+StreamingTrack StreamingTrackListModel::trackAtRow(int row) const {
     if (row < 0 || row >= m_tracks.size()) {
         return {};
     }
     return m_tracks.at(row);
 }
 
-bool TidalTrackListModel::hasTrackAtRow(int row) const {
+bool StreamingTrackListModel::hasTrackAtRow(int row) const {
     return row >= 0 && row < m_tracks.size();
 }
 
-int TidalTrackListModel::rowCount(const QModelIndex& parent) const {
+int StreamingTrackListModel::rowCount(const QModelIndex& parent) const {
     if (parent.isValid()) {
         return 0;
     }
     return m_tracks.size();
 }
 
-int TidalTrackListModel::columnCount(const QModelIndex& parent) const {
+int StreamingTrackListModel::columnCount(const QModelIndex& parent) const {
     if (parent.isValid()) {
         return 0;
     }
     return ColumnCount;
 }
 
-QVariant TidalTrackListModel::data(const QModelIndex& index, int role) const {
+QVariant StreamingTrackListModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_tracks.size()) {
         return {};
     }
-    const TidalTrack& track = m_tracks.at(index.row());
+    const StreamingTrack& track = m_tracks.at(index.row());
 
     switch (role) {
     case Qt::DisplayRole:
@@ -125,9 +144,8 @@ QVariant TidalTrackListModel::data(const QModelIndex& index, int role) const {
         }
         break;
     case Qt::ToolTipRole:
-        return tr("%1 - %2\nAlbum: %3\nTIDAL ID: %4")
-                .arg(track.artist, track.title, track.album)
-                .arg(track.id);
+        return tr("%1 - %2\nAlbum: %3\n%4 ID: %5")
+                .arg(track.artist, track.title, track.album, m_displayName, track.id);
     case Qt::TextAlignmentRole:
         if (index.column() == ColumnDuration) {
             return QVariant::fromValue(Qt::AlignRight | Qt::AlignVCenter);
@@ -139,7 +157,7 @@ QVariant TidalTrackListModel::data(const QModelIndex& index, int role) const {
     return {};
 }
 
-QVariant TidalTrackListModel::headerData(
+QVariant StreamingTrackListModel::headerData(
         int section,
         Qt::Orientation orientation,
         int role) const {
@@ -162,58 +180,62 @@ QVariant TidalTrackListModel::headerData(
     }
 }
 
-Qt::ItemFlags TidalTrackListModel::flags(const QModelIndex& index) const {
+Qt::ItemFlags StreamingTrackListModel::flags(const QModelIndex& index) const {
     if (!index.isValid()) {
         return Qt::NoItemFlags;
     }
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
 }
 
-QMimeData* TidalTrackListModel::mimeData(const QModelIndexList& indexes) const {
-    QList<mixxx::tidal::TidalTrack> tracks;
+QMimeData* StreamingTrackListModel::mimeData(const QModelIndexList& indexes) const {
+    mixxx::streaming::TrackList tracks;
     QSet<int> seenRows;
     for (const QModelIndex& index : indexes) {
         if (!index.isValid() || seenRows.contains(index.row())) {
             continue;
         }
         seenRows.insert(index.row());
-        const TidalTrack track = trackAtRow(index.row());
-        if (track.id != 0) {
+        const StreamingTrack track = trackAtRow(index.row());
+        if (!track.id.isEmpty()) {
             tracks.append(track);
         }
     }
-    return mixxx::tidal::encodeTracks(tracks);
+    return mixxx::streaming::encodeTracks(tracks);
 }
 
-QStringList TidalTrackListModel::mimeTypes() const {
-    return {QString::fromLatin1(mixxx::tidal::tidalTracksMimeType())};
+QStringList StreamingTrackListModel::mimeTypes() const {
+    return {QString::fromLatin1(mixxx::streaming::tracksMimeType())};
 }
 
-Qt::DropActions TidalTrackListModel::supportedDragActions() const {
+Qt::DropActions StreamingTrackListModel::supportedDragActions() const {
     return Qt::CopyAction;
 }
 
-TrackModel::Capabilities TidalTrackListModel::getCapabilities() const {
+TrackModel::Capabilities StreamingTrackListModel::getCapabilities() const {
     return Capability::LoadToDeck | Capability::LoadToPreviewDeck |
             Capability::LoadToSampler | Capability::Sorting;
 }
 
-TrackPointer TidalTrackListModel::getTrack(const QModelIndex& index) const {
+QString StreamingTrackListModel::placeholderUrl(const StreamingTrack& track) const {
+    return QStringLiteral("%1://track/%2").arg(m_providerId, track.id);
+}
+
+TrackPointer StreamingTrackListModel::getTrack(const QModelIndex& index) const {
     if (!index.isValid() || !m_pTrackCollectionManager) {
         return {};
     }
-    const TidalTrack track = trackAtRow(index.row());
-    if (track.id == 0) {
+    const StreamingTrack track = trackAtRow(index.row());
+    if (track.id.isEmpty()) {
         return {};
     }
     // A temporary track is used as a placeholder until the stream has been
     // downloaded. The downloader replaces it by a real file before playback.
     // Note: The track must not have a file location, otherwise the cover art
     // and metadata import code would repeatedly try (and fail) to open a
-    // non-existent local file. The TIDAL identity is carried in the metadata
-    // URL instead.
+    // non-existent local file. The streaming identity is carried in the
+    // metadata URL instead.
     TrackPointer pTrack = Track::newTemporary();
-    pTrack->setURL(QStringLiteral("tidal://track/%1").arg(track.id));
+    pTrack->setURL(placeholderUrl(track));
     pTrack->setArtist(track.artist);
     pTrack->setTitle(track.title);
     pTrack->setAlbum(track.album);
@@ -222,66 +244,68 @@ TrackPointer TidalTrackListModel::getTrack(const QModelIndex& index) const {
                     ? QString::number(track.trackNumber)
                     : QString());
     pTrack->setDuration(static_cast<double>(track.durationSec));
-    pTrack->setComment(tr("TIDAL stream (quality: %1)").arg(shortQuality(track.audioQuality)));
+    pTrack->setComment(tr("%1 stream (quality: %2)")
+                               .arg(m_displayName, shortQuality(track.audioQuality)));
     return pTrack;
 }
 
-TrackPointer TidalTrackListModel::getTrackByRef(const TrackRef& trackRef) const {
+TrackPointer StreamingTrackListModel::getTrackByRef(const TrackRef& trackRef) const {
     Q_UNUSED(trackRef);
     return {};
 }
 
-QUrl TidalTrackListModel::getTrackUrl(const QModelIndex& index) const {
-    const TidalTrack track = trackAtRow(index.row());
-    if (track.id == 0) {
+QUrl StreamingTrackListModel::getTrackUrl(const QModelIndex& index) const {
+    const StreamingTrack track = trackAtRow(index.row());
+    if (track.id.isEmpty()) {
         return {};
     }
-    return QUrl(QStringLiteral("tidal://track/%1").arg(track.id));
+    return QUrl(placeholderUrl(track));
 }
 
-QString TidalTrackListModel::getTrackLocation(const QModelIndex& index) const {
-    const TidalTrack track = trackAtRow(index.row());
-    if (track.id == 0) {
+QString StreamingTrackListModel::getTrackLocation(const QModelIndex& index) const {
+    const StreamingTrack track = trackAtRow(index.row());
+    if (track.id.isEmpty()) {
         return {};
     }
-    return QStringLiteral("tidal://track/%1").arg(track.id);
+    return placeholderUrl(track);
 }
 
-TrackId TidalTrackListModel::getTrackId(const QModelIndex& index) const {
+TrackId StreamingTrackListModel::getTrackId(const QModelIndex& index) const {
     Q_UNUSED(index);
-    // TIDAL tracks are not part of the Mixxx library and have no TrackId.
+    // Streaming tracks are not part of the Mixxx library and have no TrackId.
     return TrackId();
 }
 
-CoverInfo TidalTrackListModel::getCoverInfo(const QModelIndex& index) const {
+CoverInfo StreamingTrackListModel::getCoverInfo(const QModelIndex& index) const {
     Q_UNUSED(index);
     return CoverInfo();
 }
 
-const QVector<int> TidalTrackListModel::getTrackRows(TrackId trackId) const {
+const QVector<int> StreamingTrackListModel::getTrackRows(TrackId trackId) const {
     Q_UNUSED(trackId);
     return {};
 }
 
-void TidalTrackListModel::search(const QString& searchText) {
+void StreamingTrackListModel::search(const QString& searchText) {
     Q_UNUSED(searchText);
 }
 
-const QString TidalTrackListModel::currentSearch() const {
+const QString StreamingTrackListModel::currentSearch() const {
     return QString();
 }
 
-bool TidalTrackListModel::isColumnInternal(int column) {
+bool StreamingTrackListModel::isColumnInternal(int column) {
     Q_UNUSED(column);
     return false;
 }
 
-bool TidalTrackListModel::isColumnHiddenByDefault(int column) {
+bool StreamingTrackListModel::isColumnHiddenByDefault(int column) {
     Q_UNUSED(column);
     return false;
 }
 
-TrackModel::SortColumnId TidalTrackListModel::sortColumnIdFromColumnIndex(int index) const {
+TrackModel::SortColumnId StreamingTrackListModel::sortColumnIdFromColumnIndex(
+        int index) const {
     switch (index) {
     case ColumnArtist:
         return TrackModel::SortColumnId::Artist;
@@ -296,7 +320,7 @@ TrackModel::SortColumnId TidalTrackListModel::sortColumnIdFromColumnIndex(int in
     }
 }
 
-int TidalTrackListModel::columnIndexFromSortColumnId(
+int StreamingTrackListModel::columnIndexFromSortColumnId(
         TrackModel::SortColumnId sortColumn) const {
     switch (sortColumn) {
     case TrackModel::SortColumnId::Artist:
@@ -312,12 +336,12 @@ int TidalTrackListModel::columnIndexFromSortColumnId(
     }
 }
 
-QString TidalTrackListModel::modelKey(bool noSearch) const {
+QString StreamingTrackListModel::modelKey(bool noSearch) const {
     Q_UNUSED(noSearch);
-    return QStringLiteral("tidal");
+    return m_providerId;
 }
 
-bool TidalTrackListModel::updateTrackGenre(Track* pTrack, const QString& genre) const {
+bool StreamingTrackListModel::updateTrackGenre(Track* pTrack, const QString& genre) const {
     Q_UNUSED(pTrack);
     Q_UNUSED(genre);
     return false;

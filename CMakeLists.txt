@@ -1511,11 +1511,14 @@ add_library(
   src/library/tabledelegates/stardelegate.cpp
   src/library/tabledelegates/stareditor.cpp
   src/library/tabledelegates/tableitemdelegate.cpp
-  src/library/tidal/dlgtidal.cpp
+  src/library/soundcloud/soundcloudclient.cpp
+  src/library/deezer/deezerclient.cpp
+  src/library/streaming/dlgstreaming.cpp
+  src/library/streaming/streamingfeature.cpp
+  src/library/streaming/streamingmimedata.cpp
+  src/library/streaming/streamingprovider.cpp
+  src/library/streaming/streamingtracklistmodel.cpp
   src/library/tidal/tidalclient.cpp
-  src/library/tidal/tidalfeature.cpp
-  src/library/tidal/tidalmimedata.cpp
-  src/library/tidal/tidaltracklistmodel.cpp
   src/library/trackcollection.cpp
   src/library/trackcollectioniterator.cpp
   src/library/trackcollectionmanager.cpp
@@ -1674,6 +1677,7 @@ add_library(
   src/track/trackref.cpp
   src/util/autofilereloader.cpp
   src/util/battery/battery.cpp
+  src/util/blowfish.cpp
   src/util/cache.cpp
   src/util/clipboard.cpp
   src/util/cmdlineargs.cpp

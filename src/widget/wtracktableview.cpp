@@ -737,14 +737,14 @@ void WTrackTableView::mouseMoveEvent(QMouseEvent* pEvent) {
     //qDebug() << "MouseMoveEvent";
 
     if (DragAndDropHelper::mouseMoveInitiatesDrag(pEvent)) {
-        // Streaming providers (e.g. TIDAL) cannot be represented by local file
+        // Streaming providers cannot be represented by local file
         // locations, so they provide their own MIME data. Check for that first
         // and preserve the regular location-based drag otherwise.
         const QModelIndexList selectedRows = getSelectedRows();
         if (!selectedRows.isEmpty()) {
             QScopedPointer<QMimeData> pMimeData(model()->mimeData(selectedRows));
             if (!pMimeData.isNull() &&
-                    DragAndDropHelper::isTidalTracksMimeData(*pMimeData)) {
+                    DragAndDropHelper::isStreamingTracksMimeData(*pMimeData)) {
                 auto* pDrag = new QDrag(this);
                 pDrag->setMimeData(pMimeData.take());
                 pDrag->setPixmap(

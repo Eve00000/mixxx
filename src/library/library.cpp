@@ -25,7 +25,10 @@
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
-#include "library/tidal/tidalfeature.h"
+#include "library/deezer/deezerclient.h"
+#include "library/soundcloud/soundcloudclient.h"
+#include "library/streaming/streamingfeature.h"
+#include "library/tidal/tidalclient.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackmodel.h"
@@ -223,7 +226,22 @@ Library::Library(
 
     if (m_pConfig->getValue(
                 ConfigKey(kConfigGroup, "ShowTidalLibrary"), true)) {
-        addFeature(new TidalFeature(this, m_pConfig));
+        addFeature(new StreamingFeature(this,
+                m_pConfig,
+                new mixxx::tidal::TidalClient(m_pConfig, this)));
+    }
+
+    if (m_pConfig->getValue(
+                ConfigKey(kConfigGroup, "ShowSoundCloudLibrary"), true)) {
+        addFeature(new StreamingFeature(this,
+                m_pConfig,
+                new mixxx::soundcloud::SoundCloudClient(m_pConfig, this)));    }
+
+    if (m_pConfig->getValue(
+                ConfigKey(kConfigGroup, "ShowDeezerLibrary"), true)) {
+        addFeature(new StreamingFeature(this,
+                m_pConfig,
+                new mixxx::deezer::DeezerClient(m_pConfig, this)));
     }
 
     for (const auto& externalTrackCollection : m_pTrackCollectionManager->externalCollections()) {

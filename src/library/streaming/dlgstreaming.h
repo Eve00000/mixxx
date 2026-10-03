@@ -3,7 +3,7 @@
 #include <QWidget>
 
 #include "library/libraryview.h"
-#include "library/tidal/tidalclient.h"
+#include "library/streaming/streamingprovider.h"
 #include "preferences/usersettings.h"
 #include "track/track_decl.h"
 #ifdef __STEM__
@@ -20,34 +20,34 @@ class ProxyTrackModel;
 class WLibrary;
 class WTrackTableView;
 class TrackCollectionManager;
-class TidalTrackListModel;
+class StreamingTrackListModel;
 
-/// Library view that lets the user log in to TIDAL, search for tracks and load
-/// them to a deck. The actual streaming/decoding is delegated to
-/// mixxx::tidal::TidalClient which downloads the unencrypted MPEG-DASH
-/// segments into a local cache file.
-class DlgTidal final : public QWidget, public virtual LibraryView {
+/// Generic library view for any streaming provider. It exposes an optional
+/// login button, a search box, an optional quality selector and a results
+/// table. The provider handles authentication, search and downloading; this
+/// view is provider-agnostic.
+class DlgStreaming final : public QWidget, public virtual LibraryView {
     Q_OBJECT
 
   public:
-    DlgTidal(
+    DlgStreaming(
             WLibrary* parent,
             UserSettingsPointer pConfig,
             Library* pLibrary,
             KeyboardEventFilter* pKeyboard,
-            mixxx::tidal::TidalClient* pTidalClient);
-    ~DlgTidal() override;
+            mixxx::streaming::Provider* pProvider);
+    ~DlgStreaming() override;
 
     void onSearch(const QString& text) override;
     void onShow() override;
     bool hasFocus() const override;
     void setFocus() override;
 
-    /// Download the given TIDAL track and load it into the given group. An
-    /// empty group loads it into the first available deck. Used both by the
+    /// Download the given track and load it into the given group. An empty
+    /// group loads it into the first available deck. Used by the
     /// load-to-deck actions and by drag & drop.
     void downloadAndLoad(
-            const mixxx::tidal::TidalTrack& track,
+            const mixxx::streaming::Track& track,
             const QString& group);
 
   signals:
@@ -67,11 +67,11 @@ class DlgTidal final : public QWidget, public virtual LibraryView {
     void slotQualityChanged(int index);
     void slotLoginClicked();
     void slotLogoutClicked();
-    void slotDeviceLoginStarted(
+    void slotLoginStarted(
             const QString& userCode,
             const QString& verificationUri,
             int expiresInSeconds);
-    void slotDeviceLoginFinished(bool success, const QString& error);
+    void slotLoginFinished(bool success, const QString& error);
     void slotSessionChanged(bool loggedIn);
     void slotDownloadProgress(int completed, int total);
     void slotLoadTrack(TrackPointer pTrack);
@@ -83,12 +83,12 @@ class DlgTidal final : public QWidget, public virtual LibraryView {
             const TrackPointer& pPlaceholder,
             const QString& group);
     TrackPointer trackFromFile(
-            const mixxx::tidal::TidalTrack& tidalTrack,
+            const mixxx::streaming::Track& track,
             const QString& filePath) const;
 
     UserSettingsPointer m_pConfig;
     Library* m_pLibrary;
-    mixxx::tidal::TidalClient* m_pTidalClient;
+    mixxx::streaming::Provider* m_pProvider;
     TrackCollectionManager* m_pTrackCollectionManager;
 
     QLineEdit* m_pSearchLineEdit;
@@ -98,6 +98,6 @@ class DlgTidal final : public QWidget, public virtual LibraryView {
     QPushButton* m_pLogoutButton;
     QLabel* m_pStatusLabel;
     WTrackTableView* m_pTrackTableView;
-    TidalTrackListModel* m_pTrackModel;
+    StreamingTrackListModel* m_pTrackModel;
     ProxyTrackModel* m_pProxyModel;
 };

@@ -1,24 +1,20 @@
-#include "library/tidal/tidalfeature.h"
+#include "library/streaming/streamingfeature.h"
 
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/library.h"
-#include "library/tidal/dlgtidal.h"
-#include "library/tidal/tidalclient.h"
-#include "library/tidal/tidalmimedata.h"
+#include "library/streaming/dlgstreaming.h"
+#include "library/streaming/streamingmimedata.h"
 #include "library/treeitem.h"
-#include "moc_tidalfeature.cpp"
+#include "moc_streamingfeature.cpp"
 #include "track/track.h"
 #include "widget/wlibrary.h"
 
-namespace {
-const QString kViewName = QStringLiteral("TIDAL");
-} // anonymous namespace
-
-TidalFeature::TidalFeature(
+StreamingFeature::StreamingFeature(
         Library* pLibrary,
-        UserSettingsPointer pConfig)
-        : LibraryFeature(pLibrary, pConfig, QStringLiteral("tidal")),
-          m_pTidalClient(new mixxx::tidal::TidalClient(pConfig, this)),
+        UserSettingsPointer pConfig,
+        mixxx::streaming::Provider* pProvider)
+        : LibraryFeature(pLibrary, pConfig, pProvider->iconName()),
+          m_pProvider(pProvider),
           m_pSidebarModel(make_parented<TreeItemModel>(this)),
           m_pView(nullptr) {
     // The sidebar of this feature is a single, non-expandable entry. The
@@ -27,11 +23,12 @@ TidalFeature::TidalFeature(
     pRootItem->appendChild(tr("Search"));
     m_pSidebarModel->setRootItem(std::move(pRootItem));
 
-    // Allow dragging TIDAL tracks onto a deck. The callback captures this
-    // feature; it is cleared again in the destructor.
-    mixxx::tidal::setTidalDropCallback(
-            [this](const QList<mixxx::tidal::TidalTrack>& tracks,
-                    const QString& group) {
+    // Allow dragging this provider's tracks onto a deck. The handler captures
+    // this feature; it is cleared again in the destructor.
+    const QString providerId = m_pProvider->id();
+    mixxx::streaming::registerDropHandler(
+            providerId,
+            [this](const mixxx::streaming::TrackList& tracks, const QString& group) {
                 if (tracks.isEmpty()) {
                     return;
                 }
@@ -41,14 +38,14 @@ TidalFeature::TidalFeature(
                     // The view has not been created yet, so download here and
                     // emit the load request directly.
                     const auto track = tracks.first();
-                    m_pTidalClient->downloadTrack(
+                    m_pProvider->downloadTrack(
                             track,
                             [this, track, group](bool ok,
                                     const QUrl& url,
                                     const QString& error) {
                                 if (!ok) {
                                     qWarning()
-                                            << "Failed to stream TIDAL track:"
+                                            << "Failed to stream track:"
                                             << error;
                                     return;
                                 }
@@ -69,37 +66,41 @@ TidalFeature::TidalFeature(
             });
 }
 
-TidalFeature::~TidalFeature() {
-    mixxx::tidal::setTidalDropCallback(nullptr);
+StreamingFeature::~StreamingFeature() {
+    mixxx::streaming::unregisterDropHandler(m_pProvider->id());
 }
 
-QVariant TidalFeature::title() {
-    return QVariant(tr("TIDAL"));
+QString StreamingFeature::viewName() const {
+    return QStringLiteral("STREAMING_") + m_pProvider->id().toUpper();
 }
 
-TreeItemModel* TidalFeature::sidebarModel() const {
+QVariant StreamingFeature::title() {
+    return QVariant(m_pProvider->displayName());
+}
+
+TreeItemModel* StreamingFeature::sidebarModel() const {
     return m_pSidebarModel;
 }
 
-void TidalFeature::bindLibraryWidget(
+void StreamingFeature::bindLibraryWidget(
         WLibrary* pLibraryWidget,
         KeyboardEventFilter* pKeyboard) {
     // The view is deleted by the library widget.
-    m_pView = new DlgTidal(
-            pLibraryWidget, m_pConfig, m_pLibrary, pKeyboard, m_pTidalClient);
-    pLibraryWidget->registerView(kViewName, m_pView);
+    m_pView = new DlgStreaming(
+            pLibraryWidget, m_pConfig, m_pLibrary, pKeyboard, m_pProvider);
+    pLibraryWidget->registerView(viewName(), m_pView);
     connect(m_pView,
-            &DlgTidal::loadTrack,
+            &DlgStreaming::loadTrack,
             this,
-            &TidalFeature::loadTrack);
+            &StreamingFeature::loadTrack);
     connect(m_pView,
-            &DlgTidal::loadTrackToPlayer,
+            &DlgStreaming::loadTrackToPlayer,
             this,
-            &TidalFeature::loadTrackToPlayer);
+            &StreamingFeature::loadTrackToPlayer);
 }
 
-void TidalFeature::activate() {
-    emit switchToView(kViewName);
+void StreamingFeature::activate() {
+    emit switchToView(viewName());
     emit enableCoverArtDisplay(false);
     emit disableSearch();
 }
