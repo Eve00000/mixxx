@@ -61,6 +61,12 @@ class Provider : public QObject {
     virtual bool requiresLogin() const = 0;
     virtual bool hasSession() const = 0;
 
+    /// Whether the login button should be shown even though login is optional
+    /// (e.g. SoundCloud, where login unlocks the premium catalogue).
+    virtual bool showLoginButton() const {
+        return requiresLogin();
+    }
+
     /// Interactive login (device authorization / cookie etc.). Providers that
     /// do not need a login may leave these as no-ops.
     virtual void startLogin() {}

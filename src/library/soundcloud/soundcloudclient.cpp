@@ -10,6 +10,8 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUrlQuery>
+#include <algorithm>
+#include <memory>
 
 #include "moc_soundcloudclient.cpp"
 #include "util/logger.h"
@@ -22,6 +24,7 @@ namespace {
 const Logger kLogger("SoundCloudClient");
 
 const ConfigKey kClientIdKey = ConfigKey("[SoundCloud]", "ClientId");
+const ConfigKey kOAuthTokenKey = ConfigKey("[SoundCloud]", "OAuthToken");
 
 // A current desktop browser UA is required by some SoundCloud endpoints.
 const QString kUserAgent = QStringLiteral(
@@ -38,7 +41,7 @@ bool isEncryptedTranscoding(const QJsonObject& transcoding) {
     const QString url = transcoding.value(QLatin1String("url")).toString();
     return protocol.startsWith(QLatin1String("ctr-")) ||
             protocol.startsWith(QLatin1String("cbc-")) ||
-            url.contains(QLatin1String("/encrypted-hls/"));
+            url.contains(QLatin1String("encrypted-hls"));
 }
 
 mixxx::streaming::Track parseTrack(const QJsonObject& obj) {
@@ -57,38 +60,60 @@ mixxx::streaming::Track parseTrack(const QJsonObject& obj) {
     return track;
 }
 
-/// Chooses the best non-DRM transcoding. Prefers progressive (single file),
-/// then HLS AAC, then any HLS. Returns an empty object if none is usable.
-QJsonObject chooseTranscoding(const QJsonArray& transcodings) {
-    QJsonObject bestHlsAac;
-    QJsonObject bestHlsOther;
+/// Ranks the usable (non-DRM) transcodings best first. Logged-in users may
+/// receive hq (256 kbps AAC) transcodings which are preferred. Progressive
+/// (single file) beats HLS only when the quality is otherwise equal.
+QList<QJsonObject> rankedTranscodings(const QJsonArray& transcodings) {
+    QList<QJsonObject> result;
     for (const auto& value : transcodings) {
         const QJsonObject tc = value.toObject();
         if (isEncryptedTranscoding(tc)) {
             continue;
         }
+        if (tc.value(QLatin1String("snipped")).toBool()) {
+            // A preview is only useful as a last resort.
+            continue;
+        }
         const QString protocol =
                 tc.value(QLatin1String("format")).toObject()
                         .value(QLatin1String("protocol")).toString();
-        const QString preset = tc.value(QLatin1String("preset")).toString();
-        if (protocol == QLatin1String("progressive")) {
-            // Progressive is a complete, seekable file: always preferred.
-            return tc;
+        if (protocol != QLatin1String("progressive") &&
+                protocol != QLatin1String("hls")) {
+            continue;
         }
-        if (protocol == QLatin1String("hls")) {
-            if (preset.contains(QLatin1String("aac"))) {
-                if (bestHlsAac.isEmpty()) {
-                    bestHlsAac = tc;
+        result.append(tc);
+    }
+    std::stable_sort(result.begin(),
+            result.end(),
+            [](const QJsonObject& a, const QJsonObject& b) {
+                const int qa = a.value(QLatin1String("quality")).toString() ==
+                                QLatin1String("hq")
+                        ? 2
+                        : a.value(QLatin1String("quality")).toString() ==
+                                        QLatin1String("sq")
+                        ? 1
+                        : 0;
+                const int qb = b.value(QLatin1String("quality")).toString() ==
+                                QLatin1String("hq")
+                        ? 2
+                        : b.value(QLatin1String("quality")).toString() ==
+                                        QLatin1String("sq")
+                        ? 1
+                        : 0;
+                if (qa != qb) {
+                    return qa > qb;
                 }
-            } else if (bestHlsOther.isEmpty()) {
-                bestHlsOther = tc;
-            }
-        }
-    }
-    if (!bestHlsAac.isEmpty()) {
-        return bestHlsAac;
-    }
-    return bestHlsOther;
+                const QString pa =
+                        a.value(QLatin1String("format")).toObject()
+                                .value(QLatin1String("protocol")).toString();
+                const QString pb =
+                        b.value(QLatin1String("format")).toObject()
+                                .value(QLatin1String("protocol")).toString();
+                // Progressive (single file) is slightly preferred.
+                return pa == QLatin1String("progressive") &&
+                        pb != QLatin1String("progressive");
+            });
+    return result;
 }
 
 } // anonymous namespace
@@ -98,9 +123,61 @@ SoundCloudClient::SoundCloudClient(UserSettingsPointer pConfig, QObject* parent)
           m_pConfig(std::move(pConfig)),
           m_pNetwork(new QNetworkAccessManager(this)) {
     m_clientId = m_pConfig->getValueString(kClientIdKey);
+    m_oauthToken = m_pConfig->getValueString(kOAuthTokenKey);
 }
 
 SoundCloudClient::~SoundCloudClient() = default;
+
+QString SoundCloudClient::manualTokenPrompt() const {
+    return QStringLiteral(
+            "<p>Logging in is optional for SoundCloud, but it unlocks the "
+            "SoundCloud Go+ catalogue (256 kbps AAC), private tracks and the "
+            "original (lossless) file where the artist enabled downloads.</p>"
+            "<p>SoundCloud does not offer a third-party login, so paste your "
+            "<b>oauth_token</b> cookie:</p>"
+            "<ol>"
+            "<li>Log in to <a href=\"https://soundcloud.com\">soundcloud.com</a> "
+            "in your browser.</li>"
+            "<li>Open developer tools (F12) &#8594; "
+            "<i>Application &#8594; Cookies &#8594; soundcloud.com</i>.</li>"
+            "<li>Copy the value of the cookie named <b>oauth_token</b>.</li>"
+            "<li>Paste it below.</li>"
+            "</ol>"
+            "<p>This grants access to your account, so treat it like a "
+            "password.</p>");
+}
+
+void SoundCloudClient::submitManualToken(const QString& token) {
+    const QString value = token.trimmed();
+    if (value.isEmpty()) {
+        emit loginFinished(false, tr("The OAuth token is empty."));
+        return;
+    }
+    m_oauthToken = value;
+    m_pConfig->setValue(kOAuthTokenKey, m_oauthToken);
+    emit sessionChanged(true);
+    emit loginFinished(true, QString());
+}
+
+void SoundCloudClient::logout() {
+    m_oauthToken.clear();
+    m_pConfig->setValue(kOAuthTokenKey, m_oauthToken);
+    emit sessionChanged(false);
+}
+
+QStringList SoundCloudClient::qualityLabels() const {
+    // SoundCloud chooses the best stream for the account automatically, so no
+    // user-selectable quality tier is offered.
+    return {};
+}
+
+int SoundCloudClient::currentQualityIndex() const {
+    return -1;
+}
+
+void SoundCloudClient::setQualityIndex(int index) {
+    Q_UNUSED(index);
+}
 
 void SoundCloudClient::getJson(
         const QUrl& url,
@@ -121,12 +198,44 @@ void SoundCloudClient::getJson(
             });
 }
 
+void SoundCloudClient::getApiJson(
+        const QUrl& url,
+        std::function<void(bool, const QByteArray&, const QString&)> callback) {
+    QUrl withClient(url);
+    QUrlQuery query(withClient);
+    query.addQueryItem(QStringLiteral("client_id"), m_clientId);
+    withClient.setQuery(query);
+
+    QNetworkRequest request(withClient);
+    request.setRawHeader("User-Agent", kUserAgent.toUtf8());
+    request.setRawHeader("Accept", "application/json");
+    if (!m_oauthToken.isEmpty()) {
+        request.setRawHeader("Authorization",
+                QByteArrayLiteral("OAuth ") + m_oauthToken.toUtf8());
+    }
+    QNetworkReply* reply = m_pNetwork->get(request);
+    connect(reply, &QNetworkReply::finished, this,
+            [reply, callback = std::move(callback)]() {
+                reply->deleteLater();
+                const QByteArray data = reply->readAll();
+                if (reply->error() != QNetworkReply::NoError) {
+                    callback(false, data, reply->errorString());
+                    return;
+                }
+                callback(true, data, QString());
+            });
+}
+
 void SoundCloudClient::ensureClientId(mixxx::streaming::ResultCallback callback) {
     if (!m_clientId.isEmpty()) {
         callback(true, QString());
         return;
     }
-    // Scrape the web app for a client_id. First try the __sc_hydration block,
+    refreshClientId(std::move(callback));
+}
+
+void SoundCloudClient::refreshClientId(mixxx::streaming::ResultCallback callback) {
+    // Scrape the web app for a client_id. Try the __sc_hydration block first,
     // then fall back to scanning the JS assets.
     QNetworkRequest request(QUrl(QStringLiteral("https://soundcloud.com/")));
     request.setRawHeader("User-Agent", kUserAgent.toUtf8());
@@ -149,7 +258,6 @@ void SoundCloudClient::ensureClientId(mixxx::streaming::ResultCallback callback)
             return urls;
         }();
 
-        // Fetch JS assets in reverse order and look for the client_id.
         auto tryNext = std::make_shared<std::function<void(int)>>();
         std::weak_ptr<std::function<void(int)>> weakTryNext = tryNext;
         *tryNext = [this, scriptUrls, callback, weakTryNext](int index) {
@@ -192,26 +300,28 @@ void SoundCloudClient::search(
         }
         QUrlQuery q;
         q.addQueryItem(QStringLiteral("q"), query);
-        q.addQueryItem(QStringLiteral("client_id"), m_clientId);
         q.addQueryItem(QStringLiteral("limit"), QStringLiteral("50"));
         q.addQueryItem(QStringLiteral("offset"), QStringLiteral("0"));
         q.addQueryItem(QStringLiteral("linked_partitioning"), QStringLiteral("1"));
         QUrl url(kApiBase + QStringLiteral("search/tracks"));
         url.setQuery(q);
-        getJson(url, [callback](bool ok, const QByteArray& data, const QString& error) {
-            if (!ok) {
-                callback(false, {}, error);
-                return;
-            }
-            const QJsonObject root = QJsonDocument::fromJson(data).object();
-            const QJsonArray items = root.value(QLatin1String("collection")).toArray();
-            mixxx::streaming::TrackList tracks;
-            tracks.reserve(items.size());
-            for (const auto& item : items) {
-                tracks.append(parseTrack(item.toObject()));
-            }
-            callback(true, tracks, QString());
-        });
+        getApiJson(url,
+                [callback](bool ok, const QByteArray& data, const QString& error) {
+                    if (!ok) {
+                        callback(false, {}, error);
+                        return;
+                    }
+                    const QJsonObject root =
+                            QJsonDocument::fromJson(data).object();
+                    const QJsonArray items =
+                            root.value(QLatin1String("collection")).toArray();
+                    mixxx::streaming::TrackList tracks;
+                    tracks.reserve(items.size());
+                    for (const auto& item : items) {
+                        tracks.append(parseTrack(item.toObject()));
+                    }
+                    callback(true, tracks, QString());
+                });
     });
 }
 
@@ -225,67 +335,225 @@ void SoundCloudClient::downloadTrack(
         }
         // Re-fetch the track to obtain media.transcodings and
         // track_authorization.
-        QUrlQuery q;
-        q.addQueryItem(QStringLiteral("client_id"), m_clientId);
         QUrl url(kApiBase + QStringLiteral("tracks/") + track.id);
-        url.setQuery(q);
-        getJson(url,
-                [this, track, callback](bool ok, const QByteArray& data, const QString& error) {
+        getApiJson(url,
+                [this, track, callback](
+                        bool ok, const QByteArray& data, const QString& error) {
                     if (!ok) {
                         callback(false, {}, error);
                         return;
                     }
-                    resolveStreamUrl(track, data, std::move(callback));
+                    const QJsonObject root =
+                            QJsonDocument::fromJson(data).object();
+                    // Try the original (lossless) file first when available,
+                    // then fall back to the streamed transcodings.
+                    auto fallback = [this, track, root, callback](
+                                            bool ok,
+                                            const QUrl& url,
+                                            const QString& error) {
+                        if (ok) {
+                            callback(true, url, error);
+                        } else {
+                            resolveStreamUrl(track, root, callback);
+                        }
+                    };
+                    tryOriginalDownload(track, root, fallback);
                 });
     });
 }
 
-void SoundCloudClient::resolveStreamUrl(
+void SoundCloudClient::tryOriginalDownload(
         const mixxx::streaming::Track& track,
-        const QByteArray& trackJson,
+        const QJsonObject& trackObj,
         mixxx::streaming::StreamCallback callback) {
-    const QJsonObject root = QJsonDocument::fromJson(trackJson).object();
-    const QJsonArray transcodings = root.value(QLatin1String("media")).toObject()
-                                            .value(QLatin1String("transcodings"))
-                                            .toArray();
-    const QJsonObject transcoding = chooseTranscoding(transcodings);
-    if (transcoding.isEmpty()) {
-        callback(false, {}, tr("No playable (unencrypted) SoundCloud stream found."));
+    const bool loggedIn = !m_oauthToken.isEmpty();
+    const bool downloadable =
+            trackObj.value(QLatin1String("downloadable")).toBool() &&
+            trackObj.value(QLatin1String("has_downloads_left")).toBool();
+    if (!loggedIn || !downloadable) {
+        // Not eligible; hand control to the fallback without downloading.
+        callback(false, {}, QString());
         return;
     }
-    const QString transcodingUrl = transcoding.value(QLatin1String("url")).toString();
-    const QString trackAuthorization =
-            root.value(QLatin1String("track_authorization")).toString();
-
     QUrlQuery q;
     q.addQueryItem(QStringLiteral("client_id"), m_clientId);
-    if (!trackAuthorization.isEmpty()) {
-        q.addQueryItem(QStringLiteral("track_authorization"), trackAuthorization);
-    }
-    QUrl url(transcodingUrl);
+    QUrl url(kApiBase + QStringLiteral("tracks/") + track.id +
+            QStringLiteral("/download"));
     url.setQuery(q);
-    getJson(url,
-            [this, track, transcoding, callback](
-                    bool ok, const QByteArray& data, const QString& error) {
+    getApiJson(url,
+            [this, track, callback](bool ok,
+                    const QByteArray& data,
+                    const QString& error) {
+                Q_UNUSED(error);
                 if (!ok) {
-                    callback(false, {}, error);
+                    callback(false, {}, QString());
                     return;
                 }
-                const QJsonObject obj = QJsonDocument::fromJson(data).object();
-                const QString signedUrl = obj.value(QLatin1String("url")).toString();
-                if (signedUrl.isEmpty()) {
-                    callback(false, {}, tr("SoundCloud did not return a stream URL."));
+                const QJsonObject root = QJsonDocument::fromJson(data).object();
+                const QString redirect =
+                        root.value(QLatin1String("redirectUri")).toString();
+                if (redirect.isEmpty()) {
+                    callback(false, {}, QString());
                     return;
                 }
-                const QString protocol =
-                        transcoding.value(QLatin1String("format")).toObject()
-                                .value(QLatin1String("protocol")).toString();
-                if (protocol == QLatin1String("progressive")) {
-                    downloadProgressive(track, QUrl(signedUrl), std::move(callback));
-                } else {
-                    downloadHls(track, QUrl(signedUrl), std::move(callback));
+                QNetworkRequest request((QUrl(redirect)));
+                request.setRawHeader("User-Agent", kUserAgent.toUtf8());
+                if (!m_oauthToken.isEmpty()) {
+                    request.setRawHeader("Authorization",
+                            QByteArrayLiteral("OAuth ") + m_oauthToken.toUtf8());
                 }
+                // Follow the redirect manually so the Authorization header is
+                // preserved across hosts.
+                request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                        QNetworkRequest::ManualRedirectPolicy);
+                QNetworkReply* reply = m_pNetwork->get(request);
+                connect(reply, &QNetworkReply::finished, this,
+                        [this, track, callback, reply]() {
+                            reply->deleteLater();
+                            const QVariant redirectAttr =
+                                    reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+                            if (redirectAttr.isValid()) {
+                                // Follow the signed URL without the token.
+                                const QUrl location = reply->url().resolved(
+                                        redirectAttr.toUrl());
+                                QNetworkRequest finalReq(location);
+                                finalReq.setRawHeader("User-Agent", kUserAgent.toUtf8());
+                                QNetworkReply* finalReply = m_pNetwork->get(finalReq);
+                                connect(finalReply, &QNetworkReply::finished, this,
+                                        [this, track, callback, finalReply]() {
+                                            finalReply->deleteLater();
+                                            if (finalReply->error() !=
+                                                    QNetworkReply::NoError) {
+                                                callback(false, {}, QString());
+                                                return;
+                                            }
+                                            const QString suffix =
+                                                    m_oauthToken.isEmpty()
+                                                    ? QStringLiteral("bin")
+                                                    : QStringLiteral("orig");
+                                            const QString filePath =
+                                                    cacheFilePath(track, suffix);
+                                            QFile file(filePath);
+                                            if (!file.open(QIODevice::WriteOnly)) {
+                                                callback(false, {}, QString());
+                                                return;
+                                            }
+                                            file.write(finalReply->readAll());
+                                            file.close();
+                                            if (file.size() == 0) {
+                                                callback(false, {}, QString());
+                                                return;
+                                            }
+                                            callback(true,
+                                                    QUrl::fromLocalFile(filePath),
+                                                    QString());
+                                        });
+                                return;
+                            }
+                            if (reply->error() != QNetworkReply::NoError) {
+                                callback(false, {}, QString());
+                                return;
+                            }
+                            // Some responses are the file directly (200).
+                            const QString filePath =
+                                    cacheFilePath(track, QStringLiteral("orig"));
+                            QFile file(filePath);
+                            if (!file.open(QIODevice::WriteOnly)) {
+                                callback(false, {}, QString());
+                                return;
+                            }
+                            file.write(reply->readAll());
+                            file.close();
+                            if (file.size() == 0) {
+                                callback(false, {}, QString());
+                                return;
+                            }
+                            callback(true, QUrl::fromLocalFile(filePath), QString());
+                        });
             });
+}
+
+void SoundCloudClient::resolveStreamUrl(
+        const mixxx::streaming::Track& track,
+        const QJsonObject& trackObj,
+        mixxx::streaming::StreamCallback callback) {
+    const QJsonArray transcodings = trackObj.value(QLatin1String("media"))
+                                            .toObject()
+                                            .value(QLatin1String("transcodings"))
+                                            .toArray();
+    const QList<QJsonObject> ranked = rankedTranscodings(transcodings);
+    if (ranked.isEmpty()) {
+        callback(false, {},
+                tr("No playable (unencrypted) SoundCloud stream found. This "
+                   "track may require a SoundCloud Go+ login."));
+        return;
+    }
+    const QString trackAuthorization =
+            trackObj.value(QLatin1String("track_authorization")).toString();
+
+    auto index = std::make_shared<int>(0);
+    auto tryNext = std::make_shared<std::function<void()>>();
+    std::weak_ptr<std::function<void()>> weakTryNext = tryNext;
+    *tryNext = [this, track, ranked, trackAuthorization, callback, index, weakTryNext]() {
+        if (*index >= ranked.size()) {
+            callback(false, {},
+                    tr("Could not download a playable SoundCloud stream."));
+            return;
+        }
+        const QJsonObject transcoding = ranked.at((*index)++);
+        const QString transcodingUrl =
+                transcoding.value(QLatin1String("url")).toString();
+        const QString protocol =
+                transcoding.value(QLatin1String("format")).toObject()
+                        .value(QLatin1String("protocol")).toString();
+
+        QUrlQuery q;
+        q.addQueryItem(QStringLiteral("client_id"), m_clientId);
+        if (!trackAuthorization.isEmpty()) {
+            q.addQueryItem(QStringLiteral("track_authorization"),
+                    trackAuthorization);
+        }
+        QUrl url(transcodingUrl);
+        url.setQuery(q);
+        getApiJson(url,
+                [this, track, protocol, callback, weakTryNext](
+                        bool ok, const QByteArray& data, const QString& error) {
+                    Q_UNUSED(error);
+                    auto next = weakTryNext.lock();
+                    if (!ok || !next) {
+                        if (next) {
+                            (*next)();
+                        }
+                        return;
+                    }
+                    const QJsonObject obj =
+                            QJsonDocument::fromJson(data).object();
+                    const QString signedUrl =
+                            obj.value(QLatin1String("url")).toString();
+                    if (signedUrl.isEmpty()) {
+                        (*next)();
+                        return;
+                    }
+                    auto onDownload = [callback, next](bool done,
+                                              const QUrl& resultUrl,
+                                              const QString& err) {
+                        if (done) {
+                            callback(true, resultUrl, err);
+                        } else {
+                            (*next)();
+                        }
+                    };
+                    if (protocol == QLatin1String("progressive")) {
+                        downloadProgressive(track,
+                                QUrl(signedUrl),
+                                QStringLiteral("mp3"),
+                                onDownload);
+                    } else {
+                        downloadHls(track, QUrl(signedUrl), onDownload);
+                    }
+                });
+    };
+    (*tryNext)();
 }
 
 QString SoundCloudClient::cacheFilePath(
@@ -301,8 +569,9 @@ QString SoundCloudClient::cacheFilePath(
 void SoundCloudClient::downloadProgressive(
         const mixxx::streaming::Track& track,
         const QUrl& url,
+        const QString& suffix,
         mixxx::streaming::StreamCallback callback) {
-    const QString filePath = cacheFilePath(track, QStringLiteral("mp3"));
+    const QString filePath = cacheFilePath(track, suffix);
     QFile existing(filePath);
     if (existing.exists() && existing.size() > 0) {
         callback(true, QUrl::fromLocalFile(filePath), QString());
@@ -318,21 +587,26 @@ void SoundCloudClient::downloadProgressive(
                             static_cast<int>(total / 1024));
                 }
             });
-    connect(reply, &QNetworkReply::finished, this, [reply, filePath, callback]() {
-        reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            callback(false, {}, reply->errorString());
-            return;
-        }
-        QFile file(filePath);
-        if (!file.open(QIODevice::WriteOnly)) {
-            callback(false, {}, file.errorString());
-            return;
-        }
-        file.write(reply->readAll());
-        file.close();
-        callback(true, QUrl::fromLocalFile(filePath), QString());
-    });
+    connect(reply, &QNetworkReply::finished, this,
+            [reply, filePath, callback = std::move(callback)]() {
+                reply->deleteLater();
+                if (reply->error() != QNetworkReply::NoError) {
+                    callback(false, {}, reply->errorString());
+                    return;
+                }
+                QFile file(filePath);
+                if (!file.open(QIODevice::WriteOnly)) {
+                    callback(false, {}, file.errorString());
+                    return;
+                }
+                file.write(reply->readAll());
+                file.close();
+                if (file.size() == 0) {
+                    callback(false, {}, QStringLiteral("empty stream"));
+                    return;
+                }
+                callback(true, QUrl::fromLocalFile(filePath), QString());
+            });
 }
 
 bool SoundCloudClient::parseM3u8(
@@ -360,9 +634,8 @@ bool SoundCloudClient::parseM3u8(
     return !segmentUrls->isEmpty();
 }
 
-bool SoundCloudClient::finalizeHlsFile(
+bool SoundCloudClient::finalizeParts(
         const QList<QByteArray>& parts,
-        bool isMp4,
         const QString& filePath) const {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly)) {
@@ -373,8 +646,7 @@ bool SoundCloudClient::finalizeHlsFile(
         file.write(part);
     }
     file.close();
-    Q_UNUSED(isMp4);
-    return true;
+    return file.size() > 0;
 }
 
 void SoundCloudClient::downloadHls(
@@ -401,30 +673,34 @@ void SoundCloudClient::downloadHls(
                 const bool isMp4 = segmentUrls.first().path()
                                            .endsWith(QLatin1String(".m4s")) ||
                         segmentUrls.first().path().endsWith(QLatin1String(".mp4"));
-                const QString suffix = isMp4 ? QStringLiteral("m4a")
-                                             : QStringLiteral("mp3");
-                const QString filePath = cacheFilePath(track, suffix);
+                const QString filePath = cacheFilePath(
+                        track, isMp4 ? QStringLiteral("m4a") : QStringLiteral("mp3"));
                 QFile existing(filePath);
                 if (existing.exists() && existing.size() > 0) {
                     callback(true, QUrl::fromLocalFile(filePath), QString());
                     return;
                 }
 
-                // Download init (if any) plus all segments sequentially.
                 QList<QUrl> allUrls;
                 if (initUrl.isValid()) {
-                    allUrls.append(initUrl);
+                    allUrls.prepend(initUrl);
                 }
                 allUrls.append(segmentUrls);
+                const int total = allUrls.size();
 
+                // The pump downloads segments sequentially and keeps itself
+                // alive through a strong reference held by each reply handler.
+                // The body only holds a weak reference to avoid a self
+                // reference cycle. Without the strong reference the chain dies
+                // after the first segment.
                 auto parts = std::make_shared<QList<QByteArray>>();
                 auto index = std::make_shared<int>(0);
                 auto pump = std::make_shared<std::function<void()>>();
                 std::weak_ptr<std::function<void()>> weakPump = pump;
-                *pump = [this, allUrls, parts, index, filePath, isMp4,
+                *pump = [this, track, allUrls, parts, index, filePath, total,
                                 callback, weakPump]() {
-                    if (*index >= allUrls.size()) {
-                        if (finalizeHlsFile(*parts, isMp4, filePath)) {
+                    if (*index >= total) {
+                        if (finalizeParts(*parts, filePath)) {
                             callback(true, QUrl::fromLocalFile(filePath), QString());
                         } else {
                             callback(false, {},
@@ -433,21 +709,26 @@ void SoundCloudClient::downloadHls(
                         return;
                     }
                     const int current = (*index)++;
+                    std::shared_ptr<std::function<void()>> pumpRef = weakPump.lock();
                     QNetworkRequest request(allUrls.at(current));
                     request.setRawHeader("User-Agent", kUserAgent.toUtf8());
                     QNetworkReply* segmentReply = m_pNetwork->get(request);
                     connect(segmentReply, &QNetworkReply::finished, this,
-                            [segmentReply, parts, callback, weakPump, current,
-                                    total = allUrls.size()]() {
+                            [this, segmentReply, parts, filePath, total, current,
+                                    callback, pumpRef]() {
                                 segmentReply->deleteLater();
-                                if (segmentReply->error() != QNetworkReply::NoError) {
+                                if (segmentReply->error() !=
+                                        QNetworkReply::NoError) {
                                     callback(false, {},
-                                            segmentReply->errorString());
+                                            tr("Failed to download SoundCloud "
+                                               "stream segment: %1")
+                                                    .arg(segmentReply->errorString()));
                                     return;
                                 }
                                 parts->append(segmentReply->readAll());
-                                if (auto pump = weakPump.lock()) {
-                                    (*pump)();
+                                emit downloadProgress(current + 1, total);
+                                if (pumpRef) {
+                                    (*pumpRef)();
                                 }
                             });
                 };

@@ -71,7 +71,7 @@ DlgStreaming::DlgStreaming(
         searchRow->addWidget(m_pQualityComboBox);
     }
 
-    if (m_pProvider->requiresLogin()) {
+    if (m_pProvider->showLoginButton()) {
         searchRow->addWidget(m_pLoginButton);
         searchRow->addWidget(m_pLogoutButton);
     } else {
@@ -177,8 +177,9 @@ void DlgStreaming::setFocus() {
 
 void DlgStreaming::updateLoginUi(bool loggedIn) {
     const bool needsLogin = m_pProvider->requiresLogin();
-    m_pLoginButton->setEnabled(needsLogin && !loggedIn);
-    m_pLogoutButton->setEnabled(needsLogin && loggedIn);
+    const bool showLogin = m_pProvider->showLoginButton();
+    m_pLoginButton->setEnabled(showLogin && !loggedIn);
+    m_pLogoutButton->setEnabled(showLogin && loggedIn);
     m_pSearchButton->setEnabled(!needsLogin || loggedIn);
     m_pSearchLineEdit->setEnabled(!needsLogin || loggedIn);
     if (needsLogin && !loggedIn) {
