@@ -171,12 +171,15 @@ Qt::ItemFlags TidalTrackListModel::flags(const QModelIndex& index) const {
 
 QMimeData* TidalTrackListModel::mimeData(const QModelIndexList& indexes) const {
     QList<mixxx::tidal::TidalTrack> tracks;
+    QSet<int> seenRows;
     for (const QModelIndex& index : indexes) {
-        if (index.isValid() && index.column() == ColumnArtist) {
-            const TidalTrack track = trackAtRow(index.row());
-            if (track.id != 0) {
-                tracks.append(track);
-            }
+        if (!index.isValid() || seenRows.contains(index.row())) {
+            continue;
+        }
+        seenRows.insert(index.row());
+        const TidalTrack track = trackAtRow(index.row());
+        if (track.id != 0) {
+            tracks.append(track);
         }
     }
     return mixxx::tidal::encodeTracks(tracks);

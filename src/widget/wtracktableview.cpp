@@ -1,7 +1,10 @@
 #include "widget/wtracktableview.h"
 
 #include <QDrag>
+#include <QMimeData>
 #include <QModelIndex>
+#include <QPixmap>
+#include <QScopedPointer>
 #include <QScrollBar>
 #include <QShortcut>
 #include <QStylePainter>
@@ -734,9 +737,26 @@ void WTrackTableView::mouseMoveEvent(QMouseEvent* pEvent) {
     //qDebug() << "MouseMoveEvent";
 
     if (DragAndDropHelper::mouseMoveInitiatesDrag(pEvent)) {
+        // Streaming providers (e.g. TIDAL) cannot be represented by local file
+        // locations, so they provide their own MIME data. Check for that first
+        // and preserve the regular location-based drag otherwise.
+        const QModelIndexList selectedRows = getSelectedRows();
+        if (!selectedRows.isEmpty()) {
+            QScopedPointer<QMimeData> pMimeData(model()->mimeData(selectedRows));
+            if (!pMimeData.isNull() &&
+                    DragAndDropHelper::isTidalTracksMimeData(*pMimeData)) {
+                auto* pDrag = new QDrag(this);
+                pDrag->setMimeData(pMimeData.take());
+                pDrag->setPixmap(
+                        QPixmap(":/images/library/ic_library_drag_and_drop.svg"));
+                pDrag->exec(Qt::CopyAction);
+                return;
+            }
+        }
+
         // Iterate over selected rows and append each item's location url to a list.
         QList<QString> locations;
-        const QModelIndexList indices = getSelectedRows();
+        const QModelIndexList indices = selectedRows;
 
         for (const QModelIndex& index : indices) {
             if (!index.isValid()) {

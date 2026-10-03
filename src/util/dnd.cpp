@@ -314,7 +314,6 @@ QDrag* DragAndDropHelper::dragTrackLocations(
 }
 
 //static
-// static
 void DragAndDropHelper::handleTrackDragEnterEvent(
         QDragEnterEvent* pEvent,
         const QString& group,
