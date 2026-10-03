@@ -538,7 +538,9 @@ void TidalClient::getAbsolute(
         std::function<void(bool, const QByteArray&, const QString&)> callback) {
     QNetworkRequest request(url);
     request.setRawHeader("User-Agent", kAndroidUserAgent.toUtf8());
-    request.setRawHeader("Accept", "application/json");
+    // TIDAL's v2 manifest endpoint responds with 404 if a specific JSON Accept
+    // header is sent; it must be */* (this matches the reference clients).
+    request.setRawHeader("Accept", "*/*");
     request.setRawHeader("X-Platform", "android");
     request.setRawHeader("X-Tidal-Platform", "android");
     const QByteArray auth = authHeader();
@@ -827,20 +829,25 @@ void TidalClient::downloadSegments(
     auto state = std::make_shared<DownloadState>();
     state->results.resize(segmentUrls.size());
 
-    auto startNext = std::make_shared<std::function<void()>>();
-    std::weak_ptr<std::function<void()>> weakStartNext = startNext;
+    // The pump keeps up to kMaxParallelDownloads requests in flight. It is
+    // invoked once initially and again from every completed reply. Each reply
+    // handler holds a strong reference to it so it stays alive for the whole
+    // download; the pump body itself only holds a weak reference to avoid a
+    // self-reference cycle.
+    auto pump = std::make_shared<std::function<void()>>();
+    std::weak_ptr<std::function<void()>> weakPump = pump;
 
     auto reportProgress = [this, total = segmentUrls.size()](int completed) {
         emit downloadProgress(completed, total);
     };
 
-    *startNext = [this,
-                         segmentUrls,
-                         filePath,
-                         state,
-                         callback,
-                         weakStartNext,
-                         reportProgress]() {
+    *pump = [this,
+                    segmentUrls,
+                    filePath,
+                    state,
+                    callback,
+                    reportProgress,
+                    weakPump]() {
         if (state->finished) {
             return;
         }
@@ -857,6 +864,9 @@ void TidalClient::downloadSegments(
             if (!auth.isEmpty()) {
                 request.setRawHeader("authorization", auth);
             }
+            // A strong reference is obtained here, while a strong reference to
+            // the pump is still held by the caller, so lock() cannot fail.
+            std::shared_ptr<std::function<void()>> pumpRef = weakPump.lock();
             QNetworkReply* reply = m_pNetwork->get(request);
             connect(reply, &QNetworkReply::finished, this,
                     [this,
@@ -866,8 +876,8 @@ void TidalClient::downloadSegments(
                             filePath,
                             state,
                             callback,
-                            weakStartNext,
-                            reportProgress]() {
+                            reportProgress,
+                            pumpRef]() {
                         reply->deleteLater();
                         if (state->finished) {
                             return;
@@ -900,13 +910,13 @@ void TidalClient::downloadSegments(
                             callback(true, QUrl::fromLocalFile(filePath), QString());
                             return;
                         }
-                        if (auto startNext = weakStartNext.lock()) {
-                            (*startNext)();
+                        if (pumpRef) {
+                            (*pumpRef)();
                         }
                     });
         }
     };
-    (*startNext)();
+    (*pump)();
 }
 
 } // namespace tidal
