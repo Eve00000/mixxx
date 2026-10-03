@@ -56,6 +56,18 @@ class DragAndDropHelper final {
             const QString& group,
             UserSettingsPointer pConfig);
 
+    /// Returns true if the MIME data carries TIDAL streaming tracks.
+    static bool isTidalTracksMimeData(const QMimeData& mimeData);
+
+    /// Handles dropping TIDAL streaming tracks. Returns true if the event was
+    /// consumed, i.e. it carried TIDAL tracks, a drop callback is registered
+    /// and loading to the target group is allowed.
+    static bool handleTidalDropEvent(
+            QDropEvent* pEvent,
+            TrackDropTarget& target,
+            const QString& group,
+            UserSettingsPointer pConfig);
+
     static void mousePressed(QMouseEvent* pEvent);
 
     static bool mouseMoveInitiatesDrag(QMouseEvent* pEvent);

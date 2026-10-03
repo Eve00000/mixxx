@@ -1511,6 +1511,11 @@ add_library(
   src/library/tabledelegates/stardelegate.cpp
   src/library/tabledelegates/stareditor.cpp
   src/library/tabledelegates/tableitemdelegate.cpp
+  src/library/tidal/dlgtidal.cpp
+  src/library/tidal/tidalclient.cpp
+  src/library/tidal/tidalfeature.cpp
+  src/library/tidal/tidalmimedata.cpp
+  src/library/tidal/tidaltracklistmodel.cpp
   src/library/trackcollection.cpp
   src/library/trackcollectioniterator.cpp
   src/library/trackcollectionmanager.cpp

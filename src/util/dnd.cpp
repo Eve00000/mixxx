@@ -4,6 +4,7 @@
 
 #include "control/controlobject.h"
 #include "library/parser.h"
+#include "library/tidal/tidalmimedata.h"
 #include "mixer/playermanager.h"
 #include "preferences/dialog/dlgprefdeck.h"
 #include "sources/soundsourceproxy.h"
@@ -145,6 +146,31 @@ bool DragAndDropHelper::urlsContainSupportedTrackFiles(
     return !supportedTracksFromUrls(urls, true, acceptPlaylists).isEmpty();
 }
 
+// static
+bool DragAndDropHelper::isTidalTracksMimeData(const QMimeData& mimeData) {
+    return mixxx::tidal::canDecodeTracks(&mimeData);
+}
+
+// static
+bool DragAndDropHelper::handleTidalDropEvent(
+        QDropEvent* pEvent,
+        TrackDropTarget& target,
+        const QString& group,
+        UserSettingsPointer pConfig) {
+    if (!allowLoadToPlayer(group, pConfig) ||
+            !mixxx::tidal::canDecodeTracks(pEvent->mimeData())) {
+        return false;
+    }
+    const auto tracks = mixxx::tidal::decodeTracks(pEvent->mimeData());
+    auto dropCallback = mixxx::tidal::tidalDropCallback();
+    if (tracks.isEmpty() || !dropCallback) {
+        return false;
+    }
+    pEvent->acceptProposedAction();
+    dropCallback(tracks, group);
+    return true;
+}
+
 //static
 QList<mixxx::FileInfo> DragAndDropHelper::supportedTracksFromUrls(
         const QList<QUrl>& urls,
@@ -255,6 +281,9 @@ bool DragAndDropHelper::dragEnterAccept(
         const QString& sourceIdentifier,
         bool stopOnFirstMatch,
         bool acceptPlaylists) {
+    if (isTidalTracksMimeData(mimeData)) {
+        return true;
+    }
     // TODO(XXX): This operation blocks the UI when many
     // files are selected!
     const auto files = dropEventFiles(
@@ -285,6 +314,7 @@ QDrag* DragAndDropHelper::dragTrackLocations(
 }
 
 //static
+// static
 void DragAndDropHelper::handleTrackDragEnterEvent(
         QDragEnterEvent* pEvent,
         const QString& group,
@@ -304,6 +334,9 @@ void DragAndDropHelper::handleTrackDropEvent(
         TrackDropTarget& target,
         const QString& group,
         UserSettingsPointer pConfig) {
+    if (handleTidalDropEvent(pEvent, target, group, pConfig)) {
+        return;
+    }
     if (allowLoadToPlayer(group, pConfig)) {
         if (allowDeckCloneAttempt(*pEvent, group)) {
             pEvent->accept();
