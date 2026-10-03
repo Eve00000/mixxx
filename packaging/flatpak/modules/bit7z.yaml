@@ -1,0 +1,20 @@
+name: bit7z
+buildsystem: cmake-ninja
+builddir: true
+config-opts:
+  - -DCMAKE_BUILD_TYPE=Release
+  - -DCMAKE_INSTALL_PREFIX=/app
+  - -DBIT7Z_AUTO_FORMAT=ON
+  - -DBIT7Z_BUILD_TESTS=OFF
+  - -DBIT7Z_BUILD_DOCS=OFF
+  - -DBIT7Z_CUSTOM_7ZIP_PATH=/run/build/7zip/CPP/7zip
+sources:
+  - type: archive
+    url: https://github.com/rikyoz/bit7z/archive/refs/tags/v4.0.12.tar.gz
+    sha256: 4f6e6f26e8fb8131dc3a5de30ec2c5595edd2ce1085f83510e906433c67945b0
+  - type: file
+    url: https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.42.0/CPM.cmake
+    sha256: 2020b4fc42dba44817983e06342e682ecfc3d2f484a581f11cc5731fbe4dce8a
+    dest-filename: CPM.cmake
+  - type: patch
+    path: bit7z-cpm-local.patch
