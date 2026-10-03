@@ -125,3 +125,24 @@ install(
   DESTINATION
   "${CMAKE_INSTALL_LIBDIR}"
 )
+# Install the 7z shared library into AppDir/lib so bit7z can load it at runtime
+find_file(
+  SEVEN_ZIP_SO
+  NAMES "7z.so" "7za.so" "lib7z.so"
+  PATHS
+    "${MIXXX_VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib"
+    "${MIXXX_VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/plugins/codecs"
+    "/usr/lib/p7zip"
+    "/usr/libexec/p7zip"
+    "/usr/lib/x86_64-linux-gnu/p7zip"
+)
+
+if(SEVEN_ZIP_SO)
+  message(STATUS "AppImage: Bundling 7z shared library from ${SEVEN_ZIP_SO}")
+  install(FILES "${SEVEN_ZIP_SO}" DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+else()
+  message(
+    WARNING
+    "AppImage: Could not find 7z.so/7za.so to bundle into AppImage!"
+  )
+endif()

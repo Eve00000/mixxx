@@ -265,6 +265,14 @@ function(fatal_error_missing_env)
   endif()
 endfunction()
 
+#to prevent mocs from getting bit7z defines
+add_definitions(
+  -DBIT7Z_AUTO_FORMAT
+  -DBIT7Z_AUTO_PREFIX_LONG_PATHS
+  -DBIT7Z_PATH_SANITIZATION
+  -DBIT7Z_DETECT_FROM_EXTENSION
+)
+
 if(UNIX AND NOT APPLE)
   execute_process(
     COMMAND uname -r
@@ -1563,6 +1571,8 @@ add_library(
   src/preferences/colorpalettesettings.cpp
   src/preferences/configobject.cpp
   src/preferences/constants.cpp
+  src/preferences/backup/backupsettings.cpp
+  src/preferences/backup/backupworker.cpp
   src/preferences/dialog/dlgprefautodj.cpp
   src/preferences/dialog/dlgprefautodjdlg.ui
   src/preferences/dialog/dlgprefbeats.cpp
@@ -3291,6 +3301,125 @@ if(WIN32)
       "${CMAKE_CURRENT_BINARY_DIR}/src/gitinfo.h"
   )
   target_include_directories(mixxx PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
+# bit7z
+if(WIN32)
+  find_package(unofficial-bit7z CONFIG REQUIRED)
+  target_link_libraries(mixxx-lib PUBLIC unofficial::bit7z::bit7z64)
+  target_compile_definitions(
+    mixxx-lib
+    PRIVATE
+      BIT7Z_AUTO_FORMAT
+      BIT7Z_AUTO_PREFIX_LONG_PATHS
+      BIT7Z_PATH_SANITIZATION
+  )
+  message(STATUS "bit7z configured for Windows")
+elseif(UNIX)
+  # 1. First look for system or Flatpak pre-installed bit7z
+  find_package(bit7z CONFIG QUIET)
+  if(NOT bit7z_FOUND)
+    find_package(unofficial-bit7z CONFIG QUIET)
+  endif()
+
+  if(bit7z_FOUND OR unofficial-bit7z_FOUND)
+    if(TARGET bit7z::bit7z)
+      set(BIT7Z_TARGET bit7z::bit7z)
+    elseif(TARGET unofficial::bit7z::bit7z)
+      set(BIT7Z_TARGET unofficial::bit7z::bit7z)
+    elseif(TARGET bit7z)
+      set(BIT7Z_TARGET bit7z)
+    endif()
+    message(STATUS "Found pre-installed bit7z package")
+  else()
+    # 2. Fallback to CPM download for local developer builds with internet
+    if(NOT COMMAND CPMAddPackage)
+      set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_0.42.0.cmake")
+      file(
+        DOWNLOAD
+          https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.42.0/CPM.cmake
+          "${CPM_DOWNLOAD_LOCATION}"
+      )
+      include("${CPM_DOWNLOAD_LOCATION}")
+    endif()
+
+    cpmaddpackage("gh:rikyoz/bit7z@4.0.12")
+
+    if(TARGET bit7z::bit7z)
+      set(BIT7Z_TARGET bit7z::bit7z)
+    elseif(TARGET bit7z)
+      set(BIT7Z_TARGET bit7z)
+    else()
+      message(FATAL_ERROR "bit7z target not found")
+    endif()
+  endif()
+
+  target_link_libraries(mixxx-lib PUBLIC ${BIT7Z_TARGET})
+  target_compile_definitions(
+    mixxx-lib
+    PRIVATE
+      BIT7Z_AUTO_FORMAT
+      BIT7Z_AUTO_PREFIX_LONG_PATHS
+      BIT7Z_PATH_SANITIZATION
+      BIT7Z_DETECT_FROM_EXTENSION
+  )
+
+  message(STATUS "bit7z configured for Linux / macOS")
+endif()
+
+#7zip
+if(WIN32)
+  file(
+    GLOB SEVEN_ZIP_DLL
+    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/7zip.dll"
+  )
+  if(SEVEN_ZIP_DLL)
+    message(STATUS "Found 7zip.dll at: ${SEVEN_ZIP_DLL}")
+    set(
+      _dll_destinations
+      "${CMAKE_BINARY_DIR}/7z.dll"
+      "${CMAKE_INSTALL_PREFIX}/7z.dll"
+    )
+    foreach(dst IN LISTS _dll_destinations)
+      add_custom_command(
+        TARGET mixxx
+        POST_BUILD
+        COMMAND
+          ${CMAKE_COMMAND} -E copy_if_different "${SEVEN_ZIP_DLL}" "${dst}"
+        COMMENT "Copying 7zip.dll to ${dst}"
+      )
+      message(STATUS "Copied 7zip.dll to ${dst}")
+    endforeach()
+  else()
+    message(WARNING "7zip.dll not found, runtime compression may fail!")
+  endif()
+endif()
+
+if(UNIX)
+  file(
+    GLOB SEVEN_ZIP_BIN
+    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/7z"
+  )
+  if(SEVEN_ZIP_BIN)
+    message(STATUS "Found 7z at: ${SEVEN_ZIP_BIN}")
+    set(
+      _dll_destinations
+      "${CMAKE_BINARY_DIR}"
+      #"${CMAKE_INSTALL_PREFIX}"
+    )
+    foreach(dst IN LISTS _dll_destinations)
+      add_custom_command(
+        TARGET mixxx
+        POST_BUILD
+        COMMAND
+          ${CMAKE_COMMAND} -E copy_if_different "${SEVEN_ZIP_BIN}" "${dst}"
+        COMMENT "Copying 7z to ${dst}"
+      )
+      message(STATUS "Copied 7z to ${dst}")
+    endforeach()
+  else()
+    message(WARNING "7z not found, runtime compression may fail!")
+  endif()
 endif()
 
 # Chromaprint

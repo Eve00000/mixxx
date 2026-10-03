@@ -1,0 +1,9 @@
+name: 7zip-lib
+buildsystem: simple
+build-commands:
+  - cd CPP/7zip/Bundles/Format7zF && make -j $FLATPAK_BUILDER_N_JOBS -f ../../cmpl_gcc.mak
+  - find CPP/7zip/Bundles/Format7zF -name "*.so*" -exec install -Dm755 {} /app/lib/ \;
+sources:
+  - type: archive
+    url: https://github.com/ip7z/7zip/archive/refs/tags/26.01.tar.gz
+    sha256: f4212b508641b3584f7089ab67bc0aba028c631f049b4dd603ff07853e72e749
