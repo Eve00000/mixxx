@@ -1,0 +1,176 @@
+#include "preferences/backup/backupsettings.h"
+
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QFileInfo>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QThread>
+
+#include "moc_backupsettings.cpp"
+#include "preferences/backup/backupworker.h"
+#include "preferences/usersettings.h"
+
+// Starts a backup of the Mixxx settings directory if enabled in config.
+// Excludes the "analysis" subfolder, and saves the archive to ~/Documents/Mixxx-BackUps.
+// When a the config -> version is different then LastMixxxVersionBU
+// a BackUp will be created even if BackUp is disabled
+
+const QString kConfigGroup = QStringLiteral("[Backup]");
+const QString kBackUpEnabled = QStringLiteral("BackupEnabled");
+const QString kBackUpFrequency = QStringLiteral("BackupFrequency");
+const QString kLastBackUp = QStringLiteral("LastBackup");
+const QString kLastMixxxVersionBU = QStringLiteral("LastMixxxVersionBU");
+const QString kKeepXBUs = QStringLiteral("KeepXBUs");
+
+BackupSettings::BackupSettings(
+        UserSettingsPointer config,
+        QObject* parent)
+        : QObject(parent),
+          m_pConfig(config) {
+    lastMixxxVersionBU = m_pConfig->getValue(ConfigKey(kConfigGroup, kLastMixxxVersionBU));
+    currentMixxxVersion = m_pConfig->getValue(ConfigKey("[Config]", "Version"));
+    upgradeBU = (lastMixxxVersionBU != currentMixxxVersion);
+    startBU = false;
+}
+
+void BackupSettings::startBackupWorker() {
+    int keepXBUs = m_pConfig->getValue<int>(ConfigKey(kConfigGroup, kKeepXBUs));
+    // bool backUpSucces = false;
+    qDebug() << "[Backup] -> version upgrade ? " << upgradeBU;
+
+    QThread* thread = new QThread();
+    BackupWorker* worker = new BackupWorker(m_pConfig, keepXBUs, upgradeBU);
+
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &BackupWorker::performBackup);
+    connect(worker, &BackupWorker::progressChanged, this, [](int percent) {
+        qDebug() << "[Backup] -> Creation: " << percent << "%";
+    });
+
+    if (!upgradeBU) {
+        // qDebug() << "[Backup] -> Backup Creation Successful, now deleting old Backups ";
+        if (keepXBUs == 0) {
+            qDebug() << "[Backup] -> [BackupWorker] -> keeping all backups (keepXBUs=0)";
+            return;
+        }
+        connect(worker, &BackupWorker::backupFinished, this, [this, keepXBUs, worker]() {
+            if (keepXBUs > 0) {
+                worker->deleteOldBackups();
+                connect(worker,
+                        &BackupWorker::backupRemoved,
+                        this,
+                        [keepXBUs](const QString& removedBU) {
+                            qDebug() << "[Backup] -> Removing Old Backup(s) "
+                                     << removedBU << " (Only " << keepXBUs
+                                     << " BUs are kept) ";
+                        });
+            }
+        });
+        // qDebug() << "[BackUp] -> Cleaneing up old BackUps finished";
+    }
+
+    connect(worker, &BackupWorker::backupFinished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, worker, &BackupWorker::deleteLater);
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+
+    thread->start();
+}
+
+void BackupSettings::createSettingsBackup() {
+    // default the Backup is set to enabled
+    if (!m_pConfig->exists(ConfigKey(kConfigGroup, kBackUpEnabled))) {
+        m_pConfig->set(ConfigKey(kConfigGroup, kBackUpEnabled), ConfigValue((int)1));
+    }
+    // default the Backup frequency is set to daily = 1 a day / can also be always
+    if (!m_pConfig->exists(ConfigKey(kConfigGroup, kBackUpFrequency))) {
+        m_pConfig->set(ConfigKey(kConfigGroup, kBackUpFrequency), ConfigValue("daily"));
+    }
+    if (!m_pConfig->exists(ConfigKey(kConfigGroup, kLastBackUp))) {
+        m_pConfig->set(ConfigKey(kConfigGroup, kLastBackUp), ConfigValue(""));
+    }
+    if (!m_pConfig->exists(ConfigKey(kConfigGroup, kLastMixxxVersionBU))) {
+        m_pConfig->set(ConfigKey(kConfigGroup, kLastMixxxVersionBU),
+                ConfigValue(currentMixxxVersion));
+    }
+    // default all Backups are kept,
+    // if value changed in config -> delete happens after creation
+    if (!m_pConfig->exists(ConfigKey(kConfigGroup, kKeepXBUs))) {
+        m_pConfig->set(ConfigKey(kConfigGroup, kKeepXBUs), ConfigValue((int)0));
+    }
+
+    qDebug() << "[Backup] -> Backup enabled: "
+             << m_pConfig->getValue<bool>(
+                        ConfigKey(kConfigGroup, kBackUpEnabled));
+    qDebug() << "[Backup] -> Backup frequency: "
+             << m_pConfig->getValue(ConfigKey(kConfigGroup, kBackUpFrequency));
+
+    bool startBU = false;
+    QDate today = QDate::currentDate();
+    qDebug() << "[Backup] -> today: " << today;
+
+    // enabled?
+    if (!m_pConfig->getValue<bool>(ConfigKey(kConfigGroup, kBackUpEnabled))) {
+        qDebug() << "[Backup] -> Backup disabled in settings.";
+        startBU = false;
+        // BackUpFrequencies: always or daily
+    } else {
+        if (m_pConfig->getValue(ConfigKey(kConfigGroup, kBackUpFrequency)) == "daily") {
+            QString lastBackUpStr = m_pConfig->getValue(ConfigKey(kConfigGroup, kLastBackUp), "");
+            QDate lastDate = QDate::fromString(lastBackUpStr, "yyyyMMdd");
+            qDebug() << "[Backup] -> lastDate: " << lastDate;
+
+            if (lastDate == today) {
+                qDebug() << "[Backup] -> Backup already performed today. Skipping.";
+                startBU = false;
+            } else {
+                qDebug() << "[Backup] -> 1st Start of Mixxx today -> Backup will be created.";
+                startBU = true;
+            }
+        }
+        if (m_pConfig->getValue(ConfigKey(kConfigGroup, kBackUpFrequency)) == "always") {
+            qDebug() << "[Backup] -> always when Mixxx starts -> Backup will be created.";
+            startBU = true;
+        }
+    }
+
+    if (upgradeBU) {
+        qDebug() << "[Backup] -> Version upgrade -> Backup will be created.";
+        startBU = true;
+    }
+
+    const QString settingsDir = m_pConfig->getSettingsPath();
+    if (!QDir(settingsDir).exists()) {
+        qWarning() << "[Backup] -> Settings directory not found:" << settingsDir;
+        startBU = false;
+    }
+
+    // Validate the destination before starting the worker
+    // On localized Windows QStandardPaths::DocumentsLocation
+    // can return a display name like "Documenten" in NL
+    // that Win32 tools like robocopy cannot resolve.
+    // BackUpWorker::resolveDocumentsDir() handles the fallback;
+    // here we just confirm the parent folder is usable so we can skip
+    // the backup cleanly instead of failing inside the worker.
+    if (startBU) {
+        const QString documentsDir = BackupWorker::resolveDocumentsDir();
+        qDebug() << "[Backup] -> resolved backup base directory:" << documentsDir;
+        if (documentsDir.isEmpty() ||
+                !QDir().mkpath(documentsDir + "/Mixxx-Backups")) {
+            qWarning() << "[Backup] -> Cannot create backup destination under:"
+                       << documentsDir
+                       << "- skipping backup.";
+            startBU = false;
+        }
+    }
+
+    if (startBU) {
+        startBackupWorker();
+        m_pConfig->setValue(ConfigKey(kConfigGroup, kLastBackUp), today.toString("yyyyMMdd"));
+        m_pConfig->set(ConfigKey(kConfigGroup, kLastMixxxVersionBU),
+                ConfigValue(currentMixxxVersion));
+    }
+}
