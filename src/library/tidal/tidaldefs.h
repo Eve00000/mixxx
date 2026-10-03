@@ -14,6 +14,16 @@ namespace tidal {
 const QString kApiBaseUrl = QStringLiteral("https://api.tidal.com/v1/");
 const QString kAuthBaseUrl = QStringLiteral("https://auth.tidal.com/v1/oauth2/");
 
+/// The v1 playbackinfopostpaywall endpoint is capped to AAC (HIGH) for our
+/// OAuth client. Lossless FLAC is only served by the v2 trackManifests
+/// endpoint, which returns an MPEG-DASH MPD with FLAC representations.
+const QString kManifestBaseUrl =
+        QStringLiteral("https://openapi.tidal.com/v2/trackManifests/");
+
+/// Android client user agent. Required to receive an unencrypted DASH
+/// manifest from the manifest endpoint.
+const QString kAndroidUserAgent = QStringLiteral("okhttp/5.3.2");
+
 /// OAuth2 client used by the TIDAL Android app. Same credentials as
 /// python-tidal, see src/library/tidal/tidaldefs.cpp for provenance.
 const QString kClientId = QStringLiteral("fX2JxdmntZWK0ixT");

@@ -12,6 +12,7 @@
 
 class Library;
 class KeyboardEventFilter;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -63,6 +64,7 @@ class DlgTidal final : public QWidget, public virtual LibraryView {
 
   private slots:
     void slotSearch();
+    void slotQualityChanged(int index);
     void slotLoginClicked();
     void slotLogoutClicked();
     void slotDeviceLoginStarted(
@@ -91,6 +93,7 @@ class DlgTidal final : public QWidget, public virtual LibraryView {
 
     QLineEdit* m_pSearchLineEdit;
     QPushButton* m_pSearchButton;
+    QComboBox* m_pQualityComboBox;
     QPushButton* m_pLoginButton;
     QPushButton* m_pLogoutButton;
     QLabel* m_pStatusLabel;

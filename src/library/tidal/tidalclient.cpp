@@ -34,6 +34,26 @@ QUrl apiUrl(const QString& path) {
     return QUrl(kApiBaseUrl + path);
 }
 
+/// Derives the file suffix of the concatenated stream from the actual segment
+/// URL and the codec reported by the manifest. TIDAL serves FLAC for lossless
+/// tiers and MP4/AAC otherwise.
+QString suffixForSegmentUrl(const QUrl& segmentUrl, const QString& codec = QString()) {
+    const QString path = segmentUrl.path().toLower();
+    if (path.endsWith(QLatin1String(".flac"))) {
+        return QStringLiteral("flac");
+    }
+    if (path.endsWith(QLatin1String(".m4a")) ||
+            path.endsWith(QLatin1String(".mp4")) ||
+            path.endsWith(QLatin1String(".mp4a"))) {
+        return QStringLiteral("m4a");
+    }
+    if (codec.contains(QLatin1String("flac"), Qt::CaseInsensitive)) {
+        return QStringLiteral("flac");
+    }
+    // Default to the MP4 container which also covers AAC.
+    return QStringLiteral("m4a");
+}
+
 QString jsonString(const QJsonObject& obj, const char* key) {
     return obj.value(QLatin1String(key)).toString();
 }
@@ -84,6 +104,10 @@ TidalTrack parseTrack(const QJsonObject& obj) {
 }
 
 /// Extracts SegmentTemplate information from an MPD manifest.
+///
+/// TIDAL MPDs contain multiple <Representation> entries (HE-AAC, AAC, FLAC).
+/// The manifest picks the one with the highest quality among the codecs
+/// allowed by the requested quality tier.
 struct DashManifest {
     QString mediaTemplate;
     QString initializationTemplate;
@@ -109,48 +133,156 @@ struct DashManifest {
     }
 };
 
-DashManifest parseDashManifest(const QByteArray& xml) {
-    DashManifest manifest;
+/// A single audio representation inside an MPD.
+struct DashRepresentation {
+    QString codec;
+    int bandwidth = 0;
+    int sampleRate = 44100;
+    QString initUrl;
+    QString mediaUrl;
+    int startNumber = 1;
+    int segmentCount = 0;
+
+    bool isLossless() const {
+        return codec.contains(QLatin1String("flac"), Qt::CaseInsensitive) ||
+                codec.contains(QLatin1String("alac"), Qt::CaseInsensitive);
+    }
+};
+
+QString decodeXmlEntities(QString value) {
+    value.replace(QLatin1String("&amp;"), QLatin1String("&"));
+    value.replace(QLatin1String("&lt;"), QLatin1String("<"));
+    value.replace(QLatin1String("&gt;"), QLatin1String(">"));
+    value.replace(QLatin1String("&quot;"), QLatin1String("\""));
+    value.replace(QLatin1String("&apos;"), QLatin1String("'"));
+    return value;
+}
+
+QList<DashRepresentation> parseRepresentations(const QByteArray& xml) {
+    QList<DashRepresentation> representations;
     QXmlStreamReader reader(xml);
+    DashRepresentation current;
+    bool inRepresentation = false;
+    bool inSegmentTemplate = false;
     while (!reader.atEnd()) {
         reader.readNext();
-        if (!reader.isStartElement()) {
-            continue;
-        }
-        const auto name = reader.name();
-        if (name == QLatin1String("Representation")) {
-            const auto attrs = reader.attributes();
-            if (manifest.codec.isEmpty()) {
-                manifest.codec = attrs.value(QLatin1String("codecs")).toString();
-                manifest.sampleRate = attrs.value(QLatin1String("audioSamplingRate")).toInt();
+        if (reader.isStartElement()) {
+            const auto name = reader.name();
+            if (name == QLatin1String("Representation")) {
+                const auto attrs = reader.attributes();
+                current = DashRepresentation();
+                current.codec = attrs.value(QLatin1String("codecs")).toString();
+                current.bandwidth = attrs.value(QLatin1String("bandwidth")).toInt();
+                const int sampleRate =
+                        attrs.value(QLatin1String("audioSamplingRate")).toInt();
+                if (sampleRate > 0) {
+                    current.sampleRate = sampleRate;
+                }
+                inRepresentation = true;
+            } else if (inRepresentation && name == QLatin1String("SegmentTemplate")) {
+                const auto attrs = reader.attributes();
+                current.initUrl = decodeXmlEntities(
+                        attrs.value(QLatin1String("initialization")).toString());
+                current.mediaUrl = decodeXmlEntities(
+                        attrs.value(QLatin1String("media")).toString());
+                const QString startNumber =
+                        attrs.value(QLatin1String("startNumber")).toString();
+                if (!startNumber.isEmpty()) {
+                    current.startNumber = startNumber.toInt();
+                }
+                inSegmentTemplate = true;
+            } else if (inSegmentTemplate && name == QLatin1String("S")) {
+                const auto attrs = reader.attributes();
+                const QString repeat = attrs.value(QLatin1String("r")).toString();
+                current.segmentCount += repeat.isEmpty() ? 1 : (repeat.toInt() + 1);
             }
-        } else if (name == QLatin1String("SegmentTemplate")) {
-            const auto attrs = reader.attributes();
-            manifest.mediaTemplate = attrs.value(QLatin1String("media")).toString();
-            manifest.initializationTemplate =
-                    attrs.value(QLatin1String("initialization")).toString();
-            const QString startNumber = attrs.value(QLatin1String("startNumber")).toString();
-            if (!startNumber.isEmpty()) {
-                manifest.startNumber = startNumber.toInt();
+        } else if (reader.isEndElement()) {
+            const auto name = reader.name();
+            if (name == QLatin1String("Representation")) {
+                if (!current.initUrl.isEmpty() && !current.mediaUrl.isEmpty() &&
+                        current.segmentCount > 0) {
+                    representations.append(current);
+                }
+                inRepresentation = false;
+                inSegmentTemplate = false;
+            } else if (name == QLatin1String("SegmentTemplate")) {
+                inSegmentTemplate = false;
             }
-        } else if (name == QLatin1String("S")) {
-            const auto attrs = reader.attributes();
-            const QString repeat = attrs.value(QLatin1String("r")).toString();
-            manifest.segmentCount += repeat.isEmpty() ? 1 : (repeat.toInt() + 1);
         }
     }
     if (reader.hasError()) {
-        kLogger.warning() << "Failed to parse DASH manifest:" << reader.errorString();
+        kLogger.warning() << "Failed to parse DASH representations:"
+                          << reader.errorString();
+        return {};
+    }
+    return representations;
+}
+
+/// Selects the best representation for the requested quality tier.
+DashManifest selectDashManifest(
+        const QList<DashRepresentation>& representations,
+        Quality quality) {
+    DashManifest manifest;
+    if (representations.isEmpty()) {
         return manifest;
     }
-    if (manifest.mimeType.isEmpty()) {
-        // MIME type has no effect on the raw segment data, but is used to
-        // choose a file suffix for the concatenated file.
-        manifest.mimeType = QStringLiteral("audio/mp4");
+
+    const DashRepresentation* selected = nullptr;
+    auto pickHighestBandwidth = [&selected](const DashRepresentation* candidate) {
+        if (!selected || candidate->bandwidth > selected->bandwidth) {
+            selected = candidate;
+        }
+    };
+    auto pickLowestBandwidth = [&selected](const DashRepresentation* candidate) {
+        if (!selected || candidate->bandwidth < selected->bandwidth) {
+            selected = candidate;
+        }
+    };
+
+    for (const auto& representation : representations) {
+        switch (quality) {
+        case Quality::Lossless:
+            // Only consider lossless representations; if there is none the
+            // fallback below picks the best lossy one.
+            if (representation.isLossless()) {
+                pickHighestBandwidth(&representation);
+            }
+            break;
+        case Quality::High:
+        case Quality::Low:
+            // Ignore lossless representations for the compressed tiers.
+            if (!representation.isLossless()) {
+                if (quality == Quality::High) {
+                    pickHighestBandwidth(&representation);
+                } else {
+                    pickLowestBandwidth(&representation);
+                }
+            }
+            break;
+        }
     }
-    manifest.valid = !manifest.mediaTemplate.isEmpty() &&
-            !manifest.initializationTemplate.isEmpty() && manifest.segmentCount > 0;
+    // Fallback: pick the highest bandwidth representation of any codec.
+    if (!selected) {
+        for (const auto& representation : representations) {
+            pickHighestBandwidth(&representation);
+        }
+    }
+
+    if (!selected) {
+        return manifest;
+    }
+    manifest.codec = selected->codec;
+    manifest.sampleRate = selected->sampleRate;
+    manifest.initializationTemplate = selected->initUrl;
+    manifest.mediaTemplate = selected->mediaUrl;
+    manifest.startNumber = selected->startNumber;
+    manifest.segmentCount = selected->segmentCount;
+    manifest.valid = true;
     return manifest;
+}
+
+DashManifest parseDashManifest(const QByteArray& xml, Quality quality) {
+    return selectDashManifest(parseRepresentations(xml), quality);
 }
 
 } // anonymous namespace
@@ -191,7 +323,7 @@ void TidalClient::loadSession() {
     m_sessionId = m_pConfig->getValueString(kSessionIdKey);
     m_countryCode = m_pConfig->getValueString(kCountryCodeKey);
     m_userId = m_pConfig->getValueString(kUserIdKey);
-    const int quality = m_pConfig->getValue(kQualityKey, static_cast<int>(Quality::High));
+    const int quality = m_pConfig->getValue(kQualityKey, static_cast<int>(Quality::Lossless));
     m_quality = static_cast<Quality>(quality);
 }
 
@@ -401,6 +533,49 @@ void TidalClient::postForm(
     });
 }
 
+void TidalClient::getAbsolute(
+        const QUrl& url,
+        std::function<void(bool, const QByteArray&, const QString&)> callback) {
+    QNetworkRequest request(url);
+    request.setRawHeader("User-Agent", kAndroidUserAgent.toUtf8());
+    request.setRawHeader("Accept", "application/json");
+    request.setRawHeader("X-Platform", "android");
+    request.setRawHeader("X-Tidal-Platform", "android");
+    const QByteArray auth = authHeader();
+    if (!auth.isEmpty()) {
+        request.setRawHeader("authorization", auth);
+    }
+    QNetworkReply* reply = m_pNetwork->get(request);
+    connect(reply, &QNetworkReply::finished, this,
+            [this, url, callback = std::move(callback), reply]() {
+                reply->deleteLater();
+                const QByteArray data = reply->readAll();
+                if (reply->error() != QNetworkReply::NoError) {
+                    // A stale token may yield 401; refresh once and retry.
+                    const QJsonObject obj = QJsonDocument::fromJson(data).object();
+                    const QString message = obj.value(QLatin1String("userMessage"))
+                                                    .toString(reply->errorString());
+                    if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute)
+                                        .toInt() == 401 &&
+                            !m_refreshToken.isEmpty()) {
+                        refreshAccessToken([this, url, callback = std::move(callback)](
+                                                   bool ok) {
+                            if (!ok) {
+                                callback(false, {},
+                                        tr("Session expired, please log in again."));
+                                return;
+                            }
+                            getAbsolute(url, std::move(callback));
+                        });
+                        return;
+                    }
+                    callback(false, data, message);
+                    return;
+                }
+                callback(true, data, QString());
+            });
+}
+
 void TidalClient::sendRequest(
         const QString& path,
         const QUrlQuery& query,
@@ -521,57 +696,80 @@ void TidalClient::downloadTrack(
         TidalStreamCallback callback) {
     const QString trackId = QString::number(track.id);
 
+    // The v1 playbackinfopostpaywall endpoint is capped to AAC (HIGH) for our
+    // OAuth client, so request the manifest from the v2 endpoint first. It
+    // returns an MPEG-DASH MPD that contains a FLAC representation for
+    // lossless tiers.
     QUrlQuery params;
-    params.addQueryItem(QStringLiteral("playbackmode"), QStringLiteral("STREAM"));
-    params.addQueryItem(QStringLiteral("audioquality"), qualityToString(m_quality));
-    params.addQueryItem(QStringLiteral("assetpresentation"), QStringLiteral("FULL"));
+    params.addQueryItem(QStringLiteral("adaptive"), QStringLiteral("true"));
+    params.addQueryItem(QStringLiteral("manifestType"), QStringLiteral("MPEG_DASH"));
+    params.addQueryItem(QStringLiteral("uriScheme"), QStringLiteral("HTTPS"));
+    params.addQueryItem(QStringLiteral("usage"), QStringLiteral("PLAYBACK"));
+    for (const auto& format : {QStringLiteral("HEAACV1"),
+                 QStringLiteral("AACLC"),
+                 QStringLiteral("FLAC"),
+                 QStringLiteral("FLAC_HIRES")}) {
+        params.addQueryItem(QStringLiteral("formats"), format);
+    }
+    if (!m_countryCode.isEmpty()) {
+        params.addQueryItem(QStringLiteral("countryCode"), m_countryCode);
+    }
 
-    sendRequest(
-            QStringLiteral("tracks/%1/playbackinfopostpaywall").arg(trackId),
-            params,
+    QUrl manifestUrl(kManifestBaseUrl + trackId);
+    manifestUrl.setQuery(params);
+
+    getAbsolute(
+            manifestUrl,
             [this, track, callback = std::move(callback)](
                     bool ok, const QByteArray& data, const QString& error) {
                 if (!ok) {
                     callback(false, {}, error);
                     return;
                 }
-                const QJsonObject obj = QJsonDocument::fromJson(data).object();
-                const QString manifestMime = jsonString(obj, "manifestMimeType");
-                const QByteArray manifestB64 =
-                        obj.value(QLatin1String("manifest")).toString().toUtf8();
-                const QByteArray manifest = QByteArray::fromBase64(manifestB64);
-
-                QList<QUrl> segmentUrls;
-                QString suffix;
-                if (manifestMime.contains(QLatin1String("dash+xml"))) {
-                    const DashManifest dash = parseDashManifest(manifest);
-                    if (!dash.valid) {
-                        callback(false, {}, tr("Unsupported or empty DASH manifest."));
-                        return;
-                    }
-                    segmentUrls = dash.segmentUrls();
-                    // DASH segments are always a fragmented MP4 container,
-                    // even when the contained codec is FLAC. The .m4a suffix
-                    // lets Mixxx pick a suitable decoder (FAAD/FFmpeg).
-                    suffix = QStringLiteral("m4a");
-                } else if (manifestMime.contains(QLatin1String("vnd.tidal.bts"))) {
-                    const QJsonObject bts = QJsonDocument::fromJson(manifest).object();
-                    const QJsonArray urls = bts.value(QLatin1String("urls")).toArray();
-                    const QString codecs = jsonString(bts, "codecs").toLower();
-                    for (const auto& urlValue : urls) {
-                        segmentUrls.append(QUrl(urlValue.toString()));
-                    }
-                    suffix = codecs.contains(QLatin1String("flac"))
-                            ? QStringLiteral("flac")
-                            : QStringLiteral("m4a");
-                } else {
+                const QJsonObject root = QJsonDocument::fromJson(data).object();
+                const QJsonObject attributes = root.value(QLatin1String("data"))
+                                                       .toObject()
+                                                       .value(QLatin1String("attributes"))
+                                                       .toObject();
+                const QString mpdUrl =
+                        attributes.value(QLatin1String("uri")).toString();
+                if (mpdUrl.isEmpty()) {
                     callback(false, {},
-                            tr("Unsupported manifest type: %1").arg(manifestMime));
+                            tr("The TIDAL manifest response did not contain a "
+                               "manifest URL."));
                     return;
                 }
 
-                downloadSegments(track, segmentUrls, suffix, std::move(callback));
+                getAbsolute(
+                        QUrl(mpdUrl),
+                        [this, track, callback = std::move(callback)](
+                                bool mpdOk,
+                                const QByteArray& mpd,
+                                const QString& mpdError) {
+                            if (!mpdOk) {
+                                callback(false, {}, mpdError);
+                                return;
+                            }
+                            handleDashManifest(track, mpd, std::move(callback));
+                        });
             });
+}
+
+void TidalClient::handleDashManifest(
+        const TidalTrack& track,
+        const QByteArray& mpd,
+        TidalStreamCallback callback) {
+    const DashManifest dash = parseDashManifest(mpd, m_quality);
+    if (!dash.valid) {
+        callback(false, {}, tr("Unsupported or empty DASH manifest."));
+        return;
+    }
+    const QList<QUrl> segmentUrls = dash.segmentUrls();
+    // The segments are always a fragmented MP4 container (even for FLAC), so
+    // the .m4a suffix lets Mixxx pick the FFmpeg decoder.
+    const QString suffix = suffixForSegmentUrl(
+            segmentUrls.isEmpty() ? QUrl() : segmentUrls.first(), dash.codec);
+    downloadSegments(track, segmentUrls, suffix, std::move(callback));
 }
 
 QString TidalClient::cacheFilePath(
@@ -581,8 +779,12 @@ QString TidalClient::cacheFilePath(
             QStandardPaths::CacheLocation));
     cacheDir.mkpath(QStringLiteral("tidal"));
     cacheDir.cd(QStringLiteral("tidal"));
-    return cacheDir.filePath(
-            QStringLiteral("%1.%2").arg(track.id).arg(suffix));
+    // Include the quality tier so that switching between lossless and the
+    // compressed tiers does not silently reuse a file of a different quality.
+    return cacheDir.filePath(QStringLiteral("%1_%2.%3")
+                                     .arg(track.id)
+                                     .arg(qualityToString(m_quality).toLower())
+                                     .arg(suffix));
 }
 
 void TidalClient::downloadSegments(

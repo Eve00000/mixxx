@@ -1,6 +1,7 @@
 #include "library/tidal/dlgtidal.h"
 
 #include <QDesktopServices>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -38,6 +39,7 @@ DlgTidal::DlgTidal(
           m_pTrackCollectionManager(pLibrary->trackCollectionManager()),
           m_pSearchLineEdit(new QLineEdit(this)),
           m_pSearchButton(new QPushButton(tr("Search"), this)),
+          m_pQualityComboBox(new QComboBox(this)),
           m_pLoginButton(new QPushButton(tr("Log in to TIDAL"), this)),
           m_pLogoutButton(new QPushButton(tr("Log out"), this)),
           m_pStatusLabel(new QLabel(this)),
@@ -50,8 +52,17 @@ DlgTidal::DlgTidal(
     auto* layout = new QVBoxLayout(this);
     auto* searchRow = new QHBoxLayout();
     m_pSearchLineEdit->setPlaceholderText(tr("Search TIDAL for tracks..."));
+    m_pQualityComboBox->addItem(
+            tr("Lossless (FLAC)"), static_cast<int>(mixxx::tidal::Quality::Lossless));
+    m_pQualityComboBox->addItem(
+            tr("High (AAC 320 kbps)"), static_cast<int>(mixxx::tidal::Quality::High));
+    m_pQualityComboBox->addItem(
+            tr("Low (AAC 96 kbps)"), static_cast<int>(mixxx::tidal::Quality::Low));
+    m_pQualityComboBox->setCurrentIndex(
+            m_pQualityComboBox->findData(static_cast<int>(m_pTidalClient->quality())));
     searchRow->addWidget(m_pSearchLineEdit);
     searchRow->addWidget(m_pSearchButton);
+    searchRow->addWidget(m_pQualityComboBox);
     searchRow->addWidget(m_pLoginButton);
     searchRow->addWidget(m_pLogoutButton);
     layout->addLayout(searchRow);
@@ -71,6 +82,10 @@ DlgTidal::DlgTidal(
             &QPushButton::clicked,
             this,
             &DlgTidal::slotSearch);
+    connect(m_pQualityComboBox,
+            &QComboBox::currentIndexChanged,
+            this,
+            &DlgTidal::slotQualityChanged);
     connect(m_pLoginButton,
             &QPushButton::clicked,
             this,
@@ -198,6 +213,11 @@ void DlgTidal::slotDownloadProgress(int completed, int total) {
     }
     m_pStatusLabel->setText(
             tr("Downloading track... %1/%2 segments").arg(completed).arg(total));
+}
+
+void DlgTidal::slotQualityChanged(int index) {
+    const int quality = m_pQualityComboBox->itemData(index).toInt();
+    m_pTidalClient->setQuality(static_cast<mixxx::tidal::Quality>(quality));
 }
 
 void DlgTidal::slotSearch() {

@@ -99,6 +99,11 @@ class TidalClient final : public QObject {
             const QString& path,
             const QUrlQuery& query,
             std::function<void(bool, const QByteArray&, const QString&)> callback);
+    /// Performs an authenticated GET on an absolute URL (e.g. the manifest
+    /// endpoint) and returns the raw response body.
+    void getAbsolute(
+            const QUrl& url,
+            std::function<void(bool, const QByteArray&, const QString&)> callback);
     void postForm(
             const QString& absoluteUrl,
             const QUrlQuery& query,
@@ -117,6 +122,11 @@ class TidalClient final : public QObject {
             const QString& fileSuffix,
             TidalStreamCallback callback);
 
+    void handleDashManifest(
+            const TidalTrack& track,
+            const QByteArray& mpd,
+            TidalStreamCallback callback);
+
     QByteArray authHeader() const;
 
     QString cacheFilePath(const TidalTrack& track, const QString& suffix) const;
@@ -131,7 +141,7 @@ class TidalClient final : public QObject {
     QString m_sessionId;
     QString m_countryCode;
     QString m_userId;
-    Quality m_quality = Quality::High;
+    Quality m_quality = Quality::Lossless;
 
     // Device login state
     QString m_deviceCode;
