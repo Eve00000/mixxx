@@ -33,8 +33,6 @@ cleanup:
   - "*.a"
   - "*.la"
 modules:
-  - modules/7zip-lib.yaml
-  - modules/bit7z.yaml
   - modules/libmad.yaml
   - modules/lv2.yaml
   - modules/serd.yaml
@@ -73,26 +71,20 @@ modules:
       - -DINSTALL_USER_UDEV_RULES=OFF
       - -DBUILD_BENCH=OFF
       - -DBUILD_TESTING=ON
-      - -DCPM_LOCATION=cmake/CPM_0.40.2.cmake
     sources:
       - type: dir
         path: ../../
-      - type: file
-        url: https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.2/CPM.cmake
-        sha256: c8cdc32c03816538ce22781ed72964dc864b2a34a310d3b7104812a5ca2d835d
-        dest: cmake
-        dest-filename: CPM_0.40.2.cmake
-      - type: script
-        dest-filename: mixxx.sh
-        commands:
+      - commands:
           - export LV2_PATH=$HOME/.lv2:/app/extensions/Plugins/lv2:/app/lib/lv2
           - exec mixxx.bin "$@"
+        type: script
+        dest-filename: mixxx.sh
+    cleanup:
+      - /share/icons/hicolor/scalable/apps/mixxx_ios.svg
+      - /share/icons/hicolor/scalable/apps/mixxx_macos.svg
     post-install:
       - desktop-file-edit --set-key="Exec" --set-value="mixxx %U" ${FLATPAK_DEST}/share/applications/org.mixxx.Mixxx.desktop
       - mv ${FLATPAK_DEST}/bin/mixxx ${FLATPAK_DEST}/bin/mixxx.bin
       - install -Dm755 mixxx.sh ${FLATPAK_DEST}/bin/mixxx
       - install -Dm644 ./res/linux/org.mixxx.Mixxx.metainfo.xml /app/share/metainfo/org.mixxx.Mixxx.metainfo.xml
       - install -d /app/extensions/Plugins
-    cleanup:
-      - /share/icons/hicolor/scalable/apps/mixxx_ios.svg
-      - /share/icons/hicolor/scalable/apps/mixxx_macos.svg

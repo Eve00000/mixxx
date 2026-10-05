@@ -149,7 +149,6 @@ case "$1" in
             # XCB packages needed to link the static Qt plugin from the
             # buildenv; keep in sync with the buildenv's Qt build.
             sudo apt-get install -y --no-install-recommends \
-                p7zip-full \
                 ccache \
                 g++ \
                 make \

@@ -67,7 +67,6 @@ case "$1" in
 
     setup)
         sudo apt-get update && sudo apt-get install -y --no-install-recommends -- \
-            p7zip-full \
             ccache \
             cmake \
             make \
