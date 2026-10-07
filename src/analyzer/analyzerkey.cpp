@@ -30,8 +30,9 @@ constexpr bool showDebugWAnalyzerKey = false;
 QList<mixxx::AnalyzerPluginInfo> AnalyzerKey::availablePlugins() {
     QList<mixxx::AnalyzerPluginInfo> analyzers;
     // First one below is the default
-    analyzers.push_back(mixxx::AnalyzerQueenMaryKey::pluginInfo());
+    // Extended analyzes to create "same key"-segments, for curves
     analyzers.push_back(mixxx::AnalyzerQueenMaryKeyExtended::pluginInfo());
+    analyzers.push_back(mixxx::AnalyzerQueenMaryKey::pluginInfo());
 #if defined __KEYFINDER__
     analyzers.push_back(mixxx::AnalyzerKeyFinder::pluginInfo());
 #endif

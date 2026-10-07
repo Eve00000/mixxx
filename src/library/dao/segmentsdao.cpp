@@ -1,6 +1,7 @@
 #include "library/dao/segmentsdao.h"
 
 #include <QSqlQuery>
+#include <QtDebug>
 
 #include "library/queryutil.h"
 #include "util/assert.h"
@@ -312,6 +313,10 @@ bool SegmentsDAO::saveKeySegment(TrackId trackId, KeySegments* pSegment) const {
 void SegmentsDAO::saveTrackBpmSegments(
         TrackId trackId,
         const QList<BpmSegmentsPointer>& segmentList) const {
+    if (!m_database.isOpen() || !trackId.isValid()) {
+        return;
+    }
+
     DEBUG_ASSERT(trackId.isValid());
     QStringList segmentIds;
     segmentIds.reserve(segmentList.size());
@@ -372,6 +377,7 @@ void SegmentsDAO::saveTrackKeySegments(
         segmentIds.append(pSegment->getId().toString());
     }
 
+    // Delete orphaned segments
     FwdSqlQuery query(m_database,
             QStringLiteral("DELETE FROM " KEY_SEGMENTS_TABLE
                            " WHERE track_id=:track_id AND id NOT IN (%1)")
