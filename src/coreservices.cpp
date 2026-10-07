@@ -372,8 +372,8 @@ CoreServices::CoreServices(const CmdlineArgs& args, QApplication* pApp)
     initializeSettings();
     initializeLogging();
 
-    BackUpSettings* backUp = new BackUpSettings(m_pSettingsManager->settings());
-    backUp->createSettingsBackUp();
+    BackupSettings* backup = new BackupSettings(m_pSettingsManager->settings());
+    backup->createSettingsBackup();
 
     // Only record stats in developer mode or when --stats is specified.
     if (m_cmdlineArgs.getStats()) {

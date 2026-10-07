@@ -6,33 +6,33 @@
 
 #include "preferences/usersettings.h"
 
-class BackUpWorker : public QObject {
+class BackupWorker : public QObject {
     Q_OBJECT
   public:
-    explicit BackUpWorker(
+    explicit BackupWorker(
             UserSettingsPointer config,
             int keepBackups = 5,
-            bool upgradeBU = false,
+            bool upgradeBu = false,
             QObject* parent = nullptr);
-    ~BackUpWorker() = default;
+    ~BackupWorker() = default;
 
     static QString resolveDocumentsDir();
 
   public slots:
-    void performBackUp();
-    void deleteOldBackUps();
+    void performBackup();
+    void deleteOldBackups();
     bool copySettingsToTempDir(const QString& settingsDir, const QString& tempDirPath);
 
   signals:
     void progressChanged(int percentage);
-    void backUpFinished(bool success, const QString& message);
+    void backupFinished(bool success, const QString& message);
     void errorOccurred(const QString& error);
-    void backUpRemoved(const QString& error);
+    void backupRemoved(const QString& error);
 
   private:
     UserSettingsPointer m_pConfig;
-    int m_keepBackUps;
-    bool m_upgradeBU;
+    int m_keepBackups;
+    bool m_upgradeBu;
     QString currentMixxxVersion;
     bool useBit7z;
 };

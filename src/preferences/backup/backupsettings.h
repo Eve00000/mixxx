@@ -6,21 +6,21 @@
 
 #include "preferences/usersettings.h"
 
-class BackUpWorker;
+class BackupWorker;
 
-class BackUpSettings : public QObject {
+class BackupSettings : public QObject {
     Q_OBJECT
 
   public:
-    explicit BackUpSettings(
+    explicit BackupSettings(
             UserSettingsPointer config,
             QObject* parent = nullptr);
 
-    ~BackUpSettings() = default;
+    ~BackupSettings() = default;
 
   public slots:
-    void createSettingsBackUp();
-    void startBackUpWorker();
+    void createSettingsBackup();
+    void startBackupWorker();
 
   private:
     UserSettingsPointer m_pConfig;
