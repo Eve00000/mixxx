@@ -770,8 +770,8 @@
                                                   </Children>
                                                 </WidgetGroup>
 
-                                                <Template src="skins:LateNight/fx_rack.xml"/>
-                                                <Template src="skins:LateNight (128 Samplers Wide)/samplers_rack.xml"/>
+                                                <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                                <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                                 <Template src="skins:LateNight/mic_aux_rack.xml"/>
 
                                                 <WidgetGroup>
@@ -883,8 +883,8 @@
                                                   </Children>
                                                 </WidgetGroup>
 
-                                                <Template src="skins:LateNight/fx_rack.xml"/>
-                                                <Template src="skins:LateNight (128 Samplers Wide)/samplers_rack.xml"/>
+                                                <Template src="skins:LateNight/wide_fx_rack.xml"/>
+                                                <Template src="skins:LateNight (128 Samplers Wide)/wide_samplers_rack.xml"/>
                                                 <Template src="skins:LateNight/mic_aux_rack.xml"/>
 
                                                 <WidgetGroup>
@@ -1303,8 +1303,8 @@
                           <Orientation>horizontal</Orientation>
                           <SizePolicy>me,me</SizePolicy>
                           <!-- 3 children: waveforms | toolbar+controls/library | skin_settings -->
-                          <SplitSizes>50,50,50,50</SplitSizes>
-                          <Collapsible>0,0,0,0</Collapsible>
+                          <SplitSizes>50,50,50</SplitSizes>
+                          <Collapsible>0,0,0</Collapsible>
                           <Children>
 
                             <!-- Column 1: waveforms, top-anchored, height-bound -->
@@ -1523,8 +1523,8 @@
                           <Orientation>horizontal</Orientation>
                           <SizePolicy>me,me</SizePolicy>
                           <!-- 3 children: toolbar+controls/library | waveforms | skin_settings -->
-                          <SplitSizes>50,50,50,50</SplitSizes>
-                          <Collapsible>0,0,0,0</Collapsible>
+                          <SplitSizes>50,50,50</SplitSizes>
+                          <Collapsible>0,0,0</Collapsible>
                           <Children>
 
                             <!-- Columns 1 & 2: toolbar + controls and library, swapped via -->
