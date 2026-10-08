@@ -106,15 +106,7 @@ bool WaveformRendererTextured::loadTexture() {
         return false;
     }
 
-    // Eve: Fix a crash on some drivers when the texture is loaded before the GL context is ready.
-    // eg on highdetails waveform, the texture is loaded before the GL context is ready,
-    // which causes a crash on some drivers.
-
-    // Drain any stale GL errors left by earlier rendering code so that
-    // the glGetError() calls below only report errors raised by this
-    // function. Otherwise a stale error from another renderer can make
-    // this function appear to fail on drivers that surface errors
-    // (e.g. VMware SVGA3D on Win10) even when the calls succeed.
+    // WaveformRendererTextured: guard against missing current GL context
     for (int i = 0; i < 16; ++i) {
         if (glGetError() == GL_NO_ERROR) {
             break;
@@ -301,14 +293,7 @@ void WaveformRendererTextured::slotWaveformUpdated() {
         return;
     }
 
-    // EVE: fix high details crash on startup when loading a track with a waveform.
-    // The crash was caused by the fact that the texture was being loaded on
-    // a non-render thread, which is not allowed.
-    // This check ensures that we only load the texture when we are on the render thread.
-
-    // If we're not on the render thread (no current GL context), do not
-    // touch the GPU. paintGL() will reload the texture on the next frame
-    // when the completion value has changed.
+    // WaveformRendererTextured: guard against missing current GL context
     if (QOpenGLContext::currentContext() == nullptr) {
         return;
     }
