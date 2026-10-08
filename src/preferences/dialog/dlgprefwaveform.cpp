@@ -184,6 +184,11 @@ DlgPrefWaveform::DlgPrefWaveform(
     untilMarkAlignComboBox->addItem(tr("Center"));
     untilMarkAlignComboBox->addItem(tr("Bottom"));
 
+    // Populate untilMark horizontal options
+    untilMarkHorizAlignComboBox->addItem(tr("Left of Waveform"));
+    untilMarkHorizAlignComboBox->addItem(tr("Left of Playmarker"));
+    untilMarkHorizAlignComboBox->addItem(tr("Right of Playmarker"));
+
     //: options for "Text height limit"
     untilMarkTextHeightLimitComboBox->addItem(tr("1/3 of waveform viewer"));
     untilMarkTextHeightLimitComboBox->addItem(tr("Entire waveform viewer"));
@@ -324,6 +329,10 @@ DlgPrefWaveform::DlgPrefWaveform(
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             &DlgPrefWaveform::slotSetUntilMarkAlign);
+    connect(untilMarkHorizAlignComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefWaveform::slotSetUntilMarkHorizAlign);
     connect(untilMarkTextPointSizeSpinBox,
             QOverload<int>::of(&QSpinBox::valueChanged),
             this,
@@ -475,6 +484,7 @@ void DlgPrefWaveform::slotUpdate() {
     untilMarkAlignComboBox->setCurrentIndex(
             WaveformWidgetFactory::toUntilMarkAlignIndex(
                     pFactory->getUntilMarkAlign()));
+    untilMarkHorizAlignComboBox->setCurrentIndex(pFactory->getUntilMarkHorizAlign());
     untilMarkTextPointSizeSpinBox->setValue(pFactory->getUntilMarkTextPointSize());
     untilMarkTextHeightLimitComboBox->setCurrentIndex(
             WaveformWidgetFactory::toUntilMarkTextHeightLimitIndex(
@@ -611,6 +621,8 @@ void DlgPrefWaveform::slotResetToDefaults() {
     defaultZoomComboBox->setCurrentIndex(3 + 1);
 
     synchronizeZoomCheckBox->setChecked(true);
+
+    untilMarkHorizAlignComboBox->setCurrentIndex(2);
 
     // RGB overview.
     waveformOverviewComboBox->setCurrentIndex(
@@ -812,6 +824,8 @@ void DlgPrefWaveform::updateEnableUntilMark() {
             untilMarkShowTimeCheckBox->isChecked();
     untilMarkAlignLabel->setEnabled(beatsOrTimeEnabled);
     untilMarkAlignComboBox->setEnabled(beatsOrTimeEnabled);
+    untilMarkHorizAlignLabel->setEnabled(beatsOrTimeEnabled);
+    untilMarkHorizAlignComboBox->setEnabled(beatsOrTimeEnabled);
     untilMarkTextPointSizeLabel->setEnabled(beatsOrTimeEnabled);
     untilMarkTextPointSizeSpinBox->setEnabled(beatsOrTimeEnabled);
     untilMarkTextHeightLimitLabel->setEnabled(beatsOrTimeEnabled);
@@ -986,6 +1000,11 @@ void DlgPrefWaveform::slotSetUntilMarkShowTime(bool checked) {
 void DlgPrefWaveform::slotSetUntilMarkAlign(int index) {
     WaveformWidgetFactory::instance()->setUntilMarkAlign(
             WaveformWidgetFactory::toUntilMarkAlign(index));
+    notifyQmlWaveformSettingsChanged();
+}
+
+void DlgPrefWaveform::slotSetUntilMarkHorizAlign(int index) {
+    WaveformWidgetFactory::instance()->setUntilMarkHorizAlign(index);
     notifyQmlWaveformSettingsChanged();
 }
 
