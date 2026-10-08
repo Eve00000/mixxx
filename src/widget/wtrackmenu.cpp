@@ -964,11 +964,13 @@ void WTrackMenu::generateTrackLoadMenu(const QString& group,
         bool primaryDeck,
         bool enabled) {
 #ifdef __STEM__
-    if (pTrack && !pTrack->hasStreamInfoFromSource()) {
+    if (pTrack && pTrack->getFileInfo().hasLocation() &&
+            !pTrack->hasStreamInfoFromSource()) {
         // The stem metadata are loaded on stream info refresh, which occurs
         // when the file gets loaded for the time in the session. If there is no
         // stream info from source, when open the file, which lead to loading
-        // the stem manifest.
+        // the stem manifest. Tracks without a file location (e.g. placeholder
+        // tracks for streaming sources) cannot be opened and are skipped.
         mixxx::AudioSource::OpenParams config;
         config.setChannelCount(mixxx::kMaxEngineChannelInputCount);
         SoundSourceProxy(pTrack).openAudioSource(config);
