@@ -1210,7 +1210,9 @@ add_library(
   src/analyzer/analyzertrack.cpp
   src/analyzer/analyzerwaveform.cpp
   src/analyzer/plugins/analyzerqueenmarybeats.cpp
+  src/analyzer/plugins/analyzerqueenmarybeatsextended.cpp
   src/analyzer/plugins/analyzerqueenmarykey.cpp
+  src/analyzer/plugins/analyzerqueenmarykeyextended.cpp
   src/analyzer/plugins/analyzersoundtouchbeats.cpp
   src/analyzer/plugins/buffering_utils.cpp
   src/analyzer/trackanalysisscheduler.cpp
@@ -1415,6 +1417,10 @@ add_library(
   src/library/autodj/autodjprocessor.cpp
   src/library/autodj/dlgautodj.cpp
   src/library/autodj/dlgautodj.ui
+  src/library/autosuggestions/autosuggestionsfeature.cpp
+  src/library/autosuggestions/autosuggestionsprocessor.cpp
+  src/library/autosuggestions/dlgautosuggestions.cpp
+  src/library/autosuggestions/dlgautosuggestions.ui
   src/library/banshee/bansheedbconnection.cpp
   src/library/banshee/bansheefeature.cpp
   src/library/banshee/bansheeplaylistmodel.cpp
@@ -1439,6 +1445,7 @@ add_library(
   src/library/dao/directorydao.cpp
   src/library/dao/libraryhashdao.cpp
   src/library/dao/playlistdao.cpp
+  src/library/dao/segmentsdao.cpp
   src/library/dao/settingsdao.cpp
   src/library/dao/trackdao.cpp
   src/library/dao/trackschema.cpp
@@ -1523,7 +1530,16 @@ add_library(
   src/library/trackset/crate/cratefeaturehelper.cpp
   src/library/trackset/crate/cratestorage.cpp
   src/library/trackset/crate/cratetablemodel.cpp
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/dlgbasesearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.cpp
+  src/library/trackset/searchcrate/dlgsearchcrateinfo.ui
+  src/library/trackset/searchcrate/searchcratefeature.cpp
+  src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
+  src/library/trackset/searchcrate/searchcratestorage.cpp
+  src/library/trackset/searchcrate/searchcratetablemodel.cpp
   src/library/trackset/playlistfeature.cpp
+  src/library/trackset/preparation/preparationfeature.cpp
   src/library/trackset/setlogfeature.cpp
   src/library/trackset/tracksettablemodel.cpp
   src/library/traktor/traktorfeature.cpp
@@ -1534,6 +1550,7 @@ add_library(
   src/mixer/basetrackplayer.cpp
   src/mixer/deck.cpp
   src/mixer/microphone.cpp
+  src/mixer/nowplaying.cpp
   src/mixer/playerinfo.cpp
   src/mixer/playermanager.cpp
   src/mixer/previewdeck.cpp
@@ -1555,6 +1572,8 @@ add_library(
   src/network/jsonwebtask.cpp
   src/network/networktask.cpp
   src/network/webtask.cpp
+  src/osc/oscfunctions.cpp
+  src/osc/oscreceiver.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -1563,6 +1582,8 @@ add_library(
   src/preferences/colorpalettesettings.cpp
   src/preferences/configobject.cpp
   src/preferences/constants.cpp
+  src/preferences/backup/backupsettings.cpp
+  src/preferences/backup/backupworker.cpp
   src/preferences/dialog/dlgprefautodj.cpp
   src/preferences/dialog/dlgprefautodjdlg.ui
   src/preferences/dialog/dlgprefbeats.cpp
@@ -1584,6 +1605,8 @@ add_library(
   src/preferences/dialog/dlgpreflibrarydlg.ui
   src/preferences/dialog/dlgprefmixer.cpp
   src/preferences/dialog/dlgprefmixerdlg.ui
+  src/preferences/dialog/dlgprefosc.cpp
+  src/preferences/dialog/dlgprefoscdlg.ui
   src/preferences/dialog/dlgprefrecord.cpp
   src/preferences/dialog/dlgprefrecorddlg.ui
   src/preferences/dialog/dlgprefreplaygain.cpp
@@ -1638,12 +1661,14 @@ add_library(
   src/track/beats.cpp
   src/track/beatutils.cpp
   src/track/bpm.cpp
+  src/track/bpmsegments.cpp
   src/track/cue.cpp
   src/track/cueinfo.cpp
   src/track/cueinfoimporter.cpp
   src/track/globaltrackcache.cpp
   src/track/keyfactory.cpp
   src/track/keys.cpp
+  src/track/keysegments.cpp
   src/track/keyutils.cpp
   src/track/playcounter.cpp
   src/track/replaygain.cpp
@@ -1740,6 +1765,10 @@ add_library(
   src/waveform/renderers/waveformoverviewrenderer.cpp
   src/waveform/renderers/waveformrenderbackground.cpp
   src/waveform/renderers/waveformrenderbeat.cpp
+  src/waveform/renderers/waveformrenderbpmcurve.cpp
+  src/waveform/renderers/waveformrenderbpmcurvebase.cpp
+  src/waveform/renderers/waveformrenderkeycurve.cpp
+  src/waveform/renderers/waveformrenderkeycurvebase.cpp
   src/waveform/renderers/waveformrendererabstract.cpp
   src/waveform/renderers/waveformrendererendoftrack.cpp
   src/waveform/renderers/waveformrendererfilteredsignal.cpp
@@ -1793,6 +1822,7 @@ add_library(
   src/widget/wcuemenupopup.cpp
   src/widget/wcuebutton.cpp
   src/widget/wdisplay.cpp
+  src/widget/wdlgimportplaylist.cpp
   src/widget/weffectbuttonparametername.cpp
   src/widget/weffectchain.cpp
   src/widget/weffectchainpresetbutton.cpp
@@ -1805,6 +1835,7 @@ add_library(
   src/widget/weffectparameternamebase.cpp
   src/widget/weffectpushbutton.cpp
   src/widget/weffectselector.cpp
+  src/widget/wfastsearch.cpp
   src/widget/wfindonwebmenu.cpp
   src/widget/whotcuebutton.cpp
   src/widget/wimagestore.cpp
@@ -1813,6 +1844,8 @@ add_library(
   src/widget/wknobcomposed.cpp
   src/widget/wlabel.cpp
   src/widget/wlibrary.cpp
+  src/widget/wlibrarybasewindow.cpp
+  src/widget/wlibrarypreparationwindow.cpp
   src/widget/wlibrarysidebar.cpp
   src/widget/wlibrarytableview.cpp
   src/widget/wlibrarytextbrowser.cpp
@@ -2045,6 +2078,8 @@ if(QOPENGL)
       src/waveform/renderers/allshader/waveformrenderersignalbase.cpp
       src/waveform/renderers/allshader/waveformrenderersimple.cpp
       src/waveform/renderers/allshader/waveformrendermark.cpp
+      src/waveform/renderers/allshader/waveformrenderbpmcurve.cpp
+      src/waveform/renderers/allshader/waveformrenderkeycurve.cpp
       src/waveform/renderers/allshader/waveformrendermarkrange.cpp
       src/waveform/widgets/allshader/waveformwidget.cpp
       src/widget/openglwindow.cpp
@@ -2183,6 +2218,8 @@ if(MSVC)
     target_compile_definitions(
       mixxx-lib
       PUBLIC
+        # OSC: to prevent multiple instances of winsock(2) being loaded
+        WIN32_LEAN_AND_MEAN
         _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
         _CRT_SECURE_NO_WARNINGS
     )
@@ -2280,6 +2317,8 @@ if(WIN32)
   # _WIN32_WINNT_WIN7 = 0x0601
   target_compile_definitions(mixxx-lib PUBLIC WINVER=0x0601)
   target_compile_definitions(mixxx-lib PUBLIC _WIN32_WINNT=0x0601)
+  # OSC: to prevent multiple instances of winsock(2) being loaded
+  target_compile_definitions(mixxx-lib PUBLIC WIN32_LEAN_AND_MEAN)
   if(MSVC)
     target_compile_definitions(mixxx-lib PUBLIC _USE_MATH_DEFINES)
   endif()
@@ -2911,6 +2950,7 @@ if(STEM)
       src/track/steminfoimporter.cpp
       src/track/steminfo.cpp
       src/widget/wtrackstemmenu.cpp
+      src/widget/wstemcontrolborder.cpp
       src/widget/wstemlabel.cpp
   )
   if(QOPENGL)
@@ -2997,6 +3037,8 @@ if(BUILD_TESTING)
     src/test/mixxxtest.cpp
     src/test/mock_networkaccessmanager.cpp
     src/test/musicbrainzrecordingstasktest.cpp
+    #src/test/osc_liblo_test.cpp
+    #src/test/osc_mixxx_integration_test.cpp
     src/test/performancetimer_test.cpp
     src/test/playcountertest.cpp
     src/test/playermanagertest.cpp
@@ -3717,6 +3759,42 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   target_compile_options(rekordbox_metadata PRIVATE /w44063)
 endif()
 
+# liblo
+
+if(WIN32 OR APPLE)
+  message(STATUS "[Liblo] Windows or macOS, using vcpkg")
+  find_package(liblo REQUIRED)
+elseif(UNIX)
+  message(STATUS "[Liblo] Linux, using pkg-config")
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBLO REQUIRED liblo)
+
+  add_library(liblo UNKNOWN IMPORTED)
+  set_target_properties(
+    liblo
+    PROPERTIES
+      IMPORTED_LOCATION ${LIBLO_LINK_LIBRARIES}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBLO_INCLUDE_DIRS}
+  )
+
+  add_library(liblo::liblo ALIAS liblo)
+endif()
+
+include_directories(${LIBLO_INCLUDE_DIRS})
+target_link_libraries(mixxx-lib PRIVATE liblo::liblo)
+
+# Liblo Test for CI
+# to check if liblo is included >> send some messages to itself
+# if received >> test passes
+if(BUILD_TESTING)
+  add_executable(
+    osc_mixxx_integration_test
+    src/test/osc_mixxx_integration_test.cpp
+  )
+  target_link_libraries(osc_mixxx_integration_test PRIVATE liblo::liblo)
+  add_test(NAME osc_mixxx_integration_test COMMAND osc_mixxx_integration_test)
+endif()
+
 # Kaitai for reading Rekordbox libraries
 add_library(Kaitai STATIC EXCLUDE_FROM_ALL lib/kaitai/kaitai/kaitaistream.cpp)
 target_include_directories(Kaitai SYSTEM PUBLIC lib/kaitai)
@@ -4099,6 +4177,8 @@ if(QML)
       src/waveform/renderers/allshader/waveformrendererpreroll.cpp
       src/waveform/renderers/allshader/waveformrendererrgb.cpp
       src/waveform/renderers/allshader/waveformrenderersignalbase.cpp
+      src/waveform/renderers/allshader/waveformrenderbpmcurve.cpp
+      src/waveform/renderers/allshader/waveformrenderkeycurve.cpp
       src/waveform/renderers/allshader/waveformrendermark.cpp
       src/waveform/renderers/allshader/waveformrendermarkrange.cpp
       src/waveform/renderers/allshader/waveformrendererslipmode.cpp
