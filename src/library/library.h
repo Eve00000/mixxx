@@ -33,6 +33,7 @@ class PlaylistFeature;
 class PreparationFeature;
 class RecordingManager;
 class SearchCrateFeature;
+class GroupedSearchCratesFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
@@ -234,6 +235,7 @@ class Library : public QObject {
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
     parented_ptr<GroupedCratesFeature> m_pGroupedCratesFeature;
+    parented_ptr<GroupedSearchCratesFeature> m_pGroupedSearchCratesFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
     parented_ptr<PreparationFeature> m_pPreparationFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
