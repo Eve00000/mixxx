@@ -22,6 +22,7 @@ class AutoSuggestionsFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
+class GroupedCratesFeature;
 class LibraryControl;
 class LibraryFeature;
 class LibraryTableModel;
@@ -232,6 +233,7 @@ class Library : public QObject {
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
+    parented_ptr<GroupedCratesFeature> m_pGroupedCratesFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
     parented_ptr<PreparationFeature> m_pPreparationFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
