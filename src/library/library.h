@@ -31,6 +31,7 @@ class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
 class PreparationFeature;
+class GroupedPlaylistsFeature;
 class RecordingManager;
 class SearchCrateFeature;
 class GroupedSearchCratesFeature;
@@ -232,6 +233,7 @@ class Library : public QObject {
     parented_ptr<AutoDJFeature> m_pAutoDJFeature;
     parented_ptr<AutoSuggestionsFeature> m_pAutoSuggestionsFeature;
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
+    parented_ptr<GroupedPlaylistsFeature> m_pGroupedPlaylistsFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
     parented_ptr<GroupedCratesFeature> m_pGroupedCratesFeature;

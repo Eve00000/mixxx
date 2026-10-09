@@ -1541,6 +1541,9 @@ add_library(
   src/library/trackset/searchcrate/searchcratefeaturehelper.cpp
   src/library/trackset/searchcrate/searchcratestorage.cpp
   src/library/trackset/searchcrate/searchcratetablemodel.cpp
+  src/library/trackset/playlist/basegroupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplaylistsfeature.cpp
+  src/library/trackset/playlist/groupedplayliststablemodel.cpp
   src/library/trackset/playlistfeature.cpp
   src/library/trackset/preparation/preparationfeature.cpp
   src/library/trackset/setlogfeature.cpp

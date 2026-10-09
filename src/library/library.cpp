@@ -31,6 +31,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/crate/groupedcratesfeature.h"
+#include "library/trackset/playlist/groupedplaylistsfeature.h"
 #include "library/trackset/playlistfeature.h"
 #include "library/trackset/preparation/preparationfeature.h"
 #include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
@@ -117,7 +118,20 @@ Library::Library(
     addFeature(m_pPreparationFeature);
 
     m_pPlaylistFeature = make_parented<PlaylistFeature>(this, UserSettingsPointer(m_pConfig));
-    addFeature(m_pPlaylistFeature);
+
+    m_pGroupedPlaylistsFeature = make_parented<GroupedPlaylistsFeature>(this, m_pConfig);
+
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsEnabled"), true)) {
+        if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedPlaylistsReplace"), true)) {
+            addFeature(m_pGroupedPlaylistsFeature);
+        } else {
+            addFeature(m_pPlaylistFeature);
+            addFeature(m_pGroupedPlaylistsFeature);
+        }
+    } else {
+        addFeature(m_pPlaylistFeature);
+    }
+
 #ifdef __ENGINEPRIME__
     connect(m_pPlaylistFeature,
             &PlaylistFeature::exportAllPlaylists,

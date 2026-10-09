@@ -162,6 +162,5 @@ class TreeItem final {
     QVariant m_data;
     QIcon m_icon;
     bool m_bold;
-
     QString m_fullPath;
 };

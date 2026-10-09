@@ -127,510 +127,6 @@
         </widget>
       </item>
 
-     </layout>
-    </widget>
-   </item><!-- Track Table View -->
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_Search">
-     <property name="title">
-      <string>Track Search</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_search">
-
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_searchDebouncingTimeout">
-        <property name="text">
-         <string>Search-as-you-type timeout:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1" colspan="2">
-       <widget class="QSpinBox" name="spinBox_search_debouncing_timeout">
-        <property name="suffix">
-         <string> ms</string>
-        </property>
-       </widget>
-      </item>
-
-      <item row="1" column="0" colspan="3">
-       <widget class="QCheckBox" name="checkBox_enable_search_completions">
-        <property name="text">
-         <string>Enable search completions</string>
-        </property>
-       </widget>
-      </item>
-
-      <item row="2" column="0" colspan="3">
-       <widget class="QCheckBox" name="checkBox_enable_search_history_shortcuts">
-        <property name="text">
-         <string>Enable search history keyboard shortcuts</string>
-        </property>
-       </widget>
-      </item>
-
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_searchBpmFuzzyRange">
-        <property name="text">
-         <string>Percentage of pitch slider range for 'fuzzy' BPM search:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-        <property name="buddy">
-         <cstring>comboBox_search_bpm_fuzzy_range</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1" colspan="2">
-       <widget class="QComboBox" name="comboBox_search_bpm_fuzzy_range"/>
-      </item>
-      <item row="4" column="0" colspan="3">
-       <widget class="QLabel" name="label_searchBpmFuzzyRangeInfo">
-        <property name="text">
-         <string>This range will be used for the 'fuzzy' BPM search (~bpm:) via the search box, as well as for BPM search in Track context menu &gt; Search related Tracks</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-
-     </layout>
-    </widget>
-   </item><!-- Search box -->
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_sidebar">
-     <property name="title">
-      <string>Sidebar</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_sidebar">
-
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_sidebar_hover_expand_delay">
-        <property name="text">
-         <string>Hover expand delay:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-        <property name="buddy">
-         <cstring>spinBox_sidebar_hover_expand_delay</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1" colspan="2">
-       <widget class="QSpinBox" name="spinBox_sidebar_hover_expand_delay">
-        <property name="suffix">
-         <string> ms</string>
-        </property>
-        <property name="toolTip">
-         <string>The delay until sidebar items are expanded or collapsed hovered during drag'n'drop. -1 disables auto-expand.</string>
-        </property>
-        <property name="minimum">
-         <number>-1</number>
-        </property>
-        <property name="maximum">
-         <number>5000</number>
-        </property>
-        <property name="singleStep">
-         <number>50</number>
-        </property>
-       </widget>
-      </item>
-
-     </layout>
-    </widget>
-   </item>
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_History">
-     <property name="title">
-      <string>Session History</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_history">
-
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_history_track_duplicate_distance">
-        <property name="text">
-         <string>Track duplicate distance</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1" colspan="2">
-       <widget class="QSpinBox" name="spinbox_history_track_duplicate_distance">
-        <property name="toolTip">
-         <string>When playing a track again log it to the session history only if more than N other tracks have been played in the meantime</string>
-        </property>
-        <property name="minimum">
-         <number>0</number>
-        </property>
-        <property name="maximum">
-         <number>99</number>
-        </property>
-        <property name="value">
-         <number>1</number>
-        </property>
-       </widget>
-      </item>
-
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_history_cleanup">
-        <property name="toolTip">
-         <string>History playlist with less than N tracks will be deleted&lt;br/&gt;&lt;br/&gt;Note: the cleanup will be performed during startup and shutdown of Mixxx.</string>
-        </property>
-        <property name="text">
-         <string>Delete history playlist with less than N tracks</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1" colspan="2">
-       <widget class="QSpinBox" name="spinbox_history_min_tracks_to_keep">
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>99</number>
-        </property>
-        <property name="value">
-         <number>1</number>
-        </property>
-       </widget>
-      </item>
-
-     </layout>
-    </widget>
-   </item><!-- History -->
-
-    <item>
-      <widget class="QGroupBox" name="groupBox_GroupedSearchCrates">
-        <property name="minimumSize">
-          <size>
-            <width>0</width>
-            <height>140</height>
-          </size>
-        </property>
-        <property name="title">
-          <string>Grouped Search Crates</string>
-        </property>
-        <widget class="QCheckBox" name="checkBox_grouped_searchcrates_enable">
-          <property name="geometry">
-            <rect>
-              <x>10</x>
-              <y>40</y>
-              <width>350</width>
-              <height>20</height>
-            </rect>
-          </property>
-          <property name="text">
-            <string>Enable Grouped Crates</string>
-          </property>
-        </widget>
-        <widget class="QRadioButton" name="radioButton_grouped_searchcrates_fixed_length">
-          <property name="geometry">
-            <rect>
-              <x>50</x>
-              <y>60</y>
-              <width>400</width>
-              <height>20</height>
-            </rect>
-          </property>
-          <property name="minimumSize">
-            <size>
-              <width>400</width>
-              <height>0</height>
-            </size>
-          </property>
-          <property name="text">
-            <string>Fixed length: 1 level of grouping: Group = #Characters</string>
-          </property>
-        </widget>
-        <widget class="QRadioButton" name="radioButton_grouped_searchcrates_var_mask">
-          <property name="geometry">
-            <rect>
-              <x>50</x>
-              <y>90</y>
-              <width>400</width>
-              <height>20</height>
-            </rect>
-          </property>
-          <property name="minimumSize">
-            <size>
-              <width>400</width>
-              <height>0</height>
-            </size>
-          </property>
-          <property name="text">
-            <string>Variable length, multilevel: grouping: Groups are delimited with a mask: </string>
-          </property>
-        </widget>
-        <widget class="QSpinBox" name="spinBox_grouped_searchcrates_fixed_length">
-          <property name="geometry">
-            <rect>
-              <x>460</x>
-              <y>60</y>
-              <width>42</width>
-              <height>22</height>
-            </rect>
-          </property>
-          <property name="maximum">
-            <number>20</number>
-          </property>
-        </widget>
-        <widget class="QLineEdit" name="lineEdit_grouped_searchcrates_var_mask">
-          <property name="geometry">
-            <rect>
-              <x>460</x>
-              <y>90</y>
-              <width>113</width>
-              <height>20</height>
-            </rect>
-          </property>
-        </widget>
-        <widget class="QCheckBox" name="checkBox_grouped_searchcrates_replace">
-          <property name="geometry">
-            <rect>
-              <x>10</x>
-              <y>110</y>
-              <width>350</width>
-              <height>20</height>
-            </rect>
-          </property>
-          <property name="text">
-            <string>Use Grouped Search Crates instead of Search Crates</string>
-          </property>
-        </widget>
-        <widget class="QLabel" name="label_grouped_searchcrates_restart_remark">
-          <property name="geometry">
-            <rect>
-              <x>10</x>
-              <y>20</y>
-              <width>400</width>
-              <height>20</height>
-            </rect>
-          </property>
-          <property name="text">
-            <string>Every change in this section requires a restart of Mixxx to get processed</string>
-          </property>
-          <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-          <property name="wordWrap">
-            <bool>true</bool>
-          </property>
-        </widget>
-      </widget>
-    </item>
-
-   <item>
-    <widget class="QGroupBox" name="groupBoxPreparationLists">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>50</height>
-      </size>
-     </property>
-     <property name="title">
-      <string>Preparation Lists</string>
-     </property>
-     <widget class="QCheckBox" name="checkBox_preparationlists_addallloadedtracks">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>20</y>
-        <width>350</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Add every track loaded in all players to the Preparation List</string>
-      </property>
-     </widget>
-    </widget>
-   </item>
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_external_libraries">
-     <property name="title">
-      <string>External Libraries</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_external_libraries">
-      <item row="0" column="0">
-       <widget class="QCheckBox" name="checkBox_show_rhythmbox">
-        <property name="text">
-         <string>Show Rhythmbox Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QCheckBox" name="checkBox_show_banshee">
-        <property name="text">
-         <string>Show Banshee Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QCheckBox" name="checkBox_show_itunes">
-        <property name="text">
-         <string>Show iTunes Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QCheckBox" name="checkBox_show_traktor">
-        <property name="text">
-         <string>Show Traktor Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QCheckBox" name="checkBox_show_rekordbox">
-        <property name="text">
-         <string>Show Rekordbox Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QCheckBox" name="checkBox_show_serato">
-        <property name="text">
-         <string>Show Serato Library</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>All external libraries shown are write protected.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-        <property name="topMargin" stdset="0">
-         <number>10</number>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>You will need to restart Mixxx for these settings to take effect.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_cover_art_fetcher">
-     <property name="title">
-      <string>Preferred Cover Art Fetcher Resolution</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_cover_art_fetcher">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_12">
-        <property name="text">
-         <string>Fetch cover art from coverartarchive.com by using Import Metadata From Musicbrainz.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_13">
-        <property name="text">
-         <string>Note: &quot;&gt;1200 px&quot; can fetch up to very large cover arts.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QRadioButton" name="radioButton_cover_art_fetcher_highest">
-        <property name="text">
-         <string>&gt;1200 px (if available)</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QRadioButton" name="radioButton_cover_art_fetcher_high">
-        <property name="text">
-         <string>1200 px (if available)</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QRadioButton" name="radioButton_cover_art_fetcher_medium">
-        <property name="text">
-         <string>500 px</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QRadioButton" name="radioButton_cover_art_fetcher_lowest">
-        <property name="text">
-         <string>250 px</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-
-   <item>
-    <widget class="QGroupBox" name="groupBox_settingsDir">
-     <property name="title">
-      <string>Settings Directory</string>
-     </property>
-     <layout class="QVBoxLayout" name="vlayout_settingsDir">
       <item>
         <widget class="QGroupBox" name="groupBox_AudioFileTags">
           <property name="title">
@@ -1151,6 +647,262 @@
             </property>
             <property name="wordWrap">
               <bool>true</bool>
+            </property>
+          </widget>
+        </widget>
+      </item>
+      <item>
+        <widget class="QGroupBox" name="groupBoxGroupedSearchCrates">
+          <property name="minimumSize">
+            <size>
+              <width>0</width>
+              <height>140</height>
+            </size>
+          </property>
+          <property name="title">
+            <string>Grouped SearchCrates</string>
+          </property>
+          <widget class="QSpinBox" name="spinBox_grouped_searchcrates_fixed_length">
+            <property name="geometry">
+              <rect>
+                <x>460</x>
+                <y>60</y>
+                <width>42</width>
+                <height>22</height>
+              </rect>
+            </property>
+            <property name="maximum">
+              <number>20</number>
+            </property>
+          </widget>
+          <widget class="QRadioButton" name="radioButton_grouped_searchcrates_fixed_length">
+            <property name="geometry">
+              <rect>
+                <x>50</x>
+                <y>60</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>400</width>
+                <height>0</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Fixed length: 1 level of grouping: Group = #Characters</string>
+            </property>
+          </widget>
+          <widget class="QLineEdit" name="lineEdit_grouped_searchcrates_var_mask">
+            <property name="geometry">
+              <rect>
+                <x>460</x>
+                <y>90</y>
+                <width>113</width>
+                <height>20</height>
+              </rect>
+            </property>
+          </widget>
+          <widget class="QRadioButton" name="radioButton_grouped_searchcrates_var_mask">
+            <property name="geometry">
+              <rect>
+                <x>50</x>
+                <y>90</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>400</width>
+                <height>0</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Variable length, multilevel: grouping: Groups are delimited with a mask: </string>
+            </property>
+          </widget>
+          <widget class="QCheckBox" name="checkBox_grouped_searchcrates_enable">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>40</y>
+                <width>300</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="text">
+              <string>Enable Grouped SearchCrates (Mixxx restart needed)</string>
+            </property>
+          </widget>
+          <widget class="QLabel" name="label_grouped_searchcrates_restart_remark">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>20</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="text">
+              <string>Every change in this section requires a restart of Mixxx to get processed</string>
+            </property>
+          </widget>
+          <widget class="QCheckBox" name="checkBox_grouped_searchcrates_replace">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>110</y>
+                <width>350</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="text">
+              <string>Use Grouped SearchCrates instead of SearchCrates</string>
+            </property>
+          </widget>
+        </widget>
+      </item>
+      <item>
+        <widget class="QGroupBox" name="groupBox_GroupedPlaylists">
+          <property name="minimumSize">
+            <size>
+              <width>0</width>
+              <height>140</height>
+            </size>
+          </property>
+          <property name="title">
+            <string>Grouped Playlists</string>
+          </property>
+          <widget class="QCheckBox" name="checkBox_grouped_playlists_enable">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>40</y>
+                <width>300</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>0</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Enable Grouped Playlists</string>
+            </property>
+          </widget>
+          <widget class="QRadioButton" name="radioButton_grouped_playlists_fixed_length">
+            <property name="geometry">
+              <rect>
+                <x>50</x>
+                <y>60</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>400</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Fixed length: 1 level of grouping: Group = #Characters</string>
+            </property>
+          </widget>
+          <widget class="QRadioButton" name="radioButton_grouped_playlists_var_mask">
+            <property name="geometry">
+              <rect>
+                <x>50</x>
+                <y>90</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>400</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Variable length, multilevel: grouping: Groups are delimited with a mask: </string>
+            </property>
+          </widget>
+          <widget class="QSpinBox" name="spinBox_grouped_playlists_fixed_length">
+            <property name="geometry">
+              <rect>
+                <x>460</x>
+                <y>60</y>
+                <width>40</width>
+                <height>22</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>0</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="maximum">
+              <number>20</number>
+            </property>
+          </widget>
+          <widget class="QLineEdit" name="lineEdit_grouped_playlists_var_mask">
+            <property name="geometry">
+              <rect>
+                <x>460</x>
+                <y>90</y>
+                <width>100</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>0</width>
+                <height>20</height>
+              </size>
+            </property>
+          </widget>
+          <widget class="QLabel" name="label_grouped_playlists_restart_remark">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>20</y>
+                <width>400</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>0</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Every change in this section requires a restart of Mixxx to get processed</string>
+            </property>
+          </widget>
+          <widget class="QCheckBox" name="checkBox_grouped_playlists_replace">
+            <property name="geometry">
+              <rect>
+                <x>10</x>
+                <y>110</y>
+                <width>350</width>
+                <height>20</height>
+              </rect>
+            </property>
+            <property name="minimumSize">
+              <size>
+                <width>0</width>
+                <height>20</height>
+              </size>
+            </property>
+            <property name="text">
+              <string>Use Grouped Playlists instead of Playlists</string>
             </property>
           </widget>
         </widget>
