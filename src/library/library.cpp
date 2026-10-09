@@ -29,6 +29,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/searchcrate/groupedsearchcratesfeature.h"
 #include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
@@ -128,8 +129,20 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+
     m_pSearchCrateFeature = make_parented<SearchCrateFeature>(this, m_pConfig);
-    addFeature(m_pSearchCrateFeature);
+    m_pGroupedSearchCratesFeature = make_parented<GroupedSearchCratesFeature>(this, m_pConfig);
+
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true)) {
+        if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedSearchCratesReplace"), true)) {
+            addFeature(m_pGroupedSearchCratesFeature);
+        } else {
+            addFeature(m_pSearchCrateFeature);
+            addFeature(m_pGroupedSearchCratesFeature);
+        }
+    } else {
+        addFeature(m_pSearchCrateFeature);
+    }
 
     m_pBrowseFeature = make_parented<BrowseFeature>(
             this, m_pConfig, pRecordingManager);

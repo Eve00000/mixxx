@@ -26,6 +26,121 @@ SearchCrateTableModel::SearchCrateTableModel(
                   "mixxx.db.model.searchCrate") {
 }
 
+QList<QVariantMap> SearchCrateTableModel::getGroupedSearchCrates(
+        bool groupedSearchCratesLength,
+        int groupedSearchCratesFixedLength,
+        const QString& groupedSearchCratesVarLengthMask) {
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] Generating grouped searchCrates list.";
+        qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] groupedSearchCratesLength ="
+                 << groupedSearchCratesLength;
+        qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] groupedSearchCratesFixedLength ="
+                 << groupedSearchCratesFixedLength;
+        qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] groupedSearchCratesVarLengthMask ="
+                 << groupedSearchCratesVarLengthMask;
+    }
+
+    QList<QVariantMap> groupedSearchCrates;
+
+    QSqlQuery query(m_database);
+
+    if (groupedSearchCratesLength) {
+        // Fixed prefix length grouping.
+        QString queryString =
+                QStringLiteral(
+                        "SELECT DISTINCT "
+                        "  SUBSTR(name, 1, %1) AS group_name, "
+                        "  id AS searchcrate_id, "
+                        "  name AS searchcrate_name "
+                        "FROM searchcrates "
+                        "WHERE show = 1 "
+                        "ORDER BY LOWER(name)")
+                        .arg(groupedSearchCratesFixedLength);
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] queryString:" << queryString;
+        }
+        if (!query.exec(queryString)) {
+            qWarning() << "[GROUPEDSEARCHCRATESTABLEMODEL] Failed to execute grouped "
+                          "seachCrates query:"
+                       << query.lastError();
+            return groupedSearchCrates;
+        }
+
+        while (query.next()) {
+            QVariantMap searchCrateData;
+            searchCrateData["group_name"] = query.value("group_name").toString();
+            searchCrateData["searchCrate_id"] = query.value("searchcrate_id");
+            searchCrateData["searchCrate_name"] = query.value("searchcrate_name");
+            groupedSearchCrates.append(searchCrateData);
+        }
+    } else {
+        // Variable-length delimiter grouping.
+        QString queryString = QStringLiteral(
+                "SELECT DISTINCT "
+                "  id AS searchcrate_id, "
+                "  name AS searchcrate_name "
+                "FROM searchcrates "
+                "WHERE show = 1 "
+                "ORDER BY LOWER(name)");
+        if (sDebugSearchCrateTableModel) {
+            qDebug() << "[GROUPEDSEARCHCRATESTABLEMODEL] queryString:" << queryString;
+        }
+        if (!query.exec(queryString)) {
+            qWarning() << "[GROUPEDSEARCHCRATESTABLEMODEL] Failed to execute grouped "
+                          "searchCrates query:"
+                       << query.lastError();
+            return groupedSearchCrates;
+        }
+
+        while (query.next()) {
+            const QString searchCrateName = query.value("searchCrate_name").toString();
+            if (groupedSearchCratesVarLengthMask.isEmpty()) {
+                // No mask set -> treat every searchCrate as its own root-level entry.
+                QVariantMap searchCrateData;
+                searchCrateData["group_name"] = searchCrateName;
+                searchCrateData["searchCrate_id"] = query.value("searchcrate_id");
+                searchCrateData["searchCrate_name"] = searchCrateName;
+                groupedSearchCrates.append(searchCrateData);
+                continue;
+            }
+
+            if (searchCrateName.contains(groupedSearchCratesVarLengthMask)) {
+                const QStringList groupHierarchy =
+                        searchCrateName.split(groupedSearchCratesVarLengthMask);
+                QString currentGroup;
+
+                for (int i = 0; i < groupHierarchy.size(); ++i) {
+                    currentGroup += (i > 0 ? groupedSearchCratesVarLengthMask : QString()) +
+                            groupHierarchy[i];
+
+                    // Only store the full searchCrate record for the leaf level.
+                    if (i == groupHierarchy.size() - 1) {
+                        QVariantMap searchCrateData;
+                        searchCrateData["group_name"] = currentGroup;
+                        searchCrateData["searchCrate_id"] = query.value("searchcrate_id");
+                        searchCrateData["searchCrate_name"] = searchCrateName;
+                        groupedSearchCrates.append(searchCrateData);
+                    }
+                }
+            } else {
+                // No delimiter in searchCrate name -> root-level entry.
+                QVariantMap searchCrateData;
+                searchCrateData["group_name"] = searchCrateName;
+                searchCrateData["searchCrate_id"] = query.value("searchcrate_id");
+                searchCrateData["searchCrate_name"] = searchCrateName;
+                groupedSearchCrates.append(searchCrateData);
+            }
+        }
+    }
+
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] Grouped searchCrates list generated "
+                    "with"
+                 << groupedSearchCrates.size() << "entries.";
+    }
+    return groupedSearchCrates;
+}
+
 void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
     qDebug() << "SearchCrateTableModel::setSearchCrate()" << searchCrateId;
     if (searchCrateId == m_selectedSearchCrate) {
@@ -206,6 +321,55 @@ void SearchCrateTableModel::selectSearchCrate(SearchCrateId searchCrateId) {
     // Restore search text
     setSearch(m_searchTexts.value(m_selectedSearchCrate));
     setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST), Qt::AscendingOrder);
+}
+
+void SearchCrateTableModel::selectSearchCrateGroup(const QString& groupName) {
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SearchCrateTableModel] -> selectSearchCrateGroup() -> Searching for "
+                    "tracks in groups starting with:"
+                 << groupName;
+    }
+    const QString tableName = QStringLiteral("searchCrate_group_%1")
+                                      .arg(QDateTime::currentMSecsSinceEpoch());
+
+    QStringList columns;
+    columns << LIBRARYTABLE_ID
+            << "'' AS " + LIBRARYTABLE_PREVIEW
+            << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+
+    QString queryString =
+            QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                    "SELECT %2 FROM %3 "
+                    "WHERE library.id IN(SELECT searchcrate_tracks.track_id from "
+                    "searchcrate_tracks "
+                    "WHERE searchcrate_tracks.crate_id IN(SELECT searchcrates.id from "
+                    "searchcrates WHERE searchcrates.name LIKE '%4%')) "
+                    "AND %5=0")
+                    .arg(tableName,
+                            columns.join(","),
+                            LIBRARY_TABLE,
+                            groupName,
+                            LIBRARYTABLE_MIXXXDELETED);
+
+    if (sDebugSearchCrateTableModel) {
+        qDebug() << "[SearchCrateTableModel] -> Generated SQL Query:" << queryString;
+    }
+
+    FwdSqlQuery query(m_database, queryString);
+    QString temp = groupName + QStringLiteral("%");
+    query.bindValue(":pattern", temp);
+    query.execPrepared();
+
+    columns[0] = LIBRARYTABLE_ID;
+    columns[1] = LIBRARYTABLE_PREVIEW;
+    columns[2] = LIBRARYTABLE_COVERART;
+
+    setTable(tableName,
+            LIBRARYTABLE_ID,
+            columns,
+            m_pTrackCollectionManager->internalCollection()->getTrackSource());
+    setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST),
+            Qt::AscendingOrder);
 }
 
 bool SearchCrateTableModel::addTrack(const QModelIndex& index, const QString& location) {
