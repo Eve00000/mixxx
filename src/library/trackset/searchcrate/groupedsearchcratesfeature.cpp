@@ -177,7 +177,7 @@ void GroupedSearchCratesFeature::connectTrackCollection() {
 }
 
 QVariant GroupedSearchCratesFeature::title() {
-    return tr("GroupedSearchCrates");
+    return tr("SearchCrates (Grouped)");
 }
 
 QString GroupedSearchCratesFeature::formatRootViewHtml() const {

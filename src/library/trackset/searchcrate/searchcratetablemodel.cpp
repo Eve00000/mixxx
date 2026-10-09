@@ -342,7 +342,7 @@ void SearchCrateTableModel::selectSearchCrateGroup(const QString& groupName) {
                     "SELECT %2 FROM %3 "
                     "WHERE library.id IN(SELECT searchcrate_tracks.track_id from "
                     "searchcrate_tracks "
-                    "WHERE searchcrate_tracks.crate_id IN(SELECT searchcrates.id from "
+                    "WHERE searchcrate_tracks.searchcrate_id IN(SELECT searchcrates.id from "
                     "searchcrates WHERE searchcrates.name LIKE '%4%')) "
                     "AND %5=0")
                     .arg(tableName,
