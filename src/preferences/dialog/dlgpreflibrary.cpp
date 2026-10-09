@@ -306,6 +306,15 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_itunes->setChecked(true);
     checkBox_show_traktor->setChecked(true);
     checkBox_show_rekordbox->setChecked(true);
+
+    checkBox_grouped_searchcrates_enable->setChecked(false);
+    checkBox_grouped_searchcrates_replace->setChecked(false);
+
+    radioButton_grouped_searchcrates_var_mask->setChecked(true);
+    radioButton_grouped_searchcrates_fixed_length->setChecked(false);
+
+    spinBox_grouped_searchcrates_fixed_length->setValue(0);
+    lineEdit_grouped_searchcrates_var_mask->clear();
 }
 
 void DlgPrefLibrary::slotUpdate() {
@@ -410,6 +419,31 @@ void DlgPrefLibrary::slotUpdate() {
         radioButton_cover_art_fetcher_lowest->setChecked(true);
         break;
     }
+
+    checkBox_grouped_searchcrates_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesEnabled"), true));
+    checkBox_grouped_searchcrates_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesReplace"), false));
+    const int groupedSearchCratesLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSearchCratesLength"), 0);
+    if (groupedSearchCratesLength == 0) {
+        radioButton_grouped_searchcrates_var_mask->setChecked(true);
+    } else if (groupedSearchCratesLength == 1) {
+        radioButton_grouped_searchcrates_fixed_length->setChecked(true);
+    }
+    spinBox_grouped_searchcrates_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedSearchCratesFixedLength"), 0));
+    spinBox_grouped_searchcrates_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "searchcratenames representing the group"));
+    lineEdit_grouped_searchcrates_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedSearchCratesVarLengthMask")));
+    lineEdit_grouped_searchcrates_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the searchcratename.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
 
     bool editMetadataSelectedClick = m_pConfig->getValue(
             kEditMetadataSelectedClickConfigKey,
@@ -676,6 +710,22 @@ void DlgPrefLibrary::slotApply() {
                 ConfigValue(rowHeight));
         m_iOriginalTrackTableRowHeight = rowHeight;
     }
+
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesEnabled"),
+            ConfigValue((int)checkBox_grouped_searchcrates_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesReplace"),
+            ConfigValue((int)checkBox_grouped_searchcrates_replace->isChecked()));
+    if (radioButton_grouped_searchcrates_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_searchcrates_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesFixedLength"),
+            ConfigValue(spinBox_grouped_searchcrates_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesVarLengthMask"),
+            ConfigValue(lineEdit_grouped_searchcrates_var_mask->text()));
 
     m_pConfig->setValue(kDateFormatConfigKey, m_dateFormat);
     BaseTrackTableModel::setDateFormat(m_dateFormat);
