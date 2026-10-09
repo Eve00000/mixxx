@@ -15,6 +15,18 @@ class SearchCrateTableModel final : public TrackSetTableModel {
         return m_selectedSearchCrate;
     }
 
+    void selectSearchCrateGroup(const QString& groupName);
+
+    // Returns a flat list of {group_name, crate_id, crate_name} entries.
+    // - If groupedSearchCratesLength is true, names are grouped by a fixed prefix of
+    //   groupedSearchCratesFixedLength characters.
+    // - Otherwise, the var-length mask string is used as a delimiter and
+    //   multi-level groups are derived.
+    QList<QVariantMap> getGroupedSearchCrates(
+            bool groupedSearchCratesLength,
+            int groupedSearchCratesFixedLength,
+            const QString& groupedSearchCratesVarLengthMask);
+
     bool addTrack(const QModelIndex& index, const QString& location);
 
     void removeTracks(const QModelIndexList& indices) final;
