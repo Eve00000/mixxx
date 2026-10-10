@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../../qml" as Skin
 import "LateNightTheme"
 import "Deck" as LateNightDeck
@@ -11,7 +13,6 @@ import Mixxx 1.0 as Mixxx
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Templates as T
 import QtQuick.Window
 
 Item {
@@ -38,17 +39,62 @@ Item {
     property alias showSamplers: toolbar.showSamplers
     readonly property bool showWaveforms: toolbar.showWaveforms
 
+    // Waveforms in a separate pane
+    property bool waveformsSeparate: false
+    property bool waveformsRight: false
+    property int waveformPaneWidth: 600
+    property int waveformPaneHeight: 120
+
+    // Library in a separate pane
+    property bool librarySeparate: false
+    property bool libraryRight: true
+    property int libraryPaneWidth: 400
+
     SkinControlBootstrap {
         id: skinControlBootstrap
     }
 
-    // Declare the compact-meter setting before LayoutState so its initial
-    // value is available when the effective layout is derived.
     Mixxx.ControlProxy {
         id: showCompactVuMetersProxy
 
         group: "[Skin]"
         key: "show_vumeters_compact"
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsSeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_separate"
+
+        onValueChanged: root.waveformsSeparate = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_right"
+
+        onValueChanged: root.waveformsRight = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutLibrarySeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_separate"
+
+        onValueChanged: root.librarySeparate = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutLibraryRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_right"
+
+        onValueChanged: root.libraryRight = value > 0
     }
 
     LayoutState {
@@ -123,72 +169,304 @@ Item {
             value = root.numSamplers;
         }
     }
-    Column {
+
+    ///////////////////////////////////////////////////////////////
+    // toolbar + layout area
+    // toolbar is always above controls & library
+    // toolbar is never above the waveforms if they are separated
+    ///////////////////////////////////////////////////////////////
+    Item {
         id: content
 
         anchors.fill: parent
-
-        move: Transition {
-            NumberAnimation {
-                duration: 150
-                properties: "x,y"
-            }
-        }
 
         LateNightToolbar.Toolbar {
             id: toolbar
 
             applicationMenuActions: applicationMenuActions
             show4decksAvailable: root.height > 515
-            width: parent.width
+
+            // When waveforms -> own pane
+            // toolbar not above waveforms
+
+            x: root.waveformsSeparate ? layoutArea.innerAreaX : 0
+            y: 0
+            width: root.waveformsSeparate ? layoutArea.innerAreaWidth : parent.width
 
             onFocusLibrarySearchRequested: root.focusLegacyLibrarySearch()
         }
-        SplitView {
-            id: splitView
 
-            height: parent.height - y
-            orientation: Qt.Vertical
+        //////////////////////////////////////////////////////////////////////////////
+        // Layout area
+        //
+        // Waveforms can have their own pane (column) -> always on the outside (L/R)
+        // inner content/area = Controls + Library (in any form)
+        //
+        // Waveforms can be outer left (default) or outer right
+        // So it can be
+        // - W -spliter- (C & L) or (C & L) -splitter- W
+        //
+        // - Controls & Library can be split too,
+        //   Library can be left or right (default) of controls
+        // So it can be
+        // - W -spliter- (C -splitter- L) or (C -splitter- L) -splitter- W
+        // - W -spliter- (L -splitter- C) or (L -splitter- C) -splitter- W
+        //
+        // - If waveforms is in separate pane an extra spacer is added to be able
+        //   to resize the waveforms, eg for a 720 wide screen above mixer
+        //   Waveforms are Top V-Aligned
+        // - When Controls & Library are SplitView
+        //   - Library takes full colymn height
+        //   - Controls are Top V-Aligned
+        ////////////////////////////////////////////////////////////////////////////
+
+        Item {
+            id: layoutArea
+
+            x: 0
+            y: 0
             width: parent.width
+            height: parent.height
 
-            handle: Rectangle {
-                id: handleDelegate
+            // vertical offset for inner content below the toolbar.
+            readonly property real contentTop: toolbar.height
 
-                readonly property bool pressed: splitView.resizing || T.SplitHandle.pressed
+            // width waveform column (if separated & shown).
+            readonly property real waveformOccupiedWidth: (root.waveformsSeparate && waveforms.shown)
+                    ? (waveformColumnHandle.width + root.waveformPaneWidth)
+                    : 0
 
-                clip: true
-                color: LateNightTheme.libraryPanelSplitterBackground
-                implicitHeight: 9
-                implicitWidth: 8
+            // left edge of the inner area (controls + library).
+            readonly property real innerAreaX: (root.waveformsSeparate && waveforms.shown && !root.waveformsRight)
+                    ? (waveformColumnHandle.width + root.waveformPaneWidth)
+                    : 0
 
-                containmentMask: Item {
-                    height: 12
-                    width: splitView.width
-                    x: (handleDelegate.width - width) / 2
-                }
+            // width of the inner area.
+            readonly property real innerAreaWidth: Math.max(0, width - waveformOccupiedWidth)
 
-                Image {
-                    anchors.centerIn: parent
-                    fillMode: Image.PreserveAspectFit
-                    source: handleDelegate.pressed
-                            ? LateNightTheme.assetWaveformSplitterHandlePressed
-                            : LateNightTheme.assetWaveformSplitterHandle
-                }
-            }
-
+            //////////////////////////////////////////////////////////////////
+            // waveforms column
+            // - stacked mode -> below toolbar, height = waveformPaneHeight
+            // - separate mode -> own column, full height beside toolbar,
+            //   left or right
+            //////////////////////////////////////////////////////////////////
             LateNightWaveforms.WaveformStack {
                 id: waveforms
 
-                SplitView.fillHeight: !library.active
-                SplitView.minimumHeight: visible ? minimumContentHeight : 0
-                SplitView.preferredHeight: library.active ? 120 : undefined
+                readonly property bool horizontalLayout: root.waveformsSeparate
+                readonly property bool shown: root.showWaveforms && !root.maximizeLibrary
+
                 show4decks: root.show4decks
-                visible: root.showWaveforms && !root.maximizeLibrary
+                visible: shown
+
+                x: horizontalLayout
+                        ? (shown
+                           ? (root.waveformsRight
+                              ? waveformColumnHandle.x + waveformColumnHandle.width
+                              : 0)
+                           : 0)
+                        : 0
+                y: horizontalLayout ? 0 : layoutArea.contentTop
+                width: horizontalLayout
+                        ? (shown
+                           ? (root.waveformsRight
+                              ? Math.max(0, layoutArea.width - waveformColumnHandle.x - waveformColumnHandle.width)
+                              : Math.max(0, waveformColumnHandle.x))
+                           : 0)
+                        : layoutArea.width
+                height: horizontalLayout
+                        ? (shown ? root.waveformPaneHeight : 0)
+                        : (shown
+                           ? Math.max(0, waveformRowHandle.y - layoutArea.contentTop)
+                           : 0)
 
                 Skin.FadeBehavior on visible {
                     fadeTarget: waveforms
                 }
             }
+
+            //////////////////////////////////////////////////////////////////
+            // Horizontal splitter (=handle) INSIDE the waveform column
+            // (separate mode only).
+            // at waveforms.y + waveformPaneHeight at the bottom
+            // of the waveform column
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformColumnHeightHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitVCursor
+                visible: root.waveformsSeparate && waveforms.shown
+                x: waveforms.x
+                y: waveforms.y + root.waveformPaneHeight
+                width: waveforms.width
+                height: 8
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.y + waveformColumnHeightHandle.y;
+                    dragStartSize = root.waveformPaneHeight;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dy = (mouse.y + waveformColumnHeightHandle.y) - dragStartPos;
+                    const maxH = layoutArea.height - 80;
+                    root.waveformPaneHeight = Math.max(80, Math.min(maxH, dragStartSize + dy));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformColumnHeightHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // Blank spacer below the horizontal handle in the waveform column
+            //////////////////////////////////////////////////////////////////
+            Item {
+                id: waveformColumnSpacer
+
+                visible: root.waveformsSeparate && waveforms.shown
+                x: waveforms.x
+                y: waveformColumnHeightHandle.y + waveformColumnHeightHandle.height
+                width: waveforms.width
+                height: Math.max(0, layoutArea.height - y)
+            }
+
+            ////////////////////////////////////////////////////////////////////
+            // vertical splitter (=handle) BETWEEN waveforms and the inner area
+            // (separate mode only) spanning the full window height
+            // no toolbar
+            ////////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformColumnHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitHCursor
+                visible: root.waveformsSeparate && waveforms.shown
+                x: root.waveformsRight
+                        ? (layoutArea.width - root.waveformPaneWidth - width)
+                        : root.waveformPaneWidth
+                y: 0
+                width: 8
+                height: layoutArea.height
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.x + waveformColumnHandle.x;
+                    dragStartSize = root.waveformPaneWidth;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dx = (mouse.x + waveformColumnHandle.x) - dragStartPos;
+                    const effectiveDx = root.waveformsRight ? -dx : dx;
+                    const maxW = layoutArea.width - 200;
+                    root.waveformPaneWidth = Math.max(120, Math.min(maxW, dragStartSize + effectiveDx));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformColumnHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // Vertical handle in STACKED mode (1-pane = default layout)
+            // between waveforms and the deck pane. Sits below the toolbar.
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformRowHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitVCursor
+                visible: !root.waveformsSeparate && waveforms.shown
+                x: 0
+                y: layoutArea.contentTop + root.waveformPaneHeight
+                width: layoutArea.width
+                height: 8
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.y + waveformRowHandle.y;
+                    dragStartSize = root.waveformPaneHeight;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dy = (mouse.y + waveformRowHandle.y) - dragStartPos;
+                    const maxH = layoutArea.height - 200;
+                    root.waveformPaneHeight = Math.max(60, Math.min(maxH, dragStartSize + dy));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformRowHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // vertical handle for the Library column
+            // -> inside the inner area (C & L), using libraryRight directly
+            // -> under the toolbar
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: libraryColumnHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitHCursor
+                visible: root.librarySeparate
+                x: root.libraryRight
+                        ? (layoutArea.innerAreaX + layoutArea.innerAreaWidth - root.libraryPaneWidth - width)
+                        : (layoutArea.innerAreaX + root.libraryPaneWidth)
+                y: layoutArea.contentTop
+                width: 8
+                height: layoutArea.height - layoutArea.contentTop
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.x + libraryColumnHandle.x;
+                    dragStartSize = root.libraryPaneWidth;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dx = (mouse.x + libraryColumnHandle.x) - dragStartPos;
+                    const effectiveDx = root.libraryRight ? -dx : dx;
+                    const maxW = layoutArea.innerAreaWidth - 200;
+                    root.libraryPaneWidth = Math.max(120, Math.min(maxW, dragStartSize + effectiveDx));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: libraryColumnHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // deckpane (decks + mixer + effects + samplers + mic/aux)
+            // Top V-aligned, spacer fills the space left over in the inner
+            // area under the Library
+            // If Library is separated column fills the space
+            // Under toolbar
+            //////////////////////////////////////////////////////////////////
             Rectangle {
                 id: deckPane
 
@@ -207,11 +485,29 @@ Item {
                 readonly property real requiredPaneHeight: basePaneHeight + effectsSection.height + samplersSection.height + micAuxSection.height
                 readonly property real visibleDeckHeight: root.maximizeLibrary ? (root.showMaximizedDecks ? LateNightTheme.miniDeckHeight : 0) : root.activeDeckHeight
 
-                SplitView.fillHeight: library.active
-                SplitView.maximumHeight: library.active ? undefined : requiredPaneHeight
-                SplitView.minimumHeight: requiredPaneHeight
-                implicitHeight: requiredPaneHeight
-                width: splitView.width
+                // offset from top of deckpane to Library area
+                // when librarySeparate = false.
+                readonly property real libraryTopOffset: micAuxSection.y + micAuxSection.height
+
+                x: {
+                    if (root.librarySeparate && !root.libraryRight) {
+                        return libraryColumnHandle.x + libraryColumnHandle.width;
+                    }
+                    return layoutArea.innerAreaX;
+                }
+                y: (!root.waveformsSeparate && waveforms.shown)
+                        ? (waveformRowHandle.y + waveformRowHandle.height)
+                        : layoutArea.contentTop
+                width: {
+                    let w = layoutArea.innerAreaWidth;
+                    if (root.librarySeparate) {
+                        w -= libraryColumnHandle.width + root.libraryPaneWidth;
+                    }
+                    return Math.max(0, w);
+                }
+                height: (!root.waveformsSeparate && waveforms.shown)
+                        ? Math.max(0, layoutArea.height - y)
+                        : (layoutArea.height - layoutArea.contentTop)
 
                 Item {
                     id: deckFirstRowBottom
@@ -527,16 +823,6 @@ Item {
                         topMargin: LateNightTheme.deckRowGutter
                     }
                 }
-
-                // Skin.SamplerRow {
-                //     id: samplers
-                //     visible: root.showSamplers
-                //     width: parent.width
-
-                //     Skin.FadeBehavior on visible {
-                //         fadeTarget: samplers
-                //     }
-                // }
                 Item {
                     id: effectsSection
 
@@ -630,49 +916,70 @@ Item {
                         anchors.fill: parent
                     }
                 }
-                Loader {
-                    id: library
+            }
 
-                    active: true
-                    width: parent.width
+            ///////////////////////////////////////////////////////////
+            // Library
+            // - librarySeparate = false
+            //   -> Library under Controls
+            //
+            // - librarySeparate = true
+            //   -> full-height column inside the
+            //   inner area, at the outside decided by libraryRight,
+            //   under the toolbar.
+            //////////////////////////////////////////////////////////
+            Loader {
+                id: library
 
-                    sourceComponent: Component {
-                        Library {
-                            anchors.fill: parent
-                        }
+                active: true
+
+                sourceComponent: Component {
+                    Library {
+                        anchors.fill: parent
                     }
-                    states: [
-                        State {
-                            when: root.maximizeLibrary && !root.showMaximizedDecks
+                }
 
-                            AnchorChanges {
-                                anchors.top: parent.top
-                                target: library
-                            }
-                        },
-                        State {
-                            when: root.maximizeLibrary && root.showMaximizedDecks && root.show4decks
+                x: root.librarySeparate
+                        ? (root.libraryRight
+                           ? libraryColumnHandle.x + libraryColumnHandle.width
+                           : layoutArea.innerAreaX)
+                        : deckPane.x
+                y: root.librarySeparate
+                        ? layoutArea.contentTop
+                        : (deckPane.y + deckPane.libraryTopOffset)
+                width: root.librarySeparate
+                        ? root.libraryPaneWidth
+                        : deckPane.width
+                height: root.librarySeparate
+                        ? (layoutArea.height - layoutArea.contentTop)
+                        : Math.max(0, deckPane.height - deckPane.libraryTopOffset)
+
+                states: [
+                    State {
+                        when: root.maximizeLibrary && !root.showMaximizedDecks
+
+                        AnchorChanges {
+                            anchors.top: parent.top
+                            target: library
+                        }
+                    },
+                    State {
+                        when: root.maximizeLibrary && root.showMaximizedDecks && root.show4decks
 
                             AnchorChanges {
                                 anchors.top: deck4.bottom
                                 target: library
                             }
-                        },
-                        State {
-                            when: root.maximizeLibrary && root.showMaximizedDecks && !root.show4decks
+                    },
+                    State {
+                        when: root.maximizeLibrary && root.showMaximizedDecks && !root.show4decks
 
                             AnchorChanges {
                                 anchors.top: deck1.bottom
                                 target: library
                             }
-                        }
-                    ]
-
-                    anchors {
-                        bottom: parent.bottom
-                        top: micAuxSection.bottom
                     }
-                }
+                ]
             }
         }
     }

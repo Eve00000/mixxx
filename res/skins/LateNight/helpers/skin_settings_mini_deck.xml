@@ -18,6 +18,19 @@ Description:
         <SetVariable name="Setting">[Skin],show_spinnies</SetVariable>
       </Template>
 
+      <!-- Show PreMix -->
+      <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
+        <SetVariable name="TooltipId">toggle_premix</SetVariable>
+        <SetVariable name="Text">Include PreMix in Stems</SetVariable>
+        <SetVariable name="Setting">[Skin],show_original_premix</SetVariable>
+      </Template>
+
+      <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
+        <SetVariable name="TooltipId">toggle_premix_mute_mode</SetVariable>
+        <SetVariable name="Text">Premix Mute Toggle Mode</SetVariable>
+        <SetVariable name="Setting">[Skin],stem_premix_toggle_mode</SetVariable>
+      </Template>
+
       <!-- Cover Art -->
       <Template src="skins:LateNight/helpers/skin_settings_button_2state.xml">
         <SetVariable name="TooltipId">show_coverart</SetVariable>

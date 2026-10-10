@@ -1,12 +1,24 @@
 #include "library/trackset/baseplaylistfeature.h"
 
 #include <QAction>
+#include <QCheckBox>
+#include <QDateTime>
+#include <QFileDialog>
 #include <QFileInfo>
+#include <QHeaderView>
 #include <QInputDialog>
 #include <QList>
+#include <QMessageBox>
+#include <QRegExp>
+#include <QRegularExpression>
+#include <QRegularExpressionMatchIterator>
 #include <QSqlTableModel>
 #include <QStandardPaths>
+#include <QTableWidget>
 
+#include "control/controlobject.h"
+#include "control/controlproxy.h"
+#include "control/pollingcontrolproxy.h"
 #include "library/export/trackexportwizard.h"
 #include "library/library.h"
 #include "library/library_prefs.h"
@@ -23,7 +35,9 @@
 #include "util/assert.h"
 #include "util/defs.h"
 #include "util/file.h"
+#include "widget/wdlgimportplaylist.h"
 #include "widget/wlibrary.h"
+#include "widget/wlibrarypreparationwindow.h"
 #include "widget/wlibrarysidebar.h"
 #include "widget/wlibrarytextbrowser.h"
 
@@ -69,6 +83,12 @@ BasePlaylistFeature::BasePlaylistFeature(
 }
 
 void BasePlaylistFeature::initActions() {
+    m_pShowTrackModelInPreparationWindowAction =
+            make_parented<QAction>(tr("Show in Preparation Window"), this);
+    connect(m_pShowTrackModelInPreparationWindowAction,
+            &QAction::triggered,
+            this,
+            &BasePlaylistFeature::slotShowInPreparationWindow);
     m_pCreatePlaylistAction = make_parented<QAction>(tr("Create New Playlist"), this);
     connect(m_pCreatePlaylistAction,
             &QAction::triggered,
@@ -134,6 +154,13 @@ void BasePlaylistFeature::initActions() {
             &QAction::triggered,
             this,
             &BasePlaylistFeature::slotCreateImportPlaylist);
+    m_pCreateImportPlaylistFindTracksAction =
+            make_parented<QAction>(tr("Import Playlist - Find Tracks"), this);
+    connect(m_pCreateImportPlaylistFindTracksAction,
+            &QAction::triggered,
+            this,
+            &BasePlaylistFeature::slotCreateImportPlaylistFindTracks);
+
     m_pExportPlaylistAction = make_parented<QAction>(tr("Export Playlist"), this);
     connect(m_pExportPlaylistAction,
             &QAction::triggered,
@@ -250,6 +277,24 @@ void BasePlaylistFeature::activatePlaylist(int playlistId) {
     emit enableCoverArtDisplay(true);
     // Update selection
     emit featureSelect(this, m_lastClickedIndex);
+}
+
+void BasePlaylistFeature::slotShowInPreparationWindow() {
+    int playlistId = playlistIdFromIndex(m_lastRightClickedIndex);
+
+    if (playlistId == kInvalidPlaylistId) {
+        // may happen during initialization
+        return;
+    }
+
+    if (ControlObject::exists(ConfigKey("[Skin]", "show_preparation_window"))) {
+        auto proxy = std::make_unique<PollingControlProxy>("[Skin]", "show_preparation_window");
+        proxy->set(1);
+    }
+    emit saveModelState();
+    m_pPlaylistTableModel->selectPlaylist(playlistId);
+    emit showTrackModelInPreparationWindow(m_pPlaylistTableModel);
+    emit enableCoverArtDisplay(true);
 }
 
 void BasePlaylistFeature::renameItem(const QModelIndex& index) {
@@ -592,6 +637,68 @@ void BasePlaylistFeature::slotCreateImportPlaylist() {
     activatePlaylist(lastPlaylistId);
 }
 
+void BasePlaylistFeature::slotCreateImportPlaylistFindTracks() {
+    QMessageBox box(nullptr);
+    box.setWindowTitle(tr("Confirm CSV/TXT-Import"));
+    box.setIcon(QMessageBox::Question);
+    box.setText(tr("Import a playlist from a CSV/TXT file?"));
+    box.setInformativeText(tr(
+            "This action will show a dialog of all results for each entry in "
+            "the importfile, 1 by 1. For each entry you'll be able to select "
+            "0/1/more results from your library.\n\n"
+            "Doubleclick on a result adds the track to the playlist and "
+            "proceeds to the next entry in the importfile.\n\n"
+            "After selecting multiple results you can add all selected tracks "
+            "with the 'Add Selected' button, then press 'Next' to proceed to "
+            "the next entry in the importfile."));
+    box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    box.setDefaultButton(QMessageBox::No);
+    if (box.exec() != QMessageBox::Yes) {
+        return;
+    }
+
+    const QString inputFile = QFileDialog::getOpenFileName(nullptr,
+            "Select the CSV/TXT file to import",
+            QString(),
+            "CSV files (*.csv);; TXT files (*.txt);; All files (*.*)");
+    if (inputFile.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    const auto entries = WDlgImportPlaylist::parseImportFile(inputFile, &error);
+    if (!entries.has_value()) {
+        QMessageBox::warning(nullptr, tr("Import Failed"), error);
+        return;
+    }
+
+    const QFileInfo fileInfo(inputFile);
+    const QString stamp = QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss");
+    const int playlistId = m_playlistDao.createPlaylist(
+            fileInfo.completeBaseName() + "-" + stamp);
+    if (playlistId == kInvalidPlaylistId) {
+        QMessageBox::warning(nullptr, tr("Playlist Creation Failed"), "Invalid playlist");
+        return;
+    }
+
+    QFile reportFile(fileInfo.absolutePath() + "/" +
+            fileInfo.completeBaseName() + "-import-report-" + stamp + ".txt");
+    QTextStream reportStream(&reportFile);
+    if (!reportFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open report file:" << reportFile.fileName();
+    }
+
+    const QSqlDatabase db = m_pLibrary->trackCollectionManager()
+                                    ->internalCollection()
+                                    ->database();
+
+    WDlgImportPlaylist dialog(entries.value(), db, playlistId, &reportStream, nullptr);
+    dialog.exec();
+
+    reportFile.close();
+    activatePlaylist(playlistId);
+}
+
 void BasePlaylistFeature::slotExportPlaylist() {
     int playlistId = playlistIdFromIndex(m_lastRightClickedIndex);
     if (playlistId == kInvalidPlaylistId) {
@@ -752,6 +859,20 @@ void BasePlaylistFeature::slotAnalyzePlaylist() {
 
 TreeItemModel* BasePlaylistFeature::sidebarModel() const {
     return m_pSidebarModel;
+}
+
+void BasePlaylistFeature::bindLibraryPreparationWindowWidget(
+        WLibraryPreparationWindow* pLibraryPreparationWindowWidget,
+        KeyboardEventFilter* pKeyboard) {
+    Q_UNUSED(pKeyboard);
+    WLibraryTextBrowser* pEdit = new WLibraryTextBrowser(pLibraryPreparationWindowWidget);
+    pEdit->setHtml(getRootViewHtml());
+    pEdit->setOpenLinks(false);
+    connect(pEdit,
+            &WLibraryTextBrowser::anchorClicked,
+            this,
+            &BasePlaylistFeature::htmlLinkClicked);
+    m_pLibraryPreparationWindowWidget = QPointer(pLibraryPreparationWindowWidget);
 }
 
 void BasePlaylistFeature::bindLibraryWidget(WLibrary* pLibraryWidget,
