@@ -188,7 +188,7 @@ void GroupedCratesFeature::connectTrackCollection() {
 }
 
 QVariant GroupedCratesFeature::title() {
-    return tr("Crates (Grouped)");
+    return tr("GroupedCrates");
 }
 
 QString GroupedCratesFeature::formatRootViewHtml() const {
@@ -335,7 +335,7 @@ bool GroupedCratesFeature::activateCrate(CrateId crateId) {
 bool GroupedCratesFeature::readLastRightClickedCrate(Crate* pCrate) const {
     const CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
     if (!crateId.isValid()) {
-        // Not a crate row (e.g. a group node) – silently refuse.
+        // Not a crate row (e.g. a group node) - silently refuse.
         return false;
     }
     if (!m_pTrackCollection->crates().readCrateById(crateId, pCrate)) {
@@ -918,7 +918,7 @@ void GroupedCratesFeature::slotResetSelectedTrack() {
 QList<QVariantMap> GroupedCratesFeature::getGroupedCratesFromConfig() {
     // Read grouping config here and pass it to the model.
     // GroupedCratesLength is stored as an int in the user config for
-    // 0 => fixed length off / variable mask on
+    // 0 -> fixed length off / variable mask on
     const bool groupedCratesLength =
             m_pConfig->getValue<int>(ConfigKey("[Library]", "GroupedCratesLength")) == 0
             ? false
