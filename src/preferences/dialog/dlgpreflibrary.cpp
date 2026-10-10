@@ -306,6 +306,15 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_itunes->setChecked(true);
     checkBox_show_traktor->setChecked(true);
     checkBox_show_rekordbox->setChecked(true);
+
+    checkBox_grouped_crates_enable->setChecked(false);
+    checkBox_grouped_crates_replace->setChecked(false);
+
+    radioButton_grouped_crates_var_mask->setChecked(true);
+    radioButton_grouped_crates_fixed_length->setChecked(false);
+
+    spinBox_grouped_crates_fixed_length->setValue(0);
+    lineEdit_grouped_crates_var_mask->clear();
 }
 
 void DlgPrefLibrary::slotUpdate() {
@@ -410,6 +419,31 @@ void DlgPrefLibrary::slotUpdate() {
         radioButton_cover_art_fetcher_lowest->setChecked(true);
         break;
     }
+
+    checkBox_grouped_crates_enable->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesEnabled"), true));
+    checkBox_grouped_crates_replace->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesReplace"), false));
+    const int groupedCratesLength = m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedCratesLength"), 0);
+    if (groupedCratesLength == 0) {
+        radioButton_grouped_crates_var_mask->setChecked(true);
+    } else if (groupedCratesLength == 1) {
+        radioButton_grouped_crates_fixed_length->setChecked(true);
+    }
+    spinBox_grouped_crates_fixed_length->setValue(m_pConfig->getValue<int>(
+            ConfigKey("[Library]", "GroupedCratesFixedLength"), 0));
+    spinBox_grouped_crates_fixed_length->setToolTip(
+            tr("Select the number of characters at the beginning of your "
+               "cratenames representing the group"));
+    lineEdit_grouped_crates_var_mask->setText(m_pConfig->getValue(
+            ConfigKey("[Library]", "GroupedCratesVarLengthMask")));
+    lineEdit_grouped_crates_var_mask->setToolTip(
+            tr("Enter the mask you want to use between the groupname(s) and "
+               "the cratename.") +
+            "\n" +
+            tr("Don't use spaces around the delimiter (or around the mask), "
+               "these can break the detection process."));
 
     bool editMetadataSelectedClick = m_pConfig->getValue(
             kEditMetadataSelectedClickConfigKey,
@@ -676,6 +710,21 @@ void DlgPrefLibrary::slotApply() {
                 ConfigValue(rowHeight));
         m_iOriginalTrackTableRowHeight = rowHeight;
     }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesEnabled"),
+            ConfigValue((int)checkBox_grouped_crates_enable->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesReplace"),
+            ConfigValue((int)checkBox_grouped_crates_replace->isChecked()));
+    if (radioButton_grouped_crates_var_mask->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedCratesLength"),
+                ConfigValue(0));
+    } else if (radioButton_grouped_crates_fixed_length->isChecked()) {
+        m_pConfig->set(ConfigKey("[Library]", "GroupedCratesLength"),
+                ConfigValue(1));
+    }
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesFixedLength"),
+            ConfigValue(spinBox_grouped_crates_fixed_length->value()));
+    m_pConfig->set(ConfigKey("[Library]", "GroupedCratesVarLengthMask"),
+            ConfigValue(lineEdit_grouped_crates_var_mask->text()));
 
     m_pConfig->setValue(kDateFormatConfigKey, m_dateFormat);
     BaseTrackTableModel::setDateFormat(m_dateFormat);
