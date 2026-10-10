@@ -335,7 +335,7 @@ bool GroupedCratesFeature::activateCrate(CrateId crateId) {
 bool GroupedCratesFeature::readLastRightClickedCrate(Crate* pCrate) const {
     const CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
     if (!crateId.isValid()) {
-        // Not a crate row (e.g. a group node) – silently refuse.
+        // Not a crate row (e.g. a group node) - silently refuse.
         return false;
     }
     if (!m_pTrackCollection->crates().readCrateById(crateId, pCrate)) {
