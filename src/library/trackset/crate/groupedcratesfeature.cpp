@@ -918,7 +918,7 @@ void GroupedCratesFeature::slotResetSelectedTrack() {
 QList<QVariantMap> GroupedCratesFeature::getGroupedCratesFromConfig() {
     // Read grouping config here and pass it to the model.
     // GroupedCratesLength is stored as an int in the user config for
-    // 0 => fixed length off / variable mask on
+    // 0 -> fixed length off / variable mask on
     const bool groupedCratesLength =
             m_pConfig->getValue<int>(ConfigKey("[Library]", "GroupedCratesLength")) == 0
             ? false
