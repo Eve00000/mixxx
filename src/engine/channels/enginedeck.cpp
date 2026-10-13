@@ -260,6 +260,13 @@ void EngineDeck::processStem(CSAMPLE* pOut, const std::size_t bufferSize) {
     }
     m_pBuffer->process(m_stemBuffer.data(), allChannelBufferSize);
 
+    // Fix TailingStemFX - begin
+    m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+    // Apply pregain to the dry stems before the stem quick FX, so effect
+    // tails can ring out when the deck stops.
+    m_pPregain->process(m_stemBuffer.data(), allChannelBufferSize);
+    // Fix TailingStemFX - end
+
     CSAMPLE* pIn = m_stemBuffer.data();
 
     // TODO(XXX): process stem DSP
@@ -343,6 +350,54 @@ void EngineDeck::cloneStemState(const EngineDeck* deckToClone) {
 }
 #endif
 
+// void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
+//     // Feed the incoming audio through if passthrough is active
+//     const CSAMPLE* sampleBuffer = m_sampleBuffer; // save pointer on stack
+//     if (isPassthroughActive() && sampleBuffer) {
+//         SampleUtil::copy(pOut, sampleBuffer, bufferSize);
+//         m_bPassthroughWasActive = true;
+//         m_sampleBuffer = nullptr;
+//         m_pPregain->setSpeedAndScratching(1, false);
+//     } else {
+//         // If passthrough is no longer enabled, zero out the buffer
+//         if (m_bPassthroughWasActive) {
+//             SampleUtil::clear(pOut, bufferSize);
+//             m_bPassthroughWasActive = false;
+//             return;
+//         }
+//
+// #ifdef __STEM__
+//         // Process the raw audio
+//         if (m_pBuffer->getChannelCount() <= mixxx::kEngineChannelOutputCount) {
+//             // Process a single mono or stereo channel
+// #endif
+//             m_pBuffer->process(pOut, bufferSize);
+// #ifdef __STEM__
+//         } else {
+//             // Process multiple stereo channels (stems) and mix them together
+//             processStem(pOut, bufferSize);
+//         }
+// #endif
+//         m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+//         m_bPassthroughWasActive = false;
+//     }
+//
+//     // Apply pregain
+//     m_pPregain->process(pOut, bufferSize);
+//
+//     EngineEffectsManager* pEngineEffectsManager = m_pEffectsManager->getEngineEffectsManager();
+//     if (pEngineEffectsManager != nullptr) {
+//         pEngineEffectsManager->processPreFaderInPlace(m_group.handle(),
+//                 m_pEffectsManager->getMainHandle(),
+//                 pOut,
+//                 bufferSize,
+//                 mixxx::audio::SampleRate::fromDouble(m_sampleRate.get()));
+//     }
+//
+//     // Update VU meter
+//     m_vuMeter.process(pOut, bufferSize);
+// }
+
 void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
     // Feed the incoming audio through if passthrough is active
     const CSAMPLE* sampleBuffer = m_sampleBuffer; // save pointer on stack
@@ -351,6 +406,8 @@ void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
         m_bPassthroughWasActive = true;
         m_sampleBuffer = nullptr;
         m_pPregain->setSpeedAndScratching(1, false);
+        // Apply pregain
+        m_pPregain->process(pOut, bufferSize);
     } else {
         // If passthrough is no longer enabled, zero out the buffer
         if (m_bPassthroughWasActive) {
@@ -360,23 +417,24 @@ void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
         }
 
 #ifdef __STEM__
-        // Process the raw audio
-        if (m_pBuffer->getChannelCount() <= mixxx::kEngineChannelOutputCount) {
-            // Process a single mono or stereo channel
-#endif
-            m_pBuffer->process(pOut, bufferSize);
-#ifdef __STEM__
-        } else {
-            // Process multiple stereo channels (stems) and mix them together
+        if (m_pBuffer->getChannelCount() > mixxx::kEngineChannelOutputCount) {
+            // Process multiple stereo channels (stems) and mix them together.
+            // Pregain is applied to the dry stems inside processStem(), before
+            // the stem quick FX, so effect tails can ring out when the deck
+            // stops (pregain fades to silence at speed 0).
             processStem(pOut, bufferSize);
-        }
+        } else
 #endif
-        m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+        {
+            // Process a single mono or stereo channel
+            m_pBuffer->process(pOut, bufferSize);
+            m_pPregain->setSpeedAndScratching(
+                    m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+            // Apply pregain
+            m_pPregain->process(pOut, bufferSize);
+        }
         m_bPassthroughWasActive = false;
     }
-
-    // Apply pregain
-    m_pPregain->process(pOut, bufferSize);
 
     EngineEffectsManager* pEngineEffectsManager = m_pEffectsManager->getEngineEffectsManager();
     if (pEngineEffectsManager != nullptr) {
