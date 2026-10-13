@@ -472,6 +472,11 @@ class Track : public QObject {
             double offsetSeconds,
             mixxx::audio::SampleRate memberSampleRate);
     void clearCmrtOverlay();
+    // Restores this track's own, DB-backed beats after clearCmrtOverlay().
+    // Unlike trySetBeats() this ignores the BPM lock, because the overlay
+    // beats being replaced were never this track's own data, and it does
+    // not push the overlay beats onto the undo stack.
+    void restoreOwnBeatsAfterCmrtOverlay(mixxx::BeatsPointer pOwnBeats);
     bool hasCmrtOverlayActive() const;
     TrackPointer getCanonicalTrack() const;
     double getCmrtOffsetSeconds() const;

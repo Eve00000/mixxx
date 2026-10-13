@@ -1822,6 +1822,17 @@ ExportTrackMetadataResult Track::exportMetadata(
     // be called after all references to the object have been dropped.
     // But it doesn't hurt much, so let's play it safe ;)
     auto locked = lockMutex(&m_qMutex);
+
+    if (m_cmrtOverlayActive) {
+        // m_record's BPM, m_pBeats and m_cuePoints currently hold the CMRT
+        // canonical track's shifted data, not this track's own. Exporting
+        // now would write that data into this track's file tags (BPM,
+        // Serato markers). Defer until the overlay is cleared.
+        kLogger.debug() << "Skipping export of metadata while CMRT overlay is active"
+                        << getLocation();
+        return ExportTrackMetadataResult::Skipped;
+    }
+
     const auto sourceSyncStatus = m_record.checkSourceSyncStatus(m_fileAccess.info());
     switch (sourceSyncStatus) {
     case mixxx::TrackRecord::SourceSyncStatus::Void:
@@ -2218,7 +2229,8 @@ void Track::applyCmrtOverlay(TrackPointer pCanonical,
         m_record.refMetadata().refTrackInfo().setBpm(
                 getBeatsPointerBpm(m_pBeats, getDuration()));
     }
-    emit beatsUpdated();
+    // emit beatsUpdated();
+    emitBeatsAndBpmUpdated();
     emit cuesUpdated();
 
     // Whenever the canonical's own cues/beats change from now on -- e.g.
@@ -2338,6 +2350,21 @@ void Track::clearCmrtOverlay() {
     m_pCmrtCanonicalTrack.reset();
     m_cmrtOverlayActive = false;
     m_cmrtOffsetSeconds = 0.0;
+}
+
+void Track::restoreOwnBeatsAfterCmrtOverlay(mixxx::BeatsPointer pOwnBeats) {
+    auto locked = lockMutex(&m_qMutex);
+    VERIFY_OR_DEBUG_ASSERT(!m_cmrtOverlayActive) {
+        return;
+    }
+    if (m_pBeats == pOwnBeats) {
+        return;
+    }
+    m_pBeats = std::move(pOwnBeats);
+    m_record.refMetadata().refTrackInfo().setBpm(
+            getBeatsPointerBpm(m_pBeats, getDuration()));
+    markDirtyAndUnlock(&locked);
+    emitBeatsAndBpmUpdated();
 }
 
 bool Track::hasCmrtOverlayActive() const {

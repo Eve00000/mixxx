@@ -1426,28 +1426,64 @@ void setTrackAudioProperties(
             mixxx::Duration::fromSeconds(duration));
 }
 
-void setTrackBeats(const QSqlRecord& record, const int column, Track* pTrack) {
+// void setTrackBeats(const QSqlRecord& record, const int column, Track* pTrack) {
+//     const auto bpm = mixxx::Bpm(record.value(column).toDouble());
+//     QString beatsVersion = record.value(column + 1).toString();
+//     QString beatsSubVersion = record.value(column + 2).toString();
+//     QByteArray beatsBlob = record.value(column + 3).toByteArray();
+//     if (beatsVersion.isEmpty()) {
+//         DEBUG_ASSERT(beatsSubVersion.isEmpty());
+//         DEBUG_ASSERT(beatsBlob.isEmpty());
+//         return;
+//     }
+//     const mixxx::BeatsPointer pBeats = mixxx::Beats::fromByteArray(
+//             pTrack->getSampleRate(), beatsVersion, beatsSubVersion, beatsBlob);
+//     if (pBeats) {
+//         pTrack->trySetBeats(pBeats);
+//     } else if (bpm.isValid()) {
+//         // Load a temporary beat grid without offset that will be replaced by the analyzer.
+//         const auto pBeats = mixxx::Beats::fromConstTempo(
+//                 pTrack->getSampleRate(), mixxx::audio::kStartFramePos, bpm);
+//         pTrack->trySetBeats(pBeats);
+//     } else {
+//         pTrack->trySetBeats(nullptr);
+//     }
+// }
+
+/// Decodes the beats stored in the bpm, beats_version, beats_sub_version
+/// and beats columns starting at `column`. Returns nullptr if no beats are
+/// stored.
+mixxx::BeatsPointer beatsFromLibraryRecord(const QSqlRecord& record,
+        const int column,
+        mixxx::audio::SampleRate sampleRate) {
     const auto bpm = mixxx::Bpm(record.value(column).toDouble());
     QString beatsVersion = record.value(column + 1).toString();
     QString beatsSubVersion = record.value(column + 2).toString();
-    QByteArray beatsBlob = record.value(column + 3).toByteArray();
+    const QByteArray beatsBlob = record.value(column + 3).toByteArray();
     if (beatsVersion.isEmpty()) {
         DEBUG_ASSERT(beatsSubVersion.isEmpty());
         DEBUG_ASSERT(beatsBlob.isEmpty());
-        return;
+        return nullptr;
     }
     const mixxx::BeatsPointer pBeats = mixxx::Beats::fromByteArray(
-            pTrack->getSampleRate(), beatsVersion, beatsSubVersion, beatsBlob);
+            sampleRate, beatsVersion, beatsSubVersion, beatsBlob);
     if (pBeats) {
-        pTrack->trySetBeats(pBeats);
-    } else if (bpm.isValid()) {
-        // Load a temporary beat grid without offset that will be replaced by the analyzer.
-        const auto pBeats = mixxx::Beats::fromConstTempo(
-                pTrack->getSampleRate(), mixxx::audio::kStartFramePos, bpm);
-        pTrack->trySetBeats(pBeats);
-    } else {
-        pTrack->trySetBeats(nullptr);
+        return pBeats;
     }
+    if (bpm.isValid()) {
+        // Load a temporary beat grid without offset that will be replaced by the analyzer.
+        return mixxx::Beats::fromConstTempo(
+                sampleRate, mixxx::audio::kStartFramePos, bpm);
+    }
+    return nullptr;
+}
+
+void setTrackBeats(const QSqlRecord& record, const int column, Track* pTrack) {
+    if (record.value(column + 1).toString().isEmpty()) {
+        // No beats stored
+        return;
+    }
+    pTrack->trySetBeats(beatsFromLibraryRecord(record, column, pTrack->getSampleRate()));
 }
 
 void setTrackBpmLock(const QSqlRecord& record, const int column, Track* pTrack) {
@@ -1881,17 +1917,35 @@ void TrackDAO::reloadOwnCuesAndBeats(const TrackPointer& pTrack) const {
     pTrack->clearCmrtOverlay();
     pTrack->setCuePoints(m_cueDao.getCuesForTrack(trackId));
 
-    // Query the beats
-    // columns directly instead and run them through the same setTrackBeats()
-    // populator a fresh load uses (defined above in this file), applied
-    // straight to pTrack, so we always get a genuinely new BeatsPointer.
+    //// Query the beats
+    //// columns directly instead and run them through the same setTrackBeats()
+    //// populator a fresh load uses (defined above in this file), applied
+    //// straight to pTrack, so we always get a genuinely new BeatsPointer.
+    // QSqlQuery query(m_database);
+    // query.prepare(
+    //         "SELECT bpm, beats_version, beats_sub_version, beats, bpm_lock "
+    //         "FROM Library WHERE id=:id");
+    // query.bindValue(":id", trackId.toVariant());
+    // if (query.exec() && query.next()) {
+    //     setTrackBeats(query.record(), 0, pTrack.get());
+    // } else {
+    //     LOG_FAILED_QUERY(query) << "reloadOwnCuesAndBeats" << trackId;
+    // }
+
+    // Query the beats columns directly and decode them the same way a fresh
+    // load does, so we always get a genuinely new BeatsPointer.
+    // updateTrack() never writes overlay beats into these columns, so they
+    // still hold this track's own beats.
     QSqlQuery query(m_database);
     query.prepare(
-            "SELECT bpm, beats_version, beats_sub_version, beats, bpm_lock "
+            "SELECT bpm, beats_version, beats_sub_version, beats "
             "FROM Library WHERE id=:id");
     query.bindValue(":id", trackId.toVariant());
     if (query.exec() && query.next()) {
-        setTrackBeats(query.record(), 0, pTrack.get());
+        // Not trySetBeats(): that would refuse to replace the overlay beats
+        // if this track is BPM-locked.
+        pTrack->restoreOwnBeatsAfterCmrtOverlay(beatsFromLibraryRecord(
+                query.record(), 0, pTrack->getSampleRate()));
     } else {
         LOG_FAILED_QUERY(query) << "reloadOwnCuesAndBeats" << trackId;
     }
@@ -1968,11 +2022,33 @@ bool TrackDAO::updateTrack(const Track& track) const {
 
     query.bindValue(":track_id", trackId.toVariant());
 
+    // While a CMRT overlay is active, the track's beats, BPM and cues are a
+    // shifted copy of its canonical track's data, not its own. Never persist
+    // them as this track's data: keep the stored beats/BPM and cues as they
+    // are, and only save everything else (rating, play count, ...).
+    const bool cmrtOverlayActive = track.hasCmrtOverlayActive();
+
     const auto trackRecord = track.getRecord();
     bindTrackLibraryValues(
             &query,
             trackRecord,
             track.getBeats());
+
+    if (cmrtOverlayActive) {
+        QSqlQuery storedBeatsQuery(m_database);
+        storedBeatsQuery.prepare(
+                "SELECT bpm, beats_version, beats_sub_version, beats "
+                "FROM library WHERE id=:track_id");
+        storedBeatsQuery.bindValue(":track_id", trackId.toVariant());
+        if (!storedBeatsQuery.exec() || !storedBeatsQuery.next()) {
+            LOG_FAILED_QUERY(storedBeatsQuery);
+            return false;
+        }
+        query.bindValue(":bpm", storedBeatsQuery.value(0));
+        query.bindValue(":beats_version", storedBeatsQuery.value(1));
+        query.bindValue(":beats_sub_version", storedBeatsQuery.value(2));
+        query.bindValue(":beats", storedBeatsQuery.value(3));
+    }
 
     if (!query.exec()) {
         LOG_FAILED_QUERY(query);
@@ -1992,8 +2068,13 @@ bool TrackDAO::updateTrack(const Track& track) const {
             trackId,
             track.getWaveform(),
             track.getWaveformSummary());
-    m_cueDao.saveTrackCues(
-            trackId, track.getCuePoints());
+    /*m_cueDao.saveTrackCues(
+            trackId, track.getCuePoints());*/
+    if (!cmrtOverlayActive) {
+        m_cueDao.saveTrackCues(
+                trackId, track.getCuePoints());
+    }
+
     transaction.commit();
 
     // kLogger.debug() << "Update track in database took: " <<
