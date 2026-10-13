@@ -1030,10 +1030,10 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     } else {
         qDebug() << "[CUECONTROL] -> stem -> proxyStem = 1";
         pass2CueCreationStem1Vol = 1.0;
-        pass2CueCreationStem2Vol = 1.0;
-        pass2CueCreationStem3Vol = 1.0;
-        pass2CueCreationStem4Vol = 1.0;
-        pass2CueCreationStem5Vol = 1.0;
+        pass2CueCreationStem2Vol = -1.0;
+        pass2CueCreationStem3Vol = -1.0;
+        pass2CueCreationStem4Vol = -1.0;
+        pass2CueCreationStem5Vol = -1.0;
     }
     // EveCue-Loop
 
