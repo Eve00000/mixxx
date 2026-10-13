@@ -13,6 +13,7 @@
 #include "library/dao/playlistdao.h"
 #include "library/dao/trackdao.h"
 #include "library/trackset/crate/cratestorage.h"
+#include "library/trackset/searchcrate/searchcratestorage.h"
 #include "preferences/usersettings.h"
 #include "util/thread_affinity.h"
 
@@ -53,6 +54,11 @@ class TrackCollection : public QObject,
         return m_crates;
     }
 
+    const SearchCrateStorage& searchCrates() const {
+        DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+        return m_searchCrates;
+    }
+
     TrackDAO& getTrackDAO() {
         DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
         return m_trackDao;
@@ -84,6 +90,12 @@ class TrackCollection : public QObject,
     bool addCrateTracks(CrateId crateId, const QList<TrackId>& trackIds);
     bool removeCrateTracks(CrateId crateId, const QList<TrackId>& trackIds);
 
+    bool insertSearchCrate(const SearchCrate& searchCrate, SearchCrateId* pSearchCrateId = nullptr);
+    bool updateSearchCrate(const SearchCrate& searchCrate);
+    bool deleteSearchCrate(SearchCrateId searchCrateId);
+    bool addSearchCrateTracks(SearchCrateId searchCrateId, const QList<TrackId>& trackIds);
+    bool removeSearchCrateTracks(SearchCrateId searchCrateId, const QList<TrackId>& trackIds);
+
     bool updateAutoDjCrate(CrateId crateId, bool isAutoDjSource);
 
   signals:
@@ -107,6 +119,17 @@ class TrackCollection : public QObject,
             const QList<TrackId>& tracksRemoved);
     void crateSummaryChanged(
             const QSet<CrateId>& crates);
+
+    void searchCrateInserted(SearchCrateId id);
+    void searchCrateUpdated(SearchCrateId id);
+    void searchCrateDeleted(SearchCrateId id);
+
+    void searchCrateTracksChanged(
+            SearchCrateId searchCrate,
+            const QList<TrackId>& tracksAdded,
+            const QList<TrackId>& tracksRemoved);
+    void searchCrateSummaryChanged(
+            const QSet<SearchCrateId>& searchCrates);
 
   private:
     friend class TrackCollectionManager;
@@ -174,6 +197,7 @@ class TrackCollection : public QObject,
 
     PlaylistDAO m_playlistDao;
     CrateStorage m_crates;
+    SearchCrateStorage m_searchCrates;
     CueDAO m_cueDao;
     DirectoryDAO m_directoryDao;
     AnalysisDao m_analysisDao;
