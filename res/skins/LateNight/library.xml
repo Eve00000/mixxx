@@ -22,7 +22,7 @@
             <ObjectName>LibraryMainSplitter</ObjectName>
             <Orientation>vertical</Orientation>
             <SizePolicy>me,me</SizePolicy>
-            <SplitSizes>1,4</SplitSizes>
+            <SplitSizes>2,2</SplitSizes>
             <SplitSizesConfigKey>[Skin],prepwin_splitSize</SplitSizesConfigKey>
             <Collapsible>0,0</Collapsible>
             <Children>
