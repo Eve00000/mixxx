@@ -71,6 +71,7 @@
 #FxUnitHeaderCollapsed,
 #FxUnitHeaderExpanded,
 #SamplerExpandBox,
+#StemExpandBox,
 #SearchLineBox,
 #LibExpandBox,
 #SidebarBox,
@@ -78,6 +79,7 @@
 #SidebarCoverSplitter,
 #SidebarCoverSplitter:handle,
 #LibrarySplitter::handle,
+#LibraryMainSplitter::handle,
 #LibraryFeatureControls,
 QAbstractScrollArea::corner {
   border-top: 1px solid #212123;
@@ -110,6 +112,8 @@ QAbstractScrollArea::corner {
   #SidebarCoverSplitter,
   #SidebarCoverSplitter::handle,
   #LibrarySplitter,
+  #LibraryMainSplitter,
+  #LibraryMainSplitter::handle,
   #LibrarySplitter::handle {
     border-radius: 0px;
     }
@@ -118,13 +122,18 @@ QAbstractScrollArea::corner {
       border-width: 0px;
     }
     /* Some tweaks to create a frameless library table */
+    #LibraryMainSplitter,
     #LibrarySplitter {
       border-width: 0px;
       }
+      #LibraryMainSplitter::handle,
       #LibrarySplitter::handle {
         border-width: 1px 0px 0px 0px;
       }
     WLibrary {
+      border-width: 1px 0px 0px 0px;
+    }
+    WLibraryPreparationWindow {
       border-width: 1px 0px 0px 0px;
     }
     #PreviewDeckRightSpacer,
@@ -140,8 +149,13 @@ QAbstractScrollArea::corner {
         min-height: 3px;
         max-height: 3px;
       }
-  /* Controls row in AutoDJ, Recording and other library features */
+  /* Controls row in AutoDJ, AutoSuggestions, Recording and other library features */
   #LibraryFeatureControls {
+    border-width: 1px 0px 0px 0px;
+    border-radius: 0px;
+    margin-top: 1px;
+  }
+  #LibraryPreparationWindowFeatureControls {
     border-width: 1px 0px 0px 0px;
     border-radius: 0px;
     margin-top: 1px;
@@ -163,6 +177,164 @@ WCueMenuPopup #CueLabelEdit {
   border-right: 1px solid #252525;
   background-color: #19191a;
   }
+WCueMenuPopup #CueStem1volEdit,
+WCueMenuPopup #CueStem2volEdit,
+WCueMenuPopup #CueStem3volEdit,
+WCueMenuPopup #CueStem4volEdit,
+WCueMenuPopup #CueStem5volEdit {
+  border-top: 1px solid #0d0d0d;
+  border-left: 1px solid #121212;
+  border-bottom: 1px solid #2a2a2a;
+  border-right: 1px solid #252525;
+  background-color: #19191a;
+  color: #ffffff;
+}
+WCueMenuPopup #CueExportToSampler1,
+WCueMenuPopup #CueExportToSampler2,
+WCueMenuPopup #CueExportToSampler3,
+WCueMenuPopup #CueExportToSampler4,
+WCueMenuPopup #CueExportToSampler5,
+WCueMenuPopup #CueExportToSampler6,
+WCueMenuPopup #CueExportToSampler7,
+WCueMenuPopup #CueExportToSampler8,
+WCueMenuPopup #CueExportToSampler9,
+WCueMenuPopup #CueExportToSampler10,
+WCueMenuPopup #CueExportToSampler11,
+WCueMenuPopup #CueExportToSampler12,
+WCueMenuPopup #CueExportToSampler13,
+WCueMenuPopup #CueExportToSampler14,
+WCueMenuPopup #CueExportToSampler15,
+WCueMenuPopup #CueExportToSampler16,
+WCueMenuPopup #CueExportToSampler17,
+WCueMenuPopup #CueExportToSampler18,
+WCueMenuPopup #CueExportToSampler19,
+WCueMenuPopup #CueExportToSampler20,
+WCueMenuPopup #CueExportToSampler21,
+WCueMenuPopup #CueExportToSampler22,
+WCueMenuPopup #CueExportToSampler23,
+WCueMenuPopup #CueExportToSampler24,
+WCueMenuPopup #CueExportToSampler25,
+WCueMenuPopup #CueExportToSampler26,
+WCueMenuPopup #CueExportToSampler27,
+WCueMenuPopup #CueExportToSampler28,
+WCueMenuPopup #CueExportToSampler29,
+WCueMenuPopup #CueExportToSampler30,
+WCueMenuPopup #CueExportToSampler31,
+WCueMenuPopup #CueExportToSampler32,
+WCueMenuPopup #CueExportToSampler33,
+WCueMenuPopup #CueExportToSampler34,
+WCueMenuPopup #CueExportToSampler35,
+WCueMenuPopup #CueExportToSampler36,
+WCueMenuPopup #CueExportToSampler37,
+WCueMenuPopup #CueExportToSampler38,
+WCueMenuPopup #CueExportToSampler39,
+WCueMenuPopup #CueExportToSampler40,
+WCueMenuPopup #CueExportToSampler41,
+WCueMenuPopup #CueExportToSampler42,
+WCueMenuPopup #CueExportToSampler43,
+WCueMenuPopup #CueExportToSampler44,
+WCueMenuPopup #CueExportToSampler45,
+WCueMenuPopup #CueExportToSampler46,
+WCueMenuPopup #CueExportToSampler47,
+WCueMenuPopup #CueExportToSampler48,
+WCueMenuPopup #CueExportToSampler49,
+WCueMenuPopup #CueExportToSampler50,
+WCueMenuPopup #CueExportToSampler51,
+WCueMenuPopup #CueExportToSampler52,
+WCueMenuPopup #CueExportToSampler53,
+WCueMenuPopup #CueExportToSampler54,
+WCueMenuPopup #CueExportToSampler55,
+WCueMenuPopup #CueExportToSampler56,
+WCueMenuPopup #CueExportToSampler57,
+WCueMenuPopup #CueExportToSampler58,
+WCueMenuPopup #CueExportToSampler59,
+WCueMenuPopup #CueExportToSampler60,
+WCueMenuPopup #CueExportToSampler61,
+WCueMenuPopup #CueExportToSampler62,
+WCueMenuPopup #CueExportToSampler63,
+WCueMenuPopup #CueExportToSampler64,
+WCueMenuPopup #CueExportToSampler65,
+WCueMenuPopup #CueExportToSampler66,
+WCueMenuPopup #CueExportToSampler67,
+WCueMenuPopup #CueExportToSampler68,
+WCueMenuPopup #CueExportToSampler69,
+WCueMenuPopup #CueExportToSampler60,
+WCueMenuPopup #CueExportToSampler61,
+WCueMenuPopup #CueExportToSampler62,
+WCueMenuPopup #CueExportToSampler63,
+WCueMenuPopup #CueExportToSampler64,
+WCueMenuPopup #CueExportToSampler65,
+WCueMenuPopup #CueExportToSampler66,
+WCueMenuPopup #CueExportToSampler67,
+WCueMenuPopup #CueExportToSampler68,
+WCueMenuPopup #CueExportToSampler69,
+WCueMenuPopup #CueExportToSampler70,
+WCueMenuPopup #CueExportToSampler71,
+WCueMenuPopup #CueExportToSampler72,
+WCueMenuPopup #CueExportToSampler73,
+WCueMenuPopup #CueExportToSampler74,
+WCueMenuPopup #CueExportToSampler75,
+WCueMenuPopup #CueExportToSampler76,
+WCueMenuPopup #CueExportToSampler77,
+WCueMenuPopup #CueExportToSampler78,
+WCueMenuPopup #CueExportToSampler79,
+WCueMenuPopup #CueExportToSampler80,
+WCueMenuPopup #CueExportToSampler81,
+WCueMenuPopup #CueExportToSampler82,
+WCueMenuPopup #CueExportToSampler83,
+WCueMenuPopup #CueExportToSampler84,
+WCueMenuPopup #CueExportToSampler85,
+WCueMenuPopup #CueExportToSampler86,
+WCueMenuPopup #CueExportToSampler87,
+WCueMenuPopup #CueExportToSampler88,
+WCueMenuPopup #CueExportToSampler89,
+WCueMenuPopup #CueExportToSampler90,
+WCueMenuPopup #CueExportToSampler91,
+WCueMenuPopup #CueExportToSampler92,
+WCueMenuPopup #CueExportToSampler93,
+WCueMenuPopup #CueExportToSampler94,
+WCueMenuPopup #CueExportToSampler95,
+WCueMenuPopup #CueExportToSampler96,
+WCueMenuPopup #CueExportToSampler97,
+WCueMenuPopup #CueExportToSampler98,
+WCueMenuPopup #CueExportToSampler99,
+WCueMenuPopup #CueExportToSampler100,
+WCueMenuPopup #CueExportToSampler101,
+WCueMenuPopup #CueExportToSampler102,
+WCueMenuPopup #CueExportToSampler103,
+WCueMenuPopup #CueExportToSampler104,
+WCueMenuPopup #CueExportToSampler105,
+WCueMenuPopup #CueExportToSampler106,
+WCueMenuPopup #CueExportToSampler107,
+WCueMenuPopup #CueExportToSampler108,
+WCueMenuPopup #CueExportToSampler109,
+WCueMenuPopup #CueExportToSampler110,
+WCueMenuPopup #CueExportToSampler110,
+WCueMenuPopup #CueExportToSampler111,
+WCueMenuPopup #CueExportToSampler112,
+WCueMenuPopup #CueExportToSampler113,
+WCueMenuPopup #CueExportToSampler114,
+WCueMenuPopup #CueExportToSampler115,
+WCueMenuPopup #CueExportToSampler116,
+WCueMenuPopup #CueExportToSampler117,
+WCueMenuPopup #CueExportToSampler118,
+WCueMenuPopup #CueExportToSampler119,
+WCueMenuPopup #CueExportToSampler120,
+WCueMenuPopup #CueExportToSampler121,
+WCueMenuPopup #CueExportToSampler122,
+WCueMenuPopup #CueExportToSampler123,
+WCueMenuPopup #CueExportToSampler124,
+WCueMenuPopup #CueExportToSampler125,
+WCueMenuPopup #CueExportToSampler126,
+WCueMenuPopup #CueExportToSampler127,
+WCueMenuPopup #CueExportToSampler128 {
+  border-top: 1px solid #0d0d0d;
+  border-left: 1px solid #121212;
+  border-bottom: 1px solid #2a2a2a;
+  border-right: 1px solid #252525;
+  background-color: #19191a;
+  color: #ffffff;
+}
 WTrackTableView,
 WLibraryTextBrowser,
 WLibrarySidebar,
@@ -670,10 +842,11 @@ WTrackProperty[selected="true"],
 }
 
 
-/********************** Loop Controls / AutoDJ spinbox ************************/
+/********************** Loop Controls / AutoDJ, AutoSuggestions spinbox ************************/
 WBeatSpinBox,
 WBpmEditor QDoubleSpinBox,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   selection-color: #a7998b;
   selection-background-color: #111;
@@ -681,6 +854,7 @@ WBpmEditor QDoubleSpinBox,
   WBeatSpinBox:focus,
   WBpmEditor QDoubleSpinBox:focus,
   #spinBoxTransition:focus,
+  #spinBoxRefreshRate:focus,
   #spinBoxRecentDays:focus,
   #LibraryBPMSpinBox:focus  {
     selection-color: #000;
@@ -694,6 +868,7 @@ WBeatSpinBox {
 }
 
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   height: 19px;
   padding: 0px -15px 0px 0px;
@@ -704,11 +879,15 @@ WBeatSpinBox {
 #spinBoxTransition {
   width: 24px;
 }
+#spinBoxRefreshRate {
+  width: 24px;
+}
 #spinBoxRecentDays {
   width: 45px;
 }
 WBeatSpinBox:focus,
 #spinBoxTransition:focus,
+#spinBoxRefreshRate:focus,
 #spinBoxRecentDays:focus {
   border-image: url(skins:LateNight/palemoon/buttons/btn_embedded_spinbox_focus_blue.svg) 3 19 2 3;
 }
@@ -720,6 +899,8 @@ WBeatSpinBox::up-button,
 WBeatSpinBox::down-button,
 #spinBoxTransition::up-button,
 #spinBoxTransition::down-button,
+#spinBoxRefreshRate::up-button,
+#spinBoxRefreshRate::down-button,
 #spinBoxRecentDays::up-button,
 #spinBoxRecentDays::down-button {
   subcontrol-origin: content;
@@ -730,6 +911,7 @@ WBeatSpinBox::down-button,
 
   WBeatSpinBox::up-button,
   #spinBoxTransition::up-button,
+  #spinBoxRefreshRate::up-button,
   #spinBoxRecentDays::up-button {
     subcontrol-position: top right;
     image: url(skins:LateNight/palemoon/buttons/btn__spinbox_up.svg) no-repeat;
@@ -739,12 +921,14 @@ WBeatSpinBox::down-button,
       margin: -2px -1px 0px 0px;
     }
     #spinBoxTransition::up-button,
+    #spinBoxRefreshRate::up-button,
     #spinBoxRecentDays::up-button {
       margin: -2px -3px 0px 0px;
     }
 
   WBeatSpinBox::down-button,
   #spinBoxTransition::down-button,
+  #spinBoxRefreshRate::down-button,
   #spinBoxRecentDays::down-button {
     subcontrol-position: bottom right;
     image: url(skins:LateNight/palemoon/buttons/btn__spinbox_down.svg) no-repeat;
@@ -752,6 +936,7 @@ WBeatSpinBox::down-button,
     margin: 0px -1px -3px 0px;
     }
     #spinBoxTransition::down-button,
+    #spinBoxRefreshRate::down-button,
     #spinBoxRecentDays::down-button {
       margin: 0px -3px -1px 0px;
     }
@@ -1017,6 +1202,10 @@ WEffectSelector:!editable:on {
 /************** Sampler *************************************************/
 
 #SamplerExpandBox {
+  padding: 0px 1px 0px 1px;
+}
+
+#StemExpandBox {
   padding: 0px 1px 0px 1px;
 }
 
@@ -1379,6 +1568,7 @@ WEffectChainPresetSelector:!editable:on,
   WBeatSpinBox,
   WBpmEditor QDoubleSpinBox,
   #spinBoxTransition,
+  #spinBoxRefreshRate,
   #spinBoxRecentDays {
     color: #a7998b;
   }
@@ -1505,6 +1695,7 @@ WPushButton#VinylStatus[displayValue="3"], /* needle skip detected (pink bg) */
 #RecDuration[highlight="2"],  /* recording */
 #SkinSettingsToggle[displayValue="1"],
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonRepeatPlaylist:checked,
 QPushButton#pushButtonAnalyze:checked,
 QPushButton#pushButtonRecording:checked {
@@ -1594,6 +1785,7 @@ WEffectSelector:!editable,
   #SkinSettingsToggle[displayValue="1"],
   #LibraryFeatureControls QPushButton:pressed
   QPushButton#pushButtonAutoDJ:checked,
+  QPushButton#pushButtonAutoSuggestions:checked,
   QPushButton#pushButtonRepeatPlaylist:checked,
   QPushButton#pushButtonAnalyze:checked,
   QPushButton#pushButtonRecording:checked,
@@ -1659,6 +1851,7 @@ WPushButton#PlayPreview {
 
 WPushButton#FxExpand,
 WPushButton#SamplerExpand,
+WPushButton#StemExpand,
 #FxAssignButtons WPushButton,
 #VinylControls WPushButton,
 #KeyControls WPushButton,
@@ -1748,9 +1941,12 @@ WBpmEditor QDoubleSpinBox {
   /* library controls */
   #spinBoxTransition::up-button,
   #spinBoxTransition::down-button,
+  #spinBoxRefreshRate::up-button,
+  #spinBoxRefreshRate::down-button,
   #spinBoxRecentDays::up-button,
   #spinBoxRecentDays::down-button,
   QPushButton#pushButtonAutoDJ:enabled:!checked,
+  QPushButton#pushButtonAutoSuggestions:enabled:!checked,
   #LibraryFeatureControls QPushButton:enabled {
     background-color: #222;
   }
@@ -1781,6 +1977,7 @@ WPushButton#StemMuteButton,
 #PassthroughButton[displayValue="1"],
 #BroadcastButton[displayValue="4"], /* warning */
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonAnalyze:checked {
   background-color: #b24c12;
   }
@@ -1838,6 +2035,8 @@ WBeatSpinBox::up-button:pressed,
 WBeatSpinBox::down-button:pressed,
 #spinBoxTransition::up-button:pressed,
 #spinBoxTransition::down-button:pressed,
+#spinBoxRefreshRate::up-button:pressed,
+#spinBoxRefreshRate::down-button:pressed,
 #spinBoxRecentDays::up-button:pressed,
 #spinBoxRecentDays::down-button:pressed {
   background-color: #257b82;
@@ -1973,6 +2172,7 @@ WPushButton#FxFocusButton[displayValue="0"],
 #SamplerSettingsMini WPushButton[displayValue="0"],
 WPushButton#FxExpand[displayValue="0"],
 WPushButton#SamplerExpand[displayValue="0"],
+WPushButton#StemExpand[displayValue="0"],
 WPushButton#RecButton[displayValue="0"],
 WPushButton#RecButton[displayValue="1"],
 #RecDot,
@@ -2377,6 +2577,342 @@ WPushButton#PlayDeck[value="0"] {
     image: url(skins:LateNight/palemoon/buttons/btn__8_jump_backward_set.svg) no-repeat center center;
   }
 
+#Hotcue9 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__9.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[displayValue="1"],
+  #Hotcue9 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_active.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue9 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue9 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue9 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue9 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_loop.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue9 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__9_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue10 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__10.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[displayValue="1"],
+  #Hotcue10 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_active.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue10 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue10 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue10 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue10 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_loop.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue10 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__10_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue11 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__11.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[displayValue="1"],
+  #Hotcue11 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_active.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue11 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue11 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue11 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue11 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_loop.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue11 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__11_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue12 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__12.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[displayValue="1"],
+  #Hotcue12 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_active.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue12 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue12 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue12 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue12 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_loop.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue12 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__12_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue13 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__13.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[displayValue="1"],
+  #Hotcue13 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_active.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue13 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue13 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue13 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue13 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_loop.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue13 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__13_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue14 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__14.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[displayValue="1"],
+  #Hotcue14 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_active.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue14 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue14 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue14 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue14 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_loop.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue14 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__14_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue15 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__15.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[displayValue="1"],
+  #Hotcue15 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_active.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue15 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue15 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue15 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue15 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_loop.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue15 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__15_jump_backward_set.svg) no-repeat center center;
+  }
+
+#Hotcue16 WPushButton[displayValue="0"] {
+  image: url(skins:LateNight/palemoon/buttons/btn__16.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[displayValue="1"],
+  #Hotcue16 WPushButton[displayValue="2"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_active.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[displayValue="1"][dark="true"],
+  #Hotcue16 WPushButton[displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_active_dark.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[type="loop"][displayValue="1"][dark="false"],
+  #Hotcue16 WPushButton[type="loop"][displayValue="2"][dark="false"],
+  #Hotcue16 WPushButton[type="loop"][displayValue="1"][dark="true"],
+  #Hotcue16 WPushButton[type="loop"][displayValue="2"][dark="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_loop.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_jump_active.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="true"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="true"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_jump_backward_active.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="false"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="false"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="forward"][dark="true"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="forward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_jump_set.svg) no-repeat center center;
+  }
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="false"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="false"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="1"][direction="backward"][dark="true"][active="false"],
+  #Hotcue16 WPushButton[type="jump"][displayValue="2"][direction="backward"][dark="true"][active="false"] {
+    image: url(skins:LateNight/palemoon/buttons/btn__16_jump_backward_set.svg) no-repeat center center;
+  }
+
 #SpecialCueButton_intro_start WPushButton[displayValue="0"] {
   image: url(skins:LateNight/palemoon/buttons/btn__intro_start.svg) no-repeat center center;
   }
@@ -2584,11 +3120,13 @@ WPushButton#PlayDeck[value="0"] {
 
 #FxExpand[value="0"],
 #SamplerExpand[value="0"],
+#StemExpand[value="0"],
 #LibExpand[value="0"] {
   image: url(skins:LateNight/palemoon/buttons/btn__expand_dim.svg) no-repeat center center;
   }
   #FxExpand[value="1"],
   #SamplerExpand[value="1"],
+  #StemExpand[value="1"],
   #LibExpand[value="1"] {
     image: url(skins:LateNight/palemoon/buttons/btn__collapse_dim.svg) no-repeat center center;
   }
@@ -2858,6 +3396,22 @@ QPushButton#pushButtonRepeatPlaylist:!checked {
   }
 /* AutoDJ button icons */
 
+/* AutoSuggestions button icons */
+QPushButton#pushButtonAutoSuggestions:!checked {
+  image: url(skins:LateNight/palemoon/buttons/btn__autodj_enable_off.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonAutoSuggestions:checked {
+    image: url(skins:LateNight/palemoon/buttons/btn__autodj_enable_on.svg) no-repeat center center;
+  }
+
+QPushButton#pushButtonCheckNow:!enabled {
+  image: url(skins:LateNight/palemoon/buttons/btn__autodj_fade_disabled.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonCheckNow:enabled {
+    image: url(skins:LateNight/palemoon/buttons/btn__autodj_fade.svg) no-repeat center center;
+  }
+/* AutoSuggestions button icons */
+
 /* widgets in cue popup menu */
 WCueMenuPopup #CueDeleteButton {
   icon: url(skins:LateNight/palemoon/buttons/btn__delete.svg);
@@ -2974,6 +3528,7 @@ WTrackPropertyEditor,
 WLibrary QLineEdit,
 WLibrary QPlainTextEdit,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays,
 #LibraryBPMSpinBox {
   background-color: #0f0f0f;
@@ -3285,17 +3840,53 @@ WSearchLineEdit {
   splits
   - Waveforms / Decks/FX/etc
   - Library sidebar / Lib Coverart */
+#LibraryMainSplitter,
+#NormalLayoutSplitter,
+#NormalLayoutSplitter_Right,
 #WaveformSplitter,
+#WaveformSplitter_Swapped,
+#WaveformPanelHeightSplitter,
+#WaveformPanelSplitter,
+#WaveformPanelSplitter_Right,
+#WaveformPanelSplitter_Right_Swapped,
+#WideScreenSplitter,
+#WideScreenSplitter_Swapped,
+#WideScreenSplitter_WaveformPanel,
+#WideScreenSplitter_WaveformPanel_Right,
 #SidebarCoverSplitter {
   padding: 0px;
   margin: 0px;
   }
+  #LibraryMainSplitter::handle,
+  #NormalLayoutSplitter:handle,
+  #NormalLayoutSplitter_Right:handle,
   #WaveformSplitter::handle,
+  #WaveformSplitter_Swapped::handle,
+  #WaveformPanelHeightSplitter::handle,
+  #WaveformPanelSplitter:handle,
+  #WaveformPanelSplitter_Right:handle,
+  #WaveformPanelSplitter_Right_Swapped:handle,
+  #WideScreenSplitter::handle,
+  #WideScreenSplitter_Swapped::handle,
+  #WideScreenSplitter_WaveformPanel::handle,
+  #WideScreenSplitter_WaveformPanel_Right:handle,
   #SidebarCoverSplitter::handle {
       image: url(skins:LateNight/palemoon/style/splitter_handle_horizontal.svg);
       height: 9px;
     }
+    #LibraryMainSplitter::handle:pressed,
+    #NormalLayoutSplitter:handle:pressed,
+    #NormalLayoutSplitter_Right:handle:pressed,
     #WaveformSplitter::handle:pressed,
+	#WaveformSplitter_Swapped::handle:pressed,
+    #WaveformPanelHeightSplitter::handler:pressed,
+	#WaveformPanelSplitter:handle:pressed,
+	#WaveformPanelSplitter_Right:handle:pressed,
+	#WaveformPanelSplitter_Right_Swapped:handle:pressed,
+	#WideScreenSplitter::handle:pressed,
+	#WideScreenSplitter_Swapped::handle:pressed,
+    #WideScreenSplitter_WaveformPanel::handle:pressed,
+    #WideScreenSplitter_WaveformPanel_Right:handle:pressed,
     #SidebarCoverSplitter::handle:pressed {
     /* doesn't catch hover state:
     #HorizontalSplitter::handle:hover,
@@ -3306,10 +3897,12 @@ WSearchLineEdit {
 /* VerticalSplitter (the splitter itself is vertical)
   splits
   * Library sidebar / Tracks table */
+#LibraryMainSplitter,
 #LibrarySplitter {
   padding: 0px;
   margin: 0px;
   }
+  #LibraryMainSplitter::handle,
   #LibrarySplitter::handle {
     image: url(skins:LateNight/palemoon/style/splitter_handle_vertical.svg);
     padding: 0px;
@@ -3317,6 +3910,7 @@ WSearchLineEdit {
     /* 'height' works although it's actually the width of the handle */
     height: 6px;
   }
+  #LibraryMainSplitter::handle:pressed,
   #LibrarySplitter::handle:pressed {
     image: url(skins:LateNight/palemoon/style/splitter_handle_vertical_pressed.svg);
   }
@@ -3337,6 +3931,9 @@ WSearchLineEdit {
   Don't use 'WLibrary QPushButton' here, as this would apply padding
   to the Preview & BPM lock buttons as well.
   Define the buttons fore every Library feature instead. */
+#LibraryPreparationWindowFeatureControls QPushButton {
+  margin: 0px 6px 3px 0px;
+  }
 #LibraryFeatureControls QPushButton {
   margin: 0px 6px 3px 0px;
   }
@@ -3344,6 +3941,7 @@ WSearchLineEdit {
 #LibraryFeatureControls QPushButton,
 /* #fadeModeCombobox set below */
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   margin-top: 4px;
 }
