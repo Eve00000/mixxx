@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QVariantMap>
+
 #include "library/trackset/crate/crateid.h"
 #include "library/trackset/tracksettablemodel.h"
 
@@ -14,6 +16,18 @@ class CrateTableModel final : public TrackSetTableModel {
     CrateId selectedCrate() const {
         return m_selectedCrate;
     }
+
+    void selectCrateGroup(const QString& groupName);
+
+    // Returns a flat list of {group_name, crate_id, crate_name} entries.
+    // - If groupedCratesLength is true, names are grouped by a fixed prefix of
+    //   groupedCratesFixedLength characters.
+    // - Otherwise, the var-length mask string is used as a delimiter and
+    //   multi-level groups are derived.
+    QList<QVariantMap> getGroupedCrates(
+            bool groupedCratesLength,
+            int groupedCratesFixedLength,
+            const QString& groupedCratesVarLengthMask);
 
     bool addTrack(const QModelIndex& index, const QString& location);
 

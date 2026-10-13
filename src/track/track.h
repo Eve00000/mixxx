@@ -9,8 +9,10 @@
 #include "audio/streaminfo.h"
 #include "sources/metadatasource.h"
 #include "track/beats.h"
+#include "track/bpmsegments.h"
 #include "track/cue.h"
 #include "track/cueinfoimporter.h"
+#include "track/keysegments.h"
 #ifdef __STEM__
 #include "track/steminfo.h"
 #include "track/steminfoimporter.h"
@@ -319,20 +321,35 @@ class Track : public QObject {
             int hotCueIndex,
             mixxx::audio::FramePos startPosition,
             mixxx::audio::FramePos endPosition,
-            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor);
+            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor,
+            double stem1vol = 1.0,
+            double stem2vol = 1.0,
+            double stem3vol = 1.0,
+            double stem4vol = 1.0,
+            double stem5vol = 1.0);
     CuePointer createAndAddCue(
             mixxx::CueType type,
             int hotCueIndex,
             double startPositionSamples,
             double endPositionSamples,
-            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor) {
+            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor,
+            double stem1vol = 1.0,
+            double stem2vol = 1.0,
+            double stem3vol = 1.0,
+            double stem4vol = 1.0,
+            double stem5vol = 1.0) {
         return createAndAddCue(type,
                 hotCueIndex,
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
                         startPositionSamples),
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
                         endPositionSamples),
-                color);
+                color,
+                stem1vol,
+                stem2vol,
+                stem3vol,
+                stem4vol,
+                stem5vol);
     }
     CuePointer findCueByType(mixxx::CueType type) const; // NOTE: Cannot be used for hotcues.
     CuePointer findCueById(DbId id) const;
@@ -462,6 +479,16 @@ class Track : public QObject {
         return m_record.hasStreamInfoFromSource();
     }
 
+    // BPM Segments
+    bool setBpmSegments(const QList<BpmSegmentsPointer>& segments);
+    QList<BpmSegmentsPointer> getBpmSegments() const;
+    bool deleteBpmSegments();
+
+    // Key Segments
+    bool setKeySegments(const QList<KeySegmentsPointer>& segments);
+    QList<KeySegmentsPointer> getKeySegments() const;
+    bool deleteKeySegments();
+
   signals:
     void artistChanged(const QString&);
     void titleChanged(const QString&);
@@ -504,6 +531,9 @@ class Track : public QObject {
     void changed(TrackId trackId);
     void dirty(TrackId trackId);
     void clean(TrackId trackId);
+
+    void bpmSegmentsUpdated();
+    void keySegmentsUpdated();
 
   private slots:
     void slotCueUpdated();
@@ -648,7 +678,15 @@ class Track : public QObject {
     void setGenreFromTrackDAO(
             const QString& genre);
 
+    QList<BpmSegmentsPointer> m_bpmSegments;
+    QList<KeySegmentsPointer> m_keySegments;
+    bool m_bpmSegmentsDirty = false;
+    bool m_keySegmentsDirty = false;
+    void afterBpmSegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
+    void afterKeySegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
+
     friend class GlobalTrackCache;
     friend class GlobalTrackCacheResolver;
     friend class SoundSourceProxy;
+    friend class SegmentsDAO;
 };

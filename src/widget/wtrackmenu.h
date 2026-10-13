@@ -30,6 +30,7 @@ class WCoverArtMenu;
 class WFindOnWebMenu;
 class WSearchRelatedTracksMenu;
 class WStarRatingAction;
+class WTrackTableView;
 
 /// A context menu for track(s).
 /// Can be used with individual track type widgets based on TrackPointer
@@ -162,6 +163,7 @@ class WTrackMenu : public QMenu {
     void slotReanalyze();
     void slotReanalyzeWithFixedTempo();
     void slotReanalyzeWithVariableTempo();
+    void slotReanalyzeSegments();
 
     // BPM
     void slotLockBpm();
@@ -184,6 +186,10 @@ class WTrackMenu : public QMenu {
     void slotPopulatePlaylistMenu();
     void slotPopulateCrateMenu();
     void addSelectionToNewCrate();
+
+    // PreparationList
+    void slotAddToPreparationListBottom();
+    void slotAddToPreparationListTop();
 
     // Auto DJ
     void slotAddToAutoDJBottom();
@@ -245,11 +251,14 @@ class WTrackMenu : public QMenu {
     void addSelectionToPlaylist(int iPlaylistId);
     void updateSelectionCrates(QWidget* pWidget);
 
+    void addToPreparationList(PlaylistDAO::PreparationListSendLoc loc);
     void addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc);
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
     void lockBpm(bool lock);
+
+    int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
 
 #ifdef __STEM__
     void loadSelectionToGroup(const QString& group,
@@ -314,6 +323,10 @@ class WTrackMenu : public QMenu {
     // Save Track Metadata Action:
     parented_ptr<QAction> m_pExportMetadataAct;
 
+    // Send To PreparationList
+    parented_ptr<QAction> m_pPreparationListBottomAct;
+    parented_ptr<QAction> m_pPreparationListTopAct;
+
     // Send to Auto-DJ Action
     parented_ptr<QAction> m_pAutoDJBottomAct;
     parented_ptr<QAction> m_pAutoDJTopAct;
@@ -359,6 +372,7 @@ class WTrackMenu : public QMenu {
     // Analysis actions
     parented_ptr<QAction> m_pAnalyzeAction;
     parented_ptr<QAction> m_pReanalyzeAction;
+    parented_ptr<QAction> m_pReanalyzeSegmentsAction;
     parented_ptr<QAction> m_pReanalyzeConstBpmAction;
     parented_ptr<QAction> m_pReanalyzeVarBpmAction;
 

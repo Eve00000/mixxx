@@ -965,6 +965,12 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
     mixxx::audio::FramePos cueEndPosition;
     mixxx::CueType cueType = mixxx::CueType::Invalid;
 
+    double pass2CueCreationStem1Vol;
+    double pass2CueCreationStem2Vol;
+    double pass2CueCreationStem3Vol;
+    double pass2CueCreationStem4Vol;
+    double pass2CueCreationStem5Vol;
+
     bool loopEnabled = m_pLoopEnabled->toBool();
     if (mode == HotcueSetMode::Auto) {
         if (loopEnabled) {
@@ -987,6 +993,49 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
             mode = HotcueSetMode::Cue;
         }
     }
+
+    // EveCue-Loop
+    PollingControlProxy proxyStem(getGroup(), "stem_count", ControlFlag::AllowMissingOrInvalid);
+    if (proxyStem.get() > 1) {
+        // qDebug() << "[CUECONTROL] -> stem -> proxyStem > 1";
+        const QString groupBaseName = getGroup().remove("[").remove("]");
+        const QString stemGroups[] = {
+                QString("[%1_Stem1]").arg(groupBaseName),
+                QString("[%1_Stem2]").arg(groupBaseName),
+                QString("[%1_Stem3]").arg(groupBaseName),
+                QString("[%1_Stem4]").arg(groupBaseName),
+                QString("[%1_Stem5]").arg(groupBaseName),
+        };
+        // get the mute multiplier
+        auto getMuteMultiplier = [](const QString& group) -> int {
+            PollingControlProxy proxyMute(group, "mute", ControlFlag::AllowMissingOrInvalid);
+            return static_cast<bool>(proxyMute.get()) ? -1 : 1;
+        };
+
+        // get the volume value adjusted by the mute multiplier
+        auto getVolume = [](const QString& group, int muteMultiplier) -> double {
+            PollingControlProxy proxyVolume(group, "volume", ControlFlag::AllowMissingOrInvalid);
+            return static_cast<double>(proxyVolume.get()) * muteMultiplier;
+        };
+
+        // calc stem volume values
+        // stem1 = original premix, only (un-)muted, no volume control
+        pass2CueCreationStem1Vol = getMuteMultiplier(stemGroups[0]);
+
+        // pass2CueCreationStem1Vol = getVolume(stemGroups[0], getMuteMultiplier(stemGroups[0]));
+        pass2CueCreationStem2Vol = getVolume(stemGroups[1], getMuteMultiplier(stemGroups[1]));
+        pass2CueCreationStem3Vol = getVolume(stemGroups[2], getMuteMultiplier(stemGroups[2]));
+        pass2CueCreationStem4Vol = getVolume(stemGroups[3], getMuteMultiplier(stemGroups[3]));
+        pass2CueCreationStem5Vol = getVolume(stemGroups[4], getMuteMultiplier(stemGroups[4]));
+    } else {
+        qDebug() << "[CUECONTROL] -> stem -> proxyStem = 1";
+        pass2CueCreationStem1Vol = 1.0;
+        pass2CueCreationStem2Vol = 1.0;
+        pass2CueCreationStem3Vol = 1.0;
+        pass2CueCreationStem4Vol = 1.0;
+        pass2CueCreationStem5Vol = 1.0;
+    }
+    // EveCue-Loop
 
     switch (mode) {
     case HotcueSetMode::Cue: {
@@ -1066,7 +1115,12 @@ void CueControl::hotcueSet(HotcueControl* pControl, double value, HotcueSetMode 
             hotcueIndex,
             cueStartPosition,
             cueEndPosition,
-            color);
+            color,
+            pass2CueCreationStem1Vol,
+            pass2CueCreationStem2Vol,
+            pass2CueCreationStem3Vol,
+            pass2CueCreationStem4Vol,
+            pass2CueCreationStem5Vol);
 
     // Note: createAndAddCue() emits cuesUpdated() connected to loadCuesFromTrack()
     // updating pControl with the created Cue.
@@ -1227,6 +1281,38 @@ void CueControl::hotcueActivate(HotcueControl* pControl, double value, HotcueSet
         // pressed
         if (pCue && pCue->getPosition().isValid() &&
                 pCue->getType() != mixxx::CueType::Invalid) {
+            // EveCue-Loop
+            PollingControlProxy proxyStem(getGroup(),
+                    "stem_count",
+                    ControlFlag::AllowMissingOrInvalid);
+            if (proxyStem.get() > 1) {
+                const QString groupBaseName = getGroup().remove('[').remove(']');
+                const std::vector<QString> stemGroups = {
+                        QString("[%1_Stem1]").arg(groupBaseName),
+                        QString("[%1_Stem2]").arg(groupBaseName),
+                        QString("[%1_Stem3]").arg(groupBaseName),
+                        QString("[%1_Stem4]").arg(groupBaseName),
+                        QString("[%1_Stem5]").arg(groupBaseName)};
+
+                auto setMuteAndVolume = [](const QString& group,
+                                                double volume) {
+                    PollingControlProxy proxyMute(
+                            group, "mute", ControlFlag::AllowMissingOrInvalid);
+                    proxyMute.set(volume < 0 ? 1 : 0);
+                    PollingControlProxy proxyVolume(group,
+                            "volume",
+                            ControlFlag::AllowMissingOrInvalid);
+                    proxyVolume.set(std::abs(volume));
+                };
+
+                setMuteAndVolume(stemGroups[0], pCue->getStem1vol());
+                setMuteAndVolume(stemGroups[1], pCue->getStem2vol());
+                setMuteAndVolume(stemGroups[2], pCue->getStem3vol());
+                setMuteAndVolume(stemGroups[3], pCue->getStem4vol());
+                setMuteAndVolume(stemGroups[4], pCue->getStem5vol());
+            }
+            // EveCue-Loop
+
             if (m_pPlay->toBool() && m_currentlyPreviewingIndex == Cue::kNoHotCue) {
                 // playing by Play button
                 switch (pCue->getType()) {
@@ -2658,6 +2744,17 @@ HotcueControl::HotcueControl(const QString& group, int hotcueIndex)
     // Add an alias for the legacy hotcue_X_enabled CO
     m_pHotcueStatus->addAlias(keyForControl(QStringLiteral("enabled")));
 
+    m_hotcueStem1vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem1vol")));
+    m_hotcueStem2vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem2vol")));
+    m_hotcueStem3vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem3vol")));
+    m_hotcueStem4vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem4vol")));
+    m_hotcueStem5vol = std::make_unique<ControlObject>(keyForControl(QStringLiteral("stem5vol")));
+    m_hotcueStem1vol->setReadOnly();
+    m_hotcueStem2vol->setReadOnly();
+    m_hotcueStem3vol->setReadOnly();
+    m_hotcueStem4vol->setReadOnly();
+    m_hotcueStem5vol->setReadOnly();
+
     m_hotcueType = std::make_unique<ControlObject>(keyForControl(QStringLiteral("type")));
     m_hotcueType->setReadOnly();
 
@@ -2934,4 +3031,24 @@ HotcueControl::Status HotcueControl::getStatus() const {
     // Cast to int before casting to the int-based enum class because MSVC will
     // throw a hissy fit otherwise.
     return static_cast<Status>(static_cast<int>(m_pHotcueStatus->get()));
+}
+
+void HotcueControl::setStem1vol(double stem1vol) {
+    m_hotcueStem1vol->set(static_cast<double>(stem1vol));
+}
+
+void HotcueControl::setStem2vol(double stem2vol) {
+    m_hotcueStem2vol->set(static_cast<double>(stem2vol));
+}
+
+void HotcueControl::setStem3vol(double stem3vol) {
+    m_hotcueStem3vol->set(static_cast<double>(stem3vol));
+}
+
+void HotcueControl::setStem4vol(double stem4vol) {
+    m_hotcueStem4vol->set(static_cast<double>(stem4vol));
+}
+
+void HotcueControl::setStem5vol(double stem5vol) {
+    m_hotcueStem5vol->set(static_cast<double>(stem5vol));
 }
