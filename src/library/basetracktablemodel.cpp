@@ -137,7 +137,6 @@ bool BaseTrackTableModel::s_cmrtColumnGroupIdAppend =
 QString BaseTrackTableModel::s_cmrtColumnDelimiter =
         BaseTrackTableModel::kCmrtColumnDelimiterDefault;
 
-
 // static
 void BaseTrackTableModel::setDateFormat(const QString& format) {
     if (format != s_dateFormat) {

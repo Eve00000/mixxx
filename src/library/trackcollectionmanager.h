@@ -164,8 +164,8 @@ class TrackCollectionManager : public QObject,
     QList<ExternalTrackCollection*> m_externalCollections;
 
     // TODO: Extract and decouple LibraryScanner from TrackCollectionManager
-    std::unique_ptr<LibraryScanner> m_pScanner;
     std::unique_ptr<mixxx::AcoustIdWorker> m_pAcoustIdWorker;
+    std::unique_ptr<LibraryScanner> m_pScanner;
     std::atomic_bool m_libraryScanActive{false};
     std::mutex m_libraryScanSummaryMutex;
     std::optional<LibraryScanResultSummary> m_pendingLibraryScanSummary;
