@@ -29,6 +29,7 @@
 #include "library/trackcollectionmanager.h"
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
+#include "library/trackset/crate/groupedcratesfeature.h"
 #include "library/trackset/playlistfeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
@@ -117,7 +118,19 @@ Library::Library(
 #endif
 
     m_pCrateFeature = make_parented<CrateFeature>(this, m_pConfig);
-    addFeature(m_pCrateFeature);
+    m_pGroupedCratesFeature = make_parented<GroupedCratesFeature>(this, m_pConfig);
+
+    if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesEnabled"), true)) {
+        if (m_pConfig->getValue(ConfigKey("[Library]", "GroupedCratesReplace"), true)) {
+            addFeature(m_pGroupedCratesFeature);
+        } else {
+            addFeature(m_pCrateFeature);
+            addFeature(m_pGroupedCratesFeature);
+        }
+    } else {
+        addFeature(m_pCrateFeature);
+    }
+
 #ifdef __ENGINEPRIME__
     connect(m_pCrateFeature,
             &CrateFeature::exportAllCrates,
