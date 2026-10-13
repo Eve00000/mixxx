@@ -113,6 +113,25 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
         return getTrackByRef(TrackRef::fromUrl(url));
     }
 
+    // Re-applies (or applies for the first time) the CMRT overlay onto an
+    // already in-memory Track, per its cmrt_members.use_cmrt_data flag.
+    // Called from BaseTrackTableModel::setData() right after the checkbox
+    // is checked, so a deck that already has the track loaded picks up the
+    // overlay without needing to be re-loaded.
+    void applyCmrtOverlayToLoadedTrack(const TrackPointer& pTrack) const;
+
+    // Inverse of the above -- called right after the checkbox is
+    // unchecked. Clears overlay state and restores this track's own stored
+    // cues/beats from the database.
+    void reloadOwnCuesAndBeats(const TrackPointer& pTrack) const;
+
+    TrackPointer getCmrtCanonicalTrack(TrackId trackId, double* pOffsetSeconds) const;
+
+    // the same re-election CmrtGroupingService::handleMatchedCandidate()
+    // already runs automatically when a fresh AcoustID match's quality score
+    // beats the existing canonical, just triggered by user choice
+    bool promoteCmrtCanonical(TrackId trackId) const;
+
     bool clearMusicBrainzData(TrackId trackId) const;
 
   signals:
@@ -159,6 +178,8 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
 
     QString findLastTimeAddedToHistory(TrackId trackId) const;
+
+    void applyCmrtOverlayIfConfigured(const TrackPointer& pTrack) const;
 
     QList<TrackId> resolveTrackIds(
             const QStringList& pathList,

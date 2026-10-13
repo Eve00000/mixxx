@@ -629,17 +629,16 @@ bool TrackFingerprintDao::addCmrtMember(const CmrtMember& member) const {
 
     QSqlQuery query(m_database);
     query.prepare(QString(
-            "INSERT INTO %1 "
-            "(group_id, track_id, offset_from_canonical, quality_score, "
-            "match_score, is_fake_lossless, added_at, user_quality_rating, "
-            "use_cmrt_data) "
-            "VALUES (:group_id, :track_id, :offset, :quality_score, "
-            ":match_score, :is_fake_lossless, :added_at, :user_quality_rating, "
-            ":use_cmrt_data)")
+            "UPDATE %1 SET "
+            "group_id=:group_id, offset_from_canonical=:offset, "
+            "quality_score=:quality_score, match_score=:match_score, "
+            "is_fake_lossless=:is_fake_lossless, added_at=:added_at, "
+            "user_quality_rating=:user_quality_rating, use_cmrt_data=:use_cmrt_data "
+            "WHERE track_id=:track_id")
                     .arg(kCmrtMembersTableName));
 
-    query.bindValue(":group_id", member.groupId);
     query.bindValue(":track_id", member.trackId.toVariant());
+    query.bindValue(":group_id", member.groupId);
     query.bindValue(":offset", member.offsetFromCanonical);
     query.bindValue(":quality_score", qualityScoreValue);
     query.bindValue(":match_score", matchScoreValue);
@@ -652,14 +651,52 @@ bool TrackFingerprintDao::addCmrtMember(const CmrtMember& member) const {
 
     if (!query.exec()) {
         LOG_FAILED_QUERY(query)
-                << "couldn't add cmrt_member for track" << member.trackId
+                << "couldn't update cmrt_member for track" << member.trackId
                 << "to group" << member.groupId;
         return false;
     }
 
+    if (query.numRowsAffected() == 0) {
+        if (sDebugTrackFingerprintDao) {
+            qDebug() << "TrackFingerprintDao -> [addCmrtMember] -> "
+                        "no existing row, inserting trackId:"
+                     << member.trackId;
+        }
+
+        query.prepare(QString(
+                "INSERT INTO %1 "
+                "(group_id, track_id, offset_from_canonical, quality_score, "
+                "match_score, is_fake_lossless, added_at, user_quality_rating, "
+                "use_cmrt_data) "
+                "VALUES (:group_id, :track_id, :offset, :quality_score, "
+                ":match_score, :is_fake_lossless, :added_at, :user_quality_rating, "
+                ":use_cmrt_data)")
+                        .arg(kCmrtMembersTableName));
+
+        query.bindValue(":group_id", member.groupId);
+        query.bindValue(":track_id", member.trackId.toVariant());
+        query.bindValue(":offset", member.offsetFromCanonical);
+        query.bindValue(":quality_score", qualityScoreValue);
+        query.bindValue(":match_score", matchScoreValue);
+        query.bindValue(":is_fake_lossless", member.isFakeLossless ? 1 : 0);
+        query.bindValue(":added_at", member.addedAt.toSecsSinceEpoch());
+        query.bindValue(":user_quality_rating", userQualityRatingValue);
+        query.bindValue(":use_cmrt_data", useCmrtDataValue);
+
+        if (!query.exec()) {
+            LOG_FAILED_QUERY(query)
+                    << "couldn't insert cmrt_member for track" << member.trackId
+                    << "to group" << member.groupId;
+            return false;
+        }
+    } else if (sDebugTrackFingerprintDao) {
+        qDebug() << "TrackFingerprintDao -> [addCmrtMember] -> "
+                    "updated existing row for trackId:"
+                 << member.trackId;
+    }
+
     if (sDebugTrackFingerprintDao) {
-        qDebug() << "TrackFingerprintDao -> [addCmrtMember] -> inserted"
-                 << "memberId:" << query.lastInsertId().toInt()
+        qDebug() << "TrackFingerprintDao -> [addCmrtMember] -> done"
                  << "trackId:" << member.trackId
                  << "groupId:" << member.groupId;
     }
@@ -1358,6 +1395,8 @@ bool TrackFingerprintDao::cacheAcoustIdResult(
             "acoustid_id=:acoustid_id, "
             "musicbrainz_recording_id=:mb_recording, "
             "musicbrainz_release_id=:mb_release, "
+            "musicbrainz_track_id=:mb_track, "
+            "musicbrainz_artist_id=:mb_artist, "
             "musicbrainz_metadata=:mb_metadata, "
             "confidence=:confidence, "
             "lookup_timestamp=:lookup_timestamp, "
@@ -1375,6 +1414,14 @@ bool TrackFingerprintDao::cacheAcoustIdResult(
             entry.musicbrainzReleaseId.isEmpty()
                     ? QVariant(QMetaType(QMetaType::QString))
                     : entry.musicbrainzReleaseId);
+    query.bindValue(":mb_track",
+            entry.musicbrainzTrackId.isEmpty()
+                    ? QVariant(QMetaType(QMetaType::QString))
+                    : entry.musicbrainzTrackId);
+    query.bindValue(":mb_artist",
+            entry.musicbrainzArtistId.isEmpty()
+                    ? QVariant(QMetaType(QMetaType::QString))
+                    : entry.musicbrainzArtistId);
     query.bindValue(":mb_metadata",
             entry.musicbrainzMetadata.isEmpty()
                     ? QVariant(QMetaType(QMetaType::QString))
@@ -1412,10 +1459,12 @@ bool TrackFingerprintDao::cacheAcoustIdResult(
         query.prepare(QString(
                 "INSERT INTO %1 "
                 "(chroma_sha256, acoustid_id, musicbrainz_recording_id, "
-                "musicbrainz_release_id, musicbrainz_metadata, confidence, "
+                "musicbrainz_release_id, musicbrainz_track_id, "
+                "musicbrainz_artist_id, musicbrainz_metadata, confidence, "
                 "lookup_timestamp, expires_at) "
                 "VALUES (:sha256, :acoustid_id, :mb_recording, :mb_release, "
-                ":mb_metadata, :confidence, :lookup_timestamp, :expires_at)")
+                ":mb_track, :mb_artist, :mb_metadata, :confidence, "
+                ":lookup_timestamp, :expires_at)")
                         .arg(kAcoustIdCacheTableName));
 
         // Re-bind all values
@@ -1430,6 +1479,14 @@ bool TrackFingerprintDao::cacheAcoustIdResult(
                 entry.musicbrainzReleaseId.isEmpty()
                         ? QVariant(QMetaType(QMetaType::QString))
                         : entry.musicbrainzReleaseId);
+        query.bindValue(":mb_track",
+                entry.musicbrainzTrackId.isEmpty()
+                        ? QVariant(QMetaType(QMetaType::QString))
+                        : entry.musicbrainzTrackId);
+        query.bindValue(":mb_artist",
+                entry.musicbrainzArtistId.isEmpty()
+                        ? QVariant(QMetaType(QMetaType::QString))
+                        : entry.musicbrainzArtistId);
         query.bindValue(":mb_metadata",
                 entry.musicbrainzMetadata.isEmpty()
                         ? QVariant(QMetaType(QMetaType::QString))
@@ -1485,7 +1542,8 @@ std::unique_ptr<AcoustIdCacheEntry> TrackFingerprintDao::lookupAcoustIdCache(
     // timestamp handling in C++, consistent with the rest of this file.
     query.prepare(QString(
             "SELECT acoustid_id, musicbrainz_recording_id, "
-            "musicbrainz_release_id, musicbrainz_metadata, confidence, "
+            "musicbrainz_release_id, musicbrainz_track_id, "
+            "musicbrainz_artist_id, musicbrainz_metadata, confidence, "
             "lookup_timestamp, expires_at "
             "FROM %1 "
             "WHERE chroma_sha256=:sha256 "
@@ -1512,6 +1570,12 @@ std::unique_ptr<AcoustIdCacheEntry> TrackFingerprintDao::lookupAcoustIdCache(
                         .toString();
         entry->musicbrainzReleaseId =
                 query.value(record.indexOf("musicbrainz_release_id"))
+                        .toString();
+        entry->musicbrainzTrackId =
+                query.value(record.indexOf("musicbrainz_track_id"))
+                        .toString();
+        entry->musicbrainzArtistId =
+                query.value(record.indexOf("musicbrainz_artist_id"))
                         .toString();
         entry->musicbrainzMetadata =
                 query.value(record.indexOf("musicbrainz_metadata")).toString();

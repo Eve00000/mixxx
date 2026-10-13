@@ -22,6 +22,7 @@
 #include "library/library_prefs.h"
 #include "library/queryutil.h"
 #include "moc_trackdao.cpp"
+#include "musicbrainz/cmrtgroupingservice.h"
 #include "sources/soundsourceproxy.h"
 #include "track/beats.h"
 #include "track/globaltrackcache.h"
@@ -1701,6 +1702,14 @@ TrackPointer TrackDAO::getTrackById(TrackId trackId) const {
     pTrack->setCuePoints(m_cueDao.getCuesForTrack(trackId));
     pTrack->markClean();
 
+    // if this track is a CMRT member with the overlay
+    // checkbox on, replace the cues/beats just loaded above with a shifted,
+    // resampled view of its canonical track's data. Applied here (DAO
+    // level), not in BaseTrackPlayerImpl::loadTrack(), so every consumer of
+    // this Track object -- both decks, DlgTrackInfo, Auto DJ preview --
+    // sees the overlay consistently
+    applyCmrtOverlayIfConfigured(pTrack);
+
     // Synchronize the track's metadata with the corresponding source
     // file. This import might have never been completed successfully
     // before, so just check and try for every track that has been
@@ -1803,6 +1812,93 @@ TrackPointer TrackDAO::getTrackByRef(
         return nullptr;
     }
     return getTrackById(trackId);
+}
+
+void TrackDAO::applyCmrtOverlayIfConfigured(const TrackPointer& pTrack) const {
+    VERIFY_OR_DEBUG_ASSERT(pTrack) {
+        return;
+    }
+    auto pMember = m_fingerprintDao.getCmrtMemberByTrackId(pTrack->getId());
+    if (!pMember || !pMember->useCmrtData) {
+        return;
+    }
+    // Flush any pending edits to this track's own cues/beats before
+    // overwriting the in-memory copy with the canonical's overlay data.
+    // Otherwise those edits are lost from memory without ever having
+    // reached the database, and later disabling the overlay in
+    // reloadOwnCuesAndBeats() would silently resurrect the stale,
+    // pre-edit values instead of what the user just set.
+    if (pTrack->isDirty()) {
+        saveTrack(pTrack.get());
+    }
+    double offsetSeconds = 0.0;
+    TrackPointer pCanonical = getCmrtCanonicalTrack(pTrack->getId(), &offsetSeconds);
+    if (!pCanonical) {
+        return;
+    }
+    pTrack->applyCmrtOverlay(pCanonical, offsetSeconds, pTrack->getSampleRate());
+}
+
+TrackPointer TrackDAO::getCmrtCanonicalTrack(TrackId trackId, double* pOffsetSeconds) const {
+    VERIFY_OR_DEBUG_ASSERT(pOffsetSeconds) {
+        return nullptr;
+    }
+    auto pMember = m_fingerprintDao.getCmrtMemberByTrackId(trackId);
+    if (!pMember) {
+        return nullptr;
+    }
+    auto pGroup = m_fingerprintDao.getCmrtGroup(pMember->groupId);
+    if (!pGroup || pGroup->canonicalTrackId == trackId) {
+        // No group, or this track already IS the canonical
+        // nothing to pull from.
+        return nullptr;
+    }
+    TrackPointer pCanonical = getTrackById(pGroup->canonicalTrackId);
+    if (!pCanonical) {
+        qWarning() << "TrackDAO -> [getCmrtCanonicalTrack] -> canonical track"
+                   << pGroup->canonicalTrackId << "for group" << pMember->groupId
+                   << "could not be loaded";
+        return nullptr;
+    }
+    *pOffsetSeconds = pMember->offsetFromCanonical;
+    return pCanonical;
+}
+
+bool TrackDAO::promoteCmrtCanonical(TrackId trackId) const {
+    mixxx::CmrtGroupingService groupingService(m_fingerprintDao, m_pConfig);
+    return groupingService.promoteToCanonical(trackId);
+}
+
+void TrackDAO::applyCmrtOverlayToLoadedTrack(const TrackPointer& pTrack) const {
+    applyCmrtOverlayIfConfigured(pTrack);
+}
+
+void TrackDAO::reloadOwnCuesAndBeats(const TrackPointer& pTrack) const {
+    VERIFY_OR_DEBUG_ASSERT(pTrack) {
+        return;
+    }
+    const TrackId trackId = pTrack->getId();
+    pTrack->clearCmrtOverlay();
+    pTrack->setCuePoints(m_cueDao.getCuesForTrack(trackId));
+
+    // Query the beats
+    // columns directly instead and run them through the same setTrackBeats()
+    // populator a fresh load uses (defined above in this file), applied
+    // straight to pTrack, so we always get a genuinely new BeatsPointer.
+    QSqlQuery query(m_database);
+    query.prepare(
+            "SELECT bpm, beats_version, beats_sub_version, beats, bpm_lock "
+            "FROM Library WHERE id=:id");
+    query.bindValue(":id", trackId.toVariant());
+    if (query.exec() && query.next()) {
+        setTrackBeats(query.record(), 0, pTrack.get());
+    } else {
+        LOG_FAILED_QUERY(query) << "reloadOwnCuesAndBeats" << trackId;
+    }
+
+    if (pTrack->isDirty()) {
+        saveTrack(pTrack.get());
+    }
 }
 
 // Saves a track's info back to the database

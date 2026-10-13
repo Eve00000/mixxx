@@ -27,6 +27,7 @@
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
 #include "moc_basetracktablemodel.cpp"
+#include "track/globaltrackcache.h"
 #include "track/keyutils.h"
 #include "track/track.h"
 #include "util/assert.h"
@@ -608,6 +609,17 @@ bool BaseTrackTableModel::setData(
                             .updateMemberUseCmrtData(trackId, checked)) {
                 return false;
             }
+            if (TrackPointer pTrack = GlobalTrackCacheLocker().lookupTrackById(trackId)) {
+                if (checked) {
+                    m_pTrackCollectionManager->internalCollection()
+                            ->getTrackDAO()
+                            .applyCmrtOverlayToLoadedTrack(pTrack);
+                } else {
+                    m_pTrackCollectionManager->internalCollection()
+                            ->getTrackDAO()
+                            .reloadOwnCuesAndBeats(pTrack);
+                }
+            }
             updateRowColumnValue(index.row(), index.column(), checked ? 1 : 0);
             emit dataChanged(index, index, {Qt::CheckStateRole});
             return true;
@@ -701,12 +713,19 @@ QVariant BaseTrackTableModel::roleValue(
             const QVariant canonVal = rawSiblingValue(
                     index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_CANONICAL);
             if (canonVal.isNull()) {
+                const bool hasGroup = rawSiblingValue(
+                        index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_HAS_GROUP)
+                                              .toBool();
+                if (hasGroup) {
+                    return tr(
+                            "This track has been fingerprinted and matched, "
+                            "but no duplicate mastering has been found in "
+                            "your collection yet.");
+                }
                 return tr(
                         "This track isn't linked to a CMRT group yet. "
-                        "Either fingerprint analysis or AcoustID lookup "
-                        "hasn't run on it, or it's currently the only "
-                        "copy of its mastering Mixxx has found in your "
-                        "collection");
+                        "Fingerprint analysis or AcoustID lookup hasn't "
+                        "run on it.");
             }
             if (canonVal.toBool()) {
                 return tr(
@@ -730,15 +749,19 @@ QVariant BaseTrackTableModel::roleValue(
                 return rawValue;
             }
             if (rawValue.isNull()) {
-                // Cell shows "--" -- explain why, since it's not obvious
-                // whether "--" means "not analyzed yet" or "no duplicates
-                // exist" without this.
+                const bool hasGroup = rawSiblingValue(
+                        index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_HAS_GROUP)
+                                              .toBool();
+                if (hasGroup) {
+                    return tr(
+                            "This track has been fingerprinted and matched, "
+                            "but no duplicate mastering has been found in "
+                            "your collection yet.");
+                }
                 return tr(
                         "This track isn't linked to a CMRT group yet. "
-                        "Either fingerprint analysis or AcoustID lookup "
-                        "hasn't run on it, or it's currently the only "
-                        "copy of its mastering Mixxx has found in your "
-                        "collection");
+                        "Fingerprint analysis or AcoustID lookup hasn't "
+                        "run on it.");
             }
             const bool isCanonical = rawSiblingValue(
                     index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_CANONICAL)
@@ -835,7 +858,10 @@ QVariant BaseTrackTableModel::roleValue(
             const QVariant canonVal = rawSiblingValue(
                     index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_CANONICAL);
             if (canonVal.isNull()) {
-                return QStringLiteral("--");
+                const bool hasGroup = rawSiblingValue(
+                        index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_HAS_GROUP)
+                                              .toBool();
+                return hasGroup ? tr("No CMRT group") : QStringLiteral("--");
             }
             if (canonVal.toBool()) {
                 return tr("Canonical");
@@ -1007,7 +1033,10 @@ QVariant BaseTrackTableModel::roleValue(
             // the actual display text below is built from the separate raw
             // fields so each one can be toggled independently.
             if (rawValue.isNull()) {
-                return QVariant();
+                const bool hasGroup = rawSiblingValue(
+                        index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_HAS_GROUP)
+                                              .toBool();
+                return hasGroup ? tr("No CMRT group") : QVariant();
             }
 
             const bool isCanonical = rawSiblingValue(
@@ -1019,7 +1048,8 @@ QVariant BaseTrackTableModel::roleValue(
                 const QVariant groupIdValue = rawSiblingValue(
                         index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_GROUP_ID);
                 if (!groupIdValue.isNull()) {
-                    groupIdTag = QStringLiteral("(#%1)").arg(groupIdValue.toInt());
+                    groupIdTag = QStringLiteral("%1").arg(
+                            groupIdValue.toInt(), 4, 10, QChar('0'));
                 }
             }
 
@@ -1240,6 +1270,8 @@ QVariant BaseTrackTableModel::roleValue(
             QVariantMap decoration;
             decoration["isCanonical"] = rawSiblingValue(
                     index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_CANONICAL);
+            decoration["matchScore"] = rawSiblingValue(
+                    index, ColumnCache::COLUMN_LIBRARYTABLE_CMRT_MATCH_SCORE);
             return decoration;
         }
         default:
