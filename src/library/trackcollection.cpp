@@ -20,11 +20,13 @@ TrackCollection::TrackCollection(
         QObject* parent, const UserSettingsPointer& pConfig)
         : QObject(parent),
           m_analysisDao(pConfig),
+          m_trackFingerprintDao(pConfig),
           m_trackDao(m_cueDao,
                   m_playlistDao,
                   m_analysisDao,
                   m_segmentsDao,
                   m_libraryHashDao,
+                  m_trackFingerprintDao,
                   pConfig) {
     // Forward signals from TrackDAO
     connect(&m_trackDao,
@@ -84,6 +86,7 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_directoryDao.initialize(database);
     m_analysisDao.initialize(database);
     m_libraryHashDao.initialize(database);
+    m_trackFingerprintDao.initialize(database);
     m_crates.connectDatabase(database);
     m_searchCrates.connectDatabase(database);
 }

@@ -156,6 +156,8 @@ class WTrackMenu : public QMenu {
     void slotClearKey();
     void slotClearReplayGain();
     void slotClearWaveform();
+    void slotClearFingerprint();
+    void slotClearMusicBrainz();
     void slotClearAllMetadata();
 
     // Analysis
@@ -164,6 +166,7 @@ class WTrackMenu : public QMenu {
     void slotReanalyzeWithFixedTempo();
     void slotReanalyzeWithVariableTempo();
     void slotReanalyzeSegments();
+    void slotAnalyzeFingerprint();
 
     // BPM
     void slotLockBpm();
@@ -174,6 +177,9 @@ class WTrackMenu : public QMenu {
 
     // Hotcues
     void slotSortHotcuesByPosition(HotcueSortMode sortMode);
+    void slotCopyCmrtHotcues();
+    void slotAddCmrtHotcues();
+    void slotMakeCmrtCanonical();
 
     // Info and metadata
     void slotUpdateReplayGainFromPregain();
@@ -256,6 +262,18 @@ class WTrackMenu : public QMenu {
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
+    void clearFingerprintDataForSelection();
+    void clearMusicBrainzDataForSelection();
+    // Pulls the canonical (CMRT) track's hotcues into each selected
+    // member track's own storage, shifted by that member's
+    // offset_from_canonical
+    // replaceExisting selects between the "Copy" and "Add" actions.
+    void copyOrAddCmrtHotcuesForSelection(bool replaceExisting);
+    bool anySelectedTrackUsesCmrtOverlay() const;
+    // Whether any currently selected track is a non-canonical member of
+    // a CMRT group (use: has a canonical track to copy/add hotcues from).
+    bool anySelectedTrackIsCmrtMember() const;
+    void promoteSelectionToCmrtCanonical();
     void lockBpm(bool lock);
 
     int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
@@ -375,6 +393,7 @@ class WTrackMenu : public QMenu {
     parented_ptr<QAction> m_pReanalyzeSegmentsAction;
     parented_ptr<QAction> m_pReanalyzeConstBpmAction;
     parented_ptr<QAction> m_pReanalyzeVarBpmAction;
+    parented_ptr<QAction> m_pAnalyzeFingerprintAction;
 
     // Clear track metadata actions
     parented_ptr<QAction> m_pClearBeatsAction;
@@ -389,9 +408,14 @@ class WTrackMenu : public QMenu {
     parented_ptr<QAction> m_pClearCommentAction;
     parented_ptr<QAction> m_pClearKeyAction;
     parented_ptr<QAction> m_pClearReplayGainAction;
+    parented_ptr<QAction> m_pClearFingerprintAction;
+    parented_ptr<QAction> m_pClearMusicBrainzAction;
     parented_ptr<QAction> m_pClearAllMetadataAction;
     parented_ptr<QAction> m_pSortHotcuesByPositionAction{};
     parented_ptr<QAction> m_pSortHotcuesByPositionCompressAction{};
+    parented_ptr<QAction> m_pCopyCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pAddCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pMakeCmrtCanonicalAction{};
 
     const UserSettingsPointer m_pConfig;
     Library* const m_pLibrary;

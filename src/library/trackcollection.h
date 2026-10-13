@@ -13,6 +13,7 @@
 #include "library/dao/playlistdao.h"
 #include "library/dao/segmentsdao.h"
 #include "library/dao/trackdao.h"
+#include "library/dao/trackfingerprintdao.h"
 #include "library/trackset/crate/cratestorage.h"
 #include "library/trackset/searchcrate/searchcratestorage.h"
 #include "preferences/usersettings.h"
@@ -80,6 +81,11 @@ class TrackCollection : public QObject,
     SegmentsDAO& getSegmentsDAO() {
         DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
         return m_segmentsDao;
+    }
+
+    TrackFingerprintDao& getTrackFingerprintDAO() {
+        DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+        return m_trackFingerprintDao;
     }
 
     void connectTrackSource(QSharedPointer<BaseTrackCache> pTrackSource);
@@ -182,6 +188,7 @@ class TrackCollection : public QObject,
     FRIEND_TEST(TrackDAOTest, detectMovedTracks);
     FRIEND_TEST(TrackDAOTest, bpmLockPreservedForTrackWithoutBeats);
     FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
+    FRIEND_TEST(TrackDAOTest, cmrtOverlayIsNotSavedAsOwnData);
     TrackId addTrack(
             const TrackPointer& pTrack,
             bool unremove);
@@ -208,6 +215,7 @@ class TrackCollection : public QObject,
     DirectoryDAO m_directoryDao;
     AnalysisDao m_analysisDao;
     LibraryHashDAO m_libraryHashDao;
+    TrackFingerprintDao m_trackFingerprintDao;
     TrackDAO m_trackDao;
     SegmentsDAO m_segmentsDao;
 
