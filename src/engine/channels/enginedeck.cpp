@@ -140,6 +140,7 @@ void EngineDeck::applyStemMode(bool premixActive) {
     if (premixActive) {
         // premix ON
         m_stemMute[0]->forceSet(0.0);
+        m_stemGain[0]->forceSet(1.0);
 
         for (size_t i = 1; i < m_stemMute.size(); ++i) {
             m_stemMute[i]->forceSet(1.0);
@@ -163,12 +164,14 @@ void EngineDeck::slotPremixMuteToggled(double value) {
     // if premix not visible ? only mute premix, no switching
     if (!premixVisible) {
         m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        m_stemGain[0]->forceSet(1.0);
         return;
     }
 
     // if toggle mode disabled ? behave like simple mute
     if (!toggleMode) {
         m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        m_stemGain[0]->forceSet(1.0);
         return;
     }
 
