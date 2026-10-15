@@ -1,6 +1,7 @@
 #include "engine/controls/ratecontrol.h"
 
 #include <QtDebug>
+#include <cmath>
 
 #include "control/controlobject.h"
 #include "control/controlpotmeter.h"
@@ -18,6 +19,24 @@
 namespace {
 constexpr int kRateSensitivityMin = 100;
 constexpr int kRateSensitivityMax = 2500;
+const QString kControlsGroup = QStringLiteral("[Controls]");
+// Approximate Technics SL-1200 brake time from 33 RPM to standstill.
+// At 45 RPM the platter spins 1.35x faster with the same brake torque,
+// so it takes 1.35x longer to stop.
+constexpr double kSpindownTime33 = 0.8; // seconds
+constexpr double kSpindownTime45 = kSpindownTime33 * 45.0 / (100.0 / 3.0);
+// Power cut: no brake, the coasting platter is only slowed by bearing friction
+// (constant) and drag (proportional to speed).
+// kCoastTime33 is the time from 33 RPM to standstill.
+// kCoastDragRatio = drag / friction: higher drops fast first and then
+// crawls, lower is closer to a straight line.
+// At 45 RPM the platter has more momentum, so the constant
+// friction has less effect and it coasts longer.
+constexpr double kCoastTime33 = 8.0; // seconds
+constexpr double kCoastDragRatio = 2.0;
+const double kCoastDrag = std::log(1.0 + kCoastDragRatio) / kCoastTime33;
+const double kCoastFriction33 = kCoastDrag / kCoastDragRatio;
+const double kCoastFriction45 = kCoastFriction33 * (100.0 / 3.0) / 45.0;
 } // namespace
 
 // Static default values for rate buttons (percents)
@@ -27,6 +46,12 @@ ControlValueAtomic<double> RateControl::m_dPermanentRateChangeCoarse;
 ControlValueAtomic<double> RateControl::m_dPermanentRateChangeFine;
 int RateControl::m_iRateRampSensitivity;
 RateControl::RampMode RateControl::m_eRateRampMode;
+
+std::atomic<bool> RateControl::m_rampUpEnabled{false};
+std::atomic<bool> RateControl::m_rampDownEnabled{false};
+std::atomic<int> RateControl::m_rampMode{0};
+std::atomic<bool> RateControl::m_rampIncludePitch{true};
+std::atomic<int> RateControl::m_rampDownMode{0};
 
 const double RateControl::kWheelMultiplier = 40.0;
 const double RateControl::kPausedJogMultiplier = 18.0;
@@ -110,7 +135,13 @@ RateControl::RateControl(const QString& group, UserSettingsPointer pConfig)
           m_targetPos(mixxx::audio::FramePos()),
           m_bTempStarted(false),
           m_tempRateRatio(0.0),
-          m_dRateTempRampChange(0.0) {
+          m_dRateTempRampChange(0.0),
+          m_platterSpeed(1.0),
+          m_lastTargetRate(0.0),
+          m_spinningDown(false),
+          m_seekedSinceLastBuffer(false),
+          m_prevPaused(true),
+          m_latchedPlay(false) {
     // Vinyl control COs are only created for main decks
     if (PlayerManager::isDeckGroup(getGroup())) {
         m_pVCEnabled = ControlObject::getControl(
@@ -221,17 +252,17 @@ void RateControl::setBpmControl(BpmControl* bpmcontrol) {
     m_pBpmControl = bpmcontrol;
 }
 
-//static
+// static
 void RateControl::setRateRampMode(RampMode mode) {
     m_eRateRampMode = mode;
 }
 
-//static
+// static
 RateControl::RampMode RateControl::getRateRampMode() {
     return m_eRateRampMode;
 }
 
-//static
+// static
 void RateControl::setRateRampSensitivity(int sense) {
     // Reverse the actual sensitivity value passed.
     // That way the gui works in an intuitive manner.
@@ -245,42 +276,67 @@ void RateControl::setRateRampSensitivity(int sense) {
     }
 }
 
-//static
+// static
+void RateControl::setRampUpEnabled(bool enabled) {
+    m_rampUpEnabled = enabled;
+}
+
+// static
+void RateControl::setRampDownEnabled(bool enabled) {
+    m_rampDownEnabled = enabled;
+}
+
+// static
+void RateControl::setRampDownMode(int mode) {
+    m_rampDownMode = mode;
+}
+
+// static
+void RateControl::setRampRpmMode(int mode) {
+    m_rampMode = mode;
+}
+
+// static
+void RateControl::setRampIncludePitch(bool includePitch) {
+    m_rampIncludePitch = includePitch;
+}
+
+// static
 void RateControl::setTemporaryRateChangeCoarseAmount(double v) {
     m_dTemporaryRateChangeCoarse.setValue(v);
 }
 
-//static
+// static
 void RateControl::setTemporaryRateChangeFineAmount(double v) {
     m_dTemporaryRateChangeFine.setValue(v);
 }
 
-//static
+// static
 void RateControl::setPermanentRateChangeCoarseAmount(double v) {
     m_dPermanentRateChangeCoarse.setValue(v);
 }
 
-//static
+// static
 void RateControl::setPermanentRateChangeFineAmount(double v) {
     m_dPermanentRateChangeFine.setValue(v);
 }
 
-//static
+// static
 double RateControl::getTemporaryRateChangeCoarseAmount() {
     return m_dTemporaryRateChangeCoarse.getValue();
 }
 
-//static
+// static
 double RateControl::getTemporaryRateChangeFineAmount() {
     return m_dTemporaryRateChangeFine.getValue();
 }
 
-//static
+// static
 double RateControl::getPermanentRateChangeCoarseAmount() {
     return m_dPermanentRateChangeCoarse.getValue();
 }
 
-//static
+// static
 double RateControl::getPermanentRateChangeFineAmount() {
     return m_dPermanentRateChangeFine.getValue();
 }
@@ -316,7 +372,7 @@ void RateControl::slotReverseRollActivate(double v) {
 }
 
 void RateControl::slotControlFastForward(double v) {
-    //qDebug() << "slotControlFastForward(" << v << ")";
+    // qDebug() << "slotControlFastForward(" << v << ")";
     if (v > 0.0) {
         m_pRateSearch->set(4.0);
     } else {
@@ -325,7 +381,7 @@ void RateControl::slotControlFastForward(double v) {
 }
 
 void RateControl::slotControlFastBack(double v) {
-    //qDebug() << "slotControlFastBack(" << v << ")";
+    // qDebug() << "slotControlFastBack(" << v << ")";
     if (v > 0.0) {
         m_pRateSearch->set(-4.0);
     } else {
@@ -364,7 +420,8 @@ void RateControl::slotControlRatePermUpSmall(double v) {
     // Adjusts temp rate up if button pressed
     if (v > 0.0) {
         m_pRateSlider->set(m_pRateSlider->get() +
-                           m_pRateDir->get() * m_dPermanentRateChangeFine.getValue() / (100. * m_pRateRange->get()));
+                m_pRateDir->get() * m_dPermanentRateChangeFine.getValue() /
+                        (100. * m_pRateRange->get()));
         slotRateSliderChanged(m_pRateSlider->get());
     }
 }
@@ -512,6 +569,112 @@ double RateControl::calculateSpeed(double baserate,
             }
         }
     }
+
+    // Physical SL1200 spin-up / spin-down ramp
+    // EngineBuffer passes paused = !play, and play is also 1 during cue
+    // preview, so play can't tell a Play press from a cue preview.
+    // play_latched is 1 only for a latched play.
+    if (!m_pPlayLatched) {
+        m_pPlayLatched = std::make_unique<PollingControlProxy>(getGroup(),
+                QStringLiteral("play_latched"),
+                ControlFlag::AllowMissingOrInvalid);
+    }
+    const bool playLatched = m_pPlayLatched->toBool();
+    const bool seeked = m_seekedSinceLastBuffer;
+    m_seekedSinceLastBuffer = false;
+
+    // Speed set by hand: scratching (spinny, waveform, controller platter),
+    // searching or vinyl control
+    const bool manualSpeed = searching != 0 || *pReportScratching ||
+            m_pScratch2Enable->toBool() ||
+            (m_pVCEnabled && m_pVCEnabled->toBool());
+
+    // play_latched drops to 0 slightly before play when pausing, so the
+    // last playing buffer may already see 0. Remember it per play period.
+    if (!paused && playLatched) {
+        m_latchedPlay = true;
+    }
+
+    if (manualSpeed) {
+        // Speed set by hand: cancel a running ramp
+        m_platterSpeed = 1.0;
+        m_spinningDown = false;
+    } else if (!paused) {
+        if (m_prevPaused) {
+            if (playLatched && m_rampUpEnabled &&
+                    !getGroup().contains("Sampler") &&
+                    !getGroup().contains("Preview")) {
+                // Started by a latched Play: spin up. If the platter is still
+                // spinning down, continue from its current speed.
+                if (!m_spinningDown) {
+                    m_platterSpeed = 0.0;
+                }
+            } else {
+                // Cue preview, or ramp up disabled: start instantly
+                m_platterSpeed = 1.0;
+            }
+            m_spinningDown = false;
+        }
+    } else {
+        if (m_rampDownEnabled && !m_prevPaused && m_latchedPlay && !seeked) {
+            // A latched play was paused: spin down from the current speed
+            m_spinningDown = true;
+        }
+        if (seeked) {
+            m_spinningDown = false;
+        }
+        if (!m_spinningDown) {
+            m_platterSpeed = 1.0;
+        }
+    }
+    if (paused) {
+        m_latchedPlay = false;
+    }
+    m_prevPaused = paused;
+
+    const double dt = static_cast<double>(samplesPerBuffer) / m_pSampleRate.get() / 2;
+
+    if (m_spinningDown && !getGroup().contains("Sampler") && !getGroup().contains("Preview")) {
+        if (m_rampDownMode == 1) {
+            // Power cut: the platter coasts without brake
+            const double friction = (m_rampMode == 0) ? kCoastFriction33 : kCoastFriction45;
+            m_platterSpeed -= (friction + kCoastDrag * m_platterSpeed) * dt;
+        } else {
+            // Electronic brake: constant deceleration until standstill
+            const double spindownTime = (m_rampMode == 0) ? kSpindownTime33 : kSpindownTime45;
+            m_platterSpeed -= dt / spindownTime;
+        }
+        if (m_platterSpeed <= 0.0) {
+            m_platterSpeed = 1.0;
+            m_spinningDown = false;
+            return rate; // paused rate (0 unless jog scrubbing)
+        }
+        return m_lastTargetRate * m_platterSpeed;
+    }
+
+    if (m_platterSpeed < 1.0) {
+        // 33 RPM = heavier platter feel, 45 RPM = lighter
+        const double torque = (m_rampMode == 0) ? 0.45 : 0.75;
+        m_platterSpeed += torque * dt;
+
+        // Soft saturation: motor settling into quartz lock
+        if (m_platterSpeed > 0.9) {
+            m_platterSpeed += (1.0 - m_platterSpeed) * 2.0 * dt;
+        }
+        if (m_platterSpeed < 1.0) {
+            // Ramp to the pitched speed, or to the nominal 33/45 RPM speed
+            // (1.0) without the rate slider. Keep the sign for reverse.
+            m_lastTargetRate = m_rampIncludePitch
+                    ? rate
+                    : (rate < 0 ? -1.0 : 1.0);
+            return m_lastTargetRate * m_platterSpeed;
+        }
+        m_platterSpeed = 1.0;
+    }
+
+    if (!paused) {
+        m_lastTargetRate = rate;
+    }
     return rate;
 }
 
@@ -600,18 +763,15 @@ void RateControl::setRateTemp(double v) {
     }
 }
 
-void RateControl::addRateTemp(double v)
-{
+void RateControl::addRateTemp(double v) {
     setRateTemp(m_tempRateRatio + v);
 }
 
-void RateControl::subRateTemp(double v)
-{
+void RateControl::subRateTemp(double v) {
     setRateTemp(m_tempRateRatio - v);
 }
 
-void RateControl::resetRateTemp(void)
-{
+void RateControl::resetRateTemp(void) {
     setRateTemp(0.0);
 }
 
@@ -636,6 +796,9 @@ void RateControl::notifyWrapAround(mixxx::audio::FramePos triggerPos,
 
 void RateControl::notifySeek(mixxx::audio::FramePos position) {
     m_pScratchController->notifySeek(position);
+    // A pause combined with a jump (cue, start_stop, track load) must not
+    // spin down from the new position
+    m_seekedSinceLastBuffer = true;
 }
 
 void RateControl::resetPositionScratchController() {

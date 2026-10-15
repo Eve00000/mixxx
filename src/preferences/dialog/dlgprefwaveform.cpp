@@ -147,10 +147,47 @@ DlgPrefWaveform::DlgPrefWaveform(
         m_pOverviewMinuteMarkersControl->setReadOnly();
     }
 
+    // Add BPM & Key waverform & overview ControlObjects
+    m_pShowBpmCurve = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")));
+    m_pShowBpmCurve->setReadOnly();
+    m_pShowBpmMarkers = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")));
+    m_pShowBpmMarkers->setReadOnly();
+    m_pShowBpmLabels = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")));
+    m_pShowBpmLabels->setReadOnly();
+    m_pShowKeyMarkers = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")));
+    m_pShowKeyMarkers->setReadOnly();
+    m_pShowKeyLabels = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")));
+    m_pShowKeyLabels->setReadOnly();
+    m_pShowLancelotWheel = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")));
+    m_pShowLancelotWheel->setReadOnly();
+
+    m_pOverviewShowBpmCurve = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_bpm_curve")));
+    m_pOverviewShowBpmCurve->setReadOnly();
+
+    m_pOverviewShowBpmMarkers = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_bpm_markers")));
+    m_pOverviewShowBpmMarkers->setReadOnly();
+
+    m_pOverviewShowKeyMarkers = std::make_unique<ControlObject>(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_key_markers")));
+    m_pOverviewShowKeyMarkers->setReadOnly();
+
     // Populate untilMark options
     untilMarkAlignComboBox->addItem(tr("Top"));
     untilMarkAlignComboBox->addItem(tr("Center"));
     untilMarkAlignComboBox->addItem(tr("Bottom"));
+
+    // Populate untilMark horizontal options
+    untilMarkHorizAlignComboBox->addItem(tr("Left of Waveform"));
+    untilMarkHorizAlignComboBox->addItem(tr("Left of Playmarker"));
+    untilMarkHorizAlignComboBox->addItem(tr("Right of Playmarker"));
 
     //: options for "Text height limit"
     untilMarkTextHeightLimitComboBox->addItem(tr("1/3 of waveform viewer"));
@@ -292,6 +329,10 @@ DlgPrefWaveform::DlgPrefWaveform(
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             &DlgPrefWaveform::slotSetUntilMarkAlign);
+    connect(untilMarkHorizAlignComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefWaveform::slotSetUntilMarkHorizAlign);
     connect(untilMarkTextPointSizeSpinBox,
             QOverload<int>::of(&QSpinBox::valueChanged),
             this,
@@ -316,6 +357,40 @@ DlgPrefWaveform::DlgPrefWaveform(
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             &DlgPrefWaveform::slotStemDisplayMode);
+
+    connect(showBpmCurveCheckBox, &QCheckBox::toggled, this, &DlgPrefWaveform::slotSetShowBpmCurve);
+    connect(showBpmMarkersCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetShowBpmMarkers);
+    connect(showBpmLabelsCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetShowBpmLabels);
+    connect(showKeyMarkersCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetShowKeyMarkers);
+    connect(showKeyLabelsCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetShowKeyLabels);
+    connect(showLancelotWheelCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetShowLancelotWheel);
+    connect(overviewShowBpmCurveCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetOverviewShowBpmCurve);
+    connect(overviewShowBpmMarkersCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetOverviewShowBpmMarkers);
+    connect(overviewShowKeyMarkersCheckBox,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefWaveform::slotSetOverviewShowKeyMarkers);
 
     setScrollSafeGuardForAllInputWidgets(this);
 }
@@ -409,6 +484,7 @@ void DlgPrefWaveform::slotUpdate() {
     untilMarkAlignComboBox->setCurrentIndex(
             WaveformWidgetFactory::toUntilMarkAlignIndex(
                     pFactory->getUntilMarkAlign()));
+    untilMarkHorizAlignComboBox->setCurrentIndex(pFactory->getUntilMarkHorizAlign());
     untilMarkTextPointSizeSpinBox->setValue(pFactory->getUntilMarkTextPointSize());
     untilMarkTextHeightLimitComboBox->setCurrentIndex(
             WaveformWidgetFactory::toUntilMarkTextHeightLimitIndex(
@@ -453,6 +529,51 @@ void DlgPrefWaveform::slotUpdate() {
                        ConfigKey(kWaveformGroup, QStringLiteral("draw_overview_minute_markers")))) {
         pControl->forceSet(drawOverviewMinuteMarkers);
     }
+
+    bool showBpmCurve = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_curve")), true);
+    showBpmCurveCheckBox->setChecked(showBpmCurve);
+    m_pShowBpmCurve->forceSet(showBpmCurve);
+
+    bool showBpmMarkers = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_markers")), true);
+    showBpmMarkersCheckBox->setChecked(showBpmMarkers);
+    m_pShowBpmMarkers->forceSet(showBpmMarkers);
+
+    bool showBpmLabels = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_bpm_labels")), true);
+    showBpmLabelsCheckBox->setChecked(showBpmLabels);
+    m_pShowBpmLabels->forceSet(showBpmLabels);
+
+    bool showLancelotWheel = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_lancelot_wheel")), true);
+    showLancelotWheelCheckBox->setChecked(showLancelotWheel);
+    m_pShowLancelotWheel->forceSet(showLancelotWheel);
+
+    bool showKeyMarkers = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_markers")), true);
+    showKeyMarkersCheckBox->setChecked(showKeyMarkers);
+    m_pShowKeyMarkers->forceSet(showKeyMarkers);
+
+    bool showKeyLabels = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("show_key_labels")), true);
+    showKeyLabelsCheckBox->setChecked(showKeyLabels);
+    m_pShowKeyLabels->forceSet(showKeyLabels);
+
+    bool overviewShowBpmCurve = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_bpm_curve")), true);
+    overviewShowBpmCurveCheckBox->setChecked(overviewShowBpmCurve);
+    m_pOverviewShowBpmCurve->forceSet(overviewShowBpmCurve);
+
+    bool overviewShowBpmMarkers = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_bpm_markers")), true);
+    overviewShowBpmMarkersCheckBox->setChecked(overviewShowBpmMarkers);
+    m_pOverviewShowBpmMarkers->forceSet(overviewShowBpmMarkers);
+
+    bool overviewShowKeyMarkers = m_pConfig->getValue(
+            ConfigKey(kWaveformGroup, QStringLiteral("overview_show_key_markers")), true);
+    overviewShowKeyMarkersCheckBox->setChecked(overviewShowKeyMarkers);
+    m_pOverviewShowKeyMarkers->forceSet(overviewShowKeyMarkers);
 
     WaveformSettings waveformSettings(m_pConfig);
     enableWaveformCaching->setChecked(waveformSettings.waveformCachingEnabled());
@@ -501,6 +622,8 @@ void DlgPrefWaveform::slotResetToDefaults() {
 
     synchronizeZoomCheckBox->setChecked(true);
 
+    untilMarkHorizAlignComboBox->setCurrentIndex(2);
+
     // RGB overview.
     waveformOverviewComboBox->setCurrentIndex(
             waveformOverviewComboBox->findData(QVariant::fromValue(OverviewType::RGB)));
@@ -528,6 +651,16 @@ void DlgPrefWaveform::slotResetToDefaults() {
 
     // 50 (center) is default
     playMarkerPositionSlider->setValue(50);
+
+    showBpmCurveCheckBox->setChecked(true);
+    showBpmMarkersCheckBox->setChecked(true);
+    showBpmLabelsCheckBox->setChecked(true);
+    showKeyMarkersCheckBox->setChecked(true);
+    showKeyLabelsCheckBox->setChecked(true);
+    showLancelotWheelCheckBox->setChecked(true);
+    overviewShowBpmCurveCheckBox->setChecked(true);
+    overviewShowBpmMarkersCheckBox->setChecked(true);
+    overviewShowKeyMarkersCheckBox->setChecked(true);
 
     stemDisplayModeComboBox->setCurrentIndex(0);
 }
@@ -691,6 +824,8 @@ void DlgPrefWaveform::updateEnableUntilMark() {
             untilMarkShowTimeCheckBox->isChecked();
     untilMarkAlignLabel->setEnabled(beatsOrTimeEnabled);
     untilMarkAlignComboBox->setEnabled(beatsOrTimeEnabled);
+    untilMarkHorizAlignLabel->setEnabled(beatsOrTimeEnabled);
+    untilMarkHorizAlignComboBox->setEnabled(beatsOrTimeEnabled);
     untilMarkTextPointSizeLabel->setEnabled(beatsOrTimeEnabled);
     untilMarkTextPointSizeSpinBox->setEnabled(beatsOrTimeEnabled);
     untilMarkTextHeightLimitLabel->setEnabled(beatsOrTimeEnabled);
@@ -868,6 +1003,11 @@ void DlgPrefWaveform::slotSetUntilMarkAlign(int index) {
     notifyQmlWaveformSettingsChanged();
 }
 
+void DlgPrefWaveform::slotSetUntilMarkHorizAlign(int index) {
+    WaveformWidgetFactory::instance()->setUntilMarkHorizAlign(index);
+    notifyQmlWaveformSettingsChanged();
+}
+
 void DlgPrefWaveform::slotSetUntilMarkTextPointSize(int value) {
     WaveformWidgetFactory::instance()->setUntilMarkTextPointSize(value);
     notifyQmlWaveformSettingsChanged();
@@ -877,6 +1017,51 @@ void DlgPrefWaveform::slotSetUntilMarkTextHeightLimit(int index) {
     WaveformWidgetFactory::instance()->setUntilMarkTextHeightLimit(
             WaveformWidgetFactory::toUntilMarkTextHeightLimit(index));
     notifyQmlWaveformSettingsChanged();
+}
+
+void DlgPrefWaveform::slotSetShowBpmCurve(bool checked) {
+    WaveformWidgetFactory::instance()->setShowBpmCurve(checked);
+}
+
+void DlgPrefWaveform::slotSetShowBpmMarkers(bool checked) {
+    WaveformWidgetFactory::instance()->setShowBpmMarkers(checked);
+}
+
+void DlgPrefWaveform::slotSetShowBpmLabels(bool checked) {
+    WaveformWidgetFactory::instance()->setShowBpmLabels(checked);
+}
+
+void DlgPrefWaveform::slotSetShowKeyMarkers(bool checked) {
+    WaveformWidgetFactory::instance()->setShowKeyMarkers(checked);
+}
+
+void DlgPrefWaveform::slotSetShowKeyLabels(bool checked) {
+    WaveformWidgetFactory::instance()->setShowKeyLabels(checked);
+}
+
+void DlgPrefWaveform::slotSetShowLancelotWheel(bool checked) {
+    WaveformWidgetFactory::instance()->setShowLancelotWheel(checked);
+}
+
+void DlgPrefWaveform::slotSetOverviewShowBpmCurve(bool checked) {
+    m_pConfig->setValue(ConfigKey(kWaveformGroup,
+                                QStringLiteral("overview_show_bpm_curve")),
+            checked);
+    m_pOverviewShowBpmCurve->forceSet(checked);
+}
+
+void DlgPrefWaveform::slotSetOverviewShowBpmMarkers(bool checked) {
+    m_pConfig->setValue(ConfigKey(kWaveformGroup,
+                                QStringLiteral("overview_show_bpm_markers")),
+            checked);
+    m_pOverviewShowBpmMarkers->forceSet(checked);
+}
+
+void DlgPrefWaveform::slotSetOverviewShowKeyMarkers(bool checked) {
+    m_pConfig->setValue(ConfigKey(kWaveformGroup,
+                                QStringLiteral("overview_show_key_markers")),
+            checked);
+    m_pOverviewShowKeyMarkers->forceSet(checked);
 }
 
 void DlgPrefWaveform::slotStemOpacity(double value) {

@@ -4,6 +4,7 @@
 #include <QtDebug>
 
 #include "library/autodj/autodjprocessor.h"
+#include "library/autosuggestions/autosuggestionsprocessor.h"
 #include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "moc_playlistdao.cpp"
@@ -14,7 +15,8 @@
 
 PlaylistDAO::PlaylistDAO()
         : m_currentHistoryPlaylist(kInvalidPlaylistId),
-          m_pAutoDJProcessor(nullptr) {
+          m_pAutoDJProcessor(nullptr),
+          m_pAutoSuggestionsProcessor(nullptr) {
 }
 
 void PlaylistDAO::initialize(const QSqlDatabase& database) {
@@ -174,6 +176,11 @@ QList<TrackId> PlaylistDAO::getTrackIdsInPlaylistOrder(const int playlistId) con
 QList<TrackId> PlaylistDAO::getAutoDJTrackIds() const {
     const int iAutoDJPlaylistId = getPlaylistIdFromName(AUTODJ_TABLE);
     return getTrackIds(iAutoDJPlaylistId);
+}
+
+QList<TrackId> PlaylistDAO::getAutoSuggestionsTrackIds() const {
+    const int iAutoSuggestionsPlaylistId = getPlaylistIdFromName(AUTOSUGGESTIONS_TABLE);
+    return getTrackIds(iAutoSuggestionsPlaylistId);
 }
 
 int PlaylistDAO::getPlaylistIdFromName(const QString& name) const {
@@ -967,6 +974,17 @@ void PlaylistDAO::clearAutoDJQueue() {
     removeTracksFromPlaylist(iAutoDJPlaylistId, position);
 }
 
+void PlaylistDAO::clearAutoSuggestionsQueue() {
+    const int iAutoSuggestionsPlaylistId = getPlaylistIdFromName(AUTOSUGGESTIONS_TABLE);
+    if (iAutoSuggestionsPlaylistId == kInvalidPlaylistId) {
+        qWarning() << "AutoSuggestions playlist not found!";
+        return;
+    }
+
+    const int position = 1;
+    removeTracksFromPlaylist(iAutoSuggestionsPlaylistId, position);
+}
+
 void PlaylistDAO::addPlaylistToAutoDJQueue(const int playlistId, AutoDJSendLoc loc) {
     //qDebug() << "Adding tracks from playlist " << playlistId << " to the Auto-DJ Queue";
 
@@ -1501,6 +1519,10 @@ void PlaylistDAO::setAutoDJProcessor(AutoDJProcessor* pAutoDJProcessor) {
     m_pAutoDJProcessor = pAutoDJProcessor;
 }
 
+void PlaylistDAO::setAutoSuggestionsProcessor(AutoSuggestionsProcessor* pAutoSuggestionsProcessor) {
+    m_pAutoSuggestionsProcessor = pAutoSuggestionsProcessor;
+}
+
 void PlaylistDAO::addTracksToAutoDJQueue(const QList<TrackId>& trackIds, AutoDJSendLoc loc) {
     int iAutoDJPlaylistId = getPlaylistIdFromName(AUTODJ_TABLE);
     if (iAutoDJPlaylistId == kInvalidPlaylistId) {
@@ -1523,6 +1545,66 @@ void PlaylistDAO::addTracksToAutoDJQueue(const QList<TrackId>& trackIds, AutoDJS
         if (removeTracksFromPlaylist(iAutoDJPlaylistId, position)) {
             appendTracksToPlaylist(trackIds, iAutoDJPlaylistId);
         }
+        break;
+    }
+}
+
+// bool PlaylistDAO::removeAllTracksFromAutoSuggestionsPlaylist(int playlistId) {
+//     // Retain the first track if it is loaded in a deck
+//     ScopedTransaction transaction(m_database);
+//     QSqlQuery query(m_database);
+//     query.prepare(QStringLiteral(
+//             "DELETE FROM PlaylistTracks WHERE playlist_id = :id"));
+//     query.bindValue(":id", playlistId);
+//         if (!query.exec()) {
+//         LOG_FAILED_QUERY(query);
+//         return false;
+//     }
+//     transaction.commit();
+//     emit playlistContentChanged(QSet<int>{playlistId});
+//     emit tracksRemoved(QSet<int>{playlistId});
+//     return true;
+// }
+
+int PlaylistDAO::getLatestPreparationList() const {
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral(
+            "SELECT id FROM Playlists WHERE HiddenType = :type order by id desc"));
+    query.bindValue(":type", PLHT_SET_PREPARATION);
+    if (query.exec()) {
+        if (query.next()) {
+            return query.value(query.record().indexOf("id")).toInt();
+        }
+    } else {
+        LOG_FAILED_QUERY(query);
+    }
+    return kInvalidPlaylistId;
+}
+
+void PlaylistDAO::addTracksToPreparationList(int playlistId,
+        const QList<TrackId>& trackIds,
+        PreparationListSendLoc loc) {
+    // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId;
+    int targetPlaylistId = playlistId;
+    if (targetPlaylistId <= 0) {
+        targetPlaylistId = getLatestPreparationList();
+        if (targetPlaylistId == kInvalidPlaylistId) {
+            return;
+        }
+    }
+
+    switch (loc) {
+    case PreparationListSendLoc::TOP:
+        // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId
+        //          << "to Top"
+        //          << targetPlaylistId << trackIds;
+        insertTracksIntoPlaylist(trackIds, targetPlaylistId, 1);
+        break;
+    case PreparationListSendLoc::BOTTOM:
+        // qDebug() << "[PlaylistDAO] -> addTracksToPreparationList: playlistId " << playlistId
+        //          << "to Bottom"
+        //          << targetPlaylistId << trackIds;
+        appendTracksToPlaylist(trackIds, targetPlaylistId);
         break;
     }
 }

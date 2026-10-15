@@ -9,6 +9,7 @@
 #include "library/starrating.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
+#include "library/trackset/searchcrate/searchcrateschema.h"
 #include "mixer/playermanager.h"
 #include "moc_basesqltablemodel.cpp"
 #include "track/keyutils.h"
@@ -137,6 +138,9 @@ void BaseSqlTableModel::initSortColumnMapping() {
     m_columnIndexBySortColumnId[static_cast<int>(
             TrackModel::SortColumnId::PlaylistDateTimeAdded)] =
             fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::CmrtGroup)] =
+            fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_CMRT);
 
     m_sortColumnIdByColumnIndex.clear();
     for (int i = static_cast<int>(TrackModel::SortColumnId::IdMin);
@@ -147,6 +151,63 @@ void BaseSqlTableModel::initSortColumnMapping() {
                 m_columnIndexBySortColumnId[static_cast<int>(sortColumn)],
                 sortColumn);
     }
+}
+
+QString BaseSqlTableModel::buildCmrtOrderByClause(Qt::SortOrder order) const {
+    const QString dir = (order == Qt::AscendingOrder) ? QStringLiteral("ASC")
+                                                      : QStringLiteral("DESC");
+
+    auto fieldRef = [this](const QString& fieldName) {
+        return QStringLiteral("%1.%2").arg(m_tableName, fieldName);
+    };
+    // group_id, offset, and match_score are stored as INTEGER/REAL --
+    // sorted numerically as-is, sign and all, no text encoding needed.
+    auto numericTerm = [&](const QString& fieldName) {
+        return QStringLiteral("%1 %2").arg(fieldRef(fieldName), dir);
+    };
+    auto textTerm = [&](const QString& fieldName) {
+        return QStringLiteral("%1 %2")
+                .arg(mixxx::DbConnection::collateLexicographically(
+                             QStringLiteral("lower(%1)").arg(fieldRef(fieldName))),
+                        dir);
+    };
+
+    const QString bucketRank = QStringLiteral(
+            "CASE WHEN %1 IS NOT NULL THEN 0 "
+            "WHEN %2 THEN 1 "
+            "ELSE 2 END")
+                                       .arg(fieldRef(LIBRARYTABLE_CMRT_NAME),
+                                               fieldRef(LIBRARYTABLE_CMRT_HAS_GROUP));
+    QStringList terms;
+    terms << QStringLiteral("%1 %2").arg(bucketRank, dir);
+
+    const bool showGroupId = BaseTrackTableModel::cmrtColumnShowGroupId();
+    const bool appendGroupId = BaseTrackTableModel::cmrtColumnGroupIdAppend();
+
+    // Mirrors roleValue()'s segment order exactly: group id goes first
+    // only in the prepend case, last only in the append case, so a tie
+    // on an earlier-displayed field cascades to whatever's displayed
+    // right after it -- same as reading the built string left to right.
+    if (showGroupId && !appendGroupId) {
+        terms << numericTerm(LIBRARYTABLE_CMRT_GROUP_ID);
+    }
+    if (BaseTrackTableModel::cmrtColumnShowArtist()) {
+        terms << textTerm(LIBRARYTABLE_CMRT_CANONICAL_ARTIST);
+    }
+    if (BaseTrackTableModel::cmrtColumnShowTitle()) {
+        terms << textTerm(LIBRARYTABLE_CMRT_CANONICAL_TITLE);
+    }
+    if (showGroupId && appendGroupId) {
+        terms << numericTerm(LIBRARYTABLE_CMRT_GROUP_ID);
+    }
+    if (BaseTrackTableModel::cmrtColumnShowOffset()) {
+        terms << numericTerm(LIBRARYTABLE_CMRT_OFFSET);
+    }
+    if (BaseTrackTableModel::cmrtColumnShowMatchScore()) {
+        terms << numericTerm(LIBRARYTABLE_CMRT_MATCH_SCORE);
+    }
+
+    return terms.join(QStringLiteral(", "));
 }
 
 void BaseSqlTableModel::clearRows() {
@@ -212,6 +273,40 @@ void BaseSqlTableModel::select() {
 
     PerformanceTimer time;
     time.start();
+
+    if (m_tableName.startsWith("searchcrate")) {
+        // EVE drop view and rebuild it for Searchcrate
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Drop
+        //        temp table " << m_tableName;
+        QString queryStringDropView = QString("DROP VIEW IF EXISTS %1 ").arg(m_tableName);
+        FwdSqlQuery(m_database, queryStringDropView).execPrepared();
+        //        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] REBUILD TEMP";
+        QStringList columns;
+        QString searchCrateId = m_tableName;
+        searchCrateId = searchCrateId.replace("searchcrate_", "");
+        columns << LIBRARYTABLE_ID
+                << "'' AS " + LIBRARYTABLE_PREVIEW
+                << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+
+        QString queryStringTempView =
+                QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                        "SELECT %2 FROM %3 "
+                        "WHERE %4 IN (SELECT %5 FROM %6 WHERE %7 = %8) "
+                        "AND %9=0")
+                        .arg(m_tableName,                             // 1
+                                columns.join(","),                    // 2
+                                LIBRARY_TABLE,                        // 3
+                                LIBRARYTABLE_ID,                      // 4
+                                SEARCHCRATETRACKSTABLE_TRACKID,       // 5
+                                SEARCHCRATETRACKSTABLE,               // 6
+                                SEARCHCRATETRACKSTABLE_SEARCHCRATEID, // 7
+                                searchCrateId,                        // 8
+                                LIBRARYTABLE_MIXXXDELETED);           // 9
+        qDebug() << "[BASESQLTABLEMODEL] [SELECT] -> [SMARTIES] Rebuild temp "
+                    "view -> queryStringTempView "
+                 << queryStringTempView;
+        FwdSqlQuery(m_database, queryStringTempView).execPrepared();
+    }
 
     // Prepare query for id and all columns not in m_trackSource
     QString queryString = QString("SELECT %1 FROM %2 %3")
@@ -529,6 +624,8 @@ void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
         if (column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_PREVIEW)) {
             // Random sort easter egg
             m_tableOrderBy = "ORDER BY RANDOM()";
+        } else if (column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_CMRT)) {
+            m_tableOrderBy = QStringLiteral("ORDER BY ") + buildCmrtOrderByClause(order);
         } else {
             m_tableOrderBy = "ORDER BY ";
             QString field = m_tableColumns[column];

@@ -423,6 +423,17 @@ class EngineBuffer : public EngineObject {
     ControlObject* m_pTrackSamples;
     ControlObject* m_pTrackSampleRate;
 
+    ControlObject* m_pTrackType = nullptr;
+    ControlObject* m_pTrackTypeLength = nullptr;
+    ControlObject* m_pTrackArtistLength = nullptr;
+    ControlObject* m_pTrackTitleLength = nullptr;
+
+    static constexpr int kArtistSlots = 5;
+    static constexpr int kTitleSlots = 5;
+
+    ControlObject* m_pTrackArtist[kArtistSlots] = {};
+    ControlObject* m_pTrackTitle[kTitleSlots] = {};
+
     ControlPushButton* m_playButton;
     ControlPushButton* m_playStartButton;
     ControlPushButton* m_stopStartButton;
@@ -518,6 +529,8 @@ class EngineBuffer : public EngineObject {
 #ifdef __STEM__
     mixxx::StemChannelSelection m_stemMask;
 #endif
+
+    bool canUseRubberBandForCurrentTrack() const;
 };
 
 Q_DECLARE_METATYPE(EngineBuffer::KeylockEngine)
