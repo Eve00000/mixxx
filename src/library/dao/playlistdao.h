@@ -182,4 +182,5 @@ class PlaylistDAO : public QObject, public virtual DAO {
     AutoDJProcessor* m_pAutoDJProcessor;
     AutoSuggestionsProcessor* m_pAutoSuggestionsProcessor;
     DISALLOW_COPY_AND_ASSIGN(PlaylistDAO);
+    friend class PreparationFeature;
 };

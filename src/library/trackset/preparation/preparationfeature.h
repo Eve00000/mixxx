@@ -36,6 +36,7 @@ class PreparationFeature : public BasePlaylistFeature {
     void slotLockAllChildPlaylists();
     void slotUnlockAllChildPlaylists();
     void slotDeletePlaylist() override;
+    void slotGetPlaylist();
     void slotGetNewPlaylist();
     void activate() override;
     void activateChild(const QModelIndex& index) override;
@@ -73,4 +74,5 @@ class PreparationFeature : public BasePlaylistFeature {
 
     int m_pendingPlaylistId;
     QString m_pendingPlaylistName;
+    TrackId m_lastPreparationTrackAddedId;
 };

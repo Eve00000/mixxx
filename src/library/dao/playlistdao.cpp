@@ -1569,7 +1569,7 @@ void PlaylistDAO::addTracksToAutoDJQueue(const QList<TrackId>& trackIds, AutoDJS
 int PlaylistDAO::getLatestPreparationList() const {
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral(
-            "SELECT id FROM Playlists WHERE HiddenType = :type order by id desc"));
+            "SELECT id FROM Playlists WHERE Hidden = :type order by id desc"));
     query.bindValue(":type", PLHT_SET_PREPARATION);
     if (query.exec()) {
         if (query.next()) {

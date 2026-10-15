@@ -543,19 +543,41 @@
           <property name="title">
             <string>Preparation Lists</string>
           </property>
-          <widget class="QCheckBox" name="checkBox_preparationlists_addallloadedtracks">
-            <property name="geometry">
-              <rect>
-                <x>10</x>
-                <y>20</y>
-                <width>350</width>
-                <height>20</height>
-              </rect>
+          <layout class="QGridLayout" name="gridLayoutPreparationLists">
+            <property name="spacing">
+              <number>10</number>
             </property>
-            <property name="text">
-              <string>Add every track loaded in all players to the Preparation List</string>
-            </property>
-          </widget>
+            <item row="0" column="0" colspan="3">
+              <widget class="QCheckBox" name="checkBox_preparationlists_addallloadedtracks">
+                <property name="geometry">
+                  <rect>
+                    <x>10</x>
+                    <y>20</y>
+                    <width>350</width>
+                    <height>20</height>
+                  </rect>
+                </property>
+                <property name="text">
+                  <string>Add every track loaded in all players to the Preparation List</string>
+                </property>
+              </widget>
+            </item>
+            <item row="1" column="0" colspan="3">
+              <widget class="QCheckBox" name="checkBox_preparationlists_eachsessionanewlist">
+                <property name="geometry">
+                  <rect>
+                    <x>10</x>
+                    <y>20</y>
+                    <width>350</width>
+                    <height>20</height>
+                  </rect>
+                </property>
+                <property name="text">
+                  <string>Create a new Preparation List in a new session (else append to the latest session of the day)</string>
+                </property>
+              </widget>
+            </item>
+          </layout>
         </widget>
       </item>
       <item>
