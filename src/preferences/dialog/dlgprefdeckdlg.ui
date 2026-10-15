@@ -197,41 +197,6 @@
                 </property>
               </widget>
             </item>
-            <item row="7" column="0">
-              <widget class="QLabel" name="labelNonLoopSampleLength">
-                <property name="text">
-                  <string>Sample length for non-loop cues</string>
-                </property>
-                <property name="buddy">
-                  <cstring>spinBoxNonLoopSampleLength</cstring>
-                </property>
-              </widget>
-            </item>
-            <item row="7" column="1" colspan="2">
-              <widget class="QSpinBox" name="spinBoxNonLoopSampleLength">
-                <property name="toolTip">
-                  <string>
-                    When exporting a plain hotcue (not a loop) as a sample, use this duration.
-                    The default is 5 seconds.
-                  </string>
-                </property>
-                <property name="suffix">
-                  <string> s</string>
-                </property>
-                <property name="minimum">
-                  <number>1</number>
-                </property>
-                <property name="maximum">
-                  <number>60</number>
-                </property>
-                <property name="singleStep">
-                  <number>1</number>
-                </property>
-                <property name="value">
-                  <number>5</number>
-                </property>
-              </widget>
-            </item>
           </layout>
         </widget>
       </item>
@@ -679,12 +644,115 @@
                     </property>
                   </widget>
                 </item>
+
+                <!-- New Physical Spin-up Ramp Settings -->
+                <item row="12" column="0">
+                  <widget class="QLabel" name="labelPhysicalRamp">
+                    <property name="text">
+                      <string>Physical spin-up/spin-down ramp</string>
+                    </property>
+                    <property name="buddy">
+                      <cstring>checkBoxRampUpEnabled</cstring>
+                    </property>
+                  </widget>
+                </item>
+                <item row="12" column="1" colspan="2">
+                  <widget class="QCheckBox" name="checkBoxRampUpEnabled">
+                    <property name="text">
+                      <string>Enable physical spin-up ramp</string>
+                    </property>
+                  </widget>
+                </item>
+                <item row="13" column="1" colspan="2">
+                  <widget class="QCheckBox" name="checkBoxRampDownEnabled">
+                    <property name="text">
+                      <string>Enable physical spin-down ramp</string>
+                    </property>
+                  </widget>
+                </item>
+                <item row="14" column="0">
+                  <widget class="QLabel" name="labelRampDownMode">
+                    <property name="text">
+                      <string>Spin-down type</string>
+                    </property>
+                    <property name="buddy">
+                      <cstring>radioButtonRampDownBrake</cstring>
+                    </property>
+                  </widget>
+                </item>
+                <item row="14" column="1">
+                  <widget class="QRadioButton" name="radioButtonRampDownBrake">
+                    <property name="toolTip">
+                      <string>Stop button: the electronic brake stops the platter quickly</string>
+                    </property>
+                    <property name="text">
+                      <string>Brake</string>
+                    </property>
+                    <attribute name="buttonGroup">
+                      <string notr="true">buttonGroupRampDownMode</string>
+                    </attribute>
+                  </widget>
+                </item>
+                <item row="14" column="2">
+                  <widget class="QRadioButton" name="radioButtonRampDownPowerCut">
+                    <property name="toolTip">
+                      <string>Power switch off: no brake, the platter coasts slowly to a standstill</string>
+                    </property>
+                    <property name="text">
+                      <string>Power cut</string>
+                    </property>
+                    <attribute name="buttonGroup">
+                      <string notr="true">buttonGroupRampDownMode</string>
+                    </attribute>
+                  </widget>
+                </item>
+                <item row="15" column="0">
+                  <widget class="QLabel" name="labelRampMode">
+                    <property name="text">
+                      <string>Platter type</string>
+                    </property>
+                    <property name="buddy">
+                      <cstring>comboBoxRampUpMode</cstring>
+                    </property>
+                  </widget>
+                </item>
+                <item row="15" column="1" colspan="2">
+                  <widget class="QComboBox" name="comboBoxRampUpMode">
+                    <item>
+                      <property name="text">
+                        <string>33 RPM (Heavier)</string>
+                      </property>
+                    </item>
+                    <item>
+                      <property name="text">
+                        <string>45 RPM (Lighter)</string>
+                      </property>
+                    </item>
+                  </widget>
+                </item>
+                <item row="16" column="0">
+                  <widget class="QLabel" name="labelRampPitchRange">
+                    <property name="text">
+                      <string>Target range</string>
+                    </property>
+                    <property name="buddy">
+                      <cstring>checkBoxRampUpIncludePitch</cstring>
+                    </property>
+                  </widget>
+                </item>
+                <item row="16" column="1" colspan="2">
+                  <widget class="QCheckBox" name="checkBoxRampUpIncludePitch">
+                    <property name="text">
+                      <string>Ramp up to RPM + Pitch Slider</string>
+                    </property>
+                  </widget>
+                </item>
+
               </layout>
             </item>
           </layout>
         </widget>
       </item>
-
       <item row="2" column="0">
         <widget class="QGroupBox" name="groupBoxNowPlaying">
           <property name="title">
@@ -776,7 +844,59 @@
         </widget>
       </item>
 
+
       <item row="3" column="0">
+        <widget class="QGroupBox" name="groupBoxLoopSampleLength">
+          <property name="title">
+            <string>Hotcue to Sampler</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayoutLoopSampleLength">
+            <property name="spacing">
+              <number>10</number>
+            </property>
+            <property name="spacing">
+              <number>10</number>
+            </property>
+            <item row="0" column="0" colspan="3">
+              <widget class="QLabel" name="labelNonLoopSampleLength">
+                <property name="text">
+                  <string>Sample length for non-loop cues</string>
+                </property>
+                <property name="buddy">
+                  <cstring>spinBoxNonLoopSampleLength</cstring>
+                </property>
+              </widget>
+            </item>
+            <item row="0" column="1" colspan="2">
+              <widget class="QSpinBox" name="spinBoxNonLoopSampleLength">
+                <property name="toolTip">
+                  <string>
+                    When exporting a plain hotcue (not a loop) as a sample, use this duration.
+                    The default is 5 seconds.
+                  </string>
+                </property>
+                <property name="suffix">
+                  <string> s</string>
+                </property>
+                <property name="minimum">
+                  <number>1</number>
+                </property>
+                <property name="maximum">
+                  <number>60</number>
+                </property>
+                <property name="singleStep">
+                  <number>1</number>
+                </property>
+                <property name="value">
+                  <number>5</number>
+                </property>
+              </widget>
+            </item>
+          </layout>
+        </widget>
+      </item>
+
+      <item row="4" column="0">
         <widget class="QGroupBox" name="groupBoxIncludeOriginalMasterWhenPlayingStems">
           <property name="title">
             <string>Include Original Master when playing Stems</string>
@@ -809,7 +929,7 @@
         </widget>
       </item>
 
-      <item row="4" column="0">
+      <item row="5" column="0">
         <widget class="QGroupBox" name="groupBoxTrackFileCache">
           <property name="title">
             <string>TrackFileCache</string>
@@ -986,6 +1106,9 @@
     <tabstop>spinBoxTemporaryRateCoarse</tabstop>
     <tabstop>spinBoxPermanentRateFine</tabstop>
     <tabstop>spinBoxPermanentRateCoarse</tabstop>
+    <tabstop>checkBoxRampUpEnabled</tabstop>
+    <tabstop>comboBoxRampUpMode</tabstop>
+    <tabstop>checkBoxRampUpIncludePitch</tabstop>
     <tabstop>checkBoxEnableNowPlaying</tabstop>
     <tabstop>checkBoxNowPlayingAppend</tabstop>
     <tabstop>checkBoxNowPlayingAddTimestamp</tabstop>
@@ -1002,5 +1125,6 @@
     <buttongroup name="buttonGroupSpeedBendBehavior"/>
     <buttongroup name="buttonGroupSyncMode"/>
     <buttongroup name="buttonGroupDownSampleUpSample"/>
+    <buttongroup name="buttonGroupRampDownMode"/>
   </buttongroups>
 </ui>
