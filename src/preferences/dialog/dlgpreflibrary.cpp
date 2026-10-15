@@ -308,6 +308,7 @@ void DlgPrefLibrary::slotResetToDefaults() {
     checkBox_show_rekordbox->setChecked(true);
 
     checkBox_preparationlists_addallloadedtracks->setChecked(false);
+    checkBox_preparationlists_eachsessionanewlist->setChecked(false);
 
     checkBox_grouped_crates_enable->setChecked(false);
     checkBox_grouped_crates_replace->setChecked(false);
@@ -442,6 +443,9 @@ void DlgPrefLibrary::slotUpdate() {
 
     checkBox_preparationlists_addallloadedtracks->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true));
+    checkBox_preparationlists_eachsessionanewlist->setChecked(m_pConfig->getValue(
+            ConfigKey("[Library]", "PreparationListsEachSessionANewList"), false));
+
     checkBox_grouped_crates_enable->setChecked(m_pConfig->getValue(
             ConfigKey("[Library]", "GroupedCratesEnabled"), true));
     checkBox_grouped_crates_replace->setChecked(m_pConfig->getValue(
@@ -819,6 +823,8 @@ void DlgPrefLibrary::slotApply() {
 
     m_pConfig->set(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"),
             ConfigValue((int)checkBox_preparationlists_addallloadedtracks->isChecked()));
+    m_pConfig->set(ConfigKey("[Library]", "PreparationListsEachSessionANewList"),
+            ConfigValue((int)checkBox_preparationlists_eachsessionanewlist->isChecked()));
 
     m_pConfig->set(ConfigKey("[Library]", "GroupedSearchCratesEnabled"),
             ConfigValue((int)checkBox_grouped_searchcrates_enable->isChecked()));

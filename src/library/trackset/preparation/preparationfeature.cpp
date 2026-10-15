@@ -50,7 +50,8 @@ PreparationFeature::PreparationFeature(
           m_yearNodeId(kInvalidPlaylistId),
           m_pLibrary(pLibrary),
           m_pConfig(pConfig),
-          m_pendingPlaylistId(kInvalidPlaylistId) {
+          m_pendingPlaylistId(kInvalidPlaylistId),
+          m_lastPreparationTrackAddedId(TrackId()) {
     // remove unneeded entries
     deleteAllUnlockedPlaylistsWithFewerTracks();
 
@@ -117,7 +118,7 @@ PreparationFeature::PreparationFeature(
             this,
             &PreparationFeature::slotDeleteAllUnlockedChildPlaylists);
 
-    slotGetNewPlaylist();
+    slotGetPlaylist();
 }
 
 PreparationFeature::~PreparationFeature() {
@@ -403,7 +404,7 @@ void PreparationFeature::decorateChild(TreeItem* item, int playlistId) {
     }
 }
 
-/// Invoked on startup to create new current playlist and by "Finish current and start new"
+// Invoked by "Finish current and start new" -> always create a fresh list
 void PreparationFeature::slotGetNewPlaylist() {
     if (sDebug) {
         qDebug() << "[PreparationFeature] -> slotGetNewPlaylist() successfully triggered !";
@@ -415,12 +416,37 @@ void PreparationFeature::slotGetNewPlaylist() {
 
     preparation_name = QString("Preparation %1").arg(QDate::currentDate().toString(Qt::ISODate));
     preparation_name_format = preparation_name + " #%1";
-    int i = 1;
 
-    // calculate name of the todays preparationlist
-    while (m_playlistDao.getPlaylistIdFromName(preparation_name) != kInvalidPlaylistId) {
-        preparation_name = preparation_name_format.arg(++i);
+    // Collect all existing preparation playlist names once.
+    // This lets us detect renamed lists like "Preparation 2026-10-16 #4 ddddddd"
+    // without needing a new DAO method.
+    const QList<QPair<int, QString>> existing =
+            m_playlistDao.getPlaylists(PlaylistDAO::PLHT_SET_PREPARATION);
+
+    auto suffixIsTaken = [&](int n) {
+        const QString exact = preparation_name_format.arg(n); // "... #N"
+        const QString prefix = exact + QLatin1Char(' ');      // "... #N " (renamed)
+        for (const auto& pl : existing) {
+            const QString& name = pl.second;
+            if (name == exact || name.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Base name "Preparation YYYY-MM-DD" counts as #1 if it exists.
+    int highestSuffix = 0;
+    if (m_playlistDao.getPlaylistIdFromName(preparation_name) != kInvalidPlaylistId) {
+        highestSuffix = 1;
     }
+    // Advance until we find a free suffix.
+    while (suffixIsTaken(highestSuffix + 1)) {
+        ++highestSuffix;
+    }
+
+    preparation_name = preparation_name_format.arg(highestSuffix + 1);
+
     if (sDebug) {
         qDebug() << "[PreparationFeature] -> Creating session preparation "
                     "playlist name:"
@@ -445,10 +471,152 @@ void PreparationFeature::slotGetNewPlaylist() {
         m_pendingPlaylistName = preparation_name;
     }
 
+    if (m_currentPlaylistId == kInvalidPlaylistId) {
+        if (sDebug) {
+            qDebug() << "[PreparationFeature] -> Setlog playlist Creation Failed";
+            qDebug() << "[PreparationFeature] -> An unknown error occurred "
+                        "while creating playlist: "
+                     << preparation_name;
+        }
+        return;
+    }
+
+    m_recentTracks.clear();
+    // As the preparationfeature is constructed before the skin & prepwin are completed,
+    // we need to store the newest created preparationlistID in a temp, pending to be sent
+    // to the PrepWin.
+    m_pendingPlaylistId = m_currentPlaylistId;
+    m_pendingPlaylistName = preparation_name;
+
     // reload child model again because the 'added' signal fired by PlaylistDAO
     // might have triggered slotPlaylistTableChanged() before m_currentPlaylistId was set,
     // which causes the wrong playlist being decorated as 'current'
     slotPlaylistTableChanged(m_currentPlaylistId);
+
+    // Select the new preparationlist in the sidebar and load it into the
+    // preparation window.
+    const QModelIndex newIndex = indexFromPlaylistId(m_currentPlaylistId);
+    if (newIndex.isValid()) {
+        m_lastClickedIndex = newIndex;
+        m_lastRightClickedIndex = QModelIndex();
+        emit featureSelect(this, newIndex);
+    }
+    activatePlaylist(m_currentPlaylistId);
+}
+
+void PreparationFeature::slotGetPlaylist() {
+    if (sDebug) {
+        qDebug() << "[PreparationFeature] -> slotGetNewPlaylist() successfully triggered !";
+    }
+
+    // create a new preparationList for today
+    QString preparation_name_format;
+    QString preparation_name;
+
+    preparation_name = QString("Preparation %1").arg(QDate::currentDate().toString(Qt::ISODate));
+    preparation_name_format = preparation_name + " #%1";
+    int i = 1;
+
+    qDebug() << "[PreparationFeature] -> [Library] "
+                "PreparationListsEachSessionANewList"
+             << m_pConfig->getValue<bool>(ConfigKey(
+                        "[Library]", "PreparationListsEachSessionANewList"));
+    if (m_pConfig->getValue<bool>(ConfigKey("[Library]", "PreparationListsEachSessionANewList"))) {
+        // calculate name of the todays preparationlist
+        while (m_playlistDao.getPlaylistIdFromName(preparation_name) != kInvalidPlaylistId) {
+            preparation_name = preparation_name_format.arg(++i);
+        }
+        if (sDebug) {
+            qDebug() << "[PreparationFeature] -> Creating session preparation "
+                        "playlist name:"
+                     << preparation_name;
+        }
+        m_currentPlaylistId = m_playlistDao.createPlaylist(
+                preparation_name, PlaylistDAO::PLHT_SET_PREPARATION);
+
+        if (m_currentPlaylistId == kInvalidPlaylistId) {
+            if (sDebug) {
+                qDebug() << "[PreparationFeature] -> Setlog playlist Creation Failed";
+                qDebug() << "[PreparationFeature] -> An unknown error occurred "
+                            "while creating playlist: "
+                         << preparation_name;
+            }
+        } else {
+            m_recentTracks.clear();
+            // As the preparationfeature is constructed before the skin & prepwin are completed,
+            // we need to store the newest created preparationlistID in a temp, pending to be sent
+            // to the PrepWin.
+            m_pendingPlaylistId = m_currentPlaylistId;
+            m_pendingPlaylistName = preparation_name;
+        }
+
+        // reload child model again because the 'added' signal fired by PlaylistDAO
+        // might have triggered slotPlaylistTableChanged() before m_currentPlaylistId was set,
+        // which causes the wrong playlist being decorated as 'current'
+        slotPlaylistTableChanged(m_currentPlaylistId);
+    } else {
+        // look at the latest created preparationlist to decide whether to reuse it
+        int latestId = m_playlistDao.getLatestPreparationList();
+        bool reuseLatest = false;
+
+        if (latestId != kInvalidPlaylistId) {
+            QString latestName = m_playlistDao.getPlaylistName(latestId);
+            // only reuse if the latest list is from today
+            if (latestName.startsWith(preparation_name)) {
+                reuseLatest = true;
+                m_currentPlaylistId = latestId;
+                if (sDebug) {
+                    qDebug() << "[PreparationFeature] -> Using latest preparationlist id="
+                             << m_currentPlaylistId
+                             << " name=" << latestName;
+                }
+
+                m_recentTracks.clear();
+                // As the preparationfeature is constructed before the skin &
+                // prepwin are completed, we need to store the newest created
+                // preparationlistID in a temp, pending to be sent to the
+                // PrepWin.
+                m_pendingPlaylistId = m_currentPlaylistId;
+                m_pendingPlaylistName = latestName;
+            } else if (sDebug) {
+                qDebug() << "[PreparationFeature] -> Latest preparationlist is not from today:"
+                         << latestName << " -> creating a new one for" << preparation_name;
+            }
+        }
+
+        if (!reuseLatest) {
+            // no list for today yet -> create the first one for today
+            if (sDebug) {
+                qDebug() << "[PreparationFeature] -> Creating preparation "
+                            "playlist name:"
+                         << preparation_name;
+            }
+            m_currentPlaylistId = m_playlistDao.createPlaylist(
+                    preparation_name, PlaylistDAO::PLHT_SET_PREPARATION);
+
+            if (m_currentPlaylistId == kInvalidPlaylistId) {
+                if (sDebug) {
+                    qDebug() << "[PreparationFeature] -> Setlog playlist Creation Failed";
+                    qDebug() << "[PreparationFeature] -> An unknown error occurred "
+                                "while creating playlist: "
+                             << preparation_name;
+                }
+            } else {
+                m_recentTracks.clear();
+                // As the preparationfeature is constructed before the skin &
+                // prepwin are completed, we need to store the newest created
+                // preparationlistID in a temp, pending to be sent to the
+                // PrepWin.
+                m_pendingPlaylistId = m_currentPlaylistId;
+                m_pendingPlaylistName = preparation_name;
+            }
+        }
+
+        // reload child model again because the 'added' signal fired by PlaylistDAO
+        // might have triggered slotPlaylistTableChanged() before m_currentPlaylistId was set,
+        // which causes the wrong playlist being decorated as 'current'
+        slotPlaylistTableChanged(m_currentPlaylistId);
+    }
 }
 
 void PreparationFeature::onPreparationWindowReady() {
@@ -690,6 +858,16 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
         qDebug() << "PreparationFeature: Loaded Track ID received: " << newLoadedTrackId;
     }
 
+    // Don't add the same track that was added last time again.
+    // Different tracks in between are fine, and manual adds (drag/menu)
+    // are unaffected.
+    if (newLoadedTrackId == m_lastPreparationTrackAddedId) {
+        if (sDebug) {
+            qDebug() << "PreparationFeature: Skipping, same as last added track";
+        }
+        return;
+    }
+
     if (m_pConfig->getValue(ConfigKey("[Library]", "PreparationListsAddAllLoadedTracks"), true)) {
         if (m_pPlaylistTableModel->getPlaylist() == m_currentPlaylistId) {
             if (sDebug) {
@@ -708,9 +886,11 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
                 if (view != nullptr) {
                     hasActiveView = true;
                     const QList<TrackId> trackIds = view->getSelectedTrackIds();
-                    if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId, m_currentPlaylistId)) {
-                        m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
-                    }
+                    // if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId,
+                    // m_currentPlaylistId)) {
+                    //    m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
+                    // }
+                    m_pPlaylistTableModel->appendTrack(newLoadedTrackId);
                     view->setSelectedTracks(trackIds);
                 }
             }
@@ -720,11 +900,14 @@ void PreparationFeature::slotAddLoadedTrackToPreparation(const QString& group,
             }
         } else {
             // TODO(XXX): Care whether the append succeeded.
-            if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId, m_currentPlaylistId)) {
-                m_playlistDao.appendTrackToPlaylist(
-                        newLoadedTrackId, m_currentPlaylistId);
-            }
+            // if (!m_playlistDao.isTrackInPlaylist(newLoadedTrackId, m_currentPlaylistId)) {
+            // m_playlistDao.appendTrackToPlaylist(
+            //            newLoadedTrackId, m_currentPlaylistId);
+            // }
+            m_playlistDao.appendTrackToPlaylist(newLoadedTrackId, m_currentPlaylistId);
         }
+
+        m_lastPreparationTrackAddedId = newLoadedTrackId;
     }
 }
 
