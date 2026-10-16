@@ -12,6 +12,7 @@
 
 namespace {
 
+const bool sDebug = false;
 const QString kModelName = QStringLiteral("crate");
 
 } // anonymous namespace
@@ -25,8 +26,123 @@ CrateTableModel::CrateTableModel(
                   "mixxx.db.model.crate") {
 }
 
+QList<QVariantMap> CrateTableModel::getGroupedCrates(
+        bool groupedCratesLength,
+        int groupedCratesFixedLength,
+        const QString& groupedCratesVarLengthMask) {
+    if (sDebug) {
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] Generating grouped crates list.";
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] groupedCratesLength ="
+                 << groupedCratesLength;
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] groupedCratesFixedLength ="
+                 << groupedCratesFixedLength;
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] groupedCratesVarLengthMask ="
+                 << groupedCratesVarLengthMask;
+    }
+
+    QList<QVariantMap> groupedCrates;
+
+    QSqlQuery query(m_database);
+
+    if (groupedCratesLength) {
+        // Fixed prefix length grouping.
+        QString queryString =
+                QStringLiteral(
+                        "SELECT DISTINCT "
+                        "  SUBSTR(name, 1, %1) AS group_name, "
+                        "  id AS crate_id, "
+                        "  name AS crate_name "
+                        "FROM crates "
+                        "WHERE show = 1 "
+                        "ORDER BY LOWER(name)")
+                        .arg(groupedCratesFixedLength);
+        if (sDebug) {
+            qDebug() << "[GROUPEDCRATESTABLEMODEL] queryString:" << queryString;
+        }
+        if (!query.exec(queryString)) {
+            qWarning() << "[GROUPEDCRATESTABLEMODEL] Failed to execute grouped "
+                          "crates query:"
+                       << query.lastError();
+            return groupedCrates;
+        }
+
+        while (query.next()) {
+            QVariantMap crateData;
+            crateData["group_name"] = query.value("group_name").toString();
+            crateData["crate_id"] = query.value("crate_id");
+            crateData["crate_name"] = query.value("crate_name");
+            groupedCrates.append(crateData);
+        }
+    } else {
+        // Variable-length delimiter grouping.
+        QString queryString = QStringLiteral(
+                "SELECT DISTINCT "
+                "  id AS crate_id, "
+                "  name AS crate_name "
+                "FROM crates "
+                "WHERE show = 1 "
+                "ORDER BY LOWER(name)");
+        if (sDebug) {
+            qDebug() << "[GROUPEDCRATESTABLEMODEL] queryString:" << queryString;
+        }
+        if (!query.exec(queryString)) {
+            qWarning() << "[GROUPEDCRATESTABLEMODEL] Failed to execute grouped "
+                          "crates query:"
+                       << query.lastError();
+            return groupedCrates;
+        }
+
+        while (query.next()) {
+            const QString crateName = query.value("crate_name").toString();
+            if (groupedCratesVarLengthMask.isEmpty()) {
+                // No mask set -> treat every crate as its own root-level entry.
+                QVariantMap crateData;
+                crateData["group_name"] = crateName;
+                crateData["crate_id"] = query.value("crate_id");
+                crateData["crate_name"] = crateName;
+                groupedCrates.append(crateData);
+                continue;
+            }
+
+            if (crateName.contains(groupedCratesVarLengthMask)) {
+                const QStringList groupHierarchy =
+                        crateName.split(groupedCratesVarLengthMask);
+                QString currentGroup;
+
+                for (int i = 0; i < groupHierarchy.size(); ++i) {
+                    currentGroup += (i > 0 ? groupedCratesVarLengthMask : QString()) +
+                            groupHierarchy[i];
+
+                    // Only store the full crate record for the leaf level.
+                    if (i == groupHierarchy.size() - 1) {
+                        QVariantMap crateData;
+                        crateData["group_name"] = currentGroup;
+                        crateData["crate_id"] = query.value("crate_id");
+                        crateData["crate_name"] = crateName;
+                        groupedCrates.append(crateData);
+                    }
+                }
+            } else {
+                // No delimiter in crate name -> root-level entry.
+                QVariantMap crateData;
+                crateData["group_name"] = crateName;
+                crateData["crate_id"] = query.value("crate_id");
+                crateData["crate_name"] = crateName;
+                groupedCrates.append(crateData);
+            }
+        }
+    }
+
+    if (sDebug) {
+        qDebug() << "[GROUPEDCRATESTABLEMODEL] Grouped crates list generated "
+                    "with"
+                 << groupedCrates.size() << "entries.";
+    }
+    return groupedCrates;
+}
+
 void CrateTableModel::selectCrate(CrateId crateId) {
-    //qDebug() << "CrateTableModel::setCrate()" << crateId;
+    // qDebug() << "CrateTableModel::setCrate()" << crateId;
     if (crateId == m_selectedCrate) {
         qDebug() << "Already focused on crate " << crateId;
         return;
@@ -79,6 +195,55 @@ void CrateTableModel::selectCrate(CrateId crateId) {
     // Restore search text
     setSearch(m_searchTexts.value(m_selectedCrate));
     setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST), Qt::AscendingOrder);
+}
+
+void CrateTableModel::selectCrateGroup(const QString& groupName) {
+    if (sDebug) {
+        qDebug() << "[CrateTableModel] -> selectCrateGroup() -> Searching for "
+                    "tracks in groups starting with:"
+                 << groupName;
+    }
+    const QString tableName = QStringLiteral("crate_group_%1")
+                                      .arg(QDateTime::currentMSecsSinceEpoch());
+
+    QStringList columns;
+    columns << LIBRARYTABLE_ID
+            << "'' AS " + LIBRARYTABLE_PREVIEW
+            << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+
+    QString queryString =
+            QString("CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
+                    "SELECT %2 FROM %3 "
+                    "WHERE library.id IN(SELECT crate_tracks.track_id from "
+                    "crate_tracks "
+                    "WHERE crate_tracks.crate_id IN(SELECT crates.id from "
+                    "crates WHERE crates.name LIKE '%4%')) "
+                    "AND %5=0")
+                    .arg(tableName,
+                            columns.join(","),
+                            LIBRARY_TABLE,
+                            groupName,
+                            LIBRARYTABLE_MIXXXDELETED);
+
+    if (sDebug) {
+        qDebug() << "[CrateTableModel] -> Generated SQL Query:" << queryString;
+    }
+
+    FwdSqlQuery query(m_database, queryString);
+    QString temp = groupName + QStringLiteral("%");
+    query.bindValue(":pattern", temp);
+    query.execPrepared();
+
+    columns[0] = LIBRARYTABLE_ID;
+    columns[1] = LIBRARYTABLE_PREVIEW;
+    columns[2] = LIBRARYTABLE_COVERART;
+
+    setTable(tableName,
+            LIBRARYTABLE_ID,
+            columns,
+            m_pTrackCollectionManager->internalCollection()->getTrackSource());
+    setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST),
+            Qt::AscendingOrder);
 }
 
 bool CrateTableModel::addTrack(const QModelIndex& index, const QString& location) {
@@ -146,7 +311,7 @@ TrackModel::Capabilities CrateTableModel::getCapabilities() const {
                 caps |= Capability::Locked;
             }
         } else {
-            qWarning() << "Failed to read create" << m_selectedCrate;
+            qWarning() << "Failed to read crate" << m_selectedCrate;
         }
     }
 
@@ -181,7 +346,7 @@ bool CrateTableModel::isLocked() {
     if (!m_pTrackCollectionManager->internalCollection()
                     ->crates()
                     .readCrateById(m_selectedCrate, &crate)) {
-        qWarning() << "Failed to read create" << m_selectedCrate;
+        qWarning() << "Failed to read crate" << m_selectedCrate;
         return false;
     }
     return crate.isLocked();
@@ -199,7 +364,7 @@ void CrateTableModel::removeTracks(const QModelIndexList& indices) {
     if (!m_pTrackCollectionManager->internalCollection()
                     ->crates()
                     .readCrateById(m_selectedCrate, &crate)) {
-        qWarning() << "Failed to read create" << m_selectedCrate;
+        qWarning() << "Failed to read crate" << m_selectedCrate;
         return;
     }
 

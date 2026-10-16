@@ -74,6 +74,8 @@ void PlaylistFeature::onRightClick(const QPoint& globalPos) {
     menu.addAction(m_pDeleteAllUnlockedPlaylistsAction);
     menu.addSeparator();
     menu.addAction(m_pCreateImportPlaylistAction);
+    menu.addSeparator();
+    menu.addAction(m_pCreateImportPlaylistFindTracksAction);
 #ifdef __ENGINEPRIME__
     menu.addSeparator();
     menu.addAction(m_pExportAllPlaylistsToEngineAction);
@@ -98,6 +100,8 @@ void PlaylistFeature::onRightClickChild(
     m_pLockPlaylistAction->setText(locked ? tr("Unlock") : tr("Lock"));
 
     QMenu menu(m_pSidebarWidget);
+    menu.addAction(m_pShowTrackModelInPreparationWindowAction);
+    menu.addSeparator();
     menu.addAction(m_pCreatePlaylistAction);
     menu.addSeparator();
     // TODO If playlist is selected and has more than one track selected

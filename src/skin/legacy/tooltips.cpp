@@ -121,6 +121,11 @@ void Tooltips::addStandardTooltips() {
             << tr("Indicates when the right signal on the main output is clipping,")
             << clippingHelp;
 
+    add("stem_peak_indicator")
+            << tr("Stem Peak Indicator")
+            << tr("Indicates when the signal on the channel is clipping,")
+            << clippingHelp;
+
     add("channel_VuMeter")
             << tr("Channel Volume Meter")
             << tr("Shows the current channel volume.");
@@ -132,6 +137,10 @@ void Tooltips::addStandardTooltips() {
     add("channel_VuMeterR")
             << tr("Channel R Volume Meter")
             << tr("Shows the current channel volume for the right channel.");
+
+    add("stem_VuMeter")
+            << tr("Stem Volume Meter")
+            << tr("Shows the current stem volume.");
 
     add("microphone_VuMeter")
             << tr("Microphone Volume Meter")
@@ -264,6 +273,10 @@ void Tooltips::addStandardTooltips() {
     add("toggle_4decks")
             << tr("Toggle 4 Decks")
             << tr("Switches between showing 2 decks and 4 decks.");
+
+    add("show_prepwin")
+            << tr("Show Preparation Window")
+            << tr("Switches between Preparation Window visible & hidden.");
 
     add("show_waveforms")
             << tr("Show/hide the scrolling waveforms");
@@ -760,6 +773,10 @@ void Tooltips::addStandardTooltips() {
     add("expand_samplers")
             << tr("Expand/Collapse Samplers")
             << tr("Toggle expanded samplers view.");
+
+    add("expand_stem_controls")
+            << tr("Expand/Collapse Stem Controls")
+            << tr("Toggle expanded Stem Controls view.");
 
     // Status displays and toggle buttons
     add("recording_duration")
@@ -1262,4 +1279,12 @@ void Tooltips::addStandardTooltips() {
     add("configure_input")
             << tr("Select and configure a hardware device for this input");
 
+    add("toggle_premix")
+            << tr("Select to show the original mix as a Stem Channel.")
+            << tr("When loading a track the original mix will be unmuted and")
+            << tr("the stems will be muted.");
+
+    add("toggle_premix_mute_mode")
+            << tr("When selected the mute button of the original mix (_Stem0)")
+            << tr("will function as toggle between original mix and stems.");
 }

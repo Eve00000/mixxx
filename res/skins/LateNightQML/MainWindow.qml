@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../../qml" as Skin
 import "LateNightTheme"
 import "Deck" as LateNightDeck
@@ -11,7 +13,6 @@ import Mixxx 1.0 as Mixxx
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Templates as T
 import QtQuick.Window
 
 Item {
@@ -25,36 +26,6 @@ Item {
     property alias editDeck: toolbar.editDeck
     property var focusedDeck: null
     property alias maximizeLibrary: toolbar.maximizeLibrary
-    property bool layoutMaximizedLibrary: false
-    property bool bigLibraryTransition: false
-    property bool bigLibraryFadeIn: false
-    property bool deckModeTransition: false
-    property bool bigLibraryEffectsRestoreActive: false
-    readonly property int bigLibraryFadeDuration: 60
-    readonly property bool bigLibraryContentReady: deck1.contentReady && deck2.contentReady
-            && (!deck3.shouldShow || (deck3.status === Loader.Ready && (deck3.item as LateNightDeck.Deck).contentReady))
-            && (!deck4.shouldShow || (deck4.status === Loader.Ready && (deck4.item as LateNightDeck.Deck).contentReady))
-            && (!showSamplers || samplers.contentReady)
-            && library.status === Loader.Ready
-    readonly property bool bigLibraryAnimationsReady: !waveformsMinimumHeightAnimation.running
-            && !waveformsPreferredHeightAnimation.running
-            && !waveformsOpacityAnimation.running
-            && !deckHeightAnimation.running
-            && !deckRowExpansionAnimation.running
-            && !deckSideMarginLayoutAnimation.running
-            && !deck1AnchorAnimation.running
-            && !compactVuSlotWidthAnimation.running
-            && !mixerAnchorAnimation.running
-            && !mixerLibraryWidthAnimation.running
-            && !deck2AnchorAnimation.running
-            && !deck3AnchorAnimation.running
-            && !deck3OpacityAnimation.running
-            && !deck4AnchorAnimation.running
-            && !deck4OpacityAnimation.running
-            && !libraryAnchorAnimation.running
-    readonly property bool restoringFromBigLibrary: bigLibraryTransition && !maximizeLibrary
-    readonly property int bigLibraryTransitionDuration: restoringFromBigLibrary ? 80 : 100
-    readonly property int deckModeTransitionDuration: 100
     readonly property int normalDeckState: layoutState.normalizedSavedDeckSize
     readonly property int numDecks: 4
     readonly property int numSamplers: 64
@@ -68,81 +39,21 @@ Item {
     property alias showSamplers: toolbar.showSamplers
     readonly property bool showWaveforms: toolbar.showWaveforms
 
-    onMaximizeLibraryChanged: {
-        bigLibraryReadinessTimer.stop();
-        bigLibraryFadeInTimer.stop();
-        bigLibraryEffectsRestoreTimer.stop();
-        bigLibraryTransition = true;
-        bigLibraryFadeIn = false;
-        bigLibraryEffectsRestoreActive = !maximizeLibrary;
-        deckModeTransition = false;
-        deckModeTransitionTimer.stop();
-        layoutMaximizedLibrary = maximizeLibrary;
-        bigLibraryReadinessTimer.start();
-    }
-    onNormalDeckStateChanged: {
-        if (bigLibraryTransition || maximizeLibrary || showMixer)
-            return;
+    // Waveforms in a separate pane
+    property bool waveformsSeparate: false
+    property bool waveformsRight: false
+    property int waveformPaneWidth: 600
+    property int waveformPaneHeight: 120
 
-        deckModeTransition = true;
-        deckModeTransitionTimer.restart();
-    }
-    onShowMixerChanged: {
-        if (showMixer || bigLibraryTransition || maximizeLibrary || normalDeckState !== 1)
-            return;
-
-        deckModeTransition = true;
-        deckModeTransitionTimer.restart();
-    }
-    Component.onCompleted: {
-        if (!bigLibraryTransition)
-            layoutMaximizedLibrary = maximizeLibrary;
-    }
-
-    function finishBigLibraryTransitionWhenReady() {
-        if (!bigLibraryTransition || !bigLibraryContentReady || !bigLibraryAnimationsReady)
-            return;
-
-        bigLibraryReadinessTimer.stop();
-        bigLibraryFadeIn = true;
-        bigLibraryTransition = false;
-        bigLibraryFadeInTimer.restart();
-        if (bigLibraryEffectsRestoreActive)
-            bigLibraryEffectsRestoreTimer.restart();
-    }
-
-    Timer {
-        id: bigLibraryReadinessTimer
-
-        interval: 16
-        repeat: true
-        onTriggered: root.finishBigLibraryTransitionWhenReady()
-    }
-    Timer {
-        id: bigLibraryFadeInTimer
-
-        interval: root.bigLibraryFadeDuration + 16
-        onTriggered: root.bigLibraryFadeIn = false
-    }
-    Timer {
-        id: bigLibraryEffectsRestoreTimer
-
-        interval: 180
-        onTriggered: root.bigLibraryEffectsRestoreActive = false
-    }
-    Timer {
-        id: deckModeTransitionTimer
-
-        interval: root.deckModeTransitionDuration + 10
-        onTriggered: root.deckModeTransition = false
-    }
+    // Library in a separate pane
+    property bool librarySeparate: false
+    property bool libraryRight: true
+    property int libraryPaneWidth: 400
 
     SkinControlBootstrap {
         id: skinControlBootstrap
     }
 
-    // Declare the compact-meter setting before LayoutState so its initial
-    // value is available when the effective layout is derived.
     Mixxx.ControlProxy {
         id: showCompactVuMetersProxy
 
@@ -150,10 +61,46 @@ Item {
         key: "show_vumeters_compact"
     }
 
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsSeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_separate"
+
+        onValueChanged: root.waveformsSeparate = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutWaveformsRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_waveforms_right"
+
+        onValueChanged: root.waveformsRight = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutLibrarySeparateControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_separate"
+
+        onValueChanged: root.librarySeparate = value > 0
+    }
+
+    Mixxx.ControlProxy {
+        id: normalLayoutLibraryRightControl
+
+        group: "[Skin]"
+        key: "normal_layout_library_right"
+
+        onValueChanged: root.libraryRight = value > 0
+    }
+
     LayoutState {
         id: layoutState
 
-        maximizeLibrary: root.layoutMaximizedLibrary
+        maximizeLibrary: root.maximizeLibrary
         mixerVisible: root.showMixer
         savedDeckSize: toolbar.deckSizeWithoutMixer
         show4decks: root.show4decks
@@ -222,178 +169,345 @@ Item {
             value = root.numSamplers;
         }
     }
-    Column {
+
+    ///////////////////////////////////////////////////////////////
+    // toolbar + layout area
+    // toolbar is always above controls & library
+    // toolbar is never above the waveforms if they are separated
+    ///////////////////////////////////////////////////////////////
+    Item {
         id: content
 
         anchors.fill: parent
-
-        move: Transition {
-            enabled: LateNightTheme.layoutAnimationsEnabled
-
-            NumberAnimation {
-                duration: 150
-                properties: "x,y"
-            }
-        }
 
         LateNightToolbar.Toolbar {
             id: toolbar
 
             applicationMenuActions: applicationMenuActions
             show4decksAvailable: root.height > 515
-            width: parent.width
+
+            // When waveforms -> own pane
+            // toolbar not above waveforms
+
+            x: root.waveformsSeparate ? layoutArea.innerAreaX : 0
+            y: 0
+            width: root.waveformsSeparate ? layoutArea.innerAreaWidth : parent.width
 
             onFocusLibrarySearchRequested: root.focusLegacyLibrarySearch()
         }
-        SplitView {
-            id: splitView
 
-            height: parent.height - y
-            orientation: Qt.Vertical
+        //////////////////////////////////////////////////////////////////////////////
+        // Layout area
+        //
+        // Waveforms can have their own pane (column) -> always on the outside (L/R)
+        // inner content/area = Controls + Library (in any form)
+        //
+        // Waveforms can be outer left (default) or outer right
+        // So it can be
+        // - W -spliter- (C & L) or (C & L) -splitter- W
+        //
+        // - Controls & Library can be split too,
+        //   Library can be left or right (default) of controls
+        // So it can be
+        // - W -spliter- (C -splitter- L) or (C -splitter- L) -splitter- W
+        // - W -spliter- (L -splitter- C) or (L -splitter- C) -splitter- W
+        //
+        // - If waveforms is in separate pane an extra spacer is added to be able
+        //   to resize the waveforms, eg for a 720 wide screen above mixer
+        //   Waveforms are Top V-Aligned
+        // - When Controls & Library are SplitView
+        //   - Library takes full colymn height
+        //   - Controls are Top V-Aligned
+        ////////////////////////////////////////////////////////////////////////////
+
+        Item {
+            id: layoutArea
+
+            x: 0
+            y: 0
             width: parent.width
+            height: parent.height
 
-            handle: Rectangle {
-                id: handleDelegate
+            // vertical offset for inner content below the toolbar.
+            readonly property real contentTop: toolbar.height
 
-                readonly property bool pressed: splitView.resizing || T.SplitHandle.pressed
+            // width waveform column (if separated & shown).
+            readonly property real waveformOccupiedWidth: (root.waveformsSeparate && waveforms.shown)
+                    ? (waveformColumnHandle.width + root.waveformPaneWidth)
+                    : 0
 
-                clip: true
-                color: LateNightTheme.libraryPanelSplitterBackground
-                implicitHeight: 9
-                implicitWidth: 8
+            // left edge of the inner area (controls + library).
+            readonly property real innerAreaX: (root.waveformsSeparate && waveforms.shown && !root.waveformsRight)
+                    ? (waveformColumnHandle.width + root.waveformPaneWidth)
+                    : 0
 
-                containmentMask: Item {
-                    height: 12
-                    width: splitView.width
-                    x: (handleDelegate.width - width) / 2
-                }
+            // width of the inner area.
+            readonly property real innerAreaWidth: Math.max(0, width - waveformOccupiedWidth)
 
-                Image {
-                    anchors.centerIn: parent
-                    fillMode: Image.PreserveAspectFit
-                    source: handleDelegate.pressed
-                            ? LateNightTheme.assetWaveformSplitterHandlePressed
-                            : LateNightTheme.assetWaveformSplitterHandle
-                }
-            }
-
+            //////////////////////////////////////////////////////////////////
+            // waveforms column
+            // - stacked mode -> below toolbar, height = waveformPaneHeight
+            // - separate mode -> own column, full height beside toolbar,
+            //   left or right
+            //////////////////////////////////////////////////////////////////
             LateNightWaveforms.WaveformStack {
                 id: waveforms
 
-                readonly property bool shouldShow: root.showWaveforms && !root.layoutMaximizedLibrary
-                property real lastVisiblePreferredHeight: Math.max(120, minimumContentHeight)
-                readonly property real paneMinimumHeight: waveformsMinimumHeightAnimation.value
-                readonly property real panePreferredHeight: waveformsPreferredHeightAnimation.value
+                readonly property bool horizontalLayout: root.waveformsSeparate
+                readonly property bool shown: root.showWaveforms && !root.maximizeLibrary
 
-                SplitView.fillHeight: !library.active
-                SplitView.minimumHeight: paneMinimumHeight
-                implicitHeight: panePreferredHeight
-                layoutTransitioning: root.bigLibraryTransition
-                splitterResizing: splitView.resizing
                 show4decks: root.show4decks
-                visible: panePreferredHeight > 0
-                opacity: shouldShow && !root.bigLibraryTransition ? 1 : 0
-                clip: true
+                visible: shown
 
-                Component.onCompleted: SplitView.preferredHeight = panePreferredHeight
-                onHeightChanged: {
-                    if (shouldShow && splitterResizing)
-                        lastVisiblePreferredHeight = height;
-                }
-                onPanePreferredHeightChanged: {
-                    if (!splitterResizing)
-                        SplitView.preferredHeight = panePreferredHeight;
-                }
+                x: horizontalLayout
+                        ? (shown
+                           ? (root.waveformsRight
+                              ? waveformColumnHandle.x + waveformColumnHandle.width
+                              : 0)
+                           : 0)
+                        : 0
+                y: horizontalLayout ? 0 : layoutArea.contentTop
+                width: horizontalLayout
+                        ? (shown
+                           ? (root.waveformsRight
+                              ? Math.max(0, layoutArea.width - waveformColumnHandle.x - waveformColumnHandle.width)
+                              : Math.max(0, waveformColumnHandle.x))
+                           : 0)
+                        : layoutArea.width
+                height: horizontalLayout
+                        ? (shown ? root.waveformPaneHeight : 0)
+                        : (shown
+                           ? Math.max(0, waveformRowHandle.y - layoutArea.contentTop)
+                           : 0)
 
-                LayoutAnimation {
-                    id: waveformsMinimumHeightAnimation
-
-                    targetValue: waveforms.shouldShow ? waveforms.minimumContentHeight : 0
-                    animationEnabled: LateNightTheme.layoutAnimationsEnabled && !waveforms.splitterResizing
-                    duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 180
-                }
-                LayoutAnimation {
-                    id: waveformsPreferredHeightAnimation
-
-                    targetValue: waveforms.shouldShow
-                            ? Math.max(waveforms.lastVisiblePreferredHeight, waveforms.minimumContentHeight) : 0
-                    animationEnabled: LateNightTheme.layoutAnimationsEnabled && !waveforms.splitterResizing
-                    duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 180
-                }
-                Behavior on opacity {
-                    enabled: LateNightTheme.layoutAnimationsEnabled
-
-                    NumberAnimation {
-                        id: waveformsOpacityAnimation
-
-                        duration: root.bigLibraryTransition || root.bigLibraryFadeIn ? root.bigLibraryFadeDuration : 120
-                    }
+                Skin.FadeBehavior on visible {
+                    fadeTarget: waveforms
                 }
             }
+
+            //////////////////////////////////////////////////////////////////
+            // Horizontal splitter (=handle) INSIDE the waveform column
+            // (separate mode only).
+            // at waveforms.y + waveformPaneHeight at the bottom
+            // of the waveform column
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformColumnHeightHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitVCursor
+                visible: root.waveformsSeparate && waveforms.shown
+                x: waveforms.x
+                y: waveforms.y + root.waveformPaneHeight
+                width: waveforms.width
+                height: 8
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.y + waveformColumnHeightHandle.y;
+                    dragStartSize = root.waveformPaneHeight;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dy = (mouse.y + waveformColumnHeightHandle.y) - dragStartPos;
+                    const maxH = layoutArea.height - 80;
+                    root.waveformPaneHeight = Math.max(80, Math.min(maxH, dragStartSize + dy));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformColumnHeightHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // Blank spacer below the horizontal handle in the waveform column
+            //////////////////////////////////////////////////////////////////
+            Item {
+                id: waveformColumnSpacer
+
+                visible: root.waveformsSeparate && waveforms.shown
+                x: waveforms.x
+                y: waveformColumnHeightHandle.y + waveformColumnHeightHandle.height
+                width: waveforms.width
+                height: Math.max(0, layoutArea.height - y)
+            }
+
+            ////////////////////////////////////////////////////////////////////
+            // vertical splitter (=handle) BETWEEN waveforms and the inner area
+            // (separate mode only) spanning the full window height
+            // no toolbar
+            ////////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformColumnHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitHCursor
+                visible: root.waveformsSeparate && waveforms.shown
+                x: root.waveformsRight
+                        ? (layoutArea.width - root.waveformPaneWidth - width)
+                        : root.waveformPaneWidth
+                y: 0
+                width: 8
+                height: layoutArea.height
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.x + waveformColumnHandle.x;
+                    dragStartSize = root.waveformPaneWidth;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dx = (mouse.x + waveformColumnHandle.x) - dragStartPos;
+                    const effectiveDx = root.waveformsRight ? -dx : dx;
+                    const maxW = layoutArea.width - 200;
+                    root.waveformPaneWidth = Math.max(120, Math.min(maxW, dragStartSize + effectiveDx));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformColumnHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // Vertical handle in STACKED mode (1-pane = default layout)
+            // between waveforms and the deck pane. Sits below the toolbar.
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: waveformRowHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitVCursor
+                visible: !root.waveformsSeparate && waveforms.shown
+                x: 0
+                y: layoutArea.contentTop + root.waveformPaneHeight
+                width: layoutArea.width
+                height: 8
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.y + waveformRowHandle.y;
+                    dragStartSize = root.waveformPaneHeight;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dy = (mouse.y + waveformRowHandle.y) - dragStartPos;
+                    const maxH = layoutArea.height - 200;
+                    root.waveformPaneHeight = Math.max(60, Math.min(maxH, dragStartSize + dy));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: waveformRowHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // vertical handle for the Library column
+            // -> inside the inner area (C & L), using libraryRight directly
+            // -> under the toolbar
+            //////////////////////////////////////////////////////////////////
+            MouseArea {
+                id: libraryColumnHandle
+
+                property real dragStartPos: 0
+                property real dragStartSize: 0
+
+                cursorShape: Qt.SplitHCursor
+                visible: root.librarySeparate
+                x: root.libraryRight
+                        ? (layoutArea.innerAreaX + layoutArea.innerAreaWidth - root.libraryPaneWidth - width)
+                        : (layoutArea.innerAreaX + root.libraryPaneWidth)
+                y: layoutArea.contentTop
+                width: 8
+                height: layoutArea.height - layoutArea.contentTop
+
+                onPressed: function(mouse) {
+                    dragStartPos = mouse.x + libraryColumnHandle.x;
+                    dragStartSize = root.libraryPaneWidth;
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) {
+                        return;
+                    }
+                    const dx = (mouse.x + libraryColumnHandle.x) - dragStartPos;
+                    const effectiveDx = root.libraryRight ? -dx : dx;
+                    const maxW = layoutArea.innerAreaWidth - 200;
+                    root.libraryPaneWidth = Math.max(120, Math.min(maxW, dragStartSize + effectiveDx));
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: libraryColumnHandle.pressed
+                            ? LateNightTheme.libraryPanelSplitterHandleActive
+                            : LateNightTheme.libraryPanelSplitterBackground
+                }
+            }
+
+            //////////////////////////////////////////////////////////////////
+            // deckpane (decks + mixer + effects + samplers + mic/aux)
+            // Top V-aligned, spacer fills the space left over in the inner
+            // area under the Library
+            // If Library is separated column fills the space
+            // Under toolbar
+            //////////////////////////////////////////////////////////////////
             Rectangle {
                 id: deckPane
 
                 color: LateNightTheme.layoutGutterColor
-                property real deckRowExpansion: root.show4decks ? 1 : 0
-                readonly property real deckRowCount: 1 + Math.max(0, deckRowExpansion)
+                readonly property int deckRowCount: root.show4decks ? 2 : 1
                 readonly property real basePaneHeight: Math.max(deckRowsHeight, mixerLayoutVisible ? mixer.implicitHeight + LateNightTheme.deckRowGutter : 0)
                 readonly property real deckRowHeight: visibleDeckHeight > 0
                         ? (deckStackHeight - LateNightTheme.deckRowGutter * (deckRowCount - 1)) / deckRowCount
                         : 0
                 readonly property real deckRowsHeight: visibleDeckHeight > 0
-                        ? (visibleDeckHeight + LateNightTheme.deckRowGutter) * deckRowCount
+                        ? visibleDeckHeight * (root.show4decks ? 2 : 1) + LateNightTheme.deckRowGutter * (root.show4decks ? 2 : 1)
                         : 0
-                property real deckSideMargin: root.showMixer && !root.layoutMaximizedLibrary ? LateNightTheme.deckMixerGutter : 2
+                readonly property int deckSideMargin: root.showMixer && !root.maximizeLibrary ? LateNightTheme.deckMixerGutter : 2
                 readonly property real deckStackHeight: basePaneHeight - LateNightTheme.deckRowGutter
-                readonly property bool mixerLayoutVisible: root.showMixer && !root.layoutMaximizedLibrary
+                readonly property bool mixerLayoutVisible: root.showMixer && !root.maximizeLibrary
                 readonly property real requiredPaneHeight: basePaneHeight + effectsSection.height + samplersSection.height + micAuxSection.height
-                property real visibleDeckHeight: root.layoutMaximizedLibrary ? (root.showMaximizedDecks ? LateNightTheme.miniDeckHeight : 0) : root.activeDeckHeight
+                readonly property real visibleDeckHeight: root.maximizeLibrary ? (root.showMaximizedDecks ? LateNightTheme.miniDeckHeight : 0) : root.activeDeckHeight
 
-                SplitView.fillHeight: library.active
-                SplitView.maximumHeight: library.active ? undefined : requiredPaneHeight
-                SplitView.minimumHeight: requiredPaneHeight
-                implicitHeight: requiredPaneHeight
-                width: splitView.width
+                // offset from top of deckpane to Library area
+                // when librarySeparate = false.
+                readonly property real libraryTopOffset: micAuxSection.y + micAuxSection.height
 
-                Behavior on visibleDeckHeight {
-                    enabled: LateNightTheme.layoutAnimationsEnabled
-
-                    NumberAnimation {
-                        id: deckHeightAnimation
-
-                        duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration
-                                : root.deckModeTransition ? root.deckModeTransitionDuration : 250
-                        easing.type: Easing.OutCubic
+                x: {
+                    if (root.librarySeparate && !root.libraryRight) {
+                        return libraryColumnHandle.x + libraryColumnHandle.width;
                     }
+                    return layoutArea.innerAreaX;
                 }
-                Behavior on deckRowExpansion {
-                    enabled: LateNightTheme.layoutAnimationsEnabled
-
-                    NumberAnimation {
-                        id: deckRowExpansionAnimation
-
-                        duration: 120
-                        easing.type: Easing.OutCubic
+                y: (!root.waveformsSeparate && waveforms.shown)
+                        ? (waveformRowHandle.y + waveformRowHandle.height)
+                        : layoutArea.contentTop
+                width: {
+                    let w = layoutArea.innerAreaWidth;
+                    if (root.librarySeparate) {
+                        w -= libraryColumnHandle.width + root.libraryPaneWidth;
                     }
+                    return Math.max(0, w);
                 }
-                Behavior on deckSideMargin {
-                    enabled: LateNightTheme.layoutAnimationsEnabled
-
-                    animation: root.bigLibraryTransition ? deckSideMarginLayoutAnimation : deckSideMarginSpringAnimation
-                }
-                NumberAnimation {
-                    id: deckSideMarginLayoutAnimation
-
-                    duration: root.bigLibraryTransitionDuration
-                    easing.type: Easing.OutCubic
-                }
-                SpringAnimation {
-                    id: deckSideMarginSpringAnimation
-
-                    damping: 0.2
-                    duration: 500
-                    spring: 2
-                }
+                height: (!root.waveformsSeparate && waveforms.shown)
+                        ? Math.max(0, layoutArea.height - y)
+                        : (layoutArea.height - layoutArea.contentTop)
 
                 Item {
                     id: deckFirstRowBottom
@@ -410,26 +524,25 @@ Item {
                 LateNightDeck.Deck {
                     id: deck1
 
-                    deckState: root.layoutMaximizedLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
+                    deckState: root.maximizeLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
                     editMode: root.editDeck
                     group: "[Channel1]"
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
-                    visible: !root.layoutMaximizedLibrary || root.showMaximizedDecks
+                    visible: !root.maximizeLibrary || root.showMaximizedDecks
                     onToggleFocus: {
                         root.focusedDeck = (root.focusedDeck === deck1) ? null : deck1;
                     }
 
                     anchors {
-                        bottom: deckFirstRowBottom.top
+                        bottom: root.show4decks ? deckFirstRowBottom.top : deckStackBottom.top
                         left: parent.left
                         right: mixer.left
-                        rightMargin: Math.max(2, deckPane.deckSideMargin)
+                        rightMargin: deckPane.deckSideMargin
                         top: parent.top
                     }
 
                     states: [
                         State {
-                            when: root.showCompactVuMeters && !root.layoutMaximizedLibrary
+                            when: root.showCompactVuMeters && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.right: compactVuSlot.left
@@ -437,7 +550,15 @@ Item {
                             }
                         },
                         State {
-                            when: root.layoutMaximizedLibrary
+                            when: !deckPane.mixerLayoutVisible && !root.showCompactVuMeters && !root.maximizeLibrary
+
+                            AnchorChanges {
+                                anchors.right: parent.horizontalCenter
+                                target: deck1
+                            }
+                        },
+                        State {
+                            when: root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.right: parent.horizontalCenter
@@ -445,24 +566,6 @@ Item {
                             }
                         }
                     ]
-                    transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        AnchorAnimation {
-                            id: deck1AnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 0
-                        }
-                    }
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: deck1OpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
                 }
                 Item {
                     id: compactVuSlot
@@ -470,31 +573,9 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     height: root.showCompactVuMeters ? deckPane.deckStackHeight : 0
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
-                    visible: root.showCompactVuMeters || compactVuSlotWidthAnimation.running
+                    visible: root.showCompactVuMeters
                     width: root.showCompactVuMeters ? LateNightTheme.compactVuSlotWidth : 0
                     z: 10
-
-                    Behavior on width {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: compactVuSlotWidthAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration
-                                    : root.deckModeTransition ? root.deckModeTransitionDuration : 250
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: compactVuSlotOpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -512,27 +593,15 @@ Item {
 
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
-                    clip: true
                     groups: [deck1.group, deck2.group, deck3.group, deck4.group]
-                    height: deckPane.mixerLayoutVisible || mixer.width > 0 ? deckPane.deckStackHeight : 0
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
+                    height: deckPane.mixerLayoutVisible ? deckPane.deckStackHeight : 0
                     show4decks: root.show4decks
-                    visible: deckPane.mixerLayoutVisible || mixer.width > 0
+                    visible: root.showMixer && !root.maximizeLibrary
                     width: deckPane.mixerLayoutVisible ? implicitWidth : 0
-
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: mixerOpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
 
                     states: [
                         State {
-                            when: root.showMixer && root.focusedDeck === deck1 && root.width < 1400 && !root.layoutMaximizedLibrary
+                            when: root.showMixer && root.focusedDeck === deck1 && root.width < 1400 && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.right
@@ -544,7 +613,7 @@ Item {
                             }
                         },
                         State {
-                            when: root.showMixer && root.focusedDeck === deck2 && root.width < 1400 && !root.layoutMaximizedLibrary
+                            when: root.showMixer && root.focusedDeck === deck2 && root.width < 1400 && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.left
@@ -556,7 +625,7 @@ Item {
                             }
                         },
                         State {
-                            when: root.showMixer && (!root.focusedDeck || root.width > 1400) && !root.layoutMaximizedLibrary
+                            when: root.showMixer && (!root.focusedDeck || root.width > 1400) && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -572,7 +641,7 @@ Item {
                             }
                         },
                         State {
-                            when: root.layoutMaximizedLibrary
+                            when: root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -589,56 +658,45 @@ Item {
                         }
                     ]
                     transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
                         AnchorAnimation {
-                            id: mixerAnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 200
+                            duration: 200
                         }
                     }
+                    Skin.FadeBehavior on visible {
+                        fadeTarget: mixer
+                    }
                     Behavior on width {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
+                        SpringAnimation {
+                            id: mixerWidthAnimation
 
-                        animation: root.bigLibraryTransition ? mixerLibraryWidthAnimation : mixerWidthAnimation
-                    }
-                    NumberAnimation {
-                        id: mixerLibraryWidthAnimation
-
-                        duration: root.bigLibraryTransitionDuration
-                        easing.type: Easing.OutCubic
-                    }
-                    SpringAnimation {
-                        id: mixerWidthAnimation
-
-                        damping: 0.2
-                        duration: 500
-                        spring: 2
+                            damping: 0.2
+                            duration: 500
+                            spring: 2
+                        }
                     }
                 }
                 LateNightDeck.Deck {
                     id: deck2
 
-                    deckState: root.layoutMaximizedLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
+                    deckState: root.maximizeLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
                     editMode: root.editDeck
                     group: "[Channel2]"
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
-                    visible: !root.layoutMaximizedLibrary || root.showMaximizedDecks
+                    visible: !root.maximizeLibrary || root.showMaximizedDecks
                     onToggleFocus: {
                         root.focusedDeck = (root.focusedDeck === deck2) ? null : deck2;
                     }
 
                     anchors {
-                        bottom: deckFirstRowBottom.top
+                        bottom: root.show4decks ? deckFirstRowBottom.top : deckStackBottom.top
                         left: mixer.right
-                        leftMargin: Math.max(2, deckPane.deckSideMargin)
+                        leftMargin: deckPane.deckSideMargin
                         right: parent.right
                         top: parent.top
                     }
 
                     states: [
                         State {
-                            when: root.showCompactVuMeters && !root.layoutMaximizedLibrary
+                            when: root.showCompactVuMeters && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.left: compactVuSlot.right
@@ -646,7 +704,15 @@ Item {
                             }
                         },
                         State {
-                            when: root.layoutMaximizedLibrary
+                            when: !deckPane.mixerLayoutVisible && !root.showCompactVuMeters && !root.maximizeLibrary
+
+                            AnchorChanges {
+                                anchors.left: parent.horizontalCenter
+                                target: deck2
+                            }
+                        },
+                        State {
+                            when: root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.left: parent.horizontalCenter
@@ -654,54 +720,25 @@ Item {
                             }
                         }
                     ]
-                    transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        AnchorAnimation {
-                            id: deck2AnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 0
-                        }
-                    }
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: deck2OpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
                 }
                 Loader {
                     id: deck3
 
                     readonly property string group: "[Channel3]"
-                    readonly property bool shouldShow: root.show4decks && (!root.layoutMaximizedLibrary || root.showMaximizedDecks)
 
-                    active: shouldShow || opacity > 0
+                    active: root.show4decks && (!root.maximizeLibrary || root.showMaximizedDecks)
                     clip: true
-                    opacity: shouldShow && !root.bigLibraryTransition && !root.deckModeTransition ? 1 : 0
                     sourceComponent: Component {
                         LateNightDeck.Deck {
                             anchors.fill: parent
-                            deckState: root.layoutMaximizedLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
+                            deckState: root.maximizeLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
                             editMode: root.editDeck
                             group: deck3.group
                         }
                     }
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: deck3OpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
                     states: [
                         State {
-                            when: root.showCompactVuMeters && !root.layoutMaximizedLibrary
+                            when: root.showCompactVuMeters && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.right: compactVuSlot.left
@@ -709,7 +746,15 @@ Item {
                             }
                         },
                         State {
-                            when: root.layoutMaximizedLibrary
+                            when: !deckPane.mixerLayoutVisible && !root.showCompactVuMeters && !root.maximizeLibrary
+
+                            AnchorChanges {
+                                anchors.right: parent.horizontalCenter
+                                target: deck3
+                            }
+                        },
+                        State {
+                            when: root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.right: parent.horizontalCenter
@@ -717,54 +762,34 @@ Item {
                             }
                         }
                     ]
-                    transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        AnchorAnimation {
-                            id: deck3AnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 0
-                        }
-                    }
 
                     anchors {
                         bottom: deckStackBottom.top
                         left: parent.left
                         right: mixer.left
-                        rightMargin: Math.max(2, deckPane.deckSideMargin)
+                        rightMargin: deckPane.deckSideMargin
                         top: deckFirstRowBottom.bottom
-                        topMargin: LateNightTheme.deckRowGutter * Math.max(0, deckPane.deckRowExpansion)
+                        topMargin: LateNightTheme.deckRowGutter
                     }
                 }
                 Loader {
                     id: deck4
 
                     readonly property string group: "[Channel4]"
-                    readonly property bool shouldShow: root.show4decks && (!root.layoutMaximizedLibrary || root.showMaximizedDecks)
 
-                    active: shouldShow || opacity > 0
+                    active: root.show4decks && (!root.maximizeLibrary || root.showMaximizedDecks)
                     clip: true
-                    opacity: shouldShow && !root.bigLibraryTransition && !root.deckModeTransition ? 1 : 0
                     sourceComponent: Component {
                         LateNightDeck.Deck {
                             anchors.fill: parent
-                            deckState: root.layoutMaximizedLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
+                            deckState: root.maximizeLibrary ? LateNightDeck.Deck.Mini : root.activeDeckState
                             editMode: root.editDeck
                             group: deck4.group
                         }
                     }
-                    Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        NumberAnimation {
-                            id: deck4OpacityAnimation
-
-                            duration: root.deckModeTransition && !root.bigLibraryTransition ? 0 : root.bigLibraryFadeDuration
-                        }
-                    }
                     states: [
                         State {
-                            when: root.showCompactVuMeters && !root.layoutMaximizedLibrary
+                            when: root.showCompactVuMeters && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.left: compactVuSlot.right
@@ -772,7 +797,15 @@ Item {
                             }
                         },
                         State {
-                            when: root.layoutMaximizedLibrary
+                            when: !deckPane.mixerLayoutVisible && !root.showCompactVuMeters && !root.maximizeLibrary
+
+                            AnchorChanges {
+                                anchors.left: parent.horizontalCenter
+                                target: deck4
+                            }
+                        },
+                        State {
+                            when: root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.left: parent.horizontalCenter
@@ -780,99 +813,74 @@ Item {
                             }
                         }
                     ]
-                    transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        AnchorAnimation {
-                            id: deck4AnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 0
-                        }
-                    }
 
                     anchors {
                         bottom: deckStackBottom.top
                         left: mixer.right
-                        leftMargin: Math.max(2, deckPane.deckSideMargin)
+                        leftMargin: deckPane.deckSideMargin
                         right: parent.right
                         top: deckFirstRowBottom.bottom
-                        topMargin: LateNightTheme.deckRowGutter * Math.max(0, deckPane.deckRowExpansion)
+                        topMargin: LateNightTheme.deckRowGutter
                     }
                 }
-
-                // Skin.SamplerRow {
-                //     id: samplers
-                //     visible: root.showSamplers
-                //     width: parent.width
-
-                //     Skin.FadeBehavior on visible {
-                //         fadeTarget: samplers
-                //     }
-                // }
                 Item {
                     id: effectsSection
 
                     clip: true
-                    height: root.showEffects && !root.layoutMaximizedLibrary ? effectsRack.implicitHeight : 0
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
+                    height: root.showEffects && !root.maximizeLibrary ? effectsRack.implicitHeight : 0
+                    opacity: root.showEffects && !root.maximizeLibrary ? 1 : 0
                     visible: height > 0
                     width: parent.width
                     y: deckPane.basePaneHeight
                     z: 2
 
                     Behavior on height {
-                        enabled: LateNightTheme.layoutAnimationsEnabled && (!root.bigLibraryTransition || root.bigLibraryEffectsRestoreActive)
-
-                        SpringAnimation {
-                            damping: 0.2
-                            duration: root.bigLibraryEffectsRestoreActive ? 180 : 500
-                            spring: 2
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
                         NumberAnimation {
-                            id: effectsSectionOpacityAnimation
-
-                            duration: 60
+                            duration: 120
                         }
                     }
+
                     LateNightEffects.EffectsRack {
                         id: effectsRack
 
                         anchors.fill: parent
+                        leftUnitEnd: deckPane.mixerLayoutVisible || root.showCompactVuMeters
+                                ? Math.round((effectsRack.width - effectsRack.unitSpacing) / 2)
+                                : deck1.x + deck1.width
+                        rightUnitStart: deckPane.mixerLayoutVisible || root.showCompactVuMeters
+                                ? Math.round((effectsRack.width + effectsRack.unitSpacing) / 2)
+                                : deck2.x
                     }
                 }
                 Item {
                     id: samplersSection
 
                     clip: true
-                    height: root.showSamplers && !root.layoutMaximizedLibrary ? samplers.implicitHeight : 0
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
+                    height: root.showSamplers && !root.maximizeLibrary ? samplers.implicitHeight : 0
+                    opacity: root.showSamplers && !root.maximizeLibrary ? 1 : 0
                     visible: height > 0
                     width: parent.width
                     y: effectsSection.y + effectsSection.height
                     z: 2
 
                     Behavior on height {
-                        enabled: LateNightTheme.layoutAnimationsEnabled && !root.bigLibraryTransition
-
-                        SpringAnimation {
-                            damping: 0.2
-                            duration: 500
-                            spring: 2
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
                         NumberAnimation {
-                            id: samplersSectionOpacityAnimation
-
-                            duration: 60
+                            duration: 120
                         }
                     }
+
                     LateNightSamplers.SamplersRack {
                         id: samplers
 
@@ -883,90 +891,95 @@ Item {
                     id: micAuxSection
 
                     clip: true
-                    height: root.showMicAux && !root.layoutMaximizedLibrary ? micAuxRack.implicitHeight : 0
-                    opacity: root.bigLibraryTransition || root.deckModeTransition ? 0 : 1
+                    height: root.showMicAux && !root.maximizeLibrary ? micAuxRack.implicitHeight : 0
+                    opacity: root.showMicAux && !root.maximizeLibrary ? 1 : 0
                     visible: height > 0
                     width: parent.width
                     y: samplersSection.y + samplersSection.height
                     z: 2
 
                     Behavior on height {
-                        enabled: LateNightTheme.layoutAnimationsEnabled && !root.bigLibraryTransition
-
-                        SpringAnimation {
-                            damping: 0.2
-                            duration: 500
-                            spring: 2
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
                         NumberAnimation {
-                            id: micAuxSectionOpacityAnimation
-
-                            duration: 60
+                            duration: 120
                         }
                     }
+
                     LateNightMicAux.MicAuxRack {
                         id: micAuxRack
 
                         anchors.fill: parent
                     }
                 }
-                Loader {
-                    id: library
+            }
 
-                    active: true
-                    width: parent.width
+            ///////////////////////////////////////////////////////////
+            // Library
+            // - librarySeparate = false
+            //   -> Library under Controls
+            //
+            // - librarySeparate = true
+            //   -> full-height column inside the
+            //   inner area, at the outside decided by libraryRight,
+            //   under the toolbar.
+            //////////////////////////////////////////////////////////
+            Loader {
+                id: library
 
-                    sourceComponent: Component {
-                        Library {
-                            anchors.fill: parent
-                        }
+                active: true
+
+                sourceComponent: Component {
+                    Library {
+                        anchors.fill: parent
                     }
-                    states: [
-                        State {
-                            when: root.layoutMaximizedLibrary && !root.showMaximizedDecks
+                }
 
-                            AnchorChanges {
-                                anchors.top: parent.top
-                                target: library
-                            }
-                        },
-                        State {
-                            when: root.layoutMaximizedLibrary && root.showMaximizedDecks && root.show4decks
+                x: root.librarySeparate
+                        ? (root.libraryRight
+                           ? libraryColumnHandle.x + libraryColumnHandle.width
+                           : layoutArea.innerAreaX)
+                        : deckPane.x
+                y: root.librarySeparate
+                        ? layoutArea.contentTop
+                        : (deckPane.y + deckPane.libraryTopOffset)
+                width: root.librarySeparate
+                        ? root.libraryPaneWidth
+                        : deckPane.width
+                height: root.librarySeparate
+                        ? (layoutArea.height - layoutArea.contentTop)
+                        : Math.max(0, deckPane.height - deckPane.libraryTopOffset)
+
+                states: [
+                    State {
+                        when: root.maximizeLibrary && !root.showMaximizedDecks
+
+                        AnchorChanges {
+                            anchors.top: parent.top
+                            target: library
+                        }
+                    },
+                    State {
+                        when: root.maximizeLibrary && root.showMaximizedDecks && root.show4decks
 
                             AnchorChanges {
                                 anchors.top: deck4.bottom
                                 target: library
                             }
-                        },
-                        State {
-                            when: root.layoutMaximizedLibrary && root.showMaximizedDecks && !root.show4decks
+                    },
+                    State {
+                        when: root.maximizeLibrary && root.showMaximizedDecks && !root.show4decks
 
                             AnchorChanges {
                                 anchors.top: deck1.bottom
                                 target: library
                             }
-                        }
-                    ]
-                    transitions: Transition {
-                        enabled: LateNightTheme.layoutAnimationsEnabled
-
-                        AnchorAnimation {
-                            id: libraryAnchorAnimation
-
-                            duration: root.bigLibraryTransition ? root.bigLibraryTransitionDuration : 100
-                            easing.type: Easing.OutCubic
-                        }
                     }
-
-                    anchors {
-                        bottom: parent.bottom
-                        top: micAuxSection.bottom
-                    }
-                }
+                ]
             }
         }
     }
