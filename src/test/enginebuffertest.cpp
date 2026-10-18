@@ -623,6 +623,62 @@ class RateControlRampTest : public MockedEngineBackendTest {
         RateControl::setRateRampMode(RateControl::RampMode::Stepping);
         RateControl::setRampUpTimeFactor(1.0);
         RateControl::setRampDownTimeFactor(1.0);
+        RateControl::setBackspinOnReverse(false);
+        RateControl::setBackspinRevPerSec(1.0);
+        RateControl::setBackspinToHotcue(false);
+        RateControl::setBackspinPlayOn(true);
+    }
+
+    mixxx::audio::FramePos playPos() const {
+        return m_pChannel1->getEngineBuffer()->getPlayPos();
+    }
+
+    // Sets hotcue 1 at the given play position
+    void setHotcue1(double playposition) {
+        ControlObject::set(ConfigKey(m_sGroup1, "playposition"), playposition);
+        ProcessBuffer();
+        ControlObject::set(ConfigKey(m_sGroup1, "hotcue_1_set"), 1.0);
+        ControlObject::set(ConfigKey(m_sGroup1, "hotcue_1_set"), 0.0);
+    }
+
+    mixxx::audio::FramePos hotcue1() const {
+        return mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                ControlObject::get(ConfigKey(m_sGroup1, "hotcue_1_position")));
+    }
+
+    // Backspin, then returns the play position when full speed is reached
+    mixxx::audio::FramePos backspinUntilFullSpeed() {
+        const double fullSpeed = speed();
+        tapReverse();
+        auto position = playPos();
+        bool rampedDown = false;
+        for (int i = 0; i < 100000; ++i) {
+            const auto before = playPos();
+            ProcessBuffer();
+            if (speed() < fullSpeed) {
+                rampedDown = true;
+            } else if (rampedDown) {
+                position = before;
+                break;
+            }
+        }
+        return position;
+    }
+
+    // Press and release the reverse button
+    void tapReverse() {
+        ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 1.0);
+        ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 0.0);
+    }
+
+    // Processes until the deck stops going backwards, returns the buffers
+    int buffersUntilForwardOrStill() {
+        int buffers = 0;
+        do {
+            ProcessBuffer();
+            ++buffers;
+        } while (speed() < 0.0 && buffers < 100000);
+        return buffers;
     }
 
     double speed(const QString& group) const {
@@ -904,4 +960,411 @@ TEST_F(RateControlRampTest, DisablingRampLetsRunningRampFinish) {
     ControlObject::set(ConfigKey(m_sGroup1, "play"), 0.0);
     ProcessBuffer();
     EXPECT_EQ(0.0, speed());
+}
+
+TEST_F(RateControlRampTest, ReverseButtonPlaysReverseByDefault) {
+    playAtFullSpeed();
+    ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 1.0);
+    ProcessBuffer();
+    EXPECT_EQ(-1.0, speed());
+    ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 0.0);
+    ProcessBuffer();
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, BackspinMotorPullsPlatterForward) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    tapReverse();
+    ProcessBuffer();
+    // The hand flicks gradually, no instant direction change
+    EXPECT_GT(speed(), 0.0);
+    EXPECT_LT(speed(), 1.0);
+    processSeconds(0.1);
+    // 1 rev/s at 33 RPM, slightly slowed down by the motor already
+    EXPECT_LT(speed(), -1.6);
+    EXPECT_GT(speed(), -1.8);
+    EXPECT_TRUE(m_pChannel1->getEngineBuffer()->getScratching());
+
+    const auto expected = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0);
+    const int buffers = buffersUntilForwardOrStill() + 1 +
+            static_cast<int>(std::ceil(0.1 / bufferSeconds()));
+    EXPECT_NEAR(expected.backwardTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_EQ(1.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+
+    // The motor spins the platter up to full speed again
+    processSeconds(expected.recoverTime - expected.backwardTime + 0.1);
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, BackspinTimesMatchPreferenceLabel) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setRampUpTimeFactor(2.0);
+    tapReverse();
+    int buffers = 0;
+    do {
+        ProcessBuffer();
+        ++buffers;
+    } while (speed() < 1.0 && buffers < 100000);
+    const auto expected = RateControl::backspinTimes(0, true, 0, 1.0, 2.0, 1.0);
+    EXPECT_NEAR(expected.recoverTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+}
+
+TEST_F(RateControlRampTest, StopDuringBackspinBrakes) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    tapReverse();
+    processSeconds(0.1);
+    ASSERT_LT(speed(), 0.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "play"), 0.0);
+    const int buffers = buffersUntilForwardOrStill();
+    // Brake + friction stop the platter faster than the motor would
+    const auto motorOn = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0);
+    EXPECT_LT(buffers * bufferSeconds() + 0.1, motorOn.backwardTime);
+    EXPECT_EQ(0.0, speed());
+    processSeconds(0.5);
+    EXPECT_EQ(0.0, speed());
+}
+
+TEST_F(RateControlRampTest, BackspinOnStoppedDeckPowerCut) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    ProcessBuffer();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setRampDownMode(1);
+    tapReverse();
+    const int buffers = buffersUntilForwardOrStill();
+    const auto expected = RateControl::backspinTimes(0, false, 1, 1.0, 1.0, 1.0);
+    EXPECT_NEAR(expected.backwardTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+}
+
+TEST_F(RateControlRampTest, CensorReversesInBackspinMode) {
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    ControlObject::set(ConfigKey(m_sGroup1, "reverseroll"), 1.0);
+    ProcessBuffer();
+    EXPECT_EQ(-1.0, speed());
+    ControlObject::set(ConfigKey(m_sGroup1, "reverseroll"), 0.0);
+    ProcessBuffer();
+    ProcessBuffer();
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, HeldReverseDoesNotReverseInBackspinMode) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinRevPerSec(0.25);
+    ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 1.0);
+    processSeconds(5.0);
+    // The short backspin is over, the deck plays forward although reverse is held
+    EXPECT_EQ(1.0, speed());
+    ControlObject::set(ConfigKey(m_sGroup1, "reverse"), 0.0);
+}
+
+TEST_F(RateControlRampTest, ScratchCatchesBackspin) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    tapReverse();
+    processSeconds(0.2);
+    ASSERT_LT(speed(), 0.0);
+    // Hand on the record
+    ControlObject::set(ConfigKey(m_sGroup1, "scratch2"), 0.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "scratch2_enable"), 1.0);
+    ProcessBuffer();
+    EXPECT_EQ(0.0, speed());
+    // Released: plays on, no backspin left
+    ControlObject::set(ConfigKey(m_sGroup1, "scratch2_enable"), 0.0);
+    ProcessBuffer();
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, BackspinPowerIsLimited) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinRevPerSec(10.0);
+    tapReverse();
+    double minSpeed = 0.0;
+    for (int i = 0; i < 200; ++i) {
+        ProcessBuffer();
+        minSpeed = std::min(minSpeed, speed());
+    }
+    const double maxSpeed = RateControl::maxBackspinRevPerSec() / (100.0 / 3.0 / 60.0);
+    EXPECT_GE(minSpeed, -maxSpeed - 1e-9);
+    EXPECT_LT(minSpeed, -maxSpeed + 0.2);
+}
+
+TEST_F(RateControlRampTest, BackspinLandsOnLastHotcue) {
+    // The fake track is 5 s long: hotcue at 0.5 s, backspin from 4 s
+    setHotcue1(0.1);
+    ASSERT_TRUE(hotcue1().isValid());
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    processSeconds(0.2);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    const auto landing = backspinUntilFullSpeed();
+    // Full speed exactly at the hotcue, within 1 ms
+    EXPECT_NEAR(hotcue1().value(), landing.value(), 44.1)
+            << "landed " << (landing - hotcue1()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, BackspinLandsOnLastHotcueWithPitch) {
+    ControlObject::set(ConfigKey(m_sGroup1, "rate_dir"), 1.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "rateRange"), 0.08);
+    ControlObject::set(ConfigKey(m_sGroup1, "rate"), 0.5); // +4 %
+    RateControl::setRampUpTimeFactor(1.5);
+    RateControl::setRampRpmMode(1);
+    setHotcue1(0.4);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    RateControl::setRampUpEnabled(false);
+    ControlObject::set(ConfigKey(m_sGroup1, "play"), 1.0);
+    processSeconds(0.2);
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    ASSERT_NEAR(1.04, speed(), 1e-9);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    const auto landing = backspinUntilFullSpeed();
+    EXPECT_NEAR(hotcue1().value(), landing.value(), 44.1)
+            << "landed " << (landing - hotcue1()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, HotcueOutOfReachUsesBackspinPower) {
+    // 45 RPM reaches less than 4 s back within the needle limit
+    // 1 rev/s at 45 RPM reaches less than 4 s back
+    RateControl::setRampRpmMode(1);
+    ASSERT_LT(RateControl::backspinHotcueReach(1, 1.0, 1.0), 4.0);
+    setHotcue1(0.02);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.9);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    tapReverse();
+    processSeconds(0.1);
+    // The configured 1 rev/s = -1.33x at 45 RPM, slightly slowed by the motor
+    EXPECT_LT(speed(), -1.2);
+    EXPECT_GT(speed(), -1.34);
+}
+
+TEST_F(RateControlRampTest, BackspinToHotcueCorrectsPitchChange) {
+    ControlObject::set(ConfigKey(m_sGroup1, "rate_dir"), 1.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "rateRange"), 0.08);
+    ControlObject::set(ConfigKey(m_sGroup1, "rate"), 0.5); // +4 %
+    setHotcue1(0.3);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    RateControl::setRampUpEnabled(false);
+    ControlObject::set(ConfigKey(m_sGroup1, "play"), 1.0);
+    processSeconds(0.2);
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    tapReverse();
+    processSeconds(0.3);
+    ASSERT_LT(speed(), 0.0);
+    // Pitch back to 0 % while spinning back: the spin-up covers less
+    // distance than predicted, the standstill correction makes up for it
+    ControlObject::set(ConfigKey(m_sGroup1, "rate"), 0.0);
+    auto before = playPos();
+    bool reachedStandstill = false;
+    for (int i = 0; i < 100000; ++i) {
+        before = playPos();
+        ProcessBuffer();
+        if (speed() >= 0.0) {
+            reachedStandstill = true;
+        }
+        if (reachedStandstill && speed() >= 1.0) {
+            break;
+        }
+    }
+    EXPECT_NEAR(hotcue1().value(), before.value(), 44.1)
+            << "landed " << (before - hotcue1()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, JumpAfterHotcueLandingIsNotSwallowed) {
+    setHotcue1(0.3);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    backspinUntilFullSpeed();
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.9);
+    ProcessBuffer();
+    EXPECT_NEAR(0.9, ControlObject::get(ConfigKey(m_sGroup1, "playposition")), 0.01);
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, HotcueReachGrowsWithBackspinPower) {
+    // Weak flick: the spin-up ends after the play position, no hotcue
+    // behind it can be reached
+    EXPECT_LT(RateControl::backspinHotcueReach(0, 1.0, 0.25), 0.0);
+    double previous = RateControl::backspinHotcueReach(0, 1.0, 0.5);
+    for (const double revPerSec : {1.0, 1.5, 2.0}) {
+        const double reach = RateControl::backspinHotcueReach(0, 1.0, revPerSec);
+        EXPECT_GT(reach, previous) << revPerSec << " rev/s";
+        previous = reach;
+    }
+    // Above the needle limit nothing changes
+    EXPECT_DOUBLE_EQ(RateControl::backspinHotcueReach(0, 1.0, 2.0),
+            RateControl::backspinHotcueReach(0, 1.0, 10.0));
+}
+
+TEST_F(RateControlRampTest, BackspinPowerLimitsHotcueLanding) {
+    // 1 rev/s at 33 RPM reaches about 1.3 s back
+    const double reach = RateControl::backspinHotcueReach(0, 1.0, 1.0);
+    ASSERT_GT(reach, 1.0);
+    ASSERT_LT(reach, 2.0);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(1.0);
+
+    // Hotcue 0.95 s back: lands, with less than the selected power
+    setHotcue1(0.65);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    processSeconds(0.2);
+    const auto landing = backspinUntilFullSpeed();
+    EXPECT_NEAR(hotcue1().value(), landing.value(), 44.1)
+            << "landed " << (landing - hotcue1()) / 44.1 << " ms off";
+
+    // Hotcue 3.2 s back: out of reach with 1 rev/s, normal backspin
+    ControlObject::set(ConfigKey(m_sGroup1, "hotcue_1_clear"), 1.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "hotcue_1_clear"), 0.0);
+    setHotcue1(0.2);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    ProcessBuffer();
+    processSeconds(0.2);
+    tapReverse();
+    processSeconds(0.1);
+    // The selected 1 rev/s = -1.8x at 33 RPM, slightly slowed by the motor
+    EXPECT_LT(speed(), -1.6);
+    EXPECT_GT(speed(), -1.8);
+}
+
+TEST_F(RateControlRampTest, BackspinWithoutSpinUpPlaysAtFullSpeedFromStandstill) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed(); // physical spin-up disabled
+    // Only applies with spin-up
+    RateControl::setRampUpTimeFactor(4.0);
+    RateControl::setBackspinOnReverse(true);
+    tapReverse();
+    processSeconds(0.1);
+    ASSERT_LT(speed(), 0.0);
+    // The motor still pulls the platter back, at standstill playback
+    // continues at full speed without a ramp
+    const int buffers = buffersUntilForwardOrStill() +
+            static_cast<int>(std::ceil(0.1 / bufferSeconds()));
+    EXPECT_EQ(1.0, speed());
+    const auto expected = RateControl::backspinTimes(0, true, 0, 1.0, 4.0, 1.0, false);
+    EXPECT_NEAR(expected.backwardTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_DOUBLE_EQ(expected.backwardTime, expected.recoverTime);
+    EXPECT_DOUBLE_EQ(expected.backwardTime,
+            RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0, false).backwardTime);
+}
+
+TEST_F(RateControlRampTest, BackspinToHotcueWithoutSpinUpStartsAtHotcue) {
+    // No spin-up run-up in front of the hotcue: reaches further back
+    EXPECT_GT(RateControl::backspinHotcueReach(0, 1.0, 1.0, false),
+            RateControl::backspinHotcueReach(0, 1.0, 1.0, true));
+    setHotcue1(0.35);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed(); // physical spin-up disabled
+    processSeconds(0.2);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    tapReverse();
+    bool spinningBack = false;
+    for (int i = 0; i < 100000; ++i) {
+        ProcessBuffer();
+        if (speed() < 0.0) {
+            spinningBack = true;
+        } else if (spinningBack && speed() == 1.0) {
+            break;
+        }
+    }
+    ASSERT_EQ(1.0, speed());
+    // Position where the first full speed buffer started
+    const double bufferFrames = bufferSeconds() * 44100.0;
+    const double start = playPos().value() - bufferFrames;
+    EXPECT_NEAR(hotcue1().value(), start, 44.1)
+            << "started " << (start - hotcue1().value()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, BackspinStaysPausedBrakes) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinPlayOn(false);
+    tapReverse();
+    ProcessBuffer();
+    // Paused with the flick
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+    processSeconds(0.1);
+    ASSERT_LT(speed(), 0.0);
+    const int buffers = buffersUntilForwardOrStill() + 1 +
+            static_cast<int>(std::ceil(0.1 / bufferSeconds()));
+    // A playing deck that is paused with the flick: no motor, the brake
+    // stops the platter
+    const auto expected = RateControl::backspinTimes(0, false, 0, 1.0, 1.0, 1.0, true, 1.0);
+    EXPECT_NEAR(expected.backwardTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_EQ(0.0, speed());
+    processSeconds(1.0);
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+}
+
+TEST_F(RateControlRampTest, PlayDuringStayPausedBackspinPlaysOn) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinPlayOn(false);
+    tapReverse();
+    processSeconds(0.2);
+    ASSERT_LT(speed(), 0.0);
+    // Play during the backspin switches the motor on again
+    ControlObject::set(ConfigKey(m_sGroup1, "play"), 1.0);
+    processSeconds(5.0);
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, BackspinStaysPausedOnLastHotcue) {
+    setHotcue1(0.4);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed();
+    processSeconds(0.2);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinPlayOn(false);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    ASSERT_GT(RateControl::backspinHotcueReach(0, 1.0, 2.0, true, false, 0, 1.0), 2.5);
+    tapReverse();
+    processSeconds(10.0);
+    // Parked on the hotcue, paused, ready to play
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+    EXPECT_NEAR(hotcue1().value(), playPos().value(), 44.1)
+            << "stopped " << (playPos() - hotcue1()) / 44.1 << " ms off";
 }

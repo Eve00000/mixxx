@@ -116,4 +116,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     double m_dRatePermCoarse;
     double m_dRatePermFine;
     void updateRampTimeLabels();
+    void loadBackspinSettings();
+    // Disables flicks that would throw the needle out of the groove
+    void updateBackspinChoices();
+    double backspinRevPerSec() const;
 };

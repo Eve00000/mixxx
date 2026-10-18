@@ -838,6 +838,109 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
              </property>
            </widget>
          </item>
+         <item row="19" column="0">
+           <widget class="QLabel" name="labelReverseButtonMode">
+             <property name="text">
+               <string>Reverse button</string>
+             </property>
+             <property name="buddy">
+               <cstring>radioButtonReversePlayback</cstring>
+             </property>
+           </widget>
+         </item>
+         <item row="19" column="1">
+           <widget class="QRadioButton" name="radioButtonReversePlayback">
+             <property name="toolTip">
+               <string>Plays the track backwards while the reverse button is held</string>
+             </property>
+             <property name="text">
+               <string>Reverse playback</string>
+             </property>
+             <attribute name="buttonGroup">
+               <string notr="true">buttonGroupReverseButtonMode</string>
+             </attribute>
+           </widget>
+         </item>
+         <item row="19" column="2">
+           <widget class="QRadioButton" name="radioButtonReverseBackspin">
+             <property name="toolTip">
+               <string>
+                 Pressing reverse flicks the record backwards. The motor of a playing deck pulls it forward again, pressing Stop during the backspin lets it brake or coast to a standstill (spin-down type).
+                 Censor (right click) still plays in reverse.
+               </string>
+             </property>
+             <property name="text">
+               <string>Backspin</string>
+             </property>
+             <attribute name="buttonGroup">
+               <string notr="true">buttonGroupReverseButtonMode</string>
+             </attribute>
+           </widget>
+         </item>
+         <item row="20" column="0">
+           <widget class="QLabel" name="labelBackspinPower">
+             <property name="text">
+               <string>Backspin power</string>
+             </property>
+             <property name="buddy">
+               <cstring>comboBoxBackspinRotation</cstring>
+             </property>
+           </widget>
+         </item>
+         <item row="20" column="1">
+           <widget class="QComboBox" name="comboBoxBackspinRotation">
+             <property name="toolTip">
+               <string>Backward rotation of the platter after the flick</string>
+             </property>
+           </widget>
+         </item>
+         <item row="20" column="2">
+           <widget class="QComboBox" name="comboBoxBackspinTime">
+             <property name="toolTip">
+               <string>Time for that rotation. Faster flicks would throw the needle out of the groove and are disabled.</string>
+             </property>
+           </widget>
+         </item>
+         <item row="21" column="1" colspan="2">
+           <widget class="QCheckBox" name="checkBoxBackspinPlayOn">
+             <property name="toolTip">
+               <string>
+                 Unchecked: the deck is paused with the backspin, the platter brakes or coasts to a standstill (spin-down type) and the deck stays paused.
+                 Checked: the motor pulls the platter forward again and the track plays on, with the physical spin-up if enabled, otherwise at full speed from the standstill.
+               </string>
+             </property>
+             <property name="text">
+               <string>Play on after the backspin</string>
+             </property>
+           </widget>
+         </item>
+         <item row="22" column="1" colspan="2">
+           <widget class="QLabel" name="labelBackspinValue">
+             <property name="wordWrap">
+               <bool>true</bool>
+             </property>
+           </widget>
+         </item>
+         <item row="23" column="1" colspan="2">
+           <widget class="QCheckBox" name="checkBoxBackspinToHotcue">
+             <property name="toolTip">
+               <string>
+                   The backspin power is chosen so that the deck lands exactly on the last hotcue behind the play position: playing on, it reaches full speed there; staying paused, the platter stops there.
+                   The backspin power above is the maximum. If the hotcue is too far back for it, a normal backspin with that power is done.
+                 </string>
+               </property>
+             <property name="text">
+               <string>Backspin to the last hotcue</string>
+             </property>
+           </widget>
+         </item>
+         <item row="24" column="1" colspan="2">
+           <widget class="QLabel" name="labelBackspinToHotcueValue">
+             <property name="wordWrap">
+               <bool>true</bool>
+             </property>
+           </widget>
+         </item>
        </layout>
       </item>
      </layout>
@@ -897,5 +1000,6 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
   <buttongroup name="buttonGroupSpeedBendBehavior"/>
   <buttongroup name="buttonGroupSyncMode"/>
   <buttongroup name="buttonGroupRampDownMode"/>
+  <buttongroup name="buttonGroupReverseButtonMode"/>
  </buttongroups>
 </ui>
