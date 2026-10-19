@@ -914,14 +914,49 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
              </property>
            </widget>
          </item>
+         <item row="22" column="0">
+           <widget class="QLabel" name="labelBackspinSlipmat">
+             <property name="text">
+               <string>Slipmat</string>
+             </property>
+             <property name="buddy">
+               <cstring>comboBoxBackspinSlipmat</cstring>
+             </property>
+           </widget>
+         </item>
          <item row="22" column="1" colspan="2">
+           <widget class="QComboBox" name="comboBoxBackspinSlipmat">
+             <property name="toolTip">
+               <string>
+                 None: the record lies on the platter, the backspin turns the heavy platter as well.
+                 Felt or plastic slipmat: only the light record is flicked, the platter keeps turning. Without the motor the slip friction stops the record quickly; with the motor on the record catches up with the turning platter in 50 % (felt) or 15 % (plastic) of the spin-up time of the motor.
+               </string>
+             </property>
+             <item>
+               <property name="text">
+                 <string>None (record on the platter)</string>
+               </property>
+             </item>
+             <item>
+               <property name="text">
+                 <string>Felt</string>
+               </property>
+             </item>
+             <item>
+               <property name="text">
+                 <string>Plastic</string>
+               </property>
+             </item>
+           </widget>
+         </item>
+         <item row="23" column="1" colspan="2">
            <widget class="QLabel" name="labelBackspinValue">
              <property name="wordWrap">
                <bool>true</bool>
              </property>
            </widget>
          </item>
-         <item row="23" column="1" colspan="2">
+         <item row="24" column="1" colspan="2">
            <widget class="QCheckBox" name="checkBoxBackspinToHotcue">
              <property name="toolTip">
                <string>
@@ -934,10 +969,24 @@ You can always drag-and-drop tracks on screen to clone a deck.</string>
              </property>
            </widget>
          </item>
-         <item row="24" column="1" colspan="2">
+         <item row="25" column="1" colspan="2">
            <widget class="QLabel" name="labelBackspinToHotcueValue">
              <property name="wordWrap">
                <bool>true</bool>
+             </property>
+           </widget>
+         </item>
+         <item row="26" column="1" colspan="2">
+           <widget class="QCheckBox" name="checkBoxBackspinStart">
+             <property name="toolTip">
+               <string>
+                 On a stopped deck, the reverse button starts the track with a backspin: it reaches full speed exactly at the current position, e.g. a cue or hotcue.
+                 The backspin starts the distance shown in the backspin info above after that position (backspin power, platter type, spin-up and slipmat), the jump there is silent.
+                 A playing deck is not affected, "Play on after the backspin" applies there.
+               </string>
+             </property>
+             <property name="text">
+               <string>Spinback start: a stopped deck starts with a backspin into the current position</string>
              </property>
            </widget>
          </item>

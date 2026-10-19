@@ -627,6 +627,8 @@ class RateControlRampTest : public MockedEngineBackendTest {
         RateControl::setBackspinRevPerSec(1.0);
         RateControl::setBackspinToHotcue(false);
         RateControl::setBackspinPlayOn(true);
+        RateControl::setBackspinSlipmat(0);
+        RateControl::setBackspinStart(false);
     }
 
     mixxx::audio::FramePos playPos() const {
@@ -732,7 +734,7 @@ TEST_F(RateControlRampTest, SpinUpReachesFullSpeed) {
     const double first = speed();
     EXPECT_GT(first, 0.0);
     EXPECT_LT(first, 0.1);
-    processSeconds(1.0);
+    processSeconds(0.3);
     EXPECT_GT(speed(), first);
     EXPECT_LT(speed(), 1.0);
     processSeconds(3.0);
@@ -1026,9 +1028,10 @@ TEST_F(RateControlRampTest, StopDuringBackspinBrakes) {
     ASSERT_LT(speed(), 0.0);
     ControlObject::set(ConfigKey(m_sGroup1, "play"), 0.0);
     const int buffers = buffersUntilForwardOrStill();
-    // Brake + friction stop the platter faster than the motor would
-    const auto motorOn = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0);
-    EXPECT_LT(buffers * bufferSeconds() + 0.1, motorOn.backwardTime);
+    // The brake stops the platter, at most as late as a backspin that is
+    // braked from the flick on
+    const auto braked = RateControl::backspinTimes(0, false, 0, 1.0, 1.0, 1.0, true, 1.0);
+    EXPECT_LE(buffers * bufferSeconds() + 0.1, braked.backwardTime + 3 * bufferSeconds());
     EXPECT_EQ(0.0, speed());
     processSeconds(0.5);
     EXPECT_EQ(0.0, speed());
@@ -1106,8 +1109,8 @@ TEST_F(RateControlRampTest, BackspinPowerIsLimited) {
 }
 
 TEST_F(RateControlRampTest, BackspinLandsOnLastHotcue) {
-    // The fake track is 5 s long: hotcue at 0.5 s, backspin from 4 s
-    setHotcue1(0.1);
+    // The fake track is 5 s long: hotcue at 2 s, backspin from 4.2 s
+    setHotcue1(0.4);
     ASSERT_TRUE(hotcue1().isValid());
     ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
     playAtFullSpeed();
@@ -1230,16 +1233,16 @@ TEST_F(RateControlRampTest, HotcueReachGrowsWithBackspinPower) {
 }
 
 TEST_F(RateControlRampTest, BackspinPowerLimitsHotcueLanding) {
-    // 1 rev/s at 33 RPM reaches about 1.3 s back
+    // 1 rev/s at 33 RPM reaches about 0.7 s back
     const double reach = RateControl::backspinHotcueReach(0, 1.0, 1.0);
-    ASSERT_GT(reach, 1.0);
-    ASSERT_LT(reach, 2.0);
+    ASSERT_GT(reach, 0.5);
+    ASSERT_LT(reach, 1.0);
     RateControl::setBackspinOnReverse(true);
     RateControl::setBackspinToHotcue(true);
     RateControl::setBackspinRevPerSec(1.0);
 
-    // Hotcue 0.95 s back: lands, with less than the selected power
-    setHotcue1(0.65);
+    // Hotcue 0.5 s back: lands, with less than the selected power
+    setHotcue1(0.74);
     ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
     playAtFullSpeed();
     // Spin-up after the backspin
@@ -1367,4 +1370,190 @@ TEST_F(RateControlRampTest, BackspinStaysPausedOnLastHotcue) {
     EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
     EXPECT_NEAR(hotcue1().value(), playPos().value(), 44.1)
             << "stopped " << (playPos() - hotcue1()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, SlipmatRecordCatchesUpFasterThanMotor) {
+    // Felt: 50 %, plastic: 15 % of the spin-up time of the motor
+    const auto none = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0, true, 1.0, 0);
+    const auto felt = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0, true, 1.0, 1);
+    const auto plastic = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0, true, 1.0, 2);
+    EXPECT_NEAR(0.5 * RateControl::spinUpTime(0, 1.0),
+            felt.recoverTime - felt.backwardTime,
+            1e-9);
+    EXPECT_NEAR(0.15 * RateControl::spinUpTime(0, 1.0),
+            plastic.recoverTime - plastic.backwardTime,
+            1e-9);
+    EXPECT_LT(plastic.recoverTime, felt.recoverTime);
+    EXPECT_LT(felt.recoverTime, none.recoverTime);
+}
+
+TEST_F(RateControlRampTest, SlipmatBackspinPlaysOn) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinSlipmat(1); // felt
+    tapReverse();
+    int buffers = 0;
+    do {
+        ProcessBuffer();
+        ++buffers;
+    } while (speed() < 1.0 && buffers < 100000);
+    const auto expected = RateControl::backspinTimes(0, true, 0, 1.0, 1.0, 1.0, true, 1.0, 1);
+    EXPECT_NEAR(expected.recoverTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_EQ(1.0, speed());
+}
+
+TEST_F(RateControlRampTest, SlipmatStoppedDeckStopsRecordQuickly) {
+    // A stopped deck with power cut: without slipmat the heavy platter
+    // coasts, on a plastic slipmat the light record stops quickly
+    const auto none = RateControl::backspinTimes(0, false, 1, 1.0, 1.0, 1.0, true);
+    const auto plastic =
+            RateControl::backspinTimes(0, false, 1, 1.0, 1.0, 1.0, true, std::nullopt, 2);
+    EXPECT_LT(plastic.backwardTime * 5, none.backwardTime);
+
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    ProcessBuffer();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setRampDownMode(1);
+    RateControl::setBackspinSlipmat(2);
+    tapReverse();
+    const int buffers = buffersUntilForwardOrStill();
+    EXPECT_NEAR(plastic.backwardTime, buffers * bufferSeconds(), 3 * bufferSeconds());
+    EXPECT_EQ(0.0, speed());
+}
+
+TEST_F(RateControlRampTest, SlipmatStayPausedRecordFollowsCoastingPlatter) {
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinPlayOn(false);
+    RateControl::setRampDownMode(1); // power cut
+    RateControl::setBackspinSlipmat(2);
+    tapReverse();
+    processSeconds(0.1);
+    ASSERT_LT(speed(), 0.0);
+    // The record slips back onto the platter, which still coasts forward
+    // after the pause, and runs with it until both stand still
+    processSeconds(1.0);
+    EXPECT_GT(speed(), 0.0);
+    processSeconds(20.0);
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+}
+
+TEST_F(RateControlRampTest, SlipmatBackspinLandsOnLastHotcue) {
+    setHotcue1(0.6);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.8);
+    playAtFullSpeed();
+    // Spin-up after the backspin
+    RateControl::setRampUpEnabled(true);
+    processSeconds(0.2);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinToHotcue(true);
+    RateControl::setBackspinSlipmat(1);
+    RateControl::setBackspinRevPerSec(RateControl::maxBackspinRevPerSec());
+    ASSERT_GT(RateControl::backspinHotcueReach(0, 1.0, 2.0, true, true, 0, 1.0, 1), 1.0);
+    const auto landing = backspinUntilFullSpeed();
+    EXPECT_NEAR(hotcue1().value(), landing.value(), 44.1)
+            << "landed " << (landing - hotcue1()) / 44.1 << " ms off";
+}
+
+TEST_F(RateControlRampTest, SpinbackStartLandsOnCurrentPosition) {
+    for (const bool spinUp : {true, false}) {
+        for (const int slipmat : {0, 1, 2}) {
+            ControlObject::set(ConfigKey(m_sGroup1, "play"), 0.0);
+            ProcessBuffer();
+            ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.2); // 1 s
+            ProcessBuffer();
+            const auto cue = playPos();
+            RateControl::setRampUpEnabled(spinUp);
+            RateControl::setBackspinOnReverse(true);
+            RateControl::setBackspinStart(true);
+            RateControl::setBackspinSlipmat(slipmat);
+            tapReverse();
+            // The jump is requested in the first buffer and done in the next
+            ProcessBuffer();
+            ProcessBuffer();
+            // Silent jump to the start of the backspin, after the cue
+            const double distance =
+                    RateControl::backspinStartDistance(0, 1.0, 1.0, spinUp, slipmat);
+            ASSERT_GT(distance, 0.0);
+            EXPECT_NEAR(cue.value() + distance * 44100.0, playPos().value(), 2 * 44.1 * 12)
+                    << "spinUp " << spinUp << " slipmat " << slipmat;
+            EXPECT_EQ(1.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+            auto before = playPos();
+            bool spinningBack = false;
+            for (int i = 0; i < 100000; ++i) {
+                before = playPos();
+                ProcessBuffer();
+                if (speed() < 0.0) {
+                    spinningBack = true;
+                } else if (spinningBack && speed() == 1.0) {
+                    break;
+                }
+            }
+            EXPECT_EQ(1.0, speed()) << "spinUp " << spinUp << " slipmat " << slipmat;
+            EXPECT_NEAR(cue.value(), before.value(), 44.1)
+                    << "spinUp " << spinUp << " slipmat " << slipmat << ": landed "
+                    << (before.value() - cue.value()) / 44.1 << " ms off";
+        }
+    }
+}
+
+TEST_F(RateControlRampTest, SpinbackStartWithQuantize) {
+    // Play on a quantized deck requests a phase sync, it must not move the
+    // start of the backspin
+    ControlObject::set(ConfigKey(m_sGroup1, "quantize"), 1.0);
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.2);
+    ProcessBuffer();
+    const auto cue = playPos();
+    RateControl::setRampUpEnabled(true);
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinStart(true);
+    tapReverse();
+    auto before = playPos();
+    bool spinningBack = false;
+    for (int i = 0; i < 100000; ++i) {
+        before = playPos();
+        ProcessBuffer();
+        if (speed() < 0.0) {
+            spinningBack = true;
+        } else if (spinningBack && speed() == 1.0) {
+            break;
+        }
+    }
+    EXPECT_EQ(1.0, speed());
+    EXPECT_NEAR(cue.value(), before.value(), 44.1)
+            << "landed " << (before.value() - cue.value()) / 44.1 << " ms off";
+    ControlObject::set(ConfigKey(m_sGroup1, "quantize"), 0.0);
+}
+
+TEST_F(RateControlRampTest, SpinbackStartDoesNotChangePlayingDeck) {
+    // Ending a track: play on unchecked, the playing deck stops as before
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.5);
+    playAtFullSpeed();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinStart(true);
+    RateControl::setBackspinPlayOn(false);
+    tapReverse();
+    processSeconds(5.0);
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
+}
+
+TEST_F(RateControlRampTest, SpinbackStartNeedsTrackLeft) {
+    // 0.1 s before the end of the 5 s track: no room for the backspin,
+    // normal backspin of a stopped deck
+    ControlObject::set(ConfigKey(m_sGroup1, "playposition"), 0.98);
+    ProcessBuffer();
+    RateControl::setBackspinOnReverse(true);
+    RateControl::setBackspinStart(true);
+    tapReverse();
+    processSeconds(0.1);
+    EXPECT_LT(speed(), 0.0);
+    processSeconds(5.0);
+    EXPECT_EQ(0.0, speed());
+    EXPECT_EQ(0.0, ControlObject::get(ConfigKey(m_sGroup1, "play")));
 }

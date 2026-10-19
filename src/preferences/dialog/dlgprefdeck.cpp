@@ -530,12 +530,23 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
         comboBoxBackspinTime->setEnabled(enabled);
         labelBackspinValue->setEnabled(enabled);
         checkBoxBackspinPlayOn->setEnabled(enabled);
+        labelBackspinSlipmat->setEnabled(enabled);
+        comboBoxBackspinSlipmat->setEnabled(enabled);
+        checkBoxBackspinStart->setEnabled(enabled);
         checkBoxBackspinToHotcue->setEnabled(enabled);
         labelBackspinToHotcueValue->setEnabled(
                 enabled && checkBoxBackspinToHotcue->isChecked());
     };
     connect(radioButtonReverseBackspin, &QRadioButton::toggled, this, updateBackspinEnabled);
     connect(checkBoxBackspinPlayOn, &QCheckBox::toggled, this, &DlgPrefDeck::updateRampTimeLabels);
+    connect(comboBoxBackspinSlipmat,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefDeck::updateRampTimeLabels);
+    connect(checkBoxBackspinStart,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::updateRampTimeLabels);
     connect(checkBoxBackspinToHotcue, &QCheckBox::toggled, this, [this](bool checked) {
         labelBackspinToHotcueValue->setEnabled(
                 checked && radioButtonReverseBackspin->isChecked());
@@ -547,6 +558,8 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setBackspinRevPerSec(backspinRevPerSec());
     RateControl::setBackspinToHotcue(checkBoxBackspinToHotcue->isChecked());
     RateControl::setBackspinPlayOn(checkBoxBackspinPlayOn->isChecked());
+    RateControl::setBackspinSlipmat(comboBoxBackspinSlipmat->currentIndex());
+    RateControl::setBackspinStart(checkBoxBackspinStart->isChecked());
 
     // Spin-up time is only relevant if spin-up is enabled
     const auto updateRampUpTimeEnabled = [this](bool enabled) {
@@ -741,6 +754,8 @@ void DlgPrefDeck::slotResetToDefaults() {
     comboBoxBackspinTime->setCurrentIndex(kDefaultBackspinTime);
     checkBoxBackspinToHotcue->setChecked(false);
     checkBoxBackspinPlayOn->setChecked(false);
+    comboBoxBackspinSlipmat->setCurrentIndex(0);
+    checkBoxBackspinStart->setChecked(false);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -1001,6 +1016,10 @@ void DlgPrefDeck::slotApply() {
             checkBoxBackspinToHotcue->isChecked());
     m_pConfig->setValue(ConfigKey(kControlsGroup, QStringLiteral("BackspinPlayOn")),
             checkBoxBackspinPlayOn->isChecked());
+    m_pConfig->setValue(ConfigKey(kControlsGroup, QStringLiteral("BackspinSlipmat")),
+            comboBoxBackspinSlipmat->currentIndex());
+    m_pConfig->setValue(ConfigKey(kControlsGroup, QStringLiteral("BackspinStart")),
+            checkBoxBackspinStart->isChecked());
 
     RateControl::setRampUpEnabled(checkBoxRampUpEnabled->isChecked());
     RateControl::setRampDownEnabled(checkBoxRampDownEnabled->isChecked());
@@ -1012,6 +1031,8 @@ void DlgPrefDeck::slotApply() {
     RateControl::setBackspinRevPerSec(backspinRevPerSec());
     RateControl::setBackspinToHotcue(checkBoxBackspinToHotcue->isChecked());
     RateControl::setBackspinPlayOn(checkBoxBackspinPlayOn->isChecked());
+    RateControl::setBackspinSlipmat(comboBoxBackspinSlipmat->currentIndex());
+    RateControl::setBackspinStart(checkBoxBackspinStart->isChecked());
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -1123,6 +1144,7 @@ void DlgPrefDeck::updateRampTimeLabels() {
     // or coasts to a standstill.
     const bool spinUp = checkBoxRampUpEnabled->isChecked();
     const bool playOn = checkBoxBackspinPlayOn->isChecked();
+    const int slipmat = comboBoxBackspinSlipmat->currentIndex();
     const double revPerSec = backspinRevPerSec();
     const double nominalRevPerSec = ((rpmMode == 0) ? 100.0 / 3.0 : 45.0) / 60.0;
     const auto playing = RateControl::backspinTimes(rpmMode,
@@ -1132,14 +1154,17 @@ void DlgPrefDeck::updateRampTimeLabels() {
             upPercent / 100.0,
             downPercent / 100.0,
             spinUp,
-            1.0);
+            1.0,
+            slipmat);
     const auto stopped = RateControl::backspinTimes(rpmMode,
             false,
             rampDownMode,
             revPerSec,
             upPercent / 100.0,
             downPercent / 100.0,
-            spinUp);
+            spinUp,
+            std::nullopt,
+            slipmat);
     const QString playingText = playOn
             ? tr("Playing: rewinds %1 s, back at speed after %2 s.")
                       .arg(playing.rewind, 0, 'f', 1)
@@ -1147,13 +1172,28 @@ void DlgPrefDeck::updateRampTimeLabels() {
             : tr("Playing: rewinds %1 s and stops after %2 s.")
                       .arg(playing.rewind, 0, 'f', 1)
                       .arg(playing.backwardTime, 0, 'f', 1);
+    // Spinback start: a stopped deck starts with a backspin into the
+    // current position instead
+    const double startDistance = RateControl::backspinStartDistance(
+            rpmMode, upPercent / 100.0, revPerSec, spinUp, slipmat);
+    QString stoppedText = tr("Stopped: rewinds %1 s in %2 s.")
+                                  .arg(stopped.rewind, 0, 'f', 1)
+                                  .arg(stopped.backwardTime, 0, 'f', 1);
+    if (checkBoxBackspinStart->isChecked()) {
+        // Too weak: the spin-up carries the deck further than the backspin
+        // rewinds, a normal backspin is done
+        stoppedText = startDistance > 0.05
+                ? tr("Stopped: spinback start from %1 s after the current position.")
+                          .arg(startDistance, 0, 'f', 1)
+                : tr("Stopped: too weak for a spinback start, rewinds %1 s in %2 s.")
+                          .arg(stopped.rewind, 0, 'f', 1)
+                          .arg(stopped.backwardTime, 0, 'f', 1);
+    }
     labelBackspinValue->setText(
-            tr("%1 rev/s (%2x). %3 Stopped: rewinds %4 s in %5 s.")
+            tr("%1 rev/s (%2x). %3 %4")
                     .arg(revPerSec, 0, 'f', 2)
                     .arg(-revPerSec / nominalRevPerSec, 0, 'f', 1)
-                    .arg(playingText)
-                    .arg(stopped.rewind, 0, 'f', 1)
-                    .arg(stopped.backwardTime, 0, 'f', 1));
+                    .arg(playingText, stoppedText));
 
     // Backspin to hotcue: how far back the hotcue can be with this power
     const double reach = RateControl::backspinHotcueReach(rpmMode,
@@ -1162,7 +1202,8 @@ void DlgPrefDeck::updateRampTimeLabels() {
             spinUp,
             playOn,
             rampDownMode,
-            downPercent / 100.0);
+            downPercent / 100.0,
+            slipmat);
     if (reach > 0.05) {
         labelBackspinToHotcueValue->setText(
                 (playOn ? tr("Lands on a hotcue up to %1 s behind the play position, "
@@ -1199,6 +1240,12 @@ void DlgPrefDeck::loadBackspinSettings() {
             ConfigKey(kControlsGroup, QStringLiteral("BackspinToHotcue")), false));
     checkBoxBackspinPlayOn->setChecked(m_pConfig->getValue(
             ConfigKey(kControlsGroup, QStringLiteral("BackspinPlayOn")), false));
+    comboBoxBackspinSlipmat->setCurrentIndex(std::clamp(
+            m_pConfig->getValue(ConfigKey(kControlsGroup, QStringLiteral("BackspinSlipmat")), 0),
+            0,
+            comboBoxBackspinSlipmat->count() - 1));
+    checkBoxBackspinStart->setChecked(m_pConfig->getValue(
+            ConfigKey(kControlsGroup, QStringLiteral("BackspinStart")), false));
 }
 
 double DlgPrefDeck::backspinRevPerSec() const {

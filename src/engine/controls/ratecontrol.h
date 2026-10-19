@@ -114,6 +114,21 @@ public:
   // speed), false = stay paused. The deck is paused with the flick, the
   // platter brakes or coasts to a standstill (spin-down type).
   static void setBackspinPlayOn(bool playOn);
+  // Record on a slipmat: 0 = none (record on the platter), 1 = felt,
+  // 2 = plastic. The platter keeps turning, only the record is flicked.
+  // The slip friction stops it (motor off) or brings it up to speed in 50 %
+  // (felt) or 15 % (plastic) of the spin-up time of the motor (motor on).
+  static void setBackspinSlipmat(int slipmat);
+  // Spinback start: on a stopped deck the reverse button starts the track
+  // with a backspin that reaches full speed exactly at the current position
+  // (e.g. a cue). The backspin starts that far after it.
+  static void setBackspinStart(bool enabled);
+  // How many seconds after the current position that backspin starts
+  static double backspinStartDistance(int rpmMode,
+          double upFactor,
+          double revPerSec,
+          bool spinUp,
+          int slipmat);
   // Playing deck: choose the backspin power, at most the one set with
   // setBackspinRevPerSec(), so that the spin-up reaches full speed exactly
   // at the last hotcue behind the play position. Staying paused: the
@@ -132,7 +147,8 @@ public:
           bool spinUp = true,
           bool playOn = true,
           int rampDownMode = 0,
-          double downFactor = 1.0);
+          double downFactor = 1.0,
+          int slipmat = 0);
   // Backspin of a deck at nominal speed (motor on) or at standstill
   // (motor off), for the preferences. spinUp as above. startSpeed overrides
   // the speed at the flick, e.g. 1.0 for a playing deck that stays paused.
@@ -143,7 +159,8 @@ public:
           double upFactor,
           double downFactor,
           bool spinUp = true,
-          std::optional<double> startSpeed = std::nullopt);
+          std::optional<double> startSpeed = std::nullopt,
+          int slipmat = 0);
 
 public slots:
   void slotRateRangeChanged(double);
@@ -263,7 +280,13 @@ private:
 
   // Backspin on the reverse button
   bool backspinOnReverse() const;
-  void startBackspin(bool paused, double rate, double spinUpTarget, double dt);
+  // Returns true for a spinback start: the deck is still paused while it
+  // jumps silently to the start of the backspin
+  bool startBackspin(bool paused,
+          double rate,
+          double spinUpTarget,
+          double startTarget,
+          double dt);
   mixxx::audio::FramePos lastHotcueBefore(mixxx::audio::FramePos position) const;
   struct BackspinState {
       double speed = 0.0;      // 1.0 = nominal 33/45 RPM forward
@@ -278,6 +301,13 @@ private:
       // Stay paused: the deck was paused with the flick, until EngineBuffer
       // reports it paused
       bool stopping = false;
+      // Slipmat: slip acceleration (0 = no slipmat) and the platter under
+      // the record
+      double slipAccel = 0.0;
+      double platterSpeed = 0.0;
+      // Spinback start: the deck plays from the flick on, until EngineBuffer
+      // reports it playing
+      bool starting = false;
   };
   BackspinState m_backspin;
   bool m_backspinActive;
@@ -288,12 +318,17 @@ private:
   std::atomic<bool> m_backspinReversing;
   // The correction seek at standstill must not cut the spin-up
   bool m_landingSeekPending;
+  // Slipmat: the spin-up after the backspin is the record catching up with
+  // the turning platter
+  bool m_slipCatchUp;
   // Hotcue positions (owned by CueControl) for the backspin to hotcue
   std::vector<std::unique_ptr<PollingControlProxy>> m_hotcuePositions;
   static std::atomic<bool> m_backspinOnReverse;
   static std::atomic<double> m_backspinRevPerSec;
   static std::atomic<bool> m_backspinToHotcue;
   static std::atomic<bool> m_backspinPlayOn;
+  static std::atomic<int> m_backspinSlipmat;
+  static std::atomic<bool> m_backspinStart;
   // Stay paused after the backspin: pauses the deck with the flick
   std::unique_ptr<PollingControlProxy> m_pPlay;
 };
