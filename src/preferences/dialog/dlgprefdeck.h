@@ -26,7 +26,7 @@ const ConfigKey kConfigKeyAllowTrackLoadToPlayingDeck =
 constexpr LoadWhenDeckPlaying kDefaultLoadWhenDeckPlaying = LoadWhenDeckPlaying::Reject;
 } // namespace
 
-class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
+class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     Q_OBJECT
   public:
     DlgPrefDeck(QWidget* parent,
@@ -58,8 +58,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     void slotTimeFormatChanged(double);
 
-    void slotNumDecksChanged(double, bool initializing=false);
-    void slotNumSamplersChanged(double, bool initializing=false);
+    void slotNumDecksChanged(double, bool initializing = false);
+    void slotNumSamplersChanged(double, bool initializing = false);
 
     void slotUpdateSpeedAutoReset(bool);
     void slotUpdatePitchAutoReset(bool);
@@ -134,6 +134,10 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     double m_dRatePermCoarse;
     double m_dRatePermFine;
     void updateRampTimeLabels();
+    void loadBackspinSettings();
+    // Disables flicks that would throw the needle out of the groove
+    void updateBackspinChoices();
+    double backspinRevPerSec() const;
 
     bool m_bNowPlayingEnabled;
     bool m_bNowPlayingAppendMode;

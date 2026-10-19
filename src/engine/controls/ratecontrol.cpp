@@ -14,6 +14,7 @@
 #include "engine/positionscratchcontroller.h"
 #include "mixer/playermanager.h"
 #include "moc_ratecontrol.cpp"
+#include "util/defs.h"
 #include "util/rotary.h"
 #include "vinylcontrol/defs_vinylcontrol.h"
 
@@ -47,6 +48,164 @@ constexpr double kQuartzLockGain = 2.0;
 // Range of the spin-up / spin-down time preferences, 1.0 = Technics SL-1210
 constexpr double kMinRampTimeFactor = 0.25;
 constexpr double kMaxRampTimeFactor = 4.0;
+
+// Backspin: the hand drives the platter from its current speed to the
+// backspin speed within kBackspinFlickTime. Changing the direction at once
+// would be an infinite acceleration and throw the needle out of the groove.
+constexpr double kBackspinFlickTime = 0.08; // seconds
+// Estimated fastest backspin that keeps the needle in the groove,
+// 2 rev/s = -3.6x at 33 RPM, -2.7x at 45 RPM
+constexpr double kMaxBackspinRevPerSec = 2.0;
+constexpr double kDefaultBackspinRevPerSec = 1.0;
+
+// Backspin to hotcue: largest position error at standstill that is
+// corrected silently. A bigger error means the backspin was disturbed.
+constexpr double kMaxLandingCorrection = 0.1; // seconds
+
+// One step of the motor spinning the platter up: constant torque, then soft
+// saturation when it settles into quartz lock
+void advanceSpinUp(double* pPlatterSpeed, int rpmMode, double upDt) {
+    *pPlatterSpeed += ((rpmMode == 0) ? kSpinupTorque33 : kSpinupTorque45) * upDt;
+    if (*pPlatterSpeed > kQuartzLockStart) {
+        *pPlatterSpeed += (1.0 - *pPlatterSpeed) * kQuartzLockGain * upDt;
+    }
+}
+
+// Track seconds (at speed 1) the motor moves the platter from standstill
+// until it reaches spinUpTarget, buffer by buffer like calculateSpeed().
+// EngineBuffer advances the play position by speed * buffer length.
+double spinUpDistance(double spinUpTarget, double dt, int rpmMode, double upFactor) {
+    double platterSpeed = 0.0;
+    double distance = 0.0;
+    for (int i = 0; i < 1000000; ++i) {
+        advanceSpinUp(&platterSpeed, rpmMode, dt / upFactor);
+        if (platterSpeed >= 1.0) {
+            break;
+        }
+        distance += spinUpTarget * platterSpeed * dt;
+    }
+    return distance;
+}
+
+double nominalRevPerSec(int rpmMode) {
+    return ((rpmMode == 0) ? 100.0 / 3.0 : 45.0) / 60.0;
+}
+
+// Deceleration of a platter spinning backwards (speed < 0) in speed units
+// per second. Bearing friction and drag always act. With the motor on, the
+// motor pulls towards the forward target speed. With the motor off, the
+// electronic brake acts, unless the power is cut.
+double backspinDeceleration(double speed, bool motorOn, int rpmMode, int rampDownMode) {
+    const bool is33 = rpmMode == 0;
+    double deceleration = (is33 ? kCoastFriction33 : kCoastFriction45) +
+            kCoastDrag * -speed;
+    if (motorOn) {
+        deceleration += is33 ? kSpinupTorque33 : kSpinupTorque45;
+    } else if (rampDownMode == 0) {
+        deceleration += 1.0 / (is33 ? kSpindownTime33 : kSpindownTime45);
+    }
+    return deceleration;
+}
+
+// Advances a backspin by dt. Returns false once the platter stands still.
+// The flick is done by hand, so the ramp time preferences only stretch
+// the physics after the release.
+bool advanceBackspin(double* pSpeed,
+        bool* pFlicking,
+        double target,
+        double flickAccel,
+        double dt,
+        bool motorOn,
+        int rpmMode,
+        int rampDownMode,
+        double upFactor,
+        double downFactor) {
+    if (*pFlicking) {
+        *pSpeed -= flickAccel * dt;
+        if (*pSpeed <= target) {
+            *pSpeed = target;
+            *pFlicking = false;
+        }
+        return true;
+    }
+    const double physicsDt = dt / (motorOn ? upFactor : downFactor);
+    *pSpeed += backspinDeceleration(*pSpeed, motorOn, rpmMode, rampDownMode) * physicsDt;
+    return *pSpeed < 0.0;
+}
+
+// Settings that shape a backspin after the flick
+struct BackspinPhysics {
+    int rpmMode;       // 0 = 33 RPM, 1 = 45 RPM
+    bool motorOn;      // play on after the backspin: the motor pulls back
+    bool spinUp;       // motor on: spin-up ramp, or full speed at standstill
+    int rampDownMode;  // motor off: 0 = brake, 1 = power cut
+    double upFactor;   // spin-up time preference, 1.0 = SL-1210
+    double downFactor; // spin-down time preference, 1.0 = SL-1210
+};
+
+// Track seconds moved by a backspin from the flick until the deck plays at
+// spinUpTarget again (motor on), or stands still (motor off).
+// Negative = it lands behind the start.
+// Without spin-up, playback continues at full speed from the standstill.
+double backspinLandingOffset(double startSpeed,
+        double revPerSec,
+        double spinUpTarget,
+        double dt,
+        const BackspinPhysics& physics) {
+    const double target = -revPerSec / nominalRevPerSec(physics.rpmMode);
+    double speed = startSpeed;
+    bool flicking = speed > target;
+    const double flickAccel = (speed - target) / kBackspinFlickTime;
+    double offset = 0.0;
+    for (int i = 0; i < 1000000 &&
+            advanceBackspin(&speed,
+                    &flicking,
+                    target,
+                    flickAccel,
+                    dt,
+                    physics.motorOn,
+                    physics.rpmMode,
+                    physics.rampDownMode,
+                    physics.upFactor,
+                    physics.downFactor);
+            ++i) {
+        offset += speed * dt;
+    }
+    // One buffer at standstill, then the spin-up
+    if (physics.motorOn && physics.spinUp) {
+        offset += spinUpDistance(spinUpTarget, dt, physics.rpmMode, physics.upFactor);
+    }
+    return offset;
+}
+
+// Backspin power in rev/s that lands at offset (track seconds, negative =
+// behind the start), or a negative value if it is out of reach with at most
+// maxRevPerSec (the backspin power of the preferences)
+double backspinPowerForOffset(double offset,
+        double startSpeed,
+        double spinUpTarget,
+        double dt,
+        const BackspinPhysics& physics,
+        double maxRevPerSec) {
+    double low = 0.0;
+    double high = std::clamp(maxRevPerSec, 0.0, kMaxBackspinRevPerSec);
+    const auto landing = [&](double revPerSec) {
+        return backspinLandingOffset(startSpeed, revPerSec, spinUpTarget, dt, physics);
+    };
+    // More power lands further back
+    if (landing(high) > offset || landing(low) < offset) {
+        return -1.0;
+    }
+    for (int i = 0; i < 40; ++i) {
+        const double middle = (low + high) / 2.0;
+        if (landing(middle) > offset) {
+            low = middle;
+        } else {
+            high = middle;
+        }
+    }
+    return (low + high) / 2.0;
+}
 } // namespace
 
 // Static default values for rate buttons (percents)
@@ -64,6 +223,11 @@ std::atomic<bool> RateControl::m_rampIncludePitch{true};
 std::atomic<int> RateControl::m_rampDownMode{0};
 std::atomic<double> RateControl::m_rampUpTimeFactor{1.0};
 std::atomic<double> RateControl::m_rampDownTimeFactor{1.0};
+
+std::atomic<bool> RateControl::m_backspinOnReverse{false};
+std::atomic<double> RateControl::m_backspinRevPerSec{kDefaultBackspinRevPerSec};
+std::atomic<bool> RateControl::m_backspinToHotcue{false};
+std::atomic<bool> RateControl::m_backspinPlayOn{false};
 
 const double RateControl::kWheelMultiplier = 40.0;
 const double RateControl::kPausedJogMultiplier = 18.0;
@@ -155,7 +319,12 @@ RateControl::RateControl(const QString& group, UserSettingsPointer pConfig)
           m_prevPaused(true),
           m_latchedPlay(false),
           m_resetRampRequested(false),
-          m_rampAllowed(PlayerManager::isDeckGroup(group)) {
+          m_rampAllowed(PlayerManager::isDeckGroup(group)),
+          m_backspinActive(false),
+          m_backspinRequested(false),
+          m_reverseRollActive(false),
+          m_backspinReversing(false),
+          m_landingSeekPending(false) {
     // Vinyl control COs are only created for main decks
     if (PlayerManager::isDeckGroup(getGroup())) {
         m_pVCEnabled = ControlObject::getControl(
@@ -194,6 +363,11 @@ RateControl::RateControl(const QString& group, UserSettingsPointer pConfig)
             Qt::DirectConnection);
 
     m_pReverseButton->set(0);
+    connect(m_pReverseButton.get(),
+            &ControlObject::valueChanged,
+            this,
+            &RateControl::slotReverseChanged,
+            Qt::DirectConnection);
 
     connect(m_pForwardButton.get(),
             &ControlObject::valueChanged,
@@ -329,14 +503,10 @@ void RateControl::setRampDownTimeFactor(double factor) {
 double RateControl::spinUpTime(int rpmMode, double factor) {
     // Integrate the spin-up model of calculateSpeed() with a fine time step
     constexpr double kStep = 0.0005; // seconds
-    const double torque = (rpmMode == 0) ? kSpinupTorque33 : kSpinupTorque45;
     double platterSpeed = 0.0;
     double time = 0.0;
     while (platterSpeed < 1.0 && time < 60.0) {
-        platterSpeed += torque * kStep;
-        if (platterSpeed > kQuartzLockStart) {
-            platterSpeed += (1.0 - platterSpeed) * kQuartzLockGain * kStep;
-        }
+        advanceSpinUp(&platterSpeed, rpmMode, kStep);
         time += kStep;
     }
     return time * factor;
@@ -350,6 +520,94 @@ double RateControl::spinDownTime(int rpmMode, int rampDownMode, double factor) {
         return std::log(1.0 + kCoastDrag / friction) / kCoastDrag * factor;
     }
     return ((rpmMode == 0) ? kSpindownTime33 : kSpindownTime45) * factor;
+}
+
+// static
+void RateControl::setBackspinOnReverse(bool enabled) {
+    m_backspinOnReverse = enabled;
+}
+
+// static
+void RateControl::setBackspinRevPerSec(double revPerSec) {
+    m_backspinRevPerSec = std::clamp(revPerSec, 0.0, kMaxBackspinRevPerSec);
+}
+
+// static
+double RateControl::maxBackspinRevPerSec() {
+    return kMaxBackspinRevPerSec;
+}
+
+// static
+void RateControl::setBackspinToHotcue(bool enabled) {
+    m_backspinToHotcue = enabled;
+}
+
+// static
+void RateControl::setBackspinPlayOn(bool playOn) {
+    m_backspinPlayOn = playOn;
+}
+
+// static
+double RateControl::backspinHotcueReach(int rpmMode,
+        double upFactor,
+        double revPerSec,
+        bool spinUp,
+        bool playOn,
+        int rampDownMode,
+        double downFactor) {
+    constexpr double kStep = 0.0005; // seconds
+    const BackspinPhysics physics{rpmMode,
+            playOn,
+            spinUp,
+            rampDownMode,
+            // Without spin-up the spin-up time preference has no effect
+            spinUp ? std::clamp(upFactor, kMinRampTimeFactor, kMaxRampTimeFactor) : 1.0,
+            std::clamp(downFactor, kMinRampTimeFactor, kMaxRampTimeFactor)};
+    revPerSec = std::clamp(revPerSec, 0.0, kMaxBackspinRevPerSec);
+    return -backspinLandingOffset(1.0, revPerSec, 1.0, kStep, physics);
+}
+
+// static
+RateControl::BackspinTimes RateControl::backspinTimes(int rpmMode,
+        bool motorOn,
+        int rampDownMode,
+        double revPerSec,
+        double upFactor,
+        double downFactor,
+        bool spinUp,
+        std::optional<double> startSpeed) {
+    // Integrate the backspin model of calculateSpeed() with a fine time step
+    constexpr double kStep = 0.0005; // seconds
+    // Without spin-up the spin-up time preference has no effect
+    upFactor = spinUp ? std::clamp(upFactor, kMinRampTimeFactor, kMaxRampTimeFactor)
+                      : 1.0;
+    downFactor = std::clamp(downFactor, kMinRampTimeFactor, kMaxRampTimeFactor);
+    const double target = -std::clamp(revPerSec, 0.0, kMaxBackspinRevPerSec) /
+            nominalRevPerSec(rpmMode);
+    double speed = startSpeed.value_or(motorOn ? 1.0 : 0.0);
+    const double flickAccel = (speed - target) / kBackspinFlickTime;
+    bool flicking = speed > target;
+    BackspinTimes times{0.0, 0.0, 0.0};
+    while (times.backwardTime < 120.0 &&
+            advanceBackspin(&speed,
+                    &flicking,
+                    target,
+                    flickAccel,
+                    kStep,
+                    motorOn,
+                    rpmMode,
+                    rampDownMode,
+                    upFactor,
+                    downFactor)) {
+        times.backwardTime += kStep;
+        if (speed < 0.0) {
+            times.rewind -= speed * kStep;
+        }
+    }
+    times.recoverTime = motorOn
+            ? times.backwardTime + (spinUp ? spinUpTime(rpmMode, upFactor) : 0.0)
+            : 0.0;
+    return times;
 }
 
 // static
@@ -414,12 +672,26 @@ void RateControl::slotRateRatioChanged(double v) {
 
 void RateControl::slotReverseRollActivate(double v) {
     if (v > 0.0) {
+        // Censor always plays in reverse, also in backspin mode
+        m_reverseRollActive = true;
         m_slipEnabled.set(1);
         m_pReverseButton->set(1);
     } else {
         m_pReverseButton->set(0);
         m_slipEnabled.set(0);
+        m_reverseRollActive = false;
     }
+}
+
+void RateControl::slotReverseChanged(double v) {
+    if (v > 0.0 && backspinOnReverse() && !m_reverseRollActive) {
+        // Applied in calculateSpeed()
+        m_backspinRequested = true;
+    }
+}
+
+bool RateControl::backspinOnReverse() const {
+    return m_rampAllowed && m_backspinOnReverse;
 }
 
 void RateControl::slotControlFastForward(double v) {
@@ -618,7 +890,11 @@ double RateControl::calculateSpeed(double baserate,
             int vcmode = m_pVCMode ? static_cast<int>(m_pVCMode->get()) : MIXXX_VCMODE_ABSOLUTE;
             // TODO(owen): Instead of just ignoring reverse mode, should we
             // disable absolute mode instead?
-            if (m_pReverseButton->toBool() && !m_pScratch2Enable->toBool() &&
+            // In backspin mode the reverse button flicks the record instead,
+            // only censor (reverseroll) plays in reverse.
+            const bool reversePlayback = !backspinOnReverse() || m_reverseRollActive;
+            if (reversePlayback && m_pReverseButton->toBool() &&
+                    !m_pScratch2Enable->toBool() &&
                     (!bVinylControlEnabled ||
                             vcmode != MIXXX_VCMODE_ABSOLUTE)) {
                 rate = -rate;
@@ -636,6 +912,8 @@ double RateControl::calculateSpeed(double baserate,
         m_spinningDown = false;
         m_latchedPlay = false;
         m_prevPaused = true;
+        m_backspinActive = false;    // NEW
+        m_backspinRequested = false; // NEW
     }
 
     // Physical SL-1210 spin-up / spin-down ramp
@@ -645,6 +923,9 @@ double RateControl::calculateSpeed(double baserate,
     const bool playLatched = m_pPlayLatched && m_pPlayLatched->toBool();
     const bool seeked = m_seekedSinceLastBuffer;
     m_seekedSinceLastBuffer = false;
+    // EngineBuffer processes a queued seek before calculateSpeed(), and skips
+    // it when the position did not change
+    m_landingSeekPending = false;
 
     // Speed set by hand: scratching (spinny, waveform, controller platter),
     // jog/wheel scrubbing while paused, searching or vinyl control
@@ -657,6 +938,119 @@ double RateControl::calculateSpeed(double baserate,
     // last playing buffer may already see 0. Remember it per play period.
     if (!paused && playLatched) {
         m_latchedPlay = true;
+    }
+
+    // moved up from below the state machine, the backspin needs it
+    const double dt = static_cast<double>(samplesPerBuffer) / m_pSampleRate.get() / 2;
+    // Spin-up target: the pitched speed, or the nominal 33/45 RPM speed
+    // without the rate slider. Nudges and pitch bend are kept.
+    // rate is already negated for reverse.
+    const double spinUpTarget = m_rampIncludePitch
+            ? rate
+            : rate - (*pReportReverse ? -sliderOffset : sliderOffset);
+
+    // NEW: backspin on the reverse button
+    if (m_backspinRequested.exchange(false) && backspinOnReverse() && !manualSpeed) {
+        startBackspin(paused, rate, spinUpTarget, dt);
+    }
+    m_backspinReversing = false;
+
+    if (m_backspinActive) {
+        if (manualSpeed || seeked) {
+            // Record caught by hand or jump: the backspin is over, the
+            // ramp logic below takes over
+            m_backspinActive = false;
+        } else {
+            // The motor runs while the deck plays. Stop during the backspin
+            // switches it off (brake or power cut), Play switches it on.
+            // Staying paused, the pause from the flick applies with the
+            // next buffer.
+            if (paused) {
+                m_backspin.stopping = false;
+            }
+            const bool motorOn = !paused && !m_backspin.stopping;
+            // The backspin works without the spin-up ramp as well: the motor
+            // still pulls the platter back, at standstill playback continues
+            // at full speed. The spin-up time preference only applies with
+            // the spin-up ramp.
+            const bool spinUp = m_rampUpEnabled;
+            const double backspinUpFactor = spinUp ? m_rampUpTimeFactor.load() : 1.0;
+            if (motorOn != m_backspin.landingMotorOn) {
+                // Play or Stop pressed during the backspin: the landing on
+                // the hotcue was planned for the other case
+                m_backspin.landingPosition = mixxx::audio::kInvalidFramePos;
+            }
+            if (advanceBackspin(&m_backspin.speed,
+                        &m_backspin.flicking,
+                        m_backspin.target,
+                        m_backspin.flickAccel,
+                        dt,
+                        motorOn,
+                        m_rampMode,
+                        m_rampDownMode,
+                        backspinUpFactor,
+                        m_rampDownTimeFactor)) {
+                m_prevPaused = paused;
+                if (paused) {
+                    m_latchedPlay = false;
+                }
+                // Free platter: vinyl pitch without keylock, and the linear
+                // scaler passes smoothly through zero like when scratching
+                *pReportScratching = true;
+                m_backspinReversing = m_backspin.speed < 0.0;
+                // Hand speed, independent of the rate slider
+                return m_backspin.speed;
+            }
+            // Standstill
+            m_backspinActive = false;
+            m_spinningDown = false;
+            if (!motorOn) {
+                m_platterSpeed = 1.0;
+                m_prevPaused = true;
+                m_latchedPlay = false;
+                if (m_backspin.landingPosition.isValid()) {
+                    // Stopped at the hotcue: correct the small error of the
+                    // prediction silently
+                    const auto info = frameInfo();
+                    const double error =
+                            std::abs(m_backspin.landingPosition - info.currentPosition);
+                    if (info.sampleRate.isValid() && error >= 0.5 &&
+                            error < kMaxLandingCorrection * info.sampleRate.toDouble()) {
+                        m_landingSeekPending = true;
+                        seekExact(m_backspin.landingPosition);
+                    }
+                    m_backspin.landingPosition = mixxx::audio::kInvalidFramePos;
+                }
+                return rate; // paused rate
+            }
+            // Motor on: the regular spin-up below continues from standstill,
+            // without spin-up ramp playback continues at full speed
+            m_platterSpeed = spinUp ? 0.0 : 1.0;
+            if (m_backspin.landingPosition.isValid()) {
+                // Backspin to hotcue: the platter stands still for one
+                // buffer. Nothing is audible, so the small error of the
+                // prediction is corrected here and the spin-up reaches full
+                // speed exactly at the hotcue. Without spin-up, playback
+                // starts at the hotcue.
+                const auto info = frameInfo();
+                if (info.sampleRate.isValid()) {
+                    const double remaining = spinUp
+                            ? spinUpDistance(spinUpTarget, dt, m_rampMode, backspinUpFactor)
+                            : 0.0;
+                    const auto seekPosition = m_backspin.landingPosition -
+                            remaining * info.sampleRate.toDouble();
+                    const double error = std::abs(seekPosition - info.currentPosition);
+                    if (error >= 0.5 &&
+                            error < kMaxLandingCorrection * info.sampleRate.toDouble()) {
+                        m_landingSeekPending = true;
+                        seekExact(seekPosition);
+                    }
+                }
+                m_backspin.landingPosition = mixxx::audio::kInvalidFramePos;
+                *pReportScratching = true;
+                return 0.0;
+            }
+        }
     }
 
     if (manualSpeed) {
@@ -699,47 +1093,6 @@ double RateControl::calculateSpeed(double baserate,
     }
     m_prevPaused = paused;
 
-    const double dt = static_cast<double>(samplesPerBuffer) / m_pSampleRate.get() / 2;
-
-    // if (m_spinningDown) {
-    //     if (m_rampDownMode == 1) {
-    //         // Power cut: the platter coasts without brake
-    //         const double friction = (m_rampMode == 0) ? kCoastFriction33 : kCoastFriction45;
-    //         m_platterSpeed -= (friction + kCoastDrag * m_platterSpeed) * dt;
-    //     } else {
-    //         // Electronic brake: constant deceleration until standstill
-    //         const double spindownTime = (m_rampMode == 0) ? kSpindownTime33 : kSpindownTime45;
-    //         m_platterSpeed -= dt / spindownTime;
-    //     }
-    //     if (m_platterSpeed <= 0.0) {
-    //         m_platterSpeed = 1.0;
-    //         m_spinningDown = false;
-    //         return rate; // paused rate (0 unless jog scrubbing)
-    //     }
-    //     return m_lastTargetRate * m_platterSpeed;
-    // }
-
-    // if (m_platterSpeed < 1.0) {
-    //     // 33 RPM = heavier platter feel, 45 RPM = lighter
-    //     const double torque = (m_rampMode == 0) ? 0.45 : 0.75;
-    //     m_platterSpeed += torque * dt;
-
-    //    // Soft saturation: motor settling into quartz lock
-    //    if (m_platterSpeed > 0.9) {
-    //        m_platterSpeed += (1.0 - m_platterSpeed) * 2.0 * dt;
-    //    }
-    //    if (m_platterSpeed < 1.0) {
-    //        // Ramp to the pitched speed, or to the nominal 33/45 RPM speed
-    //        // without the rate slider. Nudges and pitch bend are kept.
-    //        // rate is already negated for reverse.
-    //        m_lastTargetRate = m_rampIncludePitch
-    //                ? rate
-    //                : rate - (*pReportReverse ? -sliderOffset : sliderOffset);
-    //        return m_lastTargetRate * m_platterSpeed;
-    //    }
-    //    m_platterSpeed = 1.0;
-    //}
-
     if (m_spinningDown) {
         // Spin-down time preference stretches the curve, 1.0 = SL-1210
         const double downDt = dt / m_rampDownTimeFactor;
@@ -762,22 +1115,11 @@ double RateControl::calculateSpeed(double baserate,
 
     if (m_platterSpeed < 1.0) {
         // Spin-up time preference stretches the curve, 1.0 = SL-1210
-        const double upDt = dt / m_rampUpTimeFactor;
         // 33 RPM = heavier platter feel, 45 RPM = lighter
-        const double torque = (m_rampMode == 0) ? kSpinupTorque33 : kSpinupTorque45;
-        m_platterSpeed += torque * upDt;
-
-        // Soft saturation: motor settling into quartz lock
-        if (m_platterSpeed > kQuartzLockStart) {
-            m_platterSpeed += (1.0 - m_platterSpeed) * kQuartzLockGain * upDt;
-        }
+        advanceSpinUp(&m_platterSpeed, m_rampMode, dt / m_rampUpTimeFactor);
         if (m_platterSpeed < 1.0) {
-            // Ramp to the pitched speed, or to the nominal 33/45 RPM speed
-            // without the rate slider. Nudges and pitch bend are kept.
-            // rate is already negated for reverse.
-            m_lastTargetRate = m_rampIncludePitch
-                    ? rate
-                    : rate - (*pReportReverse ? -sliderOffset : sliderOffset);
+            // target computed above as spinUpTarget (pitched or nominal)
+            m_lastTargetRate = spinUpTarget;
             return m_lastTargetRate * m_platterSpeed;
         }
         m_platterSpeed = 1.0;
@@ -887,10 +1229,84 @@ void RateControl::resetRateTemp(void) {
 }
 
 bool RateControl::isReverseButtonPressed() {
+    if (backspinOnReverse() && !m_reverseRollActive) {
+        // Loops and beatjumps follow the actual direction of the backspin
+        return m_backspinReversing;
+    }
     if (m_pReverseButton) {
         return m_pReverseButton->toBool();
     }
     return false;
+}
+
+mixxx::audio::FramePos RateControl::lastHotcueBefore(mixxx::audio::FramePos position) const {
+    auto lastHotcue = mixxx::audio::kInvalidFramePos;
+    for (const auto& pHotcuePosition : m_hotcuePositions) {
+        const auto hotcue = mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                pHotcuePosition->get());
+        if (hotcue.isValid() && hotcue < position &&
+                (!lastHotcue.isValid() || hotcue > lastHotcue)) {
+            lastHotcue = hotcue;
+        }
+    }
+    return lastHotcue;
+}
+
+void RateControl::startBackspin(bool paused, double rate, double spinUpTarget, double dt) {
+    // Current platter speed, 1.0 = nominal 33/45 RPM
+    double speed = 0.0;
+    if (m_backspinActive) {
+        speed = m_backspin.speed;
+    } else if (m_spinningDown || (!paused && m_platterSpeed < 1.0)) {
+        speed = m_lastTargetRate * m_platterSpeed;
+    } else if (!paused) {
+        speed = rate;
+    }
+    // Stay paused after the backspin: the deck is paused with the flick,
+    // without the motor the platter brakes or coasts to a standstill
+    const bool playOn = m_backspinPlayOn;
+    m_backspin.stopping = !paused && !playOn;
+    if (m_backspin.stopping && m_pPlay) {
+        m_pPlay->set(0.0);
+    }
+    const bool motorOn = !paused && playOn;
+    double revPerSec = m_backspinRevPerSec;
+    m_backspin.landingPosition = mixxx::audio::kInvalidFramePos;
+    m_backspin.landingMotorOn = motorOn;
+    if (m_backspinToHotcue) {
+        // Choose the power so that the motor brings the platter back to
+        // full speed exactly at the last hotcue behind the play position,
+        // or that the platter stops exactly there (stay paused, stopped
+        // deck). The backspin power of the preferences is the maximum, out
+        // of reach with it: normal backspin.
+        const auto info = frameInfo();
+        const auto hotcue = lastHotcueBefore(info.currentPosition);
+        if (hotcue.isValid() && info.sampleRate.isValid()) {
+            const double offset = (hotcue - info.currentPosition) /
+                    info.sampleRate.toDouble();
+            const bool spinUp = m_rampUpEnabled;
+            const BackspinPhysics physics{m_rampMode,
+                    motorOn,
+                    spinUp,
+                    m_rampDownMode,
+                    spinUp ? m_rampUpTimeFactor.load() : 1.0,
+                    m_rampDownTimeFactor};
+            const double power = backspinPowerForOffset(
+                    offset, speed, spinUpTarget, dt, physics, revPerSec);
+            if (power >= 0.0) {
+                revPerSec = power;
+                m_backspin.landingPosition = hotcue;
+            }
+        }
+    }
+    m_backspin.target = -revPerSec / nominalRevPerSec(m_rampMode);
+    m_backspin.speed = speed;
+    // A platter already spinning back faster is not slowed by the hand
+    m_backspin.flicking = speed > m_backspin.target;
+    m_backspin.flickAccel = (speed - m_backspin.target) / kBackspinFlickTime;
+    m_backspinActive = true;
+    m_spinningDown = false;
+    m_platterSpeed = 1.0;
 }
 
 void RateControl::notifyWrapAround(mixxx::audio::FramePos triggerPos,
@@ -908,6 +1324,12 @@ void RateControl::notifyWrapAround(mixxx::audio::FramePos triggerPos,
 void RateControl::notifySeek(mixxx::audio::FramePos position) {
     // qDebug() << "RateControl::notifySeek" << getGroup() << position;
     m_pScratchController->notifySeek(position);
+    if (m_landingSeekPending) {
+        // Our own silent correction at the standstill of a backspin to
+        // hotcue: the spin-up continues
+        m_landingSeekPending = false;
+        return;
+    }
     // A pause combined with a jump (cue, start_stop, track load) must not
     // spin down from the new position
     m_seekedSinceLastBuffer = true;
@@ -931,6 +1353,20 @@ void RateControl::setEngineMixer(EngineMixer* pEngineMixer) {
     m_pPlayLatched = std::make_unique<PollingControlProxy>(getGroup(),
             QStringLiteral("play_latched"),
             ControlFlag::AllowMissingOrInvalid);
+    // play (owned by EngineBuffer), to pause the deck with the flick when
+    // staying paused after the backspin
+    m_pPlay = std::make_unique<PollingControlProxy>(getGroup(),
+            QStringLiteral("play"),
+            ControlFlag::AllowMissingOrInvalid);
+    // Hotcues are owned by CueControl as well, for the backspin to hotcue
+    m_hotcuePositions.clear();
+    if (m_rampAllowed) {
+        for (int i = 1; i <= kMaxNumberOfHotcues; ++i) {
+            m_hotcuePositions.push_back(std::make_unique<PollingControlProxy>(getGroup(),
+                    QStringLiteral("hotcue_%1_position").arg(i),
+                    ControlFlag::AllowMissingOrInvalid));
+        }
+    }
 }
 
 void RateControl::requestRampReset() {

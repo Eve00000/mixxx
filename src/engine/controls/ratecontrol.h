@@ -2,6 +2,9 @@
 
 #include <QObject>
 #include <atomic>
+#include <memory>
+#include <optional>
+#include <vector>
 
 #include "control/pollingcontrolproxy.h"
 #include "engine/controls/enginecontrol.h"
@@ -95,11 +98,59 @@ class RateControl : public EngineControl {
     static double spinUpTime(int rpmMode, double factor);
     static double spinDownTime(int rpmMode, int rampDownMode, double factor);
 
+    // Reverse button mode: false = reverse playback, true = backspin
+    static void setBackspinOnReverse(bool enabled);
+    // Backward platter speed after the flick in revolutions per second,
+    // clamped to maxBackspinRevPerSec()
+    static void setBackspinRevPerSec(double revPerSec);
+    // Fastest backspin that keeps the needle in the groove
+    static double maxBackspinRevPerSec();
+    struct BackspinTimes {
+        double backwardTime; // seconds from the flick until the platter stands still
+        double rewind;       // seconds of audio played backwards at nominal speed
+        double recoverTime;  // motor on: seconds from the flick until full speed
+    };
+    // After a backspin of a playing deck: true = play on (spin-up or full
+    // speed), false = stay paused. The deck is paused with the flick, the
+    // platter brakes or coasts to a standstill (spin-down type).
+    static void setBackspinPlayOn(bool playOn);
+    // Playing deck: choose the backspin power, at most the one set with
+    // setBackspinRevPerSec(), so that the spin-up reaches full speed exactly
+    // at the last hotcue behind the play position. Staying paused: the
+    // platter stops exactly at the hotcue.
+    static void setBackspinToHotcue(bool enabled);
+    // How many seconds back a hotcue can be at most for that, at nominal speed.
+    // Zero or negative: the spin-up ends after the play position even with
+    // revPerSec, no hotcue behind it can be reached.
+    // spinUp = false: physical spin-up disabled, playback continues at full
+    // speed from the standstill, upFactor is ignored.
+    // playOn = false: stay paused, the platter brakes or coasts
+    // (rampDownMode, downFactor) to a standstill at the hotcue.
+    static double backspinHotcueReach(int rpmMode,
+            double upFactor,
+            double revPerSec,
+            bool spinUp = true,
+            bool playOn = true,
+            int rampDownMode = 0,
+            double downFactor = 1.0);
+    // Backspin of a deck at nominal speed (motor on) or at standstill
+    // (motor off), for the preferences. spinUp as above. startSpeed overrides
+    // the speed at the flick, e.g. 1.0 for a playing deck that stays paused.
+    static BackspinTimes backspinTimes(int rpmMode,
+            bool motorOn,
+            int rampDownMode,
+            double revPerSec,
+            double upFactor,
+            double downFactor,
+            bool spinUp = true,
+            std::optional<double> startSpeed = std::nullopt);
+
   public slots:
     void slotRateRangeChanged(double);
     void slotRateSliderChanged(double);
     void slotRateRatioChanged(double);
     void slotReverseRollActivate(double);
+    void slotReverseChanged(double);
     void slotControlRatePermDown(double);
     void slotControlRatePermDownSmall(double);
     void slotControlRatePermUp(double);
@@ -209,4 +260,40 @@ class RateControl : public EngineControl {
     static std::atomic<double> m_rampUpTimeFactor;
     static std::atomic<double> m_rampDownTimeFactor;
     bool m_rampAllowed; // only main decks, not samplers / preview deck
+
+    // Backspin on the reverse button
+    bool backspinOnReverse() const;
+    void startBackspin(bool paused, double rate, double spinUpTarget, double dt);
+    mixxx::audio::FramePos lastHotcueBefore(mixxx::audio::FramePos position) const;
+    struct BackspinState {
+        double speed = 0.0;      // 1.0 = nominal 33/45 RPM forward
+        double target = 0.0;     // speed after the flick, negative
+        double flickAccel = 0.0; // speed units per second while the hand flicks
+        bool flicking = false;
+        // Backspin to hotcue: full speed is reached here (play on), or the
+        // platter stops here (stay paused)
+        mixxx::audio::FramePos landingPosition;
+        // The landing was planned with the motor on (play on)
+        bool landingMotorOn = true;
+        // Stay paused: the deck was paused with the flick, until EngineBuffer
+        // reports it paused
+        bool stopping = false;
+    };
+    BackspinState m_backspin;
+    bool m_backspinActive;
+    // Set by the reverse button (GUI / controller thread)
+    std::atomic<bool> m_backspinRequested;
+    std::atomic<bool> m_reverseRollActive;
+    // Read by LoopingControl from other threads
+    std::atomic<bool> m_backspinReversing;
+    // The correction seek at standstill must not cut the spin-up
+    bool m_landingSeekPending;
+    // Hotcue positions (owned by CueControl) for the backspin to hotcue
+    std::vector<std::unique_ptr<PollingControlProxy>> m_hotcuePositions;
+    static std::atomic<bool> m_backspinOnReverse;
+    static std::atomic<double> m_backspinRevPerSec;
+    static std::atomic<bool> m_backspinToHotcue;
+    static std::atomic<bool> m_backspinPlayOn;
+    // Stay paused after the backspin: pauses the deck with the flick
+    std::unique_ptr<PollingControlProxy> m_pPlay;
 };
