@@ -10,6 +10,7 @@
 #ifdef __ENGINEPRIME__
 #include "library/trackset/crate/crateid.h"
 #endif
+#include "library/trackset/searchcrate/searchcrateid.h"
 #include "preferences/usersettings.h"
 #include "track/track_decl.h"
 #include "util/db/dbconnectionpool.h"
@@ -17,9 +18,11 @@
 
 class AnalysisFeature;
 class AutoDJFeature;
+class AutoSuggestionsFeature;
 class BrowseFeature;
 class ControlObject;
 class CrateFeature;
+class GroupedCratesFeature;
 class LibraryControl;
 class LibraryFeature;
 class LibraryTableModel;
@@ -27,12 +30,17 @@ class KeyboardEventFilter;
 class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
+class PreparationFeature;
+class GroupedPlaylistsFeature;
 class RecordingManager;
+class SearchCrateFeature;
+class GroupedSearchCratesFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
 class WLibrarySidebar;
 class WLibrary;
+class WLibraryPreparationWindow;
 class QAbstractItemModel;
 
 #ifdef __ENGINEPRIME__
@@ -43,7 +51,7 @@ class LibraryExporter;
 
 // A Library class is a container for all the model-side aspects of the library.
 // A library widget can be attached to the Library object by calling bindLibraryWidget.
-class Library: public QObject {
+class Library : public QObject {
     Q_OBJECT
 
   public:
@@ -69,8 +77,12 @@ class Library: public QObject {
 
     void bindSearchboxWidget(WSearchLineEdit* pSearchboxWidget);
     void bindSidebarWidget(WLibrarySidebar* sidebarWidget);
-    void bindLibraryWidget(WLibrary* libraryWidget,
-                    KeyboardEventFilter* pKeyboard);
+    void bindLibraryWidget(
+            WLibrary* libraryWidget,
+            KeyboardEventFilter* pKeyboard);
+    void bindLibraryPreparationWindowWidget(
+            WLibraryPreparationWindow* libraryPreparationWindowWidget,
+            KeyboardEventFilter* pKeyboard);
 
     void addFeature(LibraryFeature* feature);
 
@@ -91,7 +103,7 @@ class Library: public QObject {
         return m_editMetadataSelectedClick;
     }
 
-    //static Library* buildDefaultLibrary();
+    // static Library* buildDefaultLibrary();
 
     static const int kDefaultRowHeightPx;
 
@@ -107,12 +119,22 @@ class Library: public QObject {
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
     void showAutoDJ();
+    void showAutoSuggestions();
 
     static const QString kAutoDJViewName;
+    static const QString kAutoSuggestionsViewName;
 
     bool requestAddDir(const QString& directory);
     bool requestRemoveDir(const QString& directory, LibraryRemovalType removalType);
     bool requestRelocateDir(const QString& previousDirectory, const QString& newDirectory);
+
+    // to let wtrackmenu get the correct active window
+    WLibraryPreparationWindow* preparationWindow() const {
+        return m_pLibraryPreparationWindowWidget;
+    }
+    WLibrary* libraryWidget() const {
+        return m_pLibraryWidget;
+    }
 
 #ifdef __ENGINEPRIME__
     std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(QWidget* parent);
@@ -120,7 +142,9 @@ class Library: public QObject {
 
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);
+    void slotShowTrackModelInPreparationWindow(QAbstractItemModel* model);
     void slotSwitchToView(const QString& view);
+    void slotSwitchToViewInPreparationWindow(const QString& view);
     void slotLoadTrack(TrackPointer pTrack);
 #ifdef __STEM__
     void slotLoadTrackToPlayer(TrackPointer pTrack,
@@ -134,15 +158,21 @@ class Library: public QObject {
     void slotRefreshLibraryModels();
     void slotCreatePlaylist();
     void slotCreateCrate();
+    void slotCreateSearchCrate();
+    void slotCreateSearchCrateFromSearch(const QString& text);
     void slotSearchInCurrentView();
     void slotSearchInAllTracks();
     void onSkinLoadFinished();
     void slotSaveCurrentViewState() const;
+    void slotSaveCurrentViewStateInPreparationWindow() const;
     void slotRestoreCurrentViewState() const;
+    void slotRestoreCurrentViewStateInPreparationWindow() const;
 
   signals:
     void showTrackModel(QAbstractItemModel* model, bool restoreState = true);
+    void showTrackModelInPreparationWindow(QAbstractItemModel* model, bool restoreState = true);
     void switchToView(const QString& view);
+    void switchToViewInPreparationWindow(const QString& view);
     void loadTrack(TrackPointer pTrack);
 #ifdef __STEM__
     void loadTrackToPlayer(TrackPointer pTrack,
@@ -158,6 +188,7 @@ class Library: public QObject {
     void search(const QString& text);
     void disableSearch();
     void pasteFromSidebar();
+    void pasteFromSidebarInPreparationWindow();
     // emit this signal to enable/disable the cover art widget
     void enableCoverArtDisplay(bool);
     void selectTrack(const TrackId&);
@@ -180,8 +211,8 @@ class Library: public QObject {
     void onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
 
   private slots:
-      void onPlayerManagerTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
-      void onPlayerManagerTrackAnalyzerIdle();
+    void onPlayerManagerTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
+    void onPlayerManagerTrackAnalyzerIdle();
 
   private:
     const UserSettingsPointer m_pConfig;
@@ -197,11 +228,18 @@ class Library: public QObject {
     QList<LibraryFeature*> m_features;
     const static QString m_sTrackViewName;
     WLibrary* m_pLibraryWidget;
+    WLibraryPreparationWindow* m_pLibraryPreparationWindowWidget;
     parented_ptr<MixxxLibraryFeature> m_pMixxxLibraryFeature;
     parented_ptr<AutoDJFeature> m_pAutoDJFeature;
+    parented_ptr<AutoSuggestionsFeature> m_pAutoSuggestionsFeature;
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
+    parented_ptr<GroupedPlaylistsFeature> m_pGroupedPlaylistsFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
+    parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
+    parented_ptr<GroupedCratesFeature> m_pGroupedCratesFeature;
+    parented_ptr<GroupedSearchCratesFeature> m_pGroupedSearchCratesFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
+    parented_ptr<PreparationFeature> m_pPreparationFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;

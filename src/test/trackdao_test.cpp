@@ -1,7 +1,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <QSqlQuery>
+#include <tuple>
+
 #include "test/librarytest.h"
+#include "track/beats.h"
 #include "track/globaltrackcache.h"
 #include "track/track.h"
 
@@ -158,4 +162,92 @@ TEST_F(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly) {
             << "fs_deleted must be preserved for a file no longer in the directory";
     EXPECT_EQ(1, readQuery.value(1).toInt())
             << "needs_verification must remain set so verifyRemainingTracks can confirm deletion";
+}
+
+namespace {
+TrackPointer newCmrtTestTrack(const QString& fileName, mixxx::Bpm bpm) {
+    TrackPointer pTrack = Track::newTemporary(
+            mixxx::FileAccess(mixxx::FileInfo(QDir(QDir::tempPath()), fileName)));
+    pTrack->setAudioProperties(
+            mixxx::audio::ChannelCount(2),
+            mixxx::audio::SampleRate(44100),
+            mixxx::audio::Bitrate(),
+            mixxx::Duration::fromSeconds(180));
+    pTrack->trySetBeats(mixxx::Beats::fromConstTempo(
+            pTrack->getSampleRate(), mixxx::audio::kStartFramePos, bpm));
+    return pTrack;
+}
+
+} // namespace
+
+// While "Use CMRT Data" is active, a member track's beats, BPM and cues are a
+// shifted copy of its canonical track's data. Saving the member in that state
+// (e.g. after changing its rating) must not persist that copy as the member's
+// own data, and unchecking the overlay must restore the member's own beats
+// and cues -- even if the member is BPM-locked.
+TEST_F(TrackDAOTest, cmrtOverlayIsNotSavedAsOwnData) {
+    TrackDAO& trackDAO = internalCollection()->getTrackDAO();
+    TrackPointer pMember = newCmrtTestTrack(
+            QStringLiteral("cmrt-member.mp3"), mixxx::Bpm(120));
+    TrackPointer pCanonical = newCmrtTestTrack(
+            QStringLiteral("cmrt-canonical.flac"), mixxx::Bpm(128));
+    const TrackId memberId = internalCollection()->addTrack(pMember, false);
+    const TrackId canonicalId = internalCollection()->addTrack(pCanonical, false);
+    ASSERT_TRUE(memberId.isValid());
+    ASSERT_TRUE(canonicalId.isValid());
+    pMember->createAndAddCue(mixxx::CueType::HotCue,
+            0,
+            mixxx::audio::FramePos(44100),
+            mixxx::audio::kInvalidFramePos);
+    pMember->setBpmLocked(true);
+    ASSERT_TRUE(trackDAO.saveTrack(pMember.get()));
+    pCanonical->createAndAddCue(mixxx::CueType::HotCue,
+            1,
+            mixxx::audio::FramePos(88200),
+            mixxx::audio::kInvalidFramePos);
+    pCanonical->createAndAddCue(mixxx::CueType::HotCue,
+            2,
+            mixxx::audio::FramePos(132300),
+            mixxx::audio::kInvalidFramePos);
+    ASSERT_TRUE(trackDAO.saveTrack(pCanonical.get()));
+    const auto storedMemberValues = [&]() {
+        QSqlQuery query(dbConnection());
+        query.prepare(QStringLiteral(
+                "SELECT bpm, rating, "
+                "(SELECT COUNT(*) FROM cues WHERE track_id=:id1 AND hotcue=0), "
+                "(SELECT COUNT(*) FROM cues WHERE track_id=:id2) "
+                "FROM library WHERE id=:id3"));
+        query.bindValue(":id1", memberId.toVariant());
+        query.bindValue(":id2", memberId.toVariant());
+        query.bindValue(":id3", memberId.toVariant());
+        EXPECT_TRUE(query.exec());
+        EXPECT_TRUE(query.next());
+        return std::make_tuple(query.value(0).toDouble(),
+                query.value(1).toInt(),
+                query.value(2).toInt(),
+                query.value(3).toInt());
+    };
+    ASSERT_EQ(std::make_tuple(120.0, 0, 1, 1), storedMemberValues());
+    pMember->applyCmrtOverlay(pCanonical, 0.5, pMember->getSampleRate());
+    ASSERT_TRUE(pMember->hasCmrtOverlayActive());
+    EXPECT_DOUBLE_EQ(128.0, pMember->getBpm());
+    EXPECT_EQ(2, pMember->getCuePoints().size());
+    // Unrelated edit while the overlay is active
+    pMember->setRating(3);
+    ASSERT_TRUE(pMember->isDirty());
+    ASSERT_TRUE(trackDAO.saveTrack(pMember.get()));
+    // The rating is saved, the member's own BPM and cues are untouched
+    EXPECT_EQ(std::make_tuple(120.0, 3, 1, 1), storedMemberValues());
+    trackDAO.reloadOwnCuesAndBeats(pMember);
+    EXPECT_FALSE(pMember->hasCmrtOverlayActive());
+    EXPECT_DOUBLE_EQ(120.0, pMember->getBpm());
+    EXPECT_TRUE(pMember->isBpmLocked());
+    const QList<CuePointer> cues = pMember->getCuePoints();
+    ASSERT_EQ(1, cues.size());
+    EXPECT_EQ(0, cues.first()->getHotCue());
+    EXPECT_EQ(mixxx::audio::FramePos(44100), cues.first()->getPosition());
+    EXPECT_EQ(std::make_tuple(120.0, 3, 1, 1), storedMemberValues());
+    // The canonical track keeps its own data
+    EXPECT_DOUBLE_EQ(128.0, pCanonical->getBpm());
+    EXPECT_EQ(2, pCanonical->getCuePoints().size());
 }

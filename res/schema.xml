@@ -593,4 +593,272 @@ reapplying those migrations.
       ALTER TABLE library ADD COLUMN tuning_frequency_hz FLOAT DEFAULT 0.0;
     </sql>
   </revision>
+  <revision version="41" min_compatible="3">
+    <description>
+      Add SearchCrates Table.
+    </description>
+    <sql>
+      CREATE TABLE IF NOT EXISTS searchcrates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(48) UNIQUE NOT NULL,
+      count INTEGER DEFAULT 0, show INTEGER DEFAULT 1, locked INTEGER DEFAULT 0,
+      autodj_source INTEGER DEFAULT 0, search_input varchar(255),
+      search_sql varchar(255),
+      condition1_field VARCHAR(64), condition1_operator VARCHAR(16),
+      condition1_value VARCHAR(255), condition1_combiner VARCHAR(4),
+      condition2_field VARCHAR(64), condition2_operator VARCHAR(16),
+      condition2_value VARCHAR(255), condition2_combiner VARCHAR(4),
+      condition3_field VARCHAR(64), condition3_operator VARCHAR(16),
+      condition3_value VARCHAR(255), condition3_combiner VARCHAR(4),
+      condition4_field VARCHAR(64), condition4_operator VARCHAR(16),
+      condition4_value VARCHAR(255), condition4_combiner VARCHAR(4),
+      condition5_field VARCHAR(64), condition5_operator VARCHAR(16),
+      condition5_value VARCHAR(255), condition5_combiner VARCHAR(4),
+      condition6_field VARCHAR(64), condition6_operator VARCHAR(16),
+      condition6_value VARCHAR(255), condition6_combiner VARCHAR(4),
+      condition7_field VARCHAR(64), condition7_operator VARCHAR(16),
+      condition7_value VARCHAR(255), condition7_combiner VARCHAR(4),
+      condition8_field VARCHAR(64), condition8_operator VARCHAR(16),
+      condition8_value VARCHAR(255), condition8_combiner VARCHAR(4),
+      condition9_field VARCHAR(64), condition9_operator VARCHAR(16),
+      condition9_value VARCHAR(255), condition9_combiner VARCHAR(4),
+      condition10_field VARCHAR(64), condition10_operator VARCHAR(16),
+      condition10_value VARCHAR(255), condition10_combiner VARCHAR(4),
+      condition11_field VARCHAR(64), condition11_operator VARCHAR(16),
+      condition11_value VARCHAR(255), condition11_combiner VARCHAR(4),
+      condition12_field VARCHAR(64), condition12_operator VARCHAR(16),
+      condition12_value VARCHAR(255), condition12_combiner VARCHAR(4));
+      CREATE TABLE IF NOT EXISTS searchcrate_tracks (
+      searchcrate_id INTEGER NOT NULL REFERENCES searchcrates(id),
+      track_id INTEGER NOT NULL REFERENCES "library_old"(id),
+      UNIQUE (searchcrate_id, track_id));
+    </sql>
+  </revision>
+  <revision version="42" min_compatible="3">
+    <description>
+      Add BPM and Key segments tables for advanced beat and key analysis.
+      These tables store detailed segment information for tracks analyzed with the
+      extended Queen Mary plugins.
+    </description>
+    <sql>
+      -- BPM segments table
+      CREATE TABLE IF NOT EXISTS track_bpm_segments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_id INTEGER NOT NULL,
+      position REAL NOT NULL,
+      duration REAL NOT NULL,
+      bpm_start REAL NOT NULL,
+      bpm_end REAL NOT NULL,
+      range_start REAL NOT NULL,
+      range_end REAL NOT NULL,
+      type TEXT NOT NULL,
+      FOREIGN KEY (track_id) REFERENCES library(id) ON DELETE CASCADE
+      );
+      -- Key segments table
+      CREATE TABLE IF NOT EXISTS track_key_segments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_id INTEGER NOT NULL,
+      position REAL NOT NULL,
+      duration REAL NOT NULL,
+      key_id INTEGER NOT NULL,
+      key_text TEXT NOT NULL,
+      range_start REAL NOT NULL,
+      range_end REAL NOT NULL,
+      type TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      FOREIGN KEY (track_id) REFERENCES library(id) ON DELETE CASCADE
+      );
+      -- Indexes for BPM segments
+      CREATE INDEX IF NOT EXISTS idx_bpm_segments_track_id ON track_bpm_segments(track_id);
+      CREATE INDEX IF NOT EXISTS idx_bpm_segments_position ON track_bpm_segments(track_id, position);
+      -- Indexes for Key segments
+      CREATE INDEX IF NOT EXISTS idx_key_segments_track_id ON track_key_segments(track_id);
+      CREATE INDEX IF NOT EXISTS idx_key_segments_position ON track_key_segments(track_id, position);
+    </sql>
+  </revision>
+  <revision version="42" min_compatible="3">
+    <description>
+      Add StemVols to Cues Table.
+    </description>
+    <sql>
+      ALTER TABLE cues ADD COLUMN stem_1_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_2_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_3_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_4_vol REAL DEFAULT 1.00 NOT NULL;
+      ALTER TABLE cues ADD COLUMN stem_5_vol REAL DEFAULT 1.00 NOT NULL;
+    </sql>
+  </revision>
+  <revision version="43" min_compatible="3">
+    <description>
+      Add MusicBrainz and AcoustID metadata columns to the library table
+      to support Chromaprint-based audio fingerprinting and AcoustID lookup.
+    </description>
+    <sql>
+      ALTER TABLE library ADD COLUMN musicbrainz_recording_id varchar(64);
+      ALTER TABLE library ADD COLUMN musicbrainz_release_id varchar(64);
+      ALTER TABLE library ADD COLUMN musicbrainz_track_id varchar(64);
+      ALTER TABLE library ADD COLUMN musicbrainz_artist_id varchar(64);
+      ALTER TABLE library ADD COLUMN acoustid_id varchar(64);
+      ALTER TABLE library ADD COLUMN acoustid_lookup_at INTEGER;
+      <!-- acoustid_lookup_status values: 'pending' | 'completed' | 'failed' -->
+      ALTER TABLE library ADD COLUMN acoustid_lookup_status varchar(16);
+
+      CREATE INDEX IF NOT EXISTS idx_library_mbid ON library (
+      musicbrainz_recording_id
+      );
+      CREATE INDEX IF NOT EXISTS idx_library_acoustid ON library (
+      acoustid_id
+      );
+      CREATE INDEX IF NOT EXISTS idx_library_mbid_artist ON library (
+      musicbrainz_artist_id
+      );
+    </sql>
+  </revision>
+  <revision version="44" min_compatible="3">
+    <description>
+      Add data_text column to track_analysis table for small text payloads
+      such as audio quality metrics and Chromaprint version metadata.
+      Raw fingerprint arrays are never stored in the database.
+    </description>
+    <sql>
+      ALTER TABLE track_analysis ADD COLUMN data_text TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_track_analysis_lookup ON track_analysis (
+      track_id,
+      type
+      );
+    </sql>
+  </revision>
+  <revision version="45" min_compatible="3">
+    <description>
+      Add Chromaprint fingerprint tables: fingerprint_metadata stores the
+      32-bit SimHash pre-filter and CMRT group linkage per track; cmrt_groups
+      holds one record per unique audio recording; cmrt_members is the
+      track-to-group bridge table; acoustid_queue manages background AcoustID
+      API submissions; acoustid_cache avoids redundant API round-trips.
+      Raw fingerprint data is stored as separate .chroma files on disk,
+      never as BLOBs in the database.
+    </description>
+    <sql>
+      <!-- fingerprint_hash is a 32-bit SimHash used as a non-unique pre-filter.
+           Full binary XOR/popcount comparison of .chroma files is required
+           before assigning a track to a CMRT group. See design notes. -->
+      CREATE TABLE IF NOT EXISTS fingerprint_metadata (
+      track_id INTEGER NOT NULL,
+      <!-- 32-bit SimHash — non-unique, multiple tracks share the same value -->
+      fingerprint_hash INTEGER NOT NULL,
+      <!-- SHA-256 hex of .chroma file — non-unique here; exact copies share it -->
+      chroma_sha256 varchar(64) NOT NULL,
+      fingerprint_duration REAL,
+      fingerprint_version INTEGER,
+      cmrt_group_id INTEGER,
+      cmrt_offset_seconds REAL DEFAULT 0,
+      is_canonical INTEGER DEFAULT 0,
+      fingerprint_valid INTEGER DEFAULT 1,
+      fingerprint_needs_regen INTEGER DEFAULT 0,
+      computed_at INTEGER NOT NULL,
+      PRIMARY KEY (track_id));
+
+      <!-- chroma_sha256 is UNIQUE here: each group has exactly one canonical
+           audio identity. Two groups cannot share the same SHA-256. -->
+      CREATE TABLE IF NOT EXISTS cmrt_groups (
+      group_id INTEGER NOT NULL,
+      fingerprint_hash INTEGER NOT NULL,
+      chroma_sha256 varchar(64) NOT NULL,
+      canonical_track_id INTEGER NOT NULL,
+      track_count INTEGER DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      last_updated INTEGER,
+      musicbrainz_cmrt_mbid varchar(64),
+      musicbrainz_synced INTEGER DEFAULT 0,
+      musicbrainz_last_sync INTEGER,
+      musicbrainz_community_score REAL,
+      musicbrainz_submitted INTEGER DEFAULT 0,
+      musicbrainz_submission_mbid varchar(64),
+      local_preferred INTEGER DEFAULT 1,
+      conflict_resolved_at INTEGER,
+      <!-- conflict_resolution values: 'local_won' | 'remote_won' -->
+      conflict_resolution varchar(16),
+      PRIMARY KEY (group_id));
+
+      <!-- UNIQUE (track_id) enforces each track belongs to exactly one group -->
+      CREATE TABLE IF NOT EXISTS cmrt_members (
+      member_id INTEGER NOT NULL,
+      group_id INTEGER NOT NULL,
+      track_id INTEGER NOT NULL,
+      offset_from_canonical REAL DEFAULT 0,
+      quality_score REAL,
+      match_score REAL,
+      is_fake_lossless INTEGER DEFAULT 0,
+      added_at INTEGER NOT NULL,
+      user_quality_rating INTEGER,
+      use_cmrt_data INTEGER DEFAULT 0 NOT NULL,
+      PRIMARY KEY (member_id),
+      UNIQUE (track_id));
+
+      <!-- status values: 'queued' | 'processing' | 'completed' | 'failed' -->
+      CREATE TABLE IF NOT EXISTS acoustid_queue (
+      queue_id INTEGER NOT NULL,
+      track_id INTEGER NOT NULL,
+      priority INTEGER DEFAULT 5,
+      status varchar(16) DEFAULT 'queued',
+      attempts INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 3,
+      last_attempt INTEGER,
+      error_message TEXT,
+      queued_at INTEGER NOT NULL,
+      PRIMARY KEY (queue_id),
+      UNIQUE (track_id));
+
+      <!-- keyed on chroma_sha256 (SHA-256), not fingerprint_hash (SimHash),
+           to avoid Birthday Paradox false cache hits -->
+      CREATE TABLE IF NOT EXISTS acoustid_cache (
+      chroma_sha256 varchar(64) NOT NULL,
+      acoustid_id varchar(64) NOT NULL,
+      musicbrainz_recording_id varchar(64),
+      musicbrainz_release_id varchar(64),
+      musicbrainz_track_id varchar(64),
+      musicbrainz_artist_id varchar(64),
+      musicbrainz_metadata TEXT,
+      confidence REAL,
+      lookup_timestamp INTEGER NOT NULL,
+      expires_at INTEGER,
+      PRIMARY KEY (chroma_sha256));
+
+      CREATE INDEX IF NOT EXISTS idx_fm_hash ON fingerprint_metadata (
+      fingerprint_hash
+      );
+      CREATE INDEX IF NOT EXISTS idx_fm_sha ON fingerprint_metadata (
+      chroma_sha256
+      );
+      CREATE INDEX IF NOT EXISTS idx_fm_group ON fingerprint_metadata (
+      cmrt_group_id
+      );
+      CREATE INDEX IF NOT EXISTS idx_fm_canonical ON fingerprint_metadata (
+      is_canonical
+      );
+      CREATE INDEX IF NOT EXISTS idx_cg_hash ON cmrt_groups (
+      fingerprint_hash
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_cg_sha ON cmrt_groups (
+      chroma_sha256
+      );
+      CREATE INDEX IF NOT EXISTS idx_cg_mbid ON cmrt_groups (
+      musicbrainz_cmrt_mbid
+      );
+      CREATE INDEX IF NOT EXISTS idx_cm_group ON cmrt_members (
+      group_id
+      );
+      CREATE INDEX IF NOT EXISTS idx_cm_track ON cmrt_members (
+      track_id
+      );
+      CREATE INDEX IF NOT EXISTS idx_aq_status ON acoustid_queue (
+      status,
+      priority,
+      queued_at
+      );
+      CREATE INDEX IF NOT EXISTS idx_ac_mbid ON acoustid_cache (
+      musicbrainz_recording_id
+      );
+    </sql>
+  </revision>
 </schema>

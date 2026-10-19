@@ -1,5 +1,7 @@
 <Template>
-  <SetVariable name="BtnType"><Variable name="SubRegion_BtnType"/></SetVariable>
+  <SetVariable name="BtnType">
+    <Variable name="SubRegion_BtnType"/>
+  </SetVariable>
   <SetVariable name="BtnSize">square</SetVariable>
 
   <WidgetGroup>
@@ -13,11 +15,13 @@
         <Layout>horizontal</Layout>
         <Children>
 
-          <WidgetGroup><!-- Play, Cue, Reverse -->
+          <WidgetGroup>
+            <!-- Play, Cue, Reverse -->
             <Layout>vertical</Layout>
             <SizePolicy>max,min</SizePolicy>
             <Children>
-              <WidgetGroup><!-- Cue | Reverse -->
+              <WidgetGroup>
+                <!-- Cue | Reverse -->
                 <Layout>horizontal</Layout>
                 <Children>
 
@@ -67,9 +71,11 @@
                   </Template>
 
                 </Children>
-              </WidgetGroup><!-- Reverse | Cue -->
+              </WidgetGroup>
+              <!-- Reverse | Cue -->
 
-              <WidgetGroup><!-- Play + PlayBlink + default dark background -->
+              <WidgetGroup>
+                <!-- Play + PlayBlink + default dark background -->
                 <Layout>stacked</Layout>
                 <Size>68f,26f</Size>
                 <Children>
@@ -99,19 +105,28 @@
                     </Connection>
                   </PushButton>
                 </Children>
-              </WidgetGroup><!-- Play + PlayBlink + default dark background -->
+              </WidgetGroup>
+              <!-- Play + PlayBlink + default dark background -->
 
             </Children>
           </WidgetGroup>
 
-          <WidgetGroup><Size>2f,0min</Size></WidgetGroup><!--  = 2-10px wide -->
-          <WidgetGroup><SizePolicy>i,min</SizePolicy><MaximumSize>8,</MaximumSize></WidgetGroup>
+          <WidgetGroup>
+            <Size>2f,0min</Size>
+          </WidgetGroup>
+          <!--  = 2-10px wide -->
+          <WidgetGroup>
+            <SizePolicy>i,min</SizePolicy>
+            <MaximumSize>8,</MaximumSize>
+          </WidgetGroup>
 
-          <WidgetGroup><!-- HotCues -->
+          <WidgetGroup>
+            <!-- HotCues -->
             <Layout>vertical</Layout>
             <SizePolicy>max,min</SizePolicy>
             <Children>
-              <WidgetGroup><!-- HotCues 1-2 / 1-4 -->
+              <WidgetGroup>
+                <!-- HotCues 1-2 / 1-4 -->
                 <Layout>horizontal</Layout>
                 <Children>
 
@@ -121,15 +136,27 @@
                   <Template src="skins:LateNight/controls/button_hotcue.xml">
                     <SetVariable name="number">2</SetVariable>
                   </Template>
+                  <Template src="skins:LateNight/controls/button_hotcue.xml">
+                    <SetVariable name="number">3</SetVariable>
+                  </Template>
+                  <Template src="skins:LateNight/controls/button_hotcue.xml">
+                    <SetVariable name="number">4</SetVariable>
+                  </Template>
 
                   <WidgetGroup>
                     <Layout>horizontal</Layout>
                     <Children>
                       <Template src="skins:LateNight/controls/button_hotcue.xml">
-                        <SetVariable name="number">3</SetVariable>
+                        <SetVariable name="number">5</SetVariable>
                       </Template>
                       <Template src="skins:LateNight/controls/button_hotcue.xml">
-                        <SetVariable name="number">4</SetVariable>
+                        <SetVariable name="number">6</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">7</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">8</SetVariable>
                       </Template>
                     </Children>
                     <Connection>
@@ -138,24 +165,13 @@
                     </Connection>
                   </WidgetGroup>
                 </Children>
-              </WidgetGroup><!-- HotCues 1-2 / 1-4 -->
+              </WidgetGroup>
+              <!-- HotCues 1-2 / 1-4 -->
 
               <!-- HotCues (3-4 / 5-8) -->
               <WidgetStack currentpage="[Skin],show_8_hotcues" persist="true">
                 <Children>
                   <WidgetGroup>
-                    <Layout>horizontal</Layout>
-                    <Children>
-                      <Template src="skins:LateNight/controls/button_hotcue.xml">
-                        <SetVariable name="number">3</SetVariable>
-                      </Template>
-                      <Template src="skins:LateNight/controls/button_hotcue.xml">
-                        <SetVariable name="number">4</SetVariable>
-                      </Template>
-                    </Children>
-                  </WidgetGroup>
-
-                  <WidgetGroup  trigger="[Skin],show_8_hotcues">
                     <Layout>horizontal</Layout>
                     <Children>
                       <Template src="skins:LateNight/controls/button_hotcue.xml">
@@ -172,24 +188,64 @@
                       </Template>
                     </Children>
                   </WidgetGroup>
+
+                  <WidgetGroup  trigger="[Skin],show_16_hotcues">
+                    <Layout>horizontal</Layout>
+                    <Children>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">9</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">10</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">11</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">12</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">13</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">14</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">15</SetVariable>
+                      </Template>
+                      <Template src="skins:LateNight/controls/button_hotcue.xml">
+                        <SetVariable name="number">16</SetVariable>
+                      </Template>
+                    </Children>
+                  </WidgetGroup>
                 </Children>
-              </WidgetStack><!-- HotCues (3-4 / 5-8) -->
+              </WidgetStack>
+              <!-- HotCues (3-4 / 5-8) -->
             </Children>
             <Connection>
               <ConfigKey>[Skin],show_hotcues</ConfigKey>
               <BindProperty>visible</BindProperty>
             </Connection>
-          </WidgetGroup><!-- HotCues -->
+          </WidgetGroup>
+          <!-- HotCues -->
 
-          <WidgetGroup><Size>2f,0min</Size></WidgetGroup><!--  = 2-8px wide -->
-          <WidgetGroup><SizePolicy>i,min</SizePolicy><MaximumSize>8,</MaximumSize></WidgetGroup>
+          <WidgetGroup>
+            <Size>2f,0min</Size>
+          </WidgetGroup>
+          <!--  = 2-8px wide -->
+          <WidgetGroup>
+            <SizePolicy>i,min</SizePolicy>
+            <MaximumSize>8,</MaximumSize>
+          </WidgetGroup>
 
-          <WidgetGroup><!-- Intro + Outro -->
+          <WidgetGroup>
+            <!-- Intro + Outro -->
             <Layout>vertical</Layout>
             <SizePolicy>me,min</SizePolicy>
             <MaximumSize>52,52</MaximumSize>
             <Children>
-              <WidgetGroup><!-- Intro -->
+              <WidgetGroup>
+                <!-- Intro -->
                 <ObjectName>AlignLeftTop</ObjectName>
                 <SizePolicy>me,min</SizePolicy>
                 <Layout>horizontal</Layout>
@@ -203,7 +259,8 @@
                   </Template>
                 </Children>
               </WidgetGroup>
-              <WidgetGroup><!-- Outro -->
+              <WidgetGroup>
+                <!-- Outro -->
                 <ObjectName>AlignLeftTop</ObjectName>
                 <SizePolicy>me,min</SizePolicy>
                 <Layout>horizontal</Layout>
@@ -222,19 +279,28 @@
               <ConfigKey>[Skin],show_intro_outro_cues</ConfigKey>
               <BindProperty>visible</BindProperty>
             </Connection>
-          </WidgetGroup><!-- / Intro + Outro -->
+          </WidgetGroup>
+          <!-- / Intro + Outro -->
 
-          <WidgetGroup><Size>2f,0min</Size></WidgetGroup><!--  = 2-8px wide -->
-          <WidgetGroup><SizePolicy>i,min</SizePolicy><MaximumSize>80,</MaximumSize></WidgetGroup>
+          <WidgetGroup>
+            <Size>2f,0min</Size>
+          </WidgetGroup>
+          <!--  = 2-8px wide -->
+          <WidgetGroup>
+            <SizePolicy>i,min</SizePolicy>
+            <MaximumSize>80,</MaximumSize>
+          </WidgetGroup>
 
-          <WidgetGroup><!-- Loop buttons + beatloop size spinbox -->
+          <WidgetGroup>
+            <!-- Loop buttons + beatloop size spinbox -->
             <ObjectName>LoopControls</ObjectName>
             <Layout>vertical</Layout>
             <SizePolicy>min,min</SizePolicy>
             <MinimumSize>78,52</MinimumSize>
             <MaximumSize>104,52</MaximumSize>
             <Children>
-              <WidgetGroup><!-- loop enable + beatloop size -->
+              <WidgetGroup>
+                <!-- loop enable + beatloop size -->
                 <ObjectName>AlignLeftTop</ObjectName>
                 <Layout>horizontal</Layout>
                 <SizePolicy>min,max</SizePolicy>
@@ -306,19 +372,28 @@
               <ConfigKey>[Skin],show_loop_controls</ConfigKey>
               <BindProperty>visible</BindProperty>
             </Connection>
-          </WidgetGroup><!-- /Loop buttons + beatloop size spinbox -->
+          </WidgetGroup>
+          <!-- /Loop buttons + beatloop size spinbox -->
 
-          <WidgetGroup><Size>2f,0min</Size></WidgetGroup><!--  = 2-80px wide -->
-          <WidgetGroup><SizePolicy>i,min</SizePolicy><MaximumSize>80,</MaximumSize></WidgetGroup>
+          <WidgetGroup>
+            <Size>2f,0min</Size>
+          </WidgetGroup>
+          <!--  = 2-80px wide -->
+          <WidgetGroup>
+            <SizePolicy>i,min</SizePolicy>
+            <MaximumSize>80,</MaximumSize>
+          </WidgetGroup>
 
-          <WidgetGroup><!-- Jump buttons + beatjump size spinbox -->
+          <WidgetGroup>
+            <!-- Jump buttons + beatjump size spinbox -->
             <ObjectName>BeatjumpControls</ObjectName>
             <Layout>vertical</Layout>
             <SizePolicy>min,min</SizePolicy>
             <MinimumSize>52,52</MinimumSize>
             <MaximumSize>60,52</MaximumSize>
             <Children>
-              <WidgetGroup><!-- beatjump size -->
+              <WidgetGroup>
+                <!-- beatjump size -->
                 <ObjectName>AlignLeftTop</ObjectName>
                 <Layout>horizontal</Layout>
                 <SizePolicy>0min,26f</SizePolicy>
@@ -368,12 +443,18 @@
               <ConfigKey>[Skin],show_beatjump_controls</ConfigKey>
               <BindProperty>visible</BindProperty>
             </Connection>
-          </WidgetGroup><!-- /Jump buttons + beatjump size spinbox -->
+          </WidgetGroup>
+          <!-- /Jump buttons + beatjump size spinbox -->
 
-          <WidgetGroup><Size>2f,0min</Size></WidgetGroup>
-          <WidgetGroup><SizePolicy>i,min</SizePolicy></WidgetGroup>
+          <WidgetGroup>
+            <Size>2f,0min</Size>
+          </WidgetGroup>
+          <WidgetGroup>
+            <SizePolicy>i,min</SizePolicy>
+          </WidgetGroup>
         </Children>
-      </WidgetGroup><!-- DeckRow_5_LoopCuesTransport -->
+      </WidgetGroup>
+      <!-- DeckRow_5_LoopCuesTransport -->
     </Children>
   </WidgetGroup>
 </Template>

@@ -30,6 +30,7 @@ class WCoverArtMenu;
 class WFindOnWebMenu;
 class WSearchRelatedTracksMenu;
 class WStarRatingAction;
+class WTrackTableView;
 
 /// A context menu for track(s).
 /// Can be used with individual track type widgets based on TrackPointer
@@ -155,6 +156,8 @@ class WTrackMenu : public QMenu {
     void slotClearKey();
     void slotClearReplayGain();
     void slotClearWaveform();
+    void slotClearFingerprint();
+    void slotClearMusicBrainz();
     void slotClearAllMetadata();
 
     // Analysis
@@ -162,6 +165,8 @@ class WTrackMenu : public QMenu {
     void slotReanalyze();
     void slotReanalyzeWithFixedTempo();
     void slotReanalyzeWithVariableTempo();
+    void slotReanalyzeSegments();
+    void slotAnalyzeFingerprint();
 
     // BPM
     void slotLockBpm();
@@ -172,6 +177,9 @@ class WTrackMenu : public QMenu {
 
     // Hotcues
     void slotSortHotcuesByPosition(HotcueSortMode sortMode);
+    void slotCopyCmrtHotcues();
+    void slotAddCmrtHotcues();
+    void slotMakeCmrtCanonical();
 
     // Info and metadata
     void slotUpdateReplayGainFromPregain();
@@ -184,6 +192,10 @@ class WTrackMenu : public QMenu {
     void slotPopulatePlaylistMenu();
     void slotPopulateCrateMenu();
     void addSelectionToNewCrate();
+
+    // PreparationList
+    void slotAddToPreparationListBottom();
+    void slotAddToPreparationListTop();
 
     // Auto DJ
     void slotAddToAutoDJBottom();
@@ -245,11 +257,26 @@ class WTrackMenu : public QMenu {
     void addSelectionToPlaylist(int iPlaylistId);
     void updateSelectionCrates(QWidget* pWidget);
 
+    void addToPreparationList(PlaylistDAO::PreparationListSendLoc loc);
     void addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc);
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
+    void clearFingerprintDataForSelection();
+    void clearMusicBrainzDataForSelection();
+    // Pulls the canonical (CMRT) track's hotcues into each selected
+    // member track's own storage, shifted by that member's
+    // offset_from_canonical
+    // replaceExisting selects between the "Copy" and "Add" actions.
+    void copyOrAddCmrtHotcuesForSelection(bool replaceExisting);
+    bool anySelectedTrackUsesCmrtOverlay() const;
+    // Whether any currently selected track is a non-canonical member of
+    // a CMRT group (use: has a canonical track to copy/add hotcues from).
+    bool anySelectedTrackIsCmrtMember() const;
+    void promoteSelectionToCmrtCanonical();
     void lockBpm(bool lock);
+
+    int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
 
 #ifdef __STEM__
     void loadSelectionToGroup(const QString& group,
@@ -314,6 +341,10 @@ class WTrackMenu : public QMenu {
     // Save Track Metadata Action:
     parented_ptr<QAction> m_pExportMetadataAct;
 
+    // Send To PreparationList
+    parented_ptr<QAction> m_pPreparationListBottomAct;
+    parented_ptr<QAction> m_pPreparationListTopAct;
+
     // Send to Auto-DJ Action
     parented_ptr<QAction> m_pAutoDJBottomAct;
     parented_ptr<QAction> m_pAutoDJTopAct;
@@ -359,8 +390,10 @@ class WTrackMenu : public QMenu {
     // Analysis actions
     parented_ptr<QAction> m_pAnalyzeAction;
     parented_ptr<QAction> m_pReanalyzeAction;
+    parented_ptr<QAction> m_pReanalyzeSegmentsAction;
     parented_ptr<QAction> m_pReanalyzeConstBpmAction;
     parented_ptr<QAction> m_pReanalyzeVarBpmAction;
+    parented_ptr<QAction> m_pAnalyzeFingerprintAction;
 
     // Clear track metadata actions
     parented_ptr<QAction> m_pClearBeatsAction;
@@ -375,9 +408,14 @@ class WTrackMenu : public QMenu {
     parented_ptr<QAction> m_pClearCommentAction;
     parented_ptr<QAction> m_pClearKeyAction;
     parented_ptr<QAction> m_pClearReplayGainAction;
+    parented_ptr<QAction> m_pClearFingerprintAction;
+    parented_ptr<QAction> m_pClearMusicBrainzAction;
     parented_ptr<QAction> m_pClearAllMetadataAction;
     parented_ptr<QAction> m_pSortHotcuesByPositionAction{};
     parented_ptr<QAction> m_pSortHotcuesByPositionCompressAction{};
+    parented_ptr<QAction> m_pCopyCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pAddCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pMakeCmrtCanonicalAction{};
 
     const UserSettingsPointer m_pConfig;
     Library* const m_pLibrary;

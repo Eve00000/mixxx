@@ -26,7 +26,7 @@ const ConfigKey kConfigKeyAllowTrackLoadToPlayingDeck =
 constexpr LoadWhenDeckPlaying kDefaultLoadWhenDeckPlaying = LoadWhenDeckPlaying::Reject;
 } // namespace
 
-class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
+class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg {
     Q_OBJECT
   public:
     DlgPrefDeck(QWidget* parent,
@@ -58,13 +58,29 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     void slotTimeFormatChanged(double);
 
-    void slotNumDecksChanged(double, bool initializing=false);
-    void slotNumSamplersChanged(double, bool initializing=false);
+    void slotNumDecksChanged(double, bool initializing = false);
+    void slotNumSamplersChanged(double, bool initializing = false);
 
     void slotUpdateSpeedAutoReset(bool);
     void slotUpdatePitchAutoReset(bool);
 
+  private slots:
+    // void slotTrackFileCacheEnabledChanged(int state);
+    void slotTrackFileCacheEnabledChanged(bool enabled);
+    void slotBrowseTrackFileCacheLocation();
+    void slotEnableNowPlayingChanged(bool checked);
+    void slotNowPlayingAppendChanged(bool checked);
+    void slotNowPlayingAddTimestampChanged(bool checked);
+    void slotNowPlayingArchiveChanged(bool checked);
+    void slotNowPlayingPollIntervalChanged(int index);
+    void slotDownSampleUpSampleModeSelected(QAbstractButton*);
+    void slotNonLoopSampleLengthChanged(int value);
+
   private:
+    void populateTrackFileCacheSizeComboBox();
+    void loadTrackFileCacheSettings();
+    void saveTrackFileCacheSettings();
+
     // Because the CueDefault list is out of order, we have to set the combo
     // box using the user data, not the index.  Returns the index of the item
     // that has the corresponding userData. If the userdata is not in the list,
@@ -78,6 +94,8 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
 
     const std::unique_ptr<ControlObject> m_pControlTrackTimeDisplay;
     const std::unique_ptr<ControlObject> m_pControlTrackTimeFormat;
+
+    const std::unique_ptr<ControlObject> m_pShowPremixInStemsContainer;
 
     const parented_ptr<ControlProxy> m_pNumDecks;
     const parented_ptr<ControlProxy> m_pNumSamplers;
@@ -115,4 +133,18 @@ class DlgPrefDeck : public DlgPreferencePage, public Ui::DlgPrefDeckDlg  {
     double m_dRateTempFine;
     double m_dRatePermCoarse;
     double m_dRatePermFine;
+    void updateRampTimeLabels();
+    void loadBackspinSettings();
+    // Disables flicks that would throw the needle out of the groove
+    void updateBackspinChoices();
+    double backspinRevPerSec() const;
+
+    bool m_bNowPlayingEnabled;
+    bool m_bNowPlayingAppendMode;
+    bool m_bNowPlayingAddTimestamp;
+    bool m_bNowPlayingArchive;
+    int m_iNowPlayingPollInterval;
+    bool m_bUpSampleStems;
+
+    int m_iNonLoopSampleLengthSec;
 };
