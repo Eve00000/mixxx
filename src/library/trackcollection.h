@@ -12,6 +12,7 @@
 #include "library/dao/libraryhashdao.h"
 #include "library/dao/playlistdao.h"
 #include "library/dao/trackdao.h"
+#include "library/dao/trackfingerprintdao.h"
 #include "library/trackset/crate/cratestorage.h"
 #include "preferences/usersettings.h"
 #include "util/thread_affinity.h"
@@ -69,7 +70,10 @@ class TrackCollection : public QObject,
         DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
         return m_analysisDao;
     }
-
+    TrackFingerprintDao& getTrackFingerprintDAO() {
+        DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+        return m_trackFingerprintDao;
+    }
     void connectTrackSource(QSharedPointer<BaseTrackCache> pTrackSource);
     QWeakPointer<BaseTrackCache> disconnectTrackSource();
 
@@ -153,6 +157,7 @@ class TrackCollection : public QObject,
     FRIEND_TEST(TrackDAOTest, detectMovedTracks);
     FRIEND_TEST(TrackDAOTest, bpmLockPreservedForTrackWithoutBeats);
     FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
+    FRIEND_TEST(TrackDAOTest, cmrtOverlayIsNotSavedAsOwnData);
     TrackId addTrack(
             const TrackPointer& pTrack,
             bool unremove);
@@ -178,6 +183,7 @@ class TrackCollection : public QObject,
     DirectoryDAO m_directoryDao;
     AnalysisDao m_analysisDao;
     LibraryHashDAO m_libraryHashDao;
+    TrackFingerprintDao m_trackFingerprintDao;
     TrackDAO m_trackDao;
 
     QSharedPointer<BaseTrackCache> m_pTrackSource;
