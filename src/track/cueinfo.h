@@ -42,6 +42,11 @@ class CueInfo {
             const std::optional<int>& hotCueIndex,
             QString label,
             const RgbColor::optional_t& color,
+            const std::optional<int>& stem1vol,
+            const std::optional<int>& stem2vol,
+            const std::optional<int>& stem3vol,
+            const std::optional<int>& stem4vol,
+            const std::optional<int>& stem5vol,
             CueFlags flags = CueFlag::None);
 
     CueType getType() const;
@@ -57,6 +62,17 @@ class CueInfo {
 
     std::optional<int> getHotCueIndex() const;
     void setHotCueIndex(int hotCueIndex);
+
+    std::optional<int> getStem1vol() const;
+    std::optional<int> getStem2vol() const;
+    std::optional<int> getStem3vol() const;
+    std::optional<int> getStem4vol() const;
+    std::optional<int> getStem5vol() const;
+    void setStem1vol(int stem1vol);
+    void setStem2vol(int stem2vol);
+    void setStem3vol(int stem3vol);
+    void setStem4vol(int stem4vol);
+    void setStem5vol(int stem5vol);
 
     QString getLabel() const;
     void setLabel(
@@ -90,6 +106,11 @@ class CueInfo {
     std::optional<int> m_hotCueIndex;
     QString m_label;
     RgbColor::optional_t m_color;
+    std::optional<int> m_stem1vol;
+    std::optional<int> m_stem2vol;
+    std::optional<int> m_stem3vol;
+    std::optional<int> m_stem4vol;
+    std::optional<int> m_stem5vol;
     CueFlags m_flags;
 };
 

@@ -72,6 +72,7 @@ WLibrary,
 #PreviewDeck,
 #LibExpandBox,
 #LibrarySplitter::handle,
+#LibraryMainSplitter::handle,
 #SearchLineBox {
   border-top: 1px solid #333;
   border-left: 1px solid #333;
@@ -155,9 +156,11 @@ WSearchLineEdit,
 }
 
 /* Some tweaks to create a frameless library table */
+#LibraryMainSplitter,
 #LibrarySplitter {
   border-width: 0px;
   }
+  #LibraryMainSplitter::handle,
   #LibrarySplitter::handle {
     border-width: 1px 0px 0px 0px;
     border-top-right-radius: 0px;
@@ -182,6 +185,7 @@ WSearchLineEdit,
 #FxRackFillerL,
 #FxRackFillerR,
 #SamplerExpandBox,
+#StemExpandBox,
 #MicAuxRackFiller {
   border-top: 1px solid #222;
   border-left: 1px solid #222;
@@ -298,6 +302,7 @@ WSearchLineEdit,
 WBeatSpinBox,
 WBpmEditor QDoubleSpinBox,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   selection-color: #000;
   selection-background-color: #d2d2d2;
@@ -632,11 +637,12 @@ WLibrary {
 
 
 
-/********************** Loop Controls / AutoDJ spinbox ************************/
+/********************** Loop Controls / AutoDJ & Auto Suggestions spinbox ************************/
 
 WBeatSpinBox,
 WBpmEditor QDoubleSpinBox,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays {
   background-color: #0f0f0f;
   }
@@ -651,6 +657,7 @@ WBpmEditor QDoubleSpinBox,
     }
 
   #spinBoxTransition,
+  #spinBoxRefreshRate,
   #spinBoxRecentDays {
     border-width: 3px 19px 2px 3px;
     border-image: url(skins:LateNight/classic/buttons/spinbox_embedded_border.svg) 3 19 2 3;
@@ -661,10 +668,14 @@ WBpmEditor QDoubleSpinBox,
   #spinBoxTransition {
     width: 24px;
     }
+  #spinBoxRefreshRate {
+    width: 24px;
+    }
   #spinBoxRecentDays {
     width: 45px;
     }
     #spinBoxTransition:focus,
+    #spinBoxRefreshRate:focus,
     #spinBoxRecentDays:focus {
       border-image: url(skins:LateNight/classic/buttons/spinbox_embedded_border_focus_orange.svg) 3 19 2 3;
     }
@@ -676,6 +687,8 @@ WBpmEditor QDoubleSpinBox,
   WBeatSpinBox::down-button,
   #spinBoxTransition::up-button,
   #spinBoxTransition::down-button,
+  #spinBoxRefreshRate::up-button,
+  #spinBoxRefreshRate::down-button,
   #spinBoxRecentDays::up-button,
   #spinBoxRecentDays::down-button {
     subcontrol-origin: content;
@@ -686,6 +699,7 @@ WBpmEditor QDoubleSpinBox,
     }
     WBeatSpinBox::up-button,
     #spinBoxTransition::up-button,
+    #spinBoxRefreshRate::up-button,
     #spinBoxRecentDays::up-button {
       height: 11px;
       subcontrol-position: top right;
@@ -693,6 +707,7 @@ WBpmEditor QDoubleSpinBox,
       }
       WBeatSpinBox::up-button:pressed,
       #spinBoxTransition::up-button:pressed,
+      #spinBoxRefreshRate::up-button:pressed,
       #spinBoxRecentDays::up-button:pressed {
         image: url(skins:LateNight/classic/buttons/spinbox_up_pressed.svg) no-repeat;
       }
@@ -700,11 +715,13 @@ WBpmEditor QDoubleSpinBox,
         margin: -1px 0px 0px 0px;
         }
       #spinBoxTransition::up-button,
+      #spinBoxRefreshRate::up-button,
       #spinBoxRecentDays::up-button {
         margin: -2px -3px 0px 0px;
         }
     WBeatSpinBox::down-button,
     #spinBoxTransition::down-button,
+    #spinBoxRefreshRate::down-button,
     #spinBoxRecentDays::down-button {
       height: 11px;
       subcontrol-position: bottom right;
@@ -712,6 +729,7 @@ WBpmEditor QDoubleSpinBox,
       }
       WBeatSpinBox::down-button:pressed,
       #spinBoxTransition::down-button:pressed,
+      #spinBoxRefreshRate::down-button:pressed,
       #spinBoxRecentDays::down-button:pressed {
         image: url(skins:LateNight/classic/buttons/spinbox_down_pressed.svg) no-repeat;
       }
@@ -719,6 +737,7 @@ WBpmEditor QDoubleSpinBox,
         margin: 0px 0px -2px 0px;
         }
       #spinBoxTransition::down-button,
+      #spinBoxRefreshRate::down-button,
       #spinBoxRecentDays::down-button {
         margin: 0px -3px -1px 0px;
         }
@@ -997,6 +1016,10 @@ WEffectSelector,
 /************** Sampler ****************************************************/
 
 #SamplerExpandBox {
+  padding: 0px 1px 0px 1px;
+}
+
+#StemExpandBox {
   padding: 0px 1px 0px 1px;
 }
 
@@ -1295,6 +1318,7 @@ WSearchLineEdit QAbstractScrollArea,
 #fadeModeCombobox QAbstractScrollArea,
 WBeatSpinBox,
 #spinBoxTransition,
+#spinBoxRefreshRate,
 #spinBoxRecentDays,
 WBpmEditor QDoubleSpinBox,
 #LibraryFeatureControls QLabel,
@@ -1344,6 +1368,7 @@ WPushButton#VinylStatus[displayValue="3"], /* needle skip detected (pink bg) */
 #RecDuration[highlight="2"],
 #SkinSettingsToggle[displayValue="1"],
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonRepeatPlaylist:checked,
 QPushButton#pushButtonAnalyze:checked,
 QPushButton#pushButtonRecording:checked {
@@ -1439,6 +1464,7 @@ WPushButton#FxAssignButton1[displayValue="1"],
 #SkinSettingsToggle[displayValue="1"],
 #LibraryFeatureControls QPushButton:pressed,
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonRepeatPlaylist:checked,
 QPushButton#pushButtonAnalyze:checked,
 QPushButton#pushButtonRecording:checked,
@@ -1493,6 +1519,7 @@ WPushButton#PlayPreview {
 
 WPushButton#FxExpand,
 WPushButton#SamplerExpand,
+WPushButton#StemExpand,
 #FxAssignButtons WPushButton,
 #VinylControls WPushButton,
 #KeyControls WPushButton,
@@ -1535,6 +1562,7 @@ WPushButton#SyncLeader[value="0"],
 #MicAuxRack WPushButton[displayValue="0"],
 /* library buttons */
 QPushButton#pushButtonAutoDJ:enabled:!checked,
+QPushButton#pushButtonAutoSuggestions:enabled:!checked,
 #LibraryFeatureControls QPushButton:enabled,
 WPushButton#GuiToggleButton[displayValue="0"],
 #RecFeedback[displayValue="0"],
@@ -1636,6 +1664,7 @@ WPushButton#VinylStatus[displayValue="2"], /* blinks when the needle reaches the
 #RecFeedback[displayValue="1"],   /* initialize recording */
 #SkinSettingsToggle[displayValue="1"],
 QPushButton#pushButtonAutoDJ:checked,
+QPushButton#pushButtonAutoSuggestions:checked,
 QPushButton#pushButtonAnalyze:checked {
   background-color: #d09300;
 }
@@ -1728,6 +1757,7 @@ WPushButton#FxFocusButton[displayValue="0"],
 WPushButton#FxExpand[displayValue="0"],
 WPushButton#FxExpandOverlay[displayValue="0"],
 WPushButton#SamplerExpand[displayValue="0"],
+WPushButton#StemExpand[displayValue="0"],
 #BeatgridControlsToggle,
 #StemControlsToggle,
 #SamplerControlsMini WPushButton,
@@ -1957,6 +1987,13 @@ WPushButton#BpmLockToggle[value="1"] {
   image: url(skins:LateNight/classic/buttons/btn__expand_dim.svg) no-repeat left center;
   }
   #SamplerExpand[value="1"] {
+    image: url(skins:LateNight/classic/buttons/btn__collapse_dim.svg) no-repeat left center;
+  }
+
+#StemExpand[value="0"] {
+  image: url(skins:LateNight/classic/buttons/btn__expand_dim.svg) no-repeat left center;
+  }
+  #StemExpand[value="1"] {
     image: url(skins:LateNight/classic/buttons/btn__collapse_dim.svg) no-repeat left center;
   }
 
@@ -2194,6 +2231,21 @@ QPushButton#pushButtonRepeatPlaylist:!checked {
   }
   QPushButton#pushButtonRepeatPlaylist:checked {
     image: url(skins:LateNight/classic/buttons/btn__autodj_repeat_playlist_on.svg) no-repeat center center;
+  }
+
+/* AutoSuggestions button icons */
+QPushButton#pushButtonAutoSuggestions:!checked {
+  image: url(skins:LateNight/classic/buttons/btn__autodj_enable_off.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonAutoSuggestions:checked {
+    image: url(skins:LateNight/classic/buttons/btn__autodj_enable_on.svg) no-repeat center center;
+  }
+
+QPushButton#pushButtonCheckNow:!enabled {
+  image: url(skins:LateNight/classic/buttons/btn__autodj_fade_disabled.svg) no-repeat center center;
+  }
+  QPushButton#pushButtonCheckNow:enabled {
+    image: url(skins:LateNight/classic/buttons/btn__autodj_fade.svg) no-repeat center center;
   }
 
 /* widgets in cue popup menu */
@@ -2622,21 +2674,37 @@ WSearchLineEdit {
   Used to split
   - Waveforms & Decks/FX/etc
   - Library feature & Coverart */
+#LibraryMainSplitter,
 #WaveformSplitter,
+#WaveformSplitter_Swapped,
+#WideScreenSplitter,
+#WideScreenSplitter_Swapped,
 #SidebarCoverSplitter {
   padding: 0px;
   margin: 0px;
 }
 
+#LibraryMainSplitter::handle,
 #WaveformSplitter::handle,
+#WaveformSplitter_Swapped::handle,
+#WideScreenSplitter::handle,
+#WideScreenSplitter_Swapped::handle,
 #SidebarCoverSplitter::handle {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal.png);
   }
+  #LibraryMainSplitter::handle:pressed,
   #WaveformSplitter::handle:pressed,
+  #WaveformSplitter_Swapped::handle:pressed,
+  #WideScreenSplitter::handle:pressed,
+  #WideScreenSplitter_Swapped::handle:pressed,
   #SidebarCoverSplitter::handle:pressed {
     image: url(skins:LateNight/classic/style/splitter_handle_horizontal_pressed.png);
   }
+  #LibraryMainSplitter::handle:vertical,
   #WaveformSplitter::handle:vertical,
+  #WaveformSplitter_Swapped::handle:vertical,
+  #WideScreenSplitter::handle:vertical,
+  #WideScreenSplitter_Swapped::handle:vertical,
   #SidebarCoverSplitter::handle:vertical {
     height: 9px;
   }
@@ -2644,12 +2712,14 @@ WSearchLineEdit {
 /* LibrarySplitter
   (the splitter itself is vertical)
   Used to split Library sidebar & Tracks table */
+#LibraryMainSplitter::handle,
 #LibrarySplitter::handle {
   /* 'height' works although it's actually the width of the handle */
   height: 6px;
   image: url(skins:LateNight/classic/style/splitter_handle_vertical.png);
   background-color: #1e1e1e;
   }
+  #LibraryMainSplitter::handle:pressed,
   #LibrarySplitter::handle:pressed {
     image: url(skins:LateNight/classic/style/splitter_handle_vertical_pressed.png);
   }

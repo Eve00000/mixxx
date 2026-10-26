@@ -14,9 +14,15 @@ class RGBWaveformWidget : public NonGLWaveformWidgetAbstract {
         return WaveformWidgetType::RGB;
     }
 
-    static inline bool useOpenGl() { return false; }
-    static inline bool useOpenGles() { return false; }
-    static inline bool useOpenGLShaders() { return false; }
+    static inline bool useOpenGl() {
+        return false;
+    }
+    static inline bool useOpenGles() {
+        return false;
+    }
+    static inline bool useOpenGLShaders() {
+        return false;
+    }
     static inline bool useTextureForWaveform() {
         return false;
     }

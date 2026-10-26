@@ -1,10 +1,17 @@
 #include "preferences/dialog/dlgprefdeck.h"
 
+#include <QDir>
 #include <QDoubleSpinBox>
+#include <QFileDialog>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
+#include <QSpinBox>
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "defs_urls.h"
+// EVE -> clean up TrackFileCache cache if location changes
+#include "engine/cachingreader/cachingreader.h"
 #include "engine/controls/ratecontrol.h"
 #include "engine/sync/enginesync.h"
 #include "mixer/basetrackplayer.h"
@@ -29,6 +36,25 @@ constexpr double kDefaultPositionDisplayType =
 // to playermanager.cpp
 const QString kAppGroup = QStringLiteral("[App]");
 const QString kControlsGroup = QStringLiteral("[Controls]");
+
+const ConfigKey kConfigKeyNowPlayingEnabled = ConfigKey("[NowPlaying]", "Enabled");
+const ConfigKey kConfigKeyNowPlayingAppendMode = ConfigKey("[NowPlaying]", "AppendMode");
+const ConfigKey kConfigKeyNowPlayingAddTimestamp = ConfigKey("[NowPlaying]", "AddTimestamp");
+const ConfigKey kConfigKeyNowPlayingArchive = ConfigKey("[NowPlaying]", "Archive");
+const ConfigKey kConfigKeyNowPlayingPollInterval = ConfigKey("[NowPlaying]", "PollInterval");
+
+constexpr bool kDefaultNowPlayingEnabled = true;
+constexpr bool kDefaultNowPlayingAppendMode = false;
+constexpr bool kDefaultNowPlayingAddTimestamp = true;
+constexpr bool kDefaultNowPlayingArchive = true;
+constexpr int kDefaultNowPlayingPollInterval = 1000;
+
+const ConfigKey kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems =
+        ConfigKey("[IncludeOriginalMasterWhenPlayingStems]", "UpSampleStems");
+constexpr bool kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems = false;
+
+const QString kDefaultNonLoopSampleLengthConfigKey = QStringLiteral("NonLoopSampleLengthSec");
+constexpr int kDefaultNonLoopSampleLengthSec = 5;
 } // namespace
 
 DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
@@ -226,6 +252,19 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
             &QCheckBox::toggled,
             this,
             &DlgPrefDeck::slotCloneDeckOnLoadDoubleTapCheckbox);
+
+    // Non-loop sample export length
+    m_iNonLoopSampleLengthSec = m_pConfig->getValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            kDefaultNonLoopSampleLengthSec);
+    if (m_iNonLoopSampleLengthSec <= 0) {
+        m_iNonLoopSampleLengthSec = kDefaultNonLoopSampleLengthSec;
+    }
+    spinBoxNonLoopSampleLength->setValue(m_iNonLoopSampleLengthSec);
+    connect(spinBoxNonLoopSampleLength,
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            &DlgPrefDeck::slotNonLoopSampleLengthChanged);
 
     m_bRateDownIncreasesSpeed = m_pConfig->getValue(
             ConfigKey(kControlsGroup, QStringLiteral("RateDir")), kDefaultRateDirectionInverted);
@@ -429,7 +468,105 @@ DlgPrefDeck::DlgPrefDeck(QWidget* parent, UserSettingsPointer pConfig)
     RateControl::setPermanentRateChangeCoarseAmount(m_dRatePermCoarse);
     RateControl::setPermanentRateChangeFineAmount(m_dRatePermFine);
 
+    // NowPlaying settings
+    m_bNowPlayingEnabled = m_pConfig->getValue(
+            kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
+    m_bNowPlayingAppendMode = m_pConfig->getValue(
+            kConfigKeyNowPlayingAppendMode, kDefaultNowPlayingAppendMode);
+    m_bNowPlayingAddTimestamp = m_pConfig->getValue(
+            kConfigKeyNowPlayingAddTimestamp, kDefaultNowPlayingAddTimestamp);
+    m_bNowPlayingArchive = m_pConfig->getValue(
+            kConfigKeyNowPlayingArchive, kDefaultNowPlayingArchive);
+    m_iNowPlayingPollInterval = m_pConfig->getValue(
+            kConfigKeyNowPlayingPollInterval, kDefaultNowPlayingPollInterval);
+
+    checkBoxEnableNowPlaying->setChecked(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(m_bNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(m_bNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(m_bNowPlayingArchive);
+
+    // nowPlaying poll interval combo box
+    int intervalIndex = 1;
+    switch (m_iNowPlayingPollInterval) {
+    case 500:
+        intervalIndex = 0;
+        break;
+    case 1000:
+        intervalIndex = 1;
+        break;
+    case 2000:
+        intervalIndex = 2;
+        break;
+    case 5000:
+        intervalIndex = 3;
+        break;
+    case 10000:
+        intervalIndex = 4;
+        break;
+    default:
+        intervalIndex = 1;
+        break;
+    }
+    comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
+
+    checkBoxNowPlayingAppend->setEnabled(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAddTimestamp->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    checkBoxNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    labelNowPlayingAppend->setEnabled(m_bNowPlayingEnabled);
+    labelNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && m_bNowPlayingAppendMode);
+    labelNowPlayingPollInterval->setEnabled(m_bNowPlayingEnabled);
+    comboBoxNowPlayingPollInterval->setEnabled(m_bNowPlayingEnabled);
+
+    connect(checkBoxEnableNowPlaying,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotEnableNowPlayingChanged);
+    connect(checkBoxNowPlayingAppend,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingAppendChanged);
+    connect(checkBoxNowPlayingAddTimestamp,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingAddTimestampChanged);
+    connect(checkBoxNowPlayingArchive,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotNowPlayingArchiveChanged);
+    connect(comboBoxNowPlayingPollInterval,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgPrefDeck::slotNowPlayingPollIntervalChanged);
+
+    // IncludeOriginalMasterWhenPlayingStems
+    connect(buttonGroupDownSampleUpSample,
+            QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
+            this,
+            &DlgPrefDeck::slotDownSampleUpSampleModeSelected);
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+
     slotUpdate();
+
+    // TrackFileCache
+    connect(checkBoxTrackFileCacheEnabled,
+            &QCheckBox::toggled,
+            this,
+            &DlgPrefDeck::slotTrackFileCacheEnabledChanged);
+    connect(pushButtonBrowseTrackFileCacheLocation,
+            &QPushButton::clicked,
+            this,
+            &DlgPrefDeck::slotBrowseTrackFileCacheLocation);
+    populateTrackFileCacheSizeComboBox();
+    loadTrackFileCacheSettings();
 }
 
 DlgPrefDeck::~DlgPrefDeck() {
@@ -521,6 +658,59 @@ void DlgPrefDeck::slotUpdate() {
     spinBoxTemporaryRateFine->setValue(RateControl::getTemporaryRateChangeFineAmount());
     spinBoxPermanentRateCoarse->setValue(RateControl::getPermanentRateChangeCoarseAmount());
     spinBoxPermanentRateFine->setValue(RateControl::getPermanentRateChangeFineAmount());
+
+    m_bNowPlayingEnabled = m_pConfig->getValue(
+            kConfigKeyNowPlayingEnabled, kDefaultNowPlayingEnabled);
+    m_bNowPlayingAppendMode = m_pConfig->getValue(
+            kConfigKeyNowPlayingAppendMode, kDefaultNowPlayingAppendMode);
+    m_bNowPlayingAddTimestamp = m_pConfig->getValue(
+            kConfigKeyNowPlayingAddTimestamp, kDefaultNowPlayingAddTimestamp);
+    m_bNowPlayingArchive = m_pConfig->getValue(
+            kConfigKeyNowPlayingArchive, kDefaultNowPlayingArchive);
+    m_iNowPlayingPollInterval = m_pConfig->getValue(
+            kConfigKeyNowPlayingPollInterval, kDefaultNowPlayingPollInterval);
+
+    checkBoxEnableNowPlaying->setChecked(m_bNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(m_bNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(m_bNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(m_bNowPlayingArchive);
+
+    int intervalIndex = 1;
+    switch (m_iNowPlayingPollInterval) {
+    case 500:
+        intervalIndex = 0;
+        break;
+    case 1000:
+        intervalIndex = 1;
+        break;
+    case 2000:
+        intervalIndex = 2;
+        break;
+    case 5000:
+        intervalIndex = 3;
+        break;
+    case 10000:
+        intervalIndex = 4;
+        break;
+    default:
+        intervalIndex = 1;
+        break;
+    }
+    comboBoxNowPlayingPollInterval->setCurrentIndex(intervalIndex);
+
+    m_bUpSampleStems = m_pConfig->getValue(
+            kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    if (m_bUpSampleStems) {
+        radioButtonUpSampleStems->setChecked(true);
+    } else {
+        radioButtonDownSampleOriginalMix->setChecked(true);
+    }
+
+    spinBoxNonLoopSampleLength->setValue(
+            m_pConfig->getValue(ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+                    kDefaultNonLoopSampleLengthSec));
 }
 
 void DlgPrefDeck::slotResetToDefaults() {
@@ -564,6 +754,40 @@ void DlgPrefDeck::slotResetToDefaults() {
 
     radioButtonOriginalKey->setChecked(true);
     radioButtonResetUnlockedKey->setChecked(true);
+
+    checkBoxEnableNowPlaying->setChecked(kDefaultNowPlayingEnabled);
+    checkBoxNowPlayingAppend->setChecked(kDefaultNowPlayingAppendMode);
+    checkBoxNowPlayingAddTimestamp->setChecked(kDefaultNowPlayingAddTimestamp);
+    checkBoxNowPlayingArchive->setChecked(kDefaultNowPlayingArchive);
+    comboBoxNowPlayingPollInterval->setCurrentIndex(1);
+
+    radioButtonDownSampleOriginalMix->setChecked(
+            kDefaultIncludeOriginalMasterWhenPlayingStemsUpSampleStems);
+
+    spinBoxNonLoopSampleLength->setValue(kDefaultNonLoopSampleLengthSec);
+
+    // TrackFileCache
+    checkBoxTrackFileCacheEnabled->setChecked(CachingReader::kDefaultTrackFileCacheEnabled);
+
+    // Reset path to the platform default. Passing nullptr returns the default
+    // without touching the user's config; the value only gets persisted on
+    // Apply via saveTrackFileCacheSettings().
+    lineEditTrackFileCacheLocation->setText(
+            CachingReader::getTrackFileCachePathFromConfig(nullptr));
+
+    int defaultSizeIndex = comboBoxMaxTrackFileCacheSize->findData(
+            CachingReader::kDefaultTrackFileCacheMaxSizeMB);
+    if (defaultSizeIndex != -1) {
+        comboBoxMaxTrackFileCacheSize->setCurrentIndex(defaultSizeIndex);
+    }
+
+    checkBoxTrackFileCacheDecks->setChecked(CachingReader::kDefaultTrackFileCacheDecks);
+    checkBoxTrackFileCacheSamplers->setChecked(CachingReader::kDefaultTrackFileCacheSamplers);
+    checkBoxTrackFileCachePreviewDeck->setChecked(
+            CachingReader::kDefaultTrackFileCachePreviewDeck);
+
+    // Sync dependent widget enable/disable state with the checkbox.
+    slotTrackFileCacheEnabledChanged(CachingReader::kDefaultTrackFileCacheEnabled);
 }
 
 void DlgPrefDeck::slotMoveIntroStartCheckbox(bool checked) {
@@ -792,6 +1016,83 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(
             ConfigKey(kControlsGroup, QStringLiteral("RatePermRight")),
             m_dRatePermFine);
+
+    // NowPlaying
+    m_pConfig->setValue(kConfigKeyNowPlayingEnabled, m_bNowPlayingEnabled);
+    m_pConfig->setValue(kConfigKeyNowPlayingAppendMode, m_bNowPlayingAppendMode);
+    m_pConfig->setValue(kConfigKeyNowPlayingAddTimestamp, m_bNowPlayingAddTimestamp);
+    m_pConfig->setValue(kConfigKeyNowPlayingArchive, m_bNowPlayingArchive);
+    m_pConfig->setValue(kConfigKeyNowPlayingPollInterval, m_iNowPlayingPollInterval);
+
+    // IncludeOriginalMasterWhenPlayingStems
+    m_pConfig->setValue(kConfigKeyIncludeOriginalMasterWhenPlayingStemsUpSampleStems,
+            m_bUpSampleStems);
+
+    // Non-loop sample export length
+    m_pConfig->setValue(
+            ConfigKey(kControlsGroup, kDefaultNonLoopSampleLengthConfigKey),
+            m_iNonLoopSampleLengthSec);
+
+    // TrackFileCache (only its own keys)
+    saveTrackFileCacheSettings();
+}
+
+void DlgPrefDeck::saveTrackFileCacheSettings() {
+    bool trackFileCacheEnabled = checkBoxTrackFileCacheEnabled->isChecked();
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "Enabled"), trackFileCacheEnabled);
+
+    QString newTrackFileCachePath = lineEditTrackFileCacheLocation->text();
+    // path -> ends with exactly one slash.
+    while (newTrackFileCachePath.endsWith('/')) {
+        newTrackFileCachePath.chop(1);
+    }
+    newTrackFileCachePath += '/';
+
+    // old path -> needed for clean up if changed.
+#ifdef Q_OS_WIN
+    QString oldTrackFileCachePath =
+            m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "WindowsPath"));
+#else
+    QString oldTrackFileCachePath =
+            m_pConfig->getValueString(ConfigKey("[TrackFileCache]", "UnixPath"));
+#endif
+    if (oldTrackFileCachePath.isEmpty()) {
+        oldTrackFileCachePath = CachingReader::getTrackFileCachePathFromConfig(nullptr);
+    } else {
+        while (oldTrackFileCachePath.endsWith('/')) {
+            oldTrackFileCachePath.chop(1);
+        }
+        oldTrackFileCachePath += '/';
+    }
+
+    // save new path
+#ifdef Q_OS_WIN
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "WindowsPath"), newTrackFileCachePath);
+#else
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "UnixPath"), newTrackFileCachePath);
+#endif
+
+    // if path changed -> clean up old location and clear tracking
+    if (oldTrackFileCachePath != newTrackFileCachePath) {
+        qDebug() << "TrackFileCache location changed from" << oldTrackFileCachePath
+                 << "to" << newTrackFileCachePath << "- cleaning up old location";
+
+        // clean up files in old location
+        CachingReaderWorker::cleanupAllTrackFileCacheFiles(oldTrackFileCachePath);
+
+        // clear all tracking entries
+        CachingReaderWorker::clearAllTrackFileCacheEntries();
+    }
+
+    int trackFileCacheMaxSizeMB = comboBoxMaxTrackFileCacheSize->currentData().toInt();
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "MaxSizeMB"), trackFileCacheMaxSizeMB);
+
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "Decks"),
+            checkBoxTrackFileCacheDecks->isChecked());
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "Samplers"),
+            checkBoxTrackFileCacheSamplers->isChecked());
+    m_pConfig->setValue(ConfigKey("[TrackFileCache]", "PreviewDeck"),
+            checkBoxTrackFileCachePreviewDeck->isChecked());
 }
 
 void DlgPrefDeck::slotNumDecksChanged(double new_count, bool initializing) {
@@ -869,6 +1170,10 @@ void DlgPrefDeck::slotUpdatePitchAutoReset(bool b) {
     m_pitchAutoReset = b;
 }
 
+void DlgPrefDeck::slotNonLoopSampleLengthChanged(int value) {
+    m_iNonLoopSampleLengthSec = value;
+}
+
 int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
     for (int i = 0; i < ComboBoxCueMode->count(); ++i) {
         if (ComboBoxCueMode->itemData(i).toInt() == userData) {
@@ -878,4 +1183,159 @@ int DlgPrefDeck::cueDefaultIndexByData(int userData) const {
     qWarning() << "No default cue behavior found for value" << userData
                << "returning default";
     return 0;
+}
+
+void DlgPrefDeck::populateTrackFileCacheSizeComboBox() {
+    comboBoxMaxTrackFileCacheSize->clear();
+
+    // Add predefined sizes
+    comboBoxMaxTrackFileCacheSize->addItem("128 MB", 128);
+    comboBoxMaxTrackFileCacheSize->addItem("256 MB", 256);
+    comboBoxMaxTrackFileCacheSize->addItem("512 MB", 512);
+    comboBoxMaxTrackFileCacheSize->addItem("1 GB", 1024);
+    comboBoxMaxTrackFileCacheSize->addItem("2 GB", 2048);
+
+    // larger sizes > +1GB increments
+    for (int i = 3; i <= 16; i++) {
+        comboBoxMaxTrackFileCacheSize->addItem(QString("%1 GB").arg(i), i * 1024);
+    }
+}
+
+void DlgPrefDeck::loadTrackFileCacheSettings() {
+    bool trackFileCacheEnabled = m_pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Enabled"),
+            CachingReader::kDefaultTrackFileCacheEnabled);
+    checkBoxTrackFileCacheEnabled->setChecked(trackFileCacheEnabled);
+
+    QString trackFileCachePath =
+            CachingReader::getTrackFileCachePathFromConfig(m_pConfig);
+    lineEditTrackFileCacheLocation->setText(trackFileCachePath);
+
+    int trackFileCacheMaxSizeMB = m_pConfig->getValue<int>(
+            ConfigKey("[TrackFileCache]", "MaxSizeMB"),
+            CachingReader::kDefaultTrackFileCacheMaxSizeMB);
+
+    int trackFileCacheIndex = comboBoxMaxTrackFileCacheSize->findData(trackFileCacheMaxSizeMB);
+    if (trackFileCacheIndex != -1) {
+        comboBoxMaxTrackFileCacheSize->setCurrentIndex(trackFileCacheIndex);
+    } else {
+        comboBoxMaxTrackFileCacheSize->addItem(
+                QString("%1 MB").arg(trackFileCacheMaxSizeMB),
+                trackFileCacheMaxSizeMB);
+        comboBoxMaxTrackFileCacheSize->setCurrentIndex(
+                comboBoxMaxTrackFileCacheSize->count() - 1);
+    }
+
+    bool trackFileCacheDecksEnabled = m_pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Decks"),
+            CachingReader::kDefaultTrackFileCacheDecks);
+    checkBoxTrackFileCacheDecks->setChecked(trackFileCacheDecksEnabled);
+
+    bool trackFileCacheSamplersEnabled = m_pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "Samplers"),
+            CachingReader::kDefaultTrackFileCacheSamplers);
+    checkBoxTrackFileCacheSamplers->setChecked(trackFileCacheSamplersEnabled);
+
+    bool trackFileCachePreviewDeckEnabled = m_pConfig->getValue<bool>(
+            ConfigKey("[TrackFileCache]", "PreviewDeck"),
+            CachingReader::kDefaultTrackFileCachePreviewDeck);
+    checkBoxTrackFileCachePreviewDeck->setChecked(trackFileCachePreviewDeckEnabled);
+
+    slotTrackFileCacheEnabledChanged(trackFileCacheEnabled);
+}
+
+void DlgPrefDeck::slotTrackFileCacheEnabledChanged(bool enabled) {
+    lineEditTrackFileCacheLocation->setEnabled(enabled);
+    pushButtonBrowseTrackFileCacheLocation->setEnabled(enabled);
+    comboBoxMaxTrackFileCacheSize->setEnabled(enabled);
+    checkBoxTrackFileCacheDecks->setEnabled(enabled);
+    checkBoxTrackFileCacheSamplers->setEnabled(enabled);
+    checkBoxTrackFileCachePreviewDeck->setEnabled(enabled);
+}
+
+void DlgPrefDeck::slotBrowseTrackFileCacheLocation() {
+    QString currentPath = lineEditTrackFileCacheLocation->text();
+
+    // On Linux, start in /dev/shm if it exists
+#ifdef Q_OS_LINUX
+    if (currentPath.isEmpty() && QDir("/dev/shm").exists()) {
+        currentPath = "/dev/shm";
+    }
+#endif
+
+    QString dir = QFileDialog::getExistingDirectory(
+            this,
+            tr("Select Cache Location"),
+            currentPath,
+            QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+    if (!dir.isEmpty()) {
+        while (dir.endsWith('/')) {
+            dir.chop(1);
+        }
+        if (!dir.endsWith(QStringLiteral("/MixxxTmp"))) {
+            dir += QStringLiteral("/MixxxTmp");
+        }
+        lineEditTrackFileCacheLocation->setText(dir + '/');
+    }
+}
+
+void DlgPrefDeck::slotEnableNowPlayingChanged(bool checked) {
+    m_bNowPlayingEnabled = checked;
+
+    checkBoxNowPlayingAppend->setEnabled(checked);
+    checkBoxNowPlayingAddTimestamp->setEnabled(checked && m_bNowPlayingAppendMode);
+    checkBoxNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
+    labelNowPlayingAppend->setEnabled(checked);
+    labelNowPlayingArchive->setEnabled(checked && m_bNowPlayingAppendMode);
+    labelNowPlayingPollInterval->setEnabled(checked);
+    comboBoxNowPlayingPollInterval->setEnabled(checked);
+}
+
+void DlgPrefDeck::slotNowPlayingAppendChanged(bool checked) {
+    m_bNowPlayingAppendMode = checked;
+
+    // Timestamp and archive only make sense in append mode
+    checkBoxNowPlayingAddTimestamp->setEnabled(m_bNowPlayingEnabled && checked);
+    checkBoxNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && checked);
+    labelNowPlayingArchive->setEnabled(m_bNowPlayingEnabled && checked);
+}
+
+void DlgPrefDeck::slotNowPlayingAddTimestampChanged(bool checked) {
+    m_bNowPlayingAddTimestamp = checked;
+}
+
+void DlgPrefDeck::slotNowPlayingArchiveChanged(bool checked) {
+    m_bNowPlayingArchive = checked;
+}
+
+void DlgPrefDeck::slotNowPlayingPollIntervalChanged(int index) {
+    switch (index) {
+    case 0:
+        m_iNowPlayingPollInterval = 500;
+        break;
+    case 1:
+        m_iNowPlayingPollInterval = 1000;
+        break;
+    case 2:
+        m_iNowPlayingPollInterval = 2000;
+        break;
+    case 3:
+        m_iNowPlayingPollInterval = 5000;
+        break;
+    case 4:
+        m_iNowPlayingPollInterval = 10000;
+        break;
+    default:
+        m_iNowPlayingPollInterval = 1000;
+        break;
+    }
+}
+
+void DlgPrefDeck::slotDownSampleUpSampleModeSelected(QAbstractButton* pressedButton) {
+    if (pressedButton == radioButtonUpSampleStems) {
+        m_bUpSampleStems = true;
+    } else if (pressedButton == radioButtonDownSampleOriginalMix) {
+        m_bUpSampleStems = false;
+    }
 }
