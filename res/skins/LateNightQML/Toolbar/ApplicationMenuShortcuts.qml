@@ -42,7 +42,9 @@ Item {
         actions.developerTools,
         actions.developerExperimentStats,
         actions.developerBaseStats,
-        actions.developerDebugger
+        actions.developerDebugger,
+        actions.layoutWaveformsSeparate,
+        actions.layoutWaveformsRight,
     ]
 
     height: 0

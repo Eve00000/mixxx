@@ -96,21 +96,27 @@ inline int64_t getStreamEndTime(const AVStream& avStream) {
     return avStream.duration;
 }
 
-inline SINT convertStreamTimeToFrameIndex(const AVStream& avStream, int64_t pts) {
+inline SINT convertStreamTimeToFrameIndex(
+        const AVStream& avStream, int64_t pts, int sampleRate) {
     DEBUG_ASSERT(pts != AV_NOPTS_VALUE);
     // getStreamStartTime(avStream) -> 1st audible frame at FrameIndex 0
     return av_rescale_q(
             pts - getStreamStartTime(avStream),
             avStream.time_base,
-            av_make_q(1, avStream.codecpar->sample_rate));
+            av_make_q(1, sampleRate));
 }
 
-inline int64_t convertFrameIndexToStreamTime(const AVStream& avStream, SINT frameIndex) {
+inline SINT convertStreamTimeToFrameIndex(const AVStream& avStream, int64_t pts) {
+    return convertStreamTimeToFrameIndex(avStream, pts, avStream.codecpar->sample_rate);
+}
+
+inline int64_t convertFrameIndexToStreamTime(
+        const AVStream& avStream, SINT frameIndex, int sampleRate) {
     // Inverse mapping of convertStreamTimeToFrameIndex()
     return getStreamStartTime(avStream) +
             av_rescale_q(
                     frameIndex,
-                    av_make_q(1, avStream.codecpar->sample_rate),
+                    av_make_q(1, sampleRate),
                     avStream.time_base);
 }
 
@@ -310,9 +316,17 @@ SINT SoundSourceFFmpeg::getStreamSeekPrerollFrameCount(const AVStream& avStream)
 
 // Static
 IndexRange SoundSourceFFmpeg::getStreamFrameIndexRange(const AVStream& avStream) {
+    return getStreamFrameIndexRange(
+            avStream, audio::SampleRate(avStream.codecpar->sample_rate));
+}
+
+// Static
+IndexRange SoundSourceFFmpeg::getStreamFrameIndexRange(
+        const AVStream& avStream, audio::SampleRate sampleRate) {
+    const int rate = static_cast<int>(sampleRate.value());
     const auto frameIndexRange = IndexRange::between(
-            convertStreamTimeToFrameIndex(avStream, getStreamStartTime(avStream)),
-            convertStreamTimeToFrameIndex(avStream, getStreamEndTime(avStream)));
+            convertStreamTimeToFrameIndex(avStream, getStreamStartTime(avStream), rate),
+            convertStreamTimeToFrameIndex(avStream, getStreamEndTime(avStream), rate));
     DEBUG_ASSERT(frameIndexRange.orientation() != IndexRange::Orientation::Backward);
     return frameIndexRange;
 }
@@ -538,7 +552,9 @@ QString SoundSourceProviderFFmpeg::getVersionString() const {
     return QString::fromUtf8(av_version_info());
 }
 
-SoundSourceFFmpeg::SoundSourceFFmpeg(const QUrl& url, int wantedStreamIndex)
+SoundSourceFFmpeg::SoundSourceFFmpeg(const QUrl& url,
+        int wantedStreamIndex,
+        audio::SampleRate wantedSampleRate)
         : SoundSource(url),
           m_pavStream(nullptr),
           m_pavDecodedFrame(nullptr),
@@ -546,7 +562,10 @@ SoundSourceFFmpeg::SoundSourceFFmpeg(const QUrl& url, int wantedStreamIndex)
           m_pavPacket(av_packet_alloc()),
           m_pavResampledFrame(nullptr),
           m_avutilVersion(avutil_version()),
-          m_wantedStreamIndex(wantedStreamIndex) {
+          m_wantedStreamIndex(wantedStreamIndex),
+          m_wantedSampleRate(wantedSampleRate),
+          m_convertSampleRate(false),
+          m_nextResampledFrameIndex(ReadAheadFrameBuffer::kUnknownFrameIndex) {
     DEBUG_ASSERT(m_pavPacket);
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
     av_channel_layout_default(&m_avStreamChannelLayout, 0);
@@ -799,8 +818,10 @@ SoundSource::OpenResult SoundSourceFFmpeg::tryOpen(
                 << "Unknown or unlimited stream duration";
         return OpenResult::Failed;
     }
+    // All frame indices are counted at the output sample rate, which
+    // equals the stream's rate unless m_convertSampleRate is set.
     const auto streamFrameIndexRange =
-            getStreamFrameIndexRange(*m_pavStream);
+            getStreamFrameIndexRange(*m_pavStream, sampleRate);
     VERIFY_OR_DEBUG_ASSERT(streamFrameIndexRange.start() <= streamFrameIndexRange.end()) {
         kLogger.warning()
                 << "Stream with unsupported or invalid frame index range"
@@ -830,13 +851,31 @@ SoundSource::OpenResult SoundSourceFFmpeg::tryOpen(
     // in the stream out of the box. Depending on the actual codec we need
     // to account for this and start decoding before the target position.
     m_seekPrerollFrameCount = getStreamSeekPrerollFrameCount(*m_pavStream);
+    FrameCount frameBufferCapacity = frameBufferCapacityForStream(*m_pavStream);
+    if (m_convertSampleRate) {
+        // The preroll and capacity above are counted in stream frames.
+        // Convert them to output frames and add some margin for the
+        // swr filter, which starts with an empty history after each seek.
+        constexpr FrameCount kResamplerSeekPrerollFrames = 128;
+        const int64_t inRate = m_pavStream->codecpar->sample_rate;
+        const int64_t outRate = sampleRate.value();
+        m_seekPrerollFrameCount = static_cast<FrameCount>(av_rescale_rnd(
+                                          m_seekPrerollFrameCount, outRate, inRate, AV_ROUND_UP)) +
+                kResamplerSeekPrerollFrames;
+        frameBufferCapacity = static_cast<FrameCount>(av_rescale_rnd(
+                frameBufferCapacity, outRate, inRate, AV_ROUND_UP));
+        kLogger.debug()
+                << "Resampling stream" << m_pavStream->index
+                << "from" << inRate << "Hz to" << outRate << "Hz";
+    }
 #if VERBOSE_DEBUG_LOG
     kLogger.debug() << "Seek preroll frame count:" << m_seekPrerollFrameCount;
 #endif
 
+    m_nextResampledFrameIndex = ReadAheadFrameBuffer::kUnknownFrameIndex;
     m_frameBuffer = ReadAheadFrameBuffer(
             getSignalInfo(),
-            frameBufferCapacityForStream(*m_pavStream));
+            frameBufferCapacity);
 #if VERBOSE_DEBUG_LOG
     kLogger.debug() << "Frame buffer capacity:" << m_frameBuffer.capacity();
 #endif
@@ -865,8 +904,7 @@ bool SoundSourceFFmpeg::initResampling(
     // by the same decoder instead of a decoded with a reference signal. As
     // a workaround we decode the stream's channels as is and let Mixxx decide
     // how to handle this later.
-    const auto resampledChannelCount =
-            /*config.getSignalInfo().getChannelCount().isValid() ? config.getSignalInfo().getChannelCount() :*/ streamChannelCount;
+    const auto resampledChannelCount = streamChannelCount;
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
     AVChannelLayout avResampledChannelLayout;
     av_channel_layout_default(&avResampledChannelLayout, resampledChannelCount);
@@ -878,14 +916,15 @@ bool SoundSourceFFmpeg::initResampling(
             m_pavCodecContext->sample_fmt;
     const auto avResampledSampleFormat =
             s_avSampleFormat;
-    // NOTE(uklotzde): We prefer not to change adjust sample rate here, because
-    // all the frame calculations while decoding use the frame information
-    // from the underlying stream! We only need resampling for up-/downsampling
-    // the channels and to transform the decoded audio data into the sample
-    // format that is used by Mixxx.
+    // The sample rate is only changed if explicitly requested through the
+    // constructor (used by SoundSourceSTEM to align premix and stems).
+    // In that case all frame indices are counted at the resampled rate.
     const auto streamSampleRate =
             audio::SampleRate(m_pavStream->codecpar->sample_rate);
-    const auto resampledSampleRate = streamSampleRate;
+    const auto resampledSampleRate = m_wantedSampleRate.isValid()
+            ? m_wantedSampleRate
+            : streamSampleRate;
+    m_convertSampleRate = (resampledSampleRate != streamSampleRate);
     if (
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
             av_channel_layout_compare(&avResampledChannelLayout, &avStreamChannelLayout) != 0 ||
@@ -893,7 +932,8 @@ bool SoundSourceFFmpeg::initResampling(
             (resampledChannelCount != streamChannelCount) ||
             (avResampledChannelLayout != avStreamChannelLayout) ||
 #endif
-            (avResampledSampleFormat != avStreamSampleFormat)) {
+            (avResampledSampleFormat != avStreamSampleFormat) ||
+            m_convertSampleRate) {
 #if VERBOSE_DEBUG_LOG
         kLogger.debug()
                 << "Decoded stream needs to be resampled"
@@ -903,7 +943,8 @@ bool SoundSourceFFmpeg::initResampling(
 #else
                 << "| channel layout =" << avResampledChannelLayout
 #endif
-                << "| sample format =" << av_get_sample_fmt_name(avResampledSampleFormat);
+                << "| sample format =" << av_get_sample_fmt_name(avResampledSampleFormat)
+                << "| sample rate =" << streamSampleRate << "->" << resampledSampleRate;
 #endif
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
         SwrContext* pSwrContext = nullptr;
@@ -1083,12 +1124,15 @@ bool SoundSourceFFmpeg::adjustCurrentPosition(SINT startIndex) {
         return true;
     }
 
-    // Flush internal decoder state before seeking
+    // Flush internal decoder and resampler state before seeking
     avcodec_flush_buffers(m_pavCodecContext);
+    resetResampler();
 
-    // Seek to new position
-    const int64_t seekTimestamp =
-            convertFrameIndexToStreamTime(*m_pavStream, seekIndex);
+    // Seek to new position. Frame indices are counted at the output rate.
+    const int64_t seekTimestamp = convertFrameIndexToStreamTime(
+            *m_pavStream,
+            seekIndex,
+            static_cast<int>(getSignalInfo().getSampleRate().value()));
     int av_seek_frame_result = av_seek_frame(
             m_pavInputFormatContext,
             m_pavStream->index,
@@ -1165,20 +1209,69 @@ bool SoundSourceFFmpeg::consumeNextAVPacket(
     return true;
 }
 
+void SoundSourceFFmpeg::initResampledFrame() {
+    av_frame_unref(m_pavResampledFrame);
+    m_pavResampledFrame->sample_rate = getSignalInfo().getSampleRate();
+    m_pavResampledFrame->format = s_avSampleFormat;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
+    av_channel_layout_copy(&m_pavResampledFrame->ch_layout, &m_avResampledChannelLayout);
+#else
+    m_pavResampledFrame->channel_layout = m_avResampledChannelLayout;
+#endif
+}
+
+void SoundSourceFFmpeg::resetResampler() {
+    // The position of the next resampled frame is derived from the
+    // timestamp of the first decoded frame after the seek
+    m_nextResampledFrameIndex = ReadAheadFrameBuffer::kUnknownFrameIndex;
+    if (!m_convertSampleRate || !m_pSwrContext) {
+        return;
+    }
+    // Drop samples buffered from before the seek
+    swr_close(m_pSwrContext);
+    const int swr_init_result = swr_init(m_pSwrContext);
+    if (swr_init_result < 0) {
+        kLogger.warning().noquote()
+                << "swr_init() after seek failed:"
+                << formatErrorString(swr_init_result);
+    }
+}
+
+const CSAMPLE* SoundSourceFFmpeg::drainResampler() {
+    if (!m_convertSampleRate || !m_pSwrContext) {
+        return nullptr;
+    }
+    if (swr_get_delay(m_pSwrContext, getSignalInfo().getSampleRate()) <= 0) {
+        // Nothing buffered
+        return nullptr;
+    }
+    initResampledFrame();
+    // A null input frame flushes the remaining samples
+    const int swr_convert_frame_result =
+            swr_convert_frame(m_pSwrContext, m_pavResampledFrame, nullptr);
+    if (swr_convert_frame_result != 0) {
+        kLogger.warning().noquote()
+                << "swr_convert_frame() failed while draining:"
+                << formatErrorString(swr_convert_frame_result);
+        return nullptr;
+    }
+    if (m_pavResampledFrame->nb_samples <= 0) {
+        return nullptr;
+    }
+    return reinterpret_cast<const CSAMPLE*>(
+            m_pavResampledFrame->extended_data[0]);
+}
+
 const CSAMPLE* SoundSourceFFmpeg::resampleDecodedAVFrame(AVFrame* pavDecodedFrame) {
     if (m_pSwrContext) {
         // Decoded frame must be resampled before reading
-        av_frame_unref(m_pavResampledFrame);
-        m_pavResampledFrame->sample_rate = getSignalInfo().getSampleRate();
-        m_pavResampledFrame->format = s_avSampleFormat;
+        initResampledFrame();
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100) // FFmpeg 5.1
-        av_channel_layout_copy(&m_pavResampledFrame->ch_layout, &m_avResampledChannelLayout);
         if (pavDecodedFrame->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC) {
             // Sometimes the channel layout is undefined.
             av_channel_layout_copy(&pavDecodedFrame->ch_layout, &m_avStreamChannelLayout);
         }
 #else
-        m_pavResampledFrame->channel_layout = m_avResampledChannelLayout;
         if (pavDecodedFrame->channel_layout == kavChannelLayoutUndefined) {
             // Sometimes the channel layout is undefined.
             pavDecodedFrame->channel_layout = m_avStreamChannelLayout;
@@ -1198,9 +1291,14 @@ const CSAMPLE* SoundSourceFFmpeg::resampleDecodedAVFrame(AVFrame* pavDecodedFram
 #if VERBOSE_DEBUG_LOG
         avTrace("Received resampled frame", *m_pavResampledFrame);
 #endif
-        DEBUG_ASSERT(m_pavResampledFrame->pts == AV_NOPTS_VALUE ||
-                m_pavResampledFrame->pts == pavDecodedFrame->pts);
-        DEBUG_ASSERT(m_pavResampledFrame->nb_samples == pavDecodedFrame->nb_samples);
+        if (!m_convertSampleRate) {
+            // Only format/layout conversion: 1:1 sample mapping
+            DEBUG_ASSERT(m_pavResampledFrame->pts == AV_NOPTS_VALUE ||
+                    m_pavResampledFrame->pts == pavDecodedFrame->pts);
+            DEBUG_ASSERT(m_pavResampledFrame->nb_samples == pavDecodedFrame->nb_samples);
+        }
+        // With sample rate conversion nb_samples differs from the input
+        // and may even be 0 while swr fills its filter.
         return reinterpret_cast<const CSAMPLE*>(
                 m_pavResampledFrame->extended_data[0]);
     } else {
@@ -1256,6 +1354,30 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
     // Start decoding into the output buffer from the current position
     CSAMPLE* pOutputSampleBuffer = writableSampleFrames.writableData();
 
+    // Copies decoded frames into the output buffer. Frames beyond the
+    // requested range are kept in m_frameBuffer for the next call.
+    const auto consumeDecodedFrames = [&](const IndexRange& decodedFrameRange,
+                                              const CSAMPLE* pDecodedSamples) {
+        const auto decodedSampleFrames = ReadableSampleFrames(
+                decodedFrameRange,
+                SampleBuffer::ReadableSlice(
+                        pDecodedSamples,
+                        getSignalInfo().frames2samples(decodedFrameRange.length())));
+        auto outputSampleFrames = WritableSampleFrames(
+                writableFrameRange,
+                SampleBuffer::WritableSlice(
+                        pOutputSampleBuffer,
+                        getSignalInfo().frames2samples(writableFrameRange.length())));
+        outputSampleFrames = m_frameBuffer.consumeAndFillBuffer(
+                decodedSampleFrames,
+                outputSampleFrames,
+                writableSampleFrames.frameIndexRange().start());
+        pOutputSampleBuffer = outputSampleFrames.writableData();
+        writableFrameRange = outputSampleFrames.frameIndexRange();
+    };
+
+    const int outputSampleRate = static_cast<int>(getSignalInfo().getSampleRate().value());
+
     AVPacket* pavNextPacket = nullptr;
     while (m_frameBuffer.isValid() && // no decoding error occurred
             (pavNextPacket ||
@@ -1273,12 +1395,10 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                     << "m_frameBuffer.bufferedRange()" << m_frameBuffer.bufferedRange()
                     << "writableFrameRange" << writableFrameRange;
 #endif
-
             // This invariant is valid during the whole loop!
             DEBUG_ASSERT(writableFrameRange.empty() || m_frameBuffer.isEmpty());
 
             // Decode next frame
-            IndexRange decodedFrameRange;
             avcodec_receive_frame_result =
                     avcodec_receive_frame(m_pavCodecContext, m_pavDecodedFrame);
             if (avcodec_receive_frame_result == 0) {
@@ -1291,12 +1411,7 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                                         AV_FRAME_FLAG_DISCARD)) == 0) {
                     continue;
                 }
-                const auto decodedFrameCount = m_pavDecodedFrame->nb_samples;
-                DEBUG_ASSERT(decodedFrameCount > 0);
-                SINT streamFrameIndex =
-                        convertStreamTimeToFrameIndex(
-                                *m_pavStream, m_pavDecodedFrame->pts);
-
+                DEBUG_ASSERT(m_pavDecodedFrame->nb_samples > 0);
 #if VERBOSE_DEBUG_LOG
                 if (streamFrameIndex < 0) {
                     const SINT inaudibleFrameCountUntilStartOfStream = -streamFrameIndex;
@@ -1306,10 +1421,6 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                             << "inaudible sample frames before the start";
                 }
 #endif
-
-                decodedFrameRange = IndexRange::forward(
-                        streamFrameIndex,
-                        decodedFrameCount);
             } else if (avcodec_receive_frame_result == AVERROR(EAGAIN)) {
 #if VERBOSE_DEBUG_LOG
                 kLogger.debug()
@@ -1319,6 +1430,20 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                 DEBUG_ASSERT(!pavNextPacket);
                 break;
             } else if (avcodec_receive_frame_result == AVERROR_EOF) {
+                // Get the last samples that are still buffered in swr
+                if (m_convertSampleRate &&
+                        m_frameBuffer.isValid() &&
+                        m_nextResampledFrameIndex !=
+                                ReadAheadFrameBuffer::kUnknownFrameIndex) {
+                    const CSAMPLE* pFlushedSamples = drainResampler();
+                    if (pFlushedSamples) {
+                        const auto flushedFrameRange = IndexRange::forward(
+                                m_nextResampledFrameIndex,
+                                m_pavResampledFrame->nb_samples);
+                        m_nextResampledFrameIndex = flushedFrameRange.end();
+                        consumeDecodedFrames(flushedFrameRange, pFlushedSamples);
+                    }
+                }
                 // Due to the lead-in with a start_time > 0 some encoded
                 // files are shorter then actually reported. This may vary
                 // depending on the encoder version, because sometimes the
@@ -1327,17 +1452,19 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                 // acceptable in favor of a consistent handling of the lead-in,
                 // because they may affect only the position of the outro end
                 // point and not any other position markers!
-                if (m_frameBuffer.isReady()) {
-                    // Current position is known and nothing buffered
-                    DEBUG_ASSERT(m_frameBuffer.isEmpty());
+                if (m_frameBuffer.isReady() && m_frameBuffer.isEmpty()) {
                     if (m_frameBuffer.writeIndex() != frameIndexRange().end()) {
                         kLogger.info()
                                 << "Stream ends at sample frame"
                                 << m_frameBuffer.writeIndex()
                                 << "instead of"
                                 << frameIndexRange().end();
-                        // We expect that file is shorter then reported, never longer
-                        DEBUG_ASSERT(m_frameBuffer.writeIndex() < frameIndexRange().end());
+                        // We expect that file is shorter then reported, never
+                        // longer. With sample rate conversion it may differ
+                        // by a rounding frame in both directions.
+                        if (!m_convertSampleRate) {
+                            DEBUG_ASSERT(m_frameBuffer.writeIndex() < frameIndexRange().end());
+                        }
                     }
                 }
                 if (!writableFrameRange.empty()) {
@@ -1365,7 +1492,6 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                 m_frameBuffer.invalidate();
                 break;
             }
-            DEBUG_ASSERT(!decodedFrameRange.empty());
 
 #if VERBOSE_DEBUG_LOG
             kLogger.debug()
@@ -1382,6 +1508,7 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                 break;
             }
 
+            IndexRange decodedFrameRange;
 #if VERBOSE_DEBUG_LOG
             if (!decodedFrameRange.empty()) {
                 kLogger.debug() << "First decoded sample value:" << pDecodedSamples[0];
@@ -1395,23 +1522,31 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                     << "writableFrameRange" << writableFrameRange
                     << "decodedFrameRange" << decodedFrameRange;
 #endif
+            if (m_convertSampleRate) {
+                if (m_nextResampledFrameIndex == ReadAheadFrameBuffer::kUnknownFrameIndex) {
+                    // First frame after open/seek: anchor the output position
+                    // at the timestamp of this frame. All following resampled
+                    // frames are appended without gaps, so the fractional
+                    // resampling phase is never lost between frames or reads.
+                    m_nextResampledFrameIndex = convertStreamTimeToFrameIndex(
+                            *m_pavStream, m_pavDecodedFrame->pts, outputSampleRate);
+                }
+                decodedFrameRange = IndexRange::forward(
+                        m_nextResampledFrameIndex,
+                        m_pavResampledFrame->nb_samples);
+                m_nextResampledFrameIndex = decodedFrameRange.end();
+                if (decodedFrameRange.empty()) {
+                    // swr is still filling its filter, no output yet
+                    continue;
+                }
+            } else {
+                decodedFrameRange = IndexRange::forward(
+                        convertStreamTimeToFrameIndex(
+                                *m_pavStream, m_pavDecodedFrame->pts),
+                        m_pavDecodedFrame->nb_samples);
+            }
 
-            const auto decodedSampleFrames = ReadableSampleFrames(
-                    decodedFrameRange,
-                    SampleBuffer::ReadableSlice(
-                            pDecodedSamples,
-                            getSignalInfo().frames2samples(decodedFrameRange.length())));
-            auto outputSampleFrames = WritableSampleFrames(
-                    writableFrameRange,
-                    SampleBuffer::WritableSlice(
-                            pOutputSampleBuffer,
-                            getSignalInfo().frames2samples(writableFrameRange.length())));
-            outputSampleFrames = m_frameBuffer.consumeAndFillBuffer(
-                    decodedSampleFrames,
-                    outputSampleFrames,
-                    writableSampleFrames.frameIndexRange().start());
-            pOutputSampleBuffer = outputSampleFrames.writableData();
-            writableFrameRange = outputSampleFrames.frameIndexRange();
+            consumeDecodedFrames(decodedFrameRange, pDecodedSamples);
 
 #if VERBOSE_DEBUG_LOG
             kLogger.debug()
@@ -1419,6 +1554,7 @@ ReadableSampleFrames SoundSourceFFmpeg::readSampleFramesClamped(
                     << "m_frameBuffer.bufferedRange()" << m_frameBuffer.bufferedRange()
                     << "writableFrameRange" << writableFrameRange;
 #endif
+
             // The first loop condition (see below) should always be true
             // and has only been added to prevent infinite looping in case
             // of unexpected result values.

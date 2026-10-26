@@ -25,7 +25,7 @@ Controls.Panel {
     rightBorderColor: "#111111"
     topBorderColor: LateNightTheme.isPaleMoon ? "#1c1c1c" : "#222222"
 
-    readonly property int stemChannelCount: 4
+    readonly property int stemChannelCount: 5
     readonly property int stemChannelHeight: 26
 
     function refreshStemInfos() {

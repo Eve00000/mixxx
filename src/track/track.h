@@ -9,8 +9,10 @@
 #include "audio/streaminfo.h"
 #include "sources/metadatasource.h"
 #include "track/beats.h"
+#include "track/bpmsegments.h"
 #include "track/cue.h"
 #include "track/cueinfoimporter.h"
+#include "track/keysegments.h"
 #ifdef __STEM__
 #include "track/steminfo.h"
 #include "track/steminfoimporter.h"
@@ -319,20 +321,35 @@ class Track : public QObject {
             int hotCueIndex,
             mixxx::audio::FramePos startPosition,
             mixxx::audio::FramePos endPosition,
-            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor);
+            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor,
+            double stem1vol = 1.0,
+            double stem2vol = 1.0,
+            double stem3vol = 1.0,
+            double stem4vol = 1.0,
+            double stem5vol = 1.0);
     CuePointer createAndAddCue(
             mixxx::CueType type,
             int hotCueIndex,
             double startPositionSamples,
             double endPositionSamples,
-            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor) {
+            mixxx::RgbColor color = mixxx::PredefinedColorPalettes::kDefaultCueColor,
+            double stem1vol = 1.0,
+            double stem2vol = 1.0,
+            double stem3vol = 1.0,
+            double stem4vol = 1.0,
+            double stem5vol = 1.0) {
         return createAndAddCue(type,
                 hotCueIndex,
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
                         startPositionSamples),
                 mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
                         endPositionSamples),
-                color);
+                color,
+                stem1vol,
+                stem2vol,
+                stem3vol,
+                stem4vol,
+                stem5vol);
     }
     CuePointer findCueByType(mixxx::CueType type) const; // NOTE: Cannot be used for hotcues.
     CuePointer findCueById(DbId id) const;
@@ -462,6 +479,40 @@ class Track : public QObject {
         return m_record.hasStreamInfoFromSource();
     }
 
+    // BPM Segments
+    bool setBpmSegments(const QList<BpmSegmentsPointer>& segments);
+    QList<BpmSegmentsPointer> getBpmSegments() const;
+    bool deleteBpmSegments();
+
+    // Key Segments
+    bool setKeySegments(const QList<KeySegmentsPointer>& segments);
+    QList<KeySegmentsPointer> getKeySegments() const;
+    bool deleteKeySegments();
+
+    // When active, this track's getCuePoints()/getBeats() return a
+    // shifted, resampled view of pCanonicalTrack's data instead of this
+    // track's own stored cues/beats, and mutators (createAndAddCue(),
+    // removeCue(), trySetBeats(), and cue position edits) write through to
+    // the canonical track instead. The track's own audio file is never
+    // touched -- EngineBuffer/SoundSourceProxy keep reading getFileInfo()
+    // as normal. See Track::applyCmrtOverlay() for the shift math.
+    void applyCmrtOverlay(TrackPointer pCanonicalTrack,
+            double offsetSeconds,
+            mixxx::audio::SampleRate memberSampleRate);
+    void clearCmrtOverlay();
+    // Restores this track's own, DB-backed beats after clearCmrtOverlay().
+    // Unlike trySetBeats() this ignores the BPM lock, because the overlay
+    // beats being replaced were never this track's own data, and it does
+    // not push the overlay beats onto the undo stack.
+    void restoreOwnBeatsAfterCmrtOverlay(mixxx::BeatsPointer pOwnBeats);
+    bool hasCmrtOverlayActive() const;
+    TrackPointer getCanonicalTrack() const;
+    double getCmrtOffsetSeconds() const;
+
+    void copyOrMergeCmrtHotcues(TrackPointer pCanonical,
+            double offsetSeconds,
+            bool replaceExisting);
+
   signals:
     void artistChanged(const QString&);
     void titleChanged(const QString&);
@@ -505,8 +556,16 @@ class Track : public QObject {
     void dirty(TrackId trackId);
     void clean(TrackId trackId);
 
+    void bpmSegmentsUpdated();
+    void keySegmentsUpdated();
+
   private slots:
     void slotCueUpdated();
+    // Connected to the canonical track's cuesUpdated()/beatsUpdated()
+    // while a CMRT overlay is active (see applyCmrtOverlay()), so edits
+    // made directly to the canonical -- not routed through this member's
+    // write-through mutators -- still refresh this member's shifted view.
+    void refreshCmrtOverlayFromCanonical();
 
   private:
     /// Set a unique identifier for the track.
@@ -648,7 +707,46 @@ class Track : public QObject {
     void setGenreFromTrackDAO(
             const QString& genre);
 
+    QList<BpmSegmentsPointer> m_bpmSegments;
+    QList<KeySegmentsPointer> m_keySegments;
+    bool m_bpmSegmentsDirty = false;
+    bool m_keySegmentsDirty = false;
+    void afterBpmSegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
+    void afterKeySegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
+
     friend class GlobalTrackCache;
     friend class GlobalTrackCacheResolver;
     friend class SoundSourceProxy;
+    friend class SegmentsDAO;
+
+    // Rebuilds m_pBeats as a copy of pCanonicalBeats's markers, converted
+    // through seconds (sample-rate independent) into memberSampleRate's
+    // frame domain and shifted by offsetSeconds. Handles the canonical and
+    // member tracks having different sample rates -- Beats::tryTranslate()
+    // alone cannot do this, since it preserves the original Beats object's
+    // sample rate rather than reprojecting into a new one.
+    mixxx::BeatsPointer buildOverlayBeats(
+            const mixxx::BeatsPointer& pCanonicalBeats,
+            mixxx::audio::SampleRate memberSampleRate,
+            double offsetSeconds) const;
+
+    // Clones pCanonicalCue's positions via its own sample-rate-independent
+    // CueInfo (millisecond) roundtrip, shifted by offsetSeconds, then
+    // reconstructed at memberSampleRate. Cloned, not shared -- CueControl/
+    // HotcueControl attach per-Cue Qt signal connections (see
+    // CueControl::attachCue()), and two decks sharing literal Cue objects
+    // would cross-wire those connections.
+    QList<CuePointer> buildOverlayCues(
+            const QList<CuePointer>& canonicalCues,
+            mixxx::audio::SampleRate canonicalSampleRate,
+            mixxx::audio::SampleRate memberSampleRate,
+            double offsetSeconds) const;
+
+    TrackPointer m_pCmrtCanonicalTrack; // nullptr when overlay inactive
+    double m_cmrtOffsetSeconds{0.0};    // canonical -> member offset, in seconds
+    bool m_cmrtOverlayActive{false};
+    // Live while m_cmrtOverlayActive is true; wired up in applyCmrtOverlay()
+    // and torn down in clearCmrtOverlay() / before re-wiring.
+    QMetaObject::Connection m_cmrtCanonicalCuesConnection;
+    QMetaObject::Connection m_cmrtCanonicalBeatsConnection;
 };

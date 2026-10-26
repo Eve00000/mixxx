@@ -201,6 +201,7 @@ allshader::WaveformRenderMark::WaveformRenderMark(
           m_untilMarkShowBeats{false},
           m_untilMarkShowTime(false),
           m_untilMarkAlign(Qt::AlignVCenter),
+          m_untilMarkHorizAlign(2),
           m_untilMarkTextSize(0),
           m_untilMarkTextHeightLimit(0.0),
           m_defaultNextMarkPosition(kDefaultNextMarkPosition) {
@@ -243,6 +244,10 @@ allshader::WaveformRenderMark::WaveformRenderMark(
             this,
             &WaveformRenderMark::setUntilMarkAlign);
     connect(pWaveformWidgetFactory,
+            &WaveformWidgetFactory::untilMarkHorizAlignChanged,
+            this,
+            &WaveformRenderMark::setUntilMarkHorizAlign);
+    connect(pWaveformWidgetFactory,
             &WaveformWidgetFactory::untilMarkTextPointSizeChanged,
             this,
             &WaveformRenderMark::setUntilMarkTextSize);
@@ -264,6 +269,7 @@ void allshader::WaveformRenderMark::setup(const QDomNode& node, const SkinContex
     m_untilMarkShowBeats = pWaveformWidgetFactory->getUntilMarkShowBeats();
     m_untilMarkShowTime = pWaveformWidgetFactory->getUntilMarkShowTime();
     m_untilMarkAlign = pWaveformWidgetFactory->getUntilMarkAlign();
+    m_untilMarkHorizAlign = pWaveformWidgetFactory->getUntilMarkHorizAlign();
 
     m_untilMarkTextSize =
             pWaveformWidgetFactory->getUntilMarkTextPointSize();
@@ -539,6 +545,55 @@ void allshader::WaveformRenderMark::setDefaultNextMarkPosition(double nextMarkPo
     m_defaultNextMarkPosition = nextMarkPosition >= 0 ? nextMarkPosition : kDefaultNextMarkPosition;
 }
 
+// void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
+//     const auto untilMarkMaxHeightForText = getMaxHeightForText(m_untilMarkTextHeightLimit);
+//
+//     m_pDigitsRenderNode->updateTexture(m_waveformRenderer->getContext(),
+//             m_untilMarkTextSize,
+//             untilMarkMaxHeightForText,
+//             m_waveformRenderer->getDevicePixelRatio());
+//
+//     const QString beatsUntilMark =
+//             m_untilMarkShowBeats && m_beatsUntilMark > 0
+//             ? QString::number(m_beatsUntilMark)
+//             : QString{};
+//     const QString timeUntilMark =
+//             m_untilMarkShowTime && m_timeUntilMark > 0.0
+//             ? timeSecToString(m_timeUntilMark)
+//             : QString{};
+//     if (beatsUntilMark.isEmpty() && timeUntilMark.isEmpty()) {
+//         m_pDigitsRenderNode->clear();
+//         return;
+//     }
+//     const float ch = m_pDigitsRenderNode->height();
+//
+//     float y = m_untilMarkAlign == Qt::AlignTop ? 0.f
+//             : m_untilMarkAlign == Qt::AlignBottom
+//             ? m_waveformRenderer->getBreadth() - ch
+//             : m_waveformRenderer->getBreadth() / 2.f;
+//
+//     bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
+//             ch * 2.f < untilMarkMaxHeightForText;
+//
+//     if (multiLine) {
+//         if (m_untilMarkAlign != Qt::AlignTop) {
+//             y -= ch;
+//         }
+//     } else {
+//         if (m_untilMarkAlign != Qt::AlignTop && m_untilMarkAlign != Qt::AlignBottom) {
+//             // center
+//             y -= ch / 2.f;
+//         }
+//     }
+//
+//     m_pDigitsRenderNode->update(
+//             x,
+//             y,
+//             multiLine,
+//             beatsUntilMark,
+//             timeUntilMark);
+// }
+
 void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
     const auto untilMarkMaxHeightForText = getMaxHeightForText(m_untilMarkTextHeightLimit);
 
@@ -547,45 +602,82 @@ void allshader::WaveformRenderMark::updateDigitsNodeForUntilMark(float x) {
             untilMarkMaxHeightForText,
             m_waveformRenderer->getDevicePixelRatio());
 
-    const QString beatsUntilMark =
-            m_untilMarkShowBeats && m_beatsUntilMark > 0
-            ? QString::number(m_beatsUntilMark)
-            : QString{};
-    const QString timeUntilMark =
-            m_untilMarkShowTime && m_timeUntilMark > 0.0
-            ? timeSecToString(m_timeUntilMark)
-            : QString{};
-    if (beatsUntilMark.isEmpty() && timeUntilMark.isEmpty()) {
+    if (m_timeUntilMark == 0.0) {
         m_pDigitsRenderNode->clear();
         return;
     }
-    const float ch = m_pDigitsRenderNode->height();
+
+    QString beatsText = m_untilMarkShowBeats ? QString::number(m_beatsUntilMark) : QString{};
+    QString timeText = m_untilMarkShowTime ? timeSecToString(m_timeUntilMark) : QString{};
+
+    const float charHeight = m_pDigitsRenderNode->height();
+    bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
+            charHeight * 2.f < untilMarkMaxHeightForText;
+
+    const float charWidth = charHeight * 0.65f;
+    float textWidth = 0.0f;
+
+    if (multiLine) {
+        int maxLen = std::max(beatsText.length(), timeText.length());
+        textWidth = maxLen * charWidth;
+    } else {
+        QString combinedText;
+        if (m_untilMarkShowBeats && m_untilMarkShowTime) {
+            combinedText = beatsText + " / " + timeText;
+        } else if (m_untilMarkShowBeats) {
+            combinedText = beatsText;
+        } else {
+            combinedText = timeText;
+        }
+        textWidth = combinedText.length() * charWidth;
+    }
+
+    const float waveformLength = m_waveformRenderer->getLength();
+    float xPos = x;
+
+    switch (m_untilMarkHorizAlign) {
+    // Left of Waveform
+    case 0:
+        xPos = 0.0f;
+        break;
+    // Left of Playmarker
+    case 1:
+        xPos = x - textWidth + (charWidth * 0.5f);
+        xPos = x - textWidth + (charWidth * 0.3f);
+        break;
+    // Right of Playmarker default
+    case 2:
+        xPos = x;
+        break;
+    }
+
+    if (xPos < 0.0f) {
+        xPos = 0.0f;
+    } else if (xPos + textWidth > waveformLength) {
+        xPos = waveformLength - textWidth;
+    }
 
     float y = m_untilMarkAlign == Qt::AlignTop ? 0.f
             : m_untilMarkAlign == Qt::AlignBottom
-            ? m_waveformRenderer->getBreadth() - ch
+            ? m_waveformRenderer->getBreadth() - charHeight
             : m_waveformRenderer->getBreadth() / 2.f;
-
-    bool multiLine = m_untilMarkShowBeats && m_untilMarkShowTime &&
-            ch * 2.f < untilMarkMaxHeightForText;
 
     if (multiLine) {
         if (m_untilMarkAlign != Qt::AlignTop) {
-            y -= ch;
+            y -= charHeight;
         }
     } else {
         if (m_untilMarkAlign != Qt::AlignTop && m_untilMarkAlign != Qt::AlignBottom) {
-            // center
-            y -= ch / 2.f;
+            y -= charHeight / 2.f;
         }
     }
 
     m_pDigitsRenderNode->update(
-            x,
+            xPos,
             y,
             multiLine,
-            beatsUntilMark,
-            timeUntilMark);
+            beatsText,
+            timeText);
 }
 
 // Generate the texture used to draw the play position marker.
