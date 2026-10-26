@@ -1,0 +1,76 @@
+<!--
+  Description:
+    A mono meter for all channel VU levels
+
+  Variables:
+    Group
+    ChannelType   channel | sampler | microphone | ...
+    StyleScheme
+    VuSize        deck | sampler | small
+    VuColor       dark | light
+            In PaleMoon theme there are different Vu meters:
+            * in mixer: dark BackPath
+            * in between compact decks: light BackPath
+-->
+<!--Template>
+  <WidgetGroup>
+    <ObjectName>VuMeterBox</ObjectName>
+    <Layout>horizontal</Layout>
+    <SizePolicy>min,min</SizePolicy>
+    <Children>
+      <StatusLight>
+        <Size>2f,20f</Size>
+        <TooltipId><Variable name="ChannelType"/>_peak_indicator</TooltipId>
+        <PathBack scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_clipping_bg_<Variable name="VuColor"/>.png</PathBack>
+        <PathStatusLight scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_clipping_active.png</PathStatusLight>
+        <Connection>
+          <ConfigKey><Variable name="StemGroup"/>,peak_indicator</ConfigKey>
+        </Connection>
+      </StatusLight>
+      <VuMeter>
+        <Size>40f,20f</Size>
+        <TooltipId><Variable name="ChannelType"/>_VuMeter</TooltipId>
+        <PathBack scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_level_bg_<Variable name="VuColor"/>.png</PathBack>
+        <PathVu scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_level_active.png</PathVu>
+        <Horizontal>true</Horizontal>
+        <PeakHoldSize>4</PeakHoldSize>
+        <PeakHoldTime>500</PeakHoldTime>
+        <PeakFallTime>10</PeakFallTime>
+        <PeakFallStep>2</PeakFallStep>
+        <Connection>
+          <ConfigKey><Variable name="StemGroup"/>,vu_meter</ConfigKey>
+        </Connection>
+      </VuMeter>
+    </Children>
+  </WidgetGroup>
+</Template-->
+
+
+<Template>
+  <WidgetGroup>
+    <ObjectName>VuMeterBox</ObjectName>
+    <Layout>horizontal</Layout>
+    <SizePolicy>min,min</SizePolicy>
+    <Children>
+      <VuMeter>
+        <Size>42,6f</Size>
+        <TooltipId><Variable name="ChannelType"/>_VuMeter</TooltipId>
+        <PathBack scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_level_bg_hor.png</PathBack>
+        <PathVu scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_level_active_hor.png</PathVu>
+        <Horizontal>true</Horizontal>
+        <PeakHoldSize>4</PeakHoldSize>
+        <PeakHoldTime>500</PeakHoldTime>
+        <PeakFallTime>10</PeakFallTime>
+        <PeakFallStep>2</PeakFallStep>
+        <Connection><ConfigKey><Variable name="StemGroup"/>,vu_meter</ConfigKey></Connection>
+      </VuMeter>
+      <StatusLight>
+        <Size>6f,6f</Size>
+        <TooltipId><Variable name="ChannelType"/>_peak_indicator</TooltipId>
+        <PathBack scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_clipping_bg_hor.png</PathBack>
+        <PathStatusLight scalemode="STRETCH">skins:LateNight/<Variable name="StyleScheme"/>/style/vu_<Variable name="VuSize"/>_clipping_active_hor.png</PathStatusLight>
+        <Connection><ConfigKey><Variable name="StemGroup"/>,peak_indicator</ConfigKey></Connection>
+      </StatusLight>
+    </Children>
+  </WidgetGroup>
+</Template>

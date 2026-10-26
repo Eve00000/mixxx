@@ -55,6 +55,9 @@ Rectangle {
         case "View":
             viewAppMenuTab.forceActiveFocus(Qt.MenuBarFocusReason);
             break;
+        case "Layout":
+            layoutAppMenuTab.forceActiveFocus(Qt.MenuBarFocusReason);
+            break;
         case "Options":
             optionsAppMenuTab.forceActiveFocus(Qt.MenuBarFocusReason);
             break;
@@ -1043,6 +1046,17 @@ Rectangle {
                     }
                 }
                 ToolbarAppMenuTab {
+                    id: layoutAppMenuTab
+
+                    section: "Layout"
+                    selected: root.activeAppMenuSection === "Layout"
+                    text: root.menuText(qsTranslate("WMainMenuBar", "&Layout"))
+
+                    onTriggered: {
+                        root.selectedAppMenuSection = "Layout";
+                    }
+                }
+                ToolbarAppMenuTab {
                     id: optionsAppMenuTab
 
                     section: "Options"
@@ -1191,6 +1205,30 @@ Rectangle {
             ToolbarAppMenuAction {
                 action: root.applicationMenuActions.viewFullScreen
                 visible: root.activeAppMenuSection === "View"
+            }
+            ToolbarAppMenuAction {
+                action: root.applicationMenuActions.layoutWaveformsSeparate
+                visible: root.activeAppMenuSection === "Layout"
+
+                onHovered: root.clearAppMenuSubmenu()
+            }
+            ToolbarAppMenuAction {
+                action: root.applicationMenuActions.layoutWaveformsRight
+                visible: root.activeAppMenuSection === "Layout"
+
+                onHovered: root.clearAppMenuSubmenu()
+            }
+            ToolbarAppMenuAction {
+                action: root.applicationMenuActions.layoutLibrarySeparate
+                visible: root.activeAppMenuSection === "Layout"
+
+                onHovered: root.clearAppMenuSubmenu()
+            }
+            ToolbarAppMenuAction {
+                action: root.applicationMenuActions.layoutLibraryRight
+                visible: root.activeAppMenuSection === "Layout"
+
+                onHovered: root.clearAppMenuSubmenu()
             }
             ToolbarAppMenuAction {
                 id: vinylControlMenuAction

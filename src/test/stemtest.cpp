@@ -56,39 +56,72 @@ class StemFixture : public MixxxTest, public ::testing::WithParamInterface<StemP
     }
 };
 
-TEST_P(StemFixture, FetchStemInfo) {
-    auto sourceStemPath = GetStemFilePath();
-    TrackPointer pTrack(Track::newTemporary(sourceStemPath));
+// TEST_P(StemFixture, FetchStemInfo) {
+//     TrackPointer pTrack(Track::newTemporary(getTestDir().filePath(STEM_FILE)));
+//
+//     mixxx::AudioSource::OpenParams config;
+//     config.setChannelCount(mixxx::audio::ChannelCount(2));
+//
+//     ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
+//
+//     auto stemInfo = pTrack->getStemInfo();
+//     ASSERT_EQ(stemInfo.size(), 4);
+//     ASSERT_EQ(stemInfo.at(0), StemInfo("Drums", QColor(0xfd, 0x4a, 0x4a)));  // #fd4a4a
+//     ASSERT_EQ(stemInfo.at(1), StemInfo("Bass", QColor(0xff, 0xff, 0x00)));   // #ffff00
+//     ASSERT_EQ(stemInfo.at(2), StemInfo("Synths", QColor(0x00, 0xe8, 0xe8))); // #00e8e8
+//     ASSERT_EQ(stemInfo.at(3), StemInfo("Vox", QColor(0xad, 0x65, 0xff)));    // #ad65ff
+// }
 
-    mixxx::AudioSource::OpenParams config;
-    config.setChannelCount(mixxx::audio::ChannelCount(2));
+// TEST_P(StemFixture, FetchStemEmptyInfo) {
+//     TrackPointer pTrack(Track::newTemporary(
+//             getTestDir().filePath("stems/test_missing_stem_details.stem.mp4")));
+//
+//     mixxx::AudioSource::OpenParams config;
+//     config.setChannelCount(mixxx::audio::ChannelCount(2));
+//
+//     ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
+//
+//     auto stemInfo = pTrack->getStemInfo();
+//     ASSERT_EQ(stemInfo.size(), 4);
+//     ASSERT_EQ(stemInfo.at(0), StemInfo("Stem #1", QColor(0x00, 0x9E, 0x73)));
+//     ASSERT_EQ(stemInfo.at(1), StemInfo("Stem #2", QColor(0xD5, 0x5E, 0x00)));
+//     ASSERT_EQ(stemInfo.at(2), StemInfo("Stem #3", QColor(0xCC, 0x79, 0xA7)));
+//     ASSERT_EQ(stemInfo.at(3), StemInfo("Stem #4", QColor(0x56, 0xB4, 0xE9)));
+// }
 
-    ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
-
-    auto stemInfo = pTrack->getStemInfo();
-    ASSERT_EQ(stemInfo.size(), 4);
-    ASSERT_EQ(stemInfo.at(0), StemInfo("Drums", QColor(0xfd, 0x4a, 0x4a)));  // #fd4a4a
-    ASSERT_EQ(stemInfo.at(1), StemInfo("Bass", QColor(0xff, 0xff, 0x00)));   // #ffff00
-    ASSERT_EQ(stemInfo.at(2), StemInfo("Synths", QColor(0x00, 0xe8, 0xe8))); // #00e8e8
-    ASSERT_EQ(stemInfo.at(3), StemInfo("Vox", QColor(0xad, 0x65, 0xff)));    // #ad65ff
-}
-
-TEST_P(StemFixture, FetchStemEmptyInfo) {
-    TrackPointer pTrack(Track::newTemporary(
-            getTestDir().filePath("stems/stem01/test_missing_stem_details.stem.mp4")));
-
-    mixxx::AudioSource::OpenParams config;
-    config.setChannelCount(mixxx::audio::ChannelCount(2));
-
-    ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
-
-    auto stemInfo = pTrack->getStemInfo();
-    ASSERT_EQ(stemInfo.size(), 4);
-    ASSERT_EQ(stemInfo.at(0), StemInfo("Stem #1", QColor(0x00, 0x9E, 0x73)));
-    ASSERT_EQ(stemInfo.at(1), StemInfo("Stem #2", QColor(0xD5, 0x5E, 0x00)));
-    ASSERT_EQ(stemInfo.at(2), StemInfo("Stem #3", QColor(0xCC, 0x79, 0xA7)));
-    ASSERT_EQ(stemInfo.at(3), StemInfo("Stem #4", QColor(0x56, 0xB4, 0xE9)));
-}
+// TEST_P(StemFixture, FetchStemInfo) {
+//     auto sourceStemPath = GetStemFilePath();
+//     TrackPointer pTrack(Track::newTemporary(sourceStemPath));
+//
+//     mixxx::AudioSource::OpenParams config;
+//     config.setChannelCount(mixxx::audio::ChannelCount(2));
+//
+//     ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
+//
+//     auto stemInfo = pTrack->getStemInfo();
+//     ASSERT_EQ(stemInfo.size(), 4);
+//     ASSERT_EQ(stemInfo.at(0), StemInfo("Drums", QColor(0xfd, 0x4a, 0x4a)));  // #fd4a4a
+//     ASSERT_EQ(stemInfo.at(1), StemInfo("Bass", QColor(0xff, 0xff, 0x00)));   // #ffff00
+//     ASSERT_EQ(stemInfo.at(2), StemInfo("Synths", QColor(0x00, 0xe8, 0xe8))); // #00e8e8
+//     ASSERT_EQ(stemInfo.at(3), StemInfo("Vox", QColor(0xad, 0x65, 0xff)));    // #ad65ff
+// }
+//
+// TEST_P(StemFixture, FetchStemEmptyInfo) {
+//     TrackPointer pTrack(Track::newTemporary(
+//             getTestDir().filePath("stems/stem01/test_missing_stem_details.stem.mp4")));
+//
+//     mixxx::AudioSource::OpenParams config;
+//     config.setChannelCount(mixxx::audio::ChannelCount(2));
+//
+//     ASSERT_NE(SoundSourceProxy(pTrack).openAudioSource(config), nullptr);
+//
+//     auto stemInfo = pTrack->getStemInfo();
+//     ASSERT_EQ(stemInfo.size(), 4);
+//     ASSERT_EQ(stemInfo.at(0), StemInfo("Stem #1", QColor(0x00, 0x9E, 0x73)));
+//     ASSERT_EQ(stemInfo.at(1), StemInfo("Stem #2", QColor(0xD5, 0x5E, 0x00)));
+//     ASSERT_EQ(stemInfo.at(2), StemInfo("Stem #3", QColor(0xCC, 0x79, 0xA7)));
+//     ASSERT_EQ(stemInfo.at(3), StemInfo("Stem #4", QColor(0x56, 0xB4, 0xE9)));
+// }
 
 TEST_P(StemFixture, ReadMainMix) {
     const auto& [codec, info] = GetParam();

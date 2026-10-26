@@ -9,6 +9,7 @@
 #include "engine/effects/groupfeaturestate.h"
 #include "engine/enginebuffer.h"
 #include "engine/enginepregain.h"
+#include "engine/enginevumeter.h"
 #include "moc_enginedeck.cpp"
 #include "track/track.h"
 #include "util/assert.h"
@@ -25,9 +26,6 @@ EngineDeck::EngineDeck(
                   /*isTalkoverChannel*/ false,
                   primaryDeck),
           m_pConfig(pConfig),
-#ifdef __STEM__
-          m_stemClonedState(false),
-#endif
           m_pInputConfigured(new ControlObject(ConfigKey(getGroup(), "input_configured"))),
           m_pPassing(new ControlPushButton(ConfigKey(getGroup(), "passthrough"))) {
     m_pInputConfigured->setReadOnly();
@@ -61,6 +59,16 @@ EngineDeck::EngineDeck(
         return;
     }
 
+    const ConfigKey key(getGroup(), QStringLiteral("stem_controls_expanded"));
+    if (ControlObject::getControl(key, ControlFlag::AllowMissingOrInvalid)) {
+        // CO already exists
+    } else {
+        m_pStemControlsExpanded = std::make_unique<ControlPushButton>(key, /*bPersist*/ true);
+        m_pStemControlsExpanded->setButtonMode(mixxx::control::ButtonMode::Toggle);
+        m_pStemControlsExpanded->setDefaultValue(1.0);
+        m_pStemControlsExpanded->set(1.0);
+    }
+
     connect(m_pBuffer, &EngineBuffer::trackLoaded, this, &EngineDeck::slotTrackLoaded);
 
     m_pStemCount = std::make_unique<ControlObject>(ConfigKey(getGroup(), "stem_count"));
@@ -81,35 +89,147 @@ EngineDeck::EngineDeck(
                 ConfigKey(getGroupForStem(getGroup(), stemIdx), QStringLiteral("mute")));
         pMuteButton->setButtonMode(mixxx::control::ButtonMode::PowerWindow);
         m_stemMute.push_back(std::move(pMuteButton));
-
         m_stemVuMeter.emplace_back(std::make_unique<EngineVuMeter>(
                 getGroupForStem(getGroup(), stemIdx), QString(), false));
     }
+    connect(m_stemMute[0].get(),
+            &ControlPushButton::valueChanged,
+            this,
+            &EngineDeck::slotPremixMuteToggled);
 #endif
 }
 
 #ifdef __STEM__
-void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
-        TrackPointer) {
+
+void EngineDeck::ensureSkinControls() {
+    if (!m_pShowOriginalPremixProxy) {
+        m_pShowOriginalPremixProxy = std::make_unique<PollingControlProxy>(
+                "[Skin]", "show_original_premix", ControlFlag::AllowMissingOrInvalid);
+    }
+
+    if (!m_pPremixToggleModeProxy) {
+        m_pPremixToggleModeProxy = std::make_unique<PollingControlProxy>(
+                "[Skin]", "stem_premix_toggle_mode", ControlFlag::AllowMissingOrInvalid);
+    }
+}
+
+bool EngineDeck::isPremixVisible() const {
+    return m_pShowOriginalPremixProxy &&
+            m_pShowOriginalPremixProxy->toBool();
+    qDebug() << "isPremixVisible: " << m_pShowOriginalPremixProxy->toBool();
+}
+
+bool EngineDeck::isToggleModeEnabled() const {
+    return m_pPremixToggleModeProxy &&
+            m_pPremixToggleModeProxy->toBool();
+    qDebug() << "isToggleModeEnabled: " << m_pPremixToggleModeProxy->toBool();
+}
+
+void EngineDeck::applyStemMode(bool premixActive) {
+    const bool premixVisible = isPremixVisible();
+
+    if (!premixVisible) {
+        // premix hidden -> always stems only
+        m_stemMute[0]->forceSet(1.0);
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->forceSet(0.0);
+        }
+        return;
+    }
+
+    if (premixActive) {
+        // premix ON
+        m_stemMute[0]->forceSet(0.0);
+        m_stemGain[0]->forceSet(1.0);
+
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->forceSet(1.0);
+        }
+    } else {
+        // stems ON
+        m_stemMute[0]->forceSet(1.0);
+
+        for (size_t i = 1; i < m_stemMute.size(); ++i) {
+            m_stemMute[i]->forceSet(0.0);
+        }
+    }
+}
+
+void EngineDeck::slotPremixMuteToggled(double value) {
+    ensureSkinControls();
+
+    const bool premixVisible = isPremixVisible();
+    const bool toggleMode = isToggleModeEnabled();
+
+    // if premix not visible ? only mute premix, no switching
+    if (!premixVisible) {
+        m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        m_stemGain[0]->forceSet(1.0);
+        return;
+    }
+
+    // if toggle mode disabled ? behave like simple mute
+    if (!toggleMode) {
+        m_stemMute[0]->set(value > 0 ? 1.0 : 0.0);
+        m_stemGain[0]->forceSet(1.0);
+        return;
+    }
+
+    const bool premixActive = (value <= 0.0);
+    applyStemMode(premixActive);
+}
+
+// void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack,
+//         TrackPointer) {
+//     VERIFY_OR_DEBUG_ASSERT(m_pStemCount) {
+//         return;
+//     }
+//     ensureSkinControls();
+//     const bool premixActive = isPremixVisible();
+//
+//     if (m_pConfig->getValue(
+//                 ConfigKey("[Mixer Profile]", "stem_auto_reset"), true) &&
+//             !m_stemClonedState) {
+//         for (int i = 0; i < mixxx::kMaxSupportedStems; ++i) {
+//             m_stemGain[i]->set(1.0);
+//         }
+//
+//         applyStemMode(premixActive);
+//     }
+//
+//     m_stemClonedState = false;
+//
+//     if (pNewTrack) {
+//         m_pStemCount->forceSet(pNewTrack->getStemInfo().size());
+//     } else {
+//         m_pStemCount->forceSet(0);
+//     }
+// }
+
+void EngineDeck::slotTrackLoaded(TrackPointer pNewTrack, TrackPointer) {
     VERIFY_OR_DEBUG_ASSERT(m_pStemCount) {
         return;
     }
+    ensureSkinControls();
+
     if (m_pConfig->getValue(
                 ConfigKey("[Mixer Profile]", "stem_auto_reset"), true) &&
             !m_stemClonedState) {
-        for (int stemIdx = 0; stemIdx < mixxx::kMaxSupportedStems; stemIdx++) {
-            m_stemGain[stemIdx]->set(1.0);
-            m_stemMute[stemIdx]->set(0.0);
+        for (int i = 0; i < mixxx::kMaxSupportedStems; ++i) {
+            m_stemGain[i]->set(1.0);
         }
+        // Always start with premix-only playback on a freshly loaded track.
+        applyStemMode(/* premixActive = */ true);
     }
     m_stemClonedState = false;
+
     if (pNewTrack) {
-        int stemCount = pNewTrack->getStemInfo().size();
-        m_pStemCount->forceSet(stemCount);
+        m_pStemCount->forceSet(pNewTrack->getStemInfo().size());
     } else {
         m_pStemCount->forceSet(0);
     }
 }
+
 #endif
 
 EngineDeck::~EngineDeck() {
@@ -143,6 +263,13 @@ void EngineDeck::processStem(CSAMPLE* pOut, const std::size_t bufferSize) {
     }
     m_pBuffer->process(m_stemBuffer.data(), allChannelBufferSize);
 
+    // Fix TailingStemFX - begin
+    m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+    // Apply pregain to the dry stems before the stem quick FX, so effect
+    // tails can ring out when the deck stops.
+    m_pPregain->process(m_stemBuffer.data(), allChannelBufferSize);
+    // Fix TailingStemFX - end
+
     CSAMPLE* pIn = m_stemBuffer.data();
 
     // TODO(XXX): process stem DSP
@@ -161,6 +288,7 @@ void EngineDeck::processStem(CSAMPLE* pOut, const std::size_t bufferSize) {
     // effect manager so we can also apply the individual stem quick FX
     GroupFeatureState featureState;
     collectFeatures(&featureState);
+    // for (std::size_t stemIdx = 0; stemIdx < stemCount;
     for (unsigned int stemIdx = 0; stemIdx < stemCount;
             stemIdx++) {
         int chOffset = stemIdx * mixxx::audio::ChannelCount::stereo();
@@ -222,9 +350,56 @@ void EngineDeck::cloneStemState(const EngineDeck* deckToClone) {
         m_stemGain[stemIdx]->set(deckToClone->m_stemGain[stemIdx]->get());
         m_stemMute[stemIdx]->set(deckToClone->m_stemMute[stemIdx]->get());
     }
-    m_stemClonedState = true;
 }
 #endif
+
+// void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
+//     // Feed the incoming audio through if passthrough is active
+//     const CSAMPLE* sampleBuffer = m_sampleBuffer; // save pointer on stack
+//     if (isPassthroughActive() && sampleBuffer) {
+//         SampleUtil::copy(pOut, sampleBuffer, bufferSize);
+//         m_bPassthroughWasActive = true;
+//         m_sampleBuffer = nullptr;
+//         m_pPregain->setSpeedAndScratching(1, false);
+//     } else {
+//         // If passthrough is no longer enabled, zero out the buffer
+//         if (m_bPassthroughWasActive) {
+//             SampleUtil::clear(pOut, bufferSize);
+//             m_bPassthroughWasActive = false;
+//             return;
+//         }
+//
+// #ifdef __STEM__
+//         // Process the raw audio
+//         if (m_pBuffer->getChannelCount() <= mixxx::kEngineChannelOutputCount) {
+//             // Process a single mono or stereo channel
+// #endif
+//             m_pBuffer->process(pOut, bufferSize);
+// #ifdef __STEM__
+//         } else {
+//             // Process multiple stereo channels (stems) and mix them together
+//             processStem(pOut, bufferSize);
+//         }
+// #endif
+//         m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+//         m_bPassthroughWasActive = false;
+//     }
+//
+//     // Apply pregain
+//     m_pPregain->process(pOut, bufferSize);
+//
+//     EngineEffectsManager* pEngineEffectsManager = m_pEffectsManager->getEngineEffectsManager();
+//     if (pEngineEffectsManager != nullptr) {
+//         pEngineEffectsManager->processPreFaderInPlace(m_group.handle(),
+//                 m_pEffectsManager->getMainHandle(),
+//                 pOut,
+//                 bufferSize,
+//                 mixxx::audio::SampleRate::fromDouble(m_sampleRate.get()));
+//     }
+//
+//     // Update VU meter
+//     m_vuMeter.process(pOut, bufferSize);
+// }
 
 void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
     // Feed the incoming audio through if passthrough is active
@@ -234,6 +409,8 @@ void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
         m_bPassthroughWasActive = true;
         m_sampleBuffer = nullptr;
         m_pPregain->setSpeedAndScratching(1, false);
+        // Apply pregain
+        m_pPregain->process(pOut, bufferSize);
     } else {
         // If passthrough is no longer enabled, zero out the buffer
         if (m_bPassthroughWasActive) {
@@ -243,23 +420,24 @@ void EngineDeck::process(CSAMPLE* pOut, const std::size_t bufferSize) {
         }
 
 #ifdef __STEM__
-        // Process the raw audio
-        if (m_pBuffer->getChannelCount() <= mixxx::kEngineChannelOutputCount) {
-            // Process a single mono or stereo channel
-#endif
-            m_pBuffer->process(pOut, bufferSize);
-#ifdef __STEM__
-        } else {
-            // Process multiple stereo channels (stems) and mix them together
+        if (m_pBuffer->getChannelCount() > mixxx::kEngineChannelOutputCount) {
+            // Process multiple stereo channels (stems) and mix them together.
+            // Pregain is applied to the dry stems inside processStem(), before
+            // the stem quick FX, so effect tails can ring out when the deck
+            // stops (pregain fades to silence at speed 0).
             processStem(pOut, bufferSize);
-        }
+        } else
 #endif
-        m_pPregain->setSpeedAndScratching(m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+        {
+            // Process a single mono or stereo channel
+            m_pBuffer->process(pOut, bufferSize);
+            m_pPregain->setSpeedAndScratching(
+                    m_pBuffer->getSpeed(), m_pBuffer->getScratching());
+            // Apply pregain
+            m_pPregain->process(pOut, bufferSize);
+        }
         m_bPassthroughWasActive = false;
     }
-
-    // Apply pregain
-    m_pPregain->process(pOut, bufferSize);
 
     EngineEffectsManager* pEngineEffectsManager = m_pEffectsManager->getEngineEffectsManager();
     if (pEngineEffectsManager != nullptr) {
@@ -374,7 +552,8 @@ void EngineDeck::slotPassthroughChangeRequest(double v) {
 #ifdef __STEM__
 // static
 QString EngineDeck::getGroupForStem(QStringView deckGroup, int stemIdx) {
-    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 4);
+    // DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 4);
+    DEBUG_ASSERT(deckGroup.endsWith(QChar(']')) && stemIdx < 5);
     return deckGroup.chopped(1) + QStringLiteral("_Stem") + QChar('1' + stemIdx) + QChar(']');
 }
 #endif
