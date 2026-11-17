@@ -18,8 +18,10 @@
 class SqlTransaction;
 class PlaylistDAO;
 class AnalysisDao;
+class SegmentsDAO;
 class CueDAO;
 class LibraryHashDAO;
+class TrackFingerprintDao;
 
 namespace mixxx {
 class FileInfo;
@@ -44,7 +46,9 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
             CueDAO& cueDao,
             PlaylistDAO& playlistDao,
             AnalysisDao& analysisDao,
+            SegmentsDAO& segmentsDao,
             LibraryHashDAO& libraryHashDao,
+            TrackFingerprintDao& fingerprintDao,
             UserSettingsPointer pConfig);
     ~TrackDAO() override;
 
@@ -111,6 +115,37 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
         return getTrackByRef(TrackRef::fromUrl(url));
     }
 
+    // BPM Segments
+    void loadTrackBpmSegments(Track* pTrack) const;
+    void saveTrackBpmSegments(Track* pTrack) const;
+    bool deleteBpmSegmentsForTrack(TrackId trackId) const;
+
+    // Key Segments
+    void loadTrackKeySegments(Track* pTrack) const;
+    void saveTrackKeySegments(Track* pTrack) const;
+    bool deleteKeySegmentsForTrack(TrackId trackId) const;
+
+    // Re-applies (or applies for the first time) the CMRT overlay onto an
+    // already in-memory Track, per its cmrt_members.use_cmrt_data flag.
+    // Called from BaseTrackTableModel::setData() right after the checkbox
+    // is checked, so a deck that already has the track loaded picks up the
+    // overlay without needing to be re-loaded.
+    void applyCmrtOverlayToLoadedTrack(const TrackPointer& pTrack) const;
+
+    // Inverse of the above -- called right after the checkbox is
+    // unchecked. Clears overlay state and restores this track's own stored
+    // cues/beats from the database.
+    void reloadOwnCuesAndBeats(const TrackPointer& pTrack) const;
+
+    TrackPointer getCmrtCanonicalTrack(TrackId trackId, double* pOffsetSeconds) const;
+
+    // the same re-election CmrtGroupingService::handleMatchedCandidate()
+    // already runs automatically when a fresh AcoustID match's quality score
+    // beats the existing canonical, just triggered by user choice
+    bool promoteCmrtCanonical(TrackId trackId) const;
+
+    bool clearMusicBrainzData(TrackId trackId) const;
+
   signals:
     // Forwarded from Track object
     void trackDirty(TrackId trackId);
@@ -136,6 +171,18 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     void slotDatabaseTracksRelocated(
             const QList<RelocatedTrack>& relocatedTracks);
 
+    // Writes AcoustID lookup results back to the library table.
+    // Called by the AcoustID worker after a successful lookup or submission.
+    // Passing empty strings for any MBID field leaves that column unchanged.
+    bool updateAcoustIdResult(
+            TrackId trackId,
+            const QString& acoustidId,
+            const QString& acoustidLookupStatus,
+            const QString& musicbrainzRecordingId,
+            const QString& musicbrainzReleaseId,
+            const QString& musicbrainzTrackId,
+            const QString& musicbrainzArtistId);
+
   private:
     friend class LibraryScanner;
     friend class TrackCollection;
@@ -143,6 +190,8 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     FRIEND_TEST(TrackDAOTest, markTrackLocationsAsVerifiedRecoversPresentFilesOnly);
 
     QString findLastTimeAddedToHistory(TrackId trackId) const;
+
+    void applyCmrtOverlayIfConfigured(const TrackPointer& pTrack) const;
 
     QList<TrackId> resolveTrackIds(
             const QStringList& pathList,
@@ -209,7 +258,9 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     CueDAO& m_cueDao;
     PlaylistDAO& m_playlistDao;
     AnalysisDao& m_analysisDao;
+    SegmentsDAO& m_segmentsDao;
     LibraryHashDAO& m_libraryHashDao;
+    TrackFingerprintDao& m_fingerprintDao;
 
     const UserSettingsPointer m_pConfig;
 
@@ -224,6 +275,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     int m_queryLibraryMixxxDeletedColumn;
 
     QSet<TrackId> m_tracksAddedSet;
+    std::unique_ptr<SegmentsDAO> m_pSegmentsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);
     mutable QSqlQuery m_lastAddedToHistoryQuery;

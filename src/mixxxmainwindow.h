@@ -2,8 +2,10 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <QThread>
 #include <memory>
 
+#include "mixer/nowplaying.h"
 #include "preferences/constants.h"
 #include "soundio/sounddevicestatus.h"
 #include "track/track_decl.h"
@@ -18,6 +20,7 @@ class LaunchImage;
 class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
+class OscReceiver;
 
 namespace mixxx {
 
@@ -74,8 +77,6 @@ class MixxxMainWindow : public QMainWindow {
     void slotDeveloperTools(bool enable);
     void slotDeveloperToolsClosed();
 
-    void slotUpdateWindowTitle(TrackPointer pTrack);
-
     /// warn the user when inputs are not configured.
     void slotNoMicrophoneInputConfigured();
     void slotNoAuxiliaryInputConfigured();
@@ -107,6 +108,8 @@ class MixxxMainWindow : public QMainWindow {
   private:
     void initializeWindow();
     void checkDirectRendering();
+    void oscEnable();
+    void onOscThreadFinished();
 
     /// Load skin to a QWidget that we set as the central widget.
     bool loadConfiguredSkin();
@@ -115,6 +118,11 @@ class MixxxMainWindow : public QMainWindow {
     bool confirmExit();
 #ifndef __APPLE__
     void alwaysHideMenuBarDlg();
+#endif
+    static void cleanUpTrackFileCacheCache(UserSettingsPointer pConfig);
+
+#ifdef __STEM__
+    void createSkinProxies();
 #endif
 
     QDialog::DialogCode soundDeviceErrorDlg(
@@ -162,4 +170,8 @@ class MixxxMainWindow : public QMainWindow {
     mixxx::preferences::ScreenSaver m_inhibitScreensaver;
 
     QSet<ControlObject*> m_skinCreatedControls;
+    QThread m_oscThread;
+    std::unique_ptr<OscReceiver> m_pOscReceiver;
+
+    std::unique_ptr<NowPlaying> m_pNowPlaying;
 };

@@ -15,7 +15,11 @@ namespace mixxx {
 
 class SoundSourceFFmpeg : public SoundSource {
   public:
-    explicit SoundSourceFFmpeg(const QUrl& url, int wantedStreamIndex);
+    // wantedSampleRate: if valid and different from the stream's rate, the
+    // decoded audio is resampled by swr and all frame indices use this rate.
+    explicit SoundSourceFFmpeg(const QUrl& url,
+            int wantedStreamIndex,
+            audio::SampleRate wantedSampleRate = audio::SampleRate());
 
     // uses the first audio stream
     explicit SoundSourceFFmpeg(const QUrl& url);
@@ -38,6 +42,8 @@ class SoundSourceFFmpeg : public SoundSource {
     static int64_t getStreamChannelLayout(const AVStream& avStream);
 #endif
     static IndexRange getStreamFrameIndexRange(const AVStream& avStream);
+    static IndexRange getStreamFrameIndexRange(
+            const AVStream& avStream, audio::SampleRate sampleRate);
     static SINT getStreamSeekPrerollFrameCount(const AVStream& avStream);
     static FrameCount frameBufferCapacityForStream(const AVStream& avStream);
 
@@ -206,6 +212,13 @@ class SoundSourceFFmpeg : public SoundSource {
   private:
     const CSAMPLE* resampleDecodedAVFrame(AVFrame* pavDecodedFrame);
 
+    // Prepares m_pavResampledFrame to receive output from swr
+    void initResampledFrame();
+    // Drops all state buffered in swr, used after seeking
+    void resetResampler();
+    // Returns the samples still buffered in swr at end of stream, or nullptr
+    const CSAMPLE* drainResampler();
+
     // recreates the AVCodecContext for cases where the lightweight
     // avcodec_flush_buffers() is not sufficient
     bool deepFlushBuffers();
@@ -217,6 +230,11 @@ class SoundSourceFFmpeg : public SoundSource {
     bool consumeNextAVPacket(AVPacket** ppavNextPacket);
 
     int m_wantedStreamIndex;
+    audio::SampleRate m_wantedSampleRate;
+    // true if swr converts the sample rate, not only format/layout
+    bool m_convertSampleRate;
+    // Output frame index of the next resampled frame, unknown after seek
+    SINT m_nextResampledFrameIndex;
 };
 
 class SoundSourceProviderFFmpeg : public SoundSourceProvider {
