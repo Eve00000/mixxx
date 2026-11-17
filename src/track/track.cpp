@@ -1120,7 +1120,7 @@ mixxx::audio::FramePos Track::getMainCuePosition() const {
 }
 
 void Track::slotCueUpdated() {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     if (m_cmrtOverlayActive) {
         TrackPointer pCanonical = m_pCmrtCanonicalTrack;
         const double offsetSeconds = m_cmrtOffsetSeconds;
@@ -2242,7 +2242,7 @@ bool Track::updateMood(
 #endif // __EXTRA_METADATA__
 
 bool Track::setBpmSegments(const QList<BpmSegmentsPointer>& segments) {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
 
     m_bpmSegments = segments;
     m_bpmSegmentsDirty = true;
@@ -2254,7 +2254,7 @@ bool Track::setBpmSegments(const QList<BpmSegmentsPointer>& segments) {
 }
 
 bool Track::setKeySegments(const QList<KeySegmentsPointer>& segments) {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
 
     m_keySegments = segments;
     m_keySegmentsDirty = true;
@@ -2266,17 +2266,17 @@ bool Track::setKeySegments(const QList<KeySegmentsPointer>& segments) {
 }
 
 QList<BpmSegmentsPointer> Track::getBpmSegments() const {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     return m_bpmSegments;
 }
 
 QList<KeySegmentsPointer> Track::getKeySegments() const {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     return m_keySegments;
 }
 
 bool Track::deleteBpmSegments() {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
 
     m_bpmSegments.clear();
     m_bpmSegmentsDirty = true;
@@ -2288,7 +2288,7 @@ bool Track::deleteBpmSegments() {
 }
 
 bool Track::deleteKeySegments() {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
 
     m_keySegments.clear();
     m_keySegmentsDirty = true;
@@ -2298,13 +2298,13 @@ bool Track::deleteKeySegments() {
     return true;
 }
 
-void Track::afterBpmSegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock) {
+void Track::afterBpmSegmentsUpdated(QMutexLocker<QRecursiveMutex>* pLock) {
     DEBUG_ASSERT(pLock);
     markDirtyAndUnlock(pLock);
     emit bpmSegmentsUpdated();
 }
 
-void Track::afterKeySegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock) {
+void Track::afterKeySegmentsUpdated(QMutexLocker<QRecursiveMutex>* pLock) {
     DEBUG_ASSERT(pLock);
     markDirtyAndUnlock(pLock);
     emit keySegmentsUpdated();
@@ -2316,7 +2316,7 @@ void Track::applyCmrtOverlay(TrackPointer pCanonical,
     VERIFY_OR_DEBUG_ASSERT(pCanonical) {
         return;
     }
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     // Drop any connection to a previous canonical before wiring up the new
     // one. This also covers the case where this function is being called
     // *because* refreshCmrtOverlayFromCanonical() fired -- we're about to
@@ -2348,7 +2348,7 @@ void Track::applyCmrtOverlay(TrackPointer pCanonical,
     // long-term; for now this direct member assignment under a second
     // short lock keeps the change scoped to this function.
     {
-        auto lock2 = lockMutex(&m_qMutex);
+        auto lock2 = QMutexLocker(&m_qMutex);
         m_pBeats = pOverlayBeats;
         m_cuePoints = overlayCues;
         m_record.refMetadata().refTrackInfo().setBpm(
@@ -2375,7 +2375,7 @@ void Track::applyCmrtOverlay(TrackPointer pCanonical,
 }
 
 void Track::refreshCmrtOverlayFromCanonical() {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     if (!m_cmrtOverlayActive || !m_pCmrtCanonicalTrack) {
         locked.unlock();
         return;
@@ -2407,7 +2407,7 @@ void Track::copyOrMergeCmrtHotcues(TrackPointer pCanonical,
         }
     }
 
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     VERIFY_OR_DEBUG_ASSERT(!m_cmrtOverlayActive) {
         // Caller (WTrackMenu::copyOrAddCmrtHotcuesForSelection()) is
         // expected to have already skipped overlay-active tracks. Bail
@@ -2469,7 +2469,7 @@ void Track::copyOrMergeCmrtHotcues(TrackPointer pCanonical,
 }
 
 void Track::clearCmrtOverlay() {
-    auto lock = lockMutex(&m_qMutex);
+    auto lock = QMutexLocker(&m_qMutex);
     disconnect(m_cmrtCanonicalCuesConnection);
     disconnect(m_cmrtCanonicalBeatsConnection);
     m_pCmrtCanonicalTrack.reset();
@@ -2478,7 +2478,7 @@ void Track::clearCmrtOverlay() {
 }
 
 void Track::restoreOwnBeatsAfterCmrtOverlay(mixxx::BeatsPointer pOwnBeats) {
-    auto locked = lockMutex(&m_qMutex);
+    auto locked = QMutexLocker(&m_qMutex);
     VERIFY_OR_DEBUG_ASSERT(!m_cmrtOverlayActive) {
         return;
     }
@@ -2493,17 +2493,17 @@ void Track::restoreOwnBeatsAfterCmrtOverlay(mixxx::BeatsPointer pOwnBeats) {
 }
 
 bool Track::hasCmrtOverlayActive() const {
-    const auto lock = lockMutex(&m_qMutex);
+    const auto lock = QMutexLocker(&m_qMutex);
     return m_cmrtOverlayActive;
 }
 
 TrackPointer Track::getCanonicalTrack() const {
-    const auto lock = lockMutex(&m_qMutex);
+    const auto lock = QMutexLocker(&m_qMutex);
     return m_pCmrtCanonicalTrack;
 }
 
 double Track::getCmrtOffsetSeconds() const {
-    const auto lock = lockMutex(&m_qMutex);
+    const auto lock = QMutexLocker(&m_qMutex);
     return m_cmrtOffsetSeconds;
 }
 

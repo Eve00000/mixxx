@@ -7,7 +7,6 @@
 #include "library/library_decl.h"
 #include "library/libraryview.h"
 #include "skin/legacy/skincontext.h"
-#include "util/compatibility/qmutex.h"
 #include "waveform/renderers/waveformsignalcolors.h"
 #include "widget/wbasewidget.h"
 
@@ -88,7 +87,7 @@ class WLibraryBaseWindow : public QStackedWidget, public WBaseWidget {
     const QString m_callingParent;
 
   private:
-    QT_RECURSIVE_MUTEX m_mutex;
+    QRecursiveMutex m_mutex;
     QMap<QString, QWidget*> m_viewMap;
     double m_trackTableBackgroundColorOpacity;
     bool m_bShowButtonText;
