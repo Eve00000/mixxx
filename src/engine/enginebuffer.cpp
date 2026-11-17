@@ -1707,6 +1707,11 @@ void EngineBuffer::processSeek(bool paused) {
             return;
         }
         position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
+        // Let EngineControls (notably RateControl) know this start is a
+        // clone so they don't apply a spin-up ramp.
+        for (const auto& pControl : m_engineControls) {
+            pControl->notifyCloneSeek();
+        }
     } break;
     default:
         DEBUG_ASSERT(!"Unhandled seek request type");

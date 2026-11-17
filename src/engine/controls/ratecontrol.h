@@ -81,6 +81,7 @@ class RateControl : public EngineControl {
     void notifyWrapAround(mixxx::audio::FramePos triggerPos,
             mixxx::audio::FramePos targetPos);
     void notifySeek(mixxx::audio::FramePos position) override;
+    void notifyCloneSeek() override;
     void setEngineMixer(EngineMixer* pEngineMixer) override;
     void resetPositionScratchController();
     // Thread-safe: request a fresh motor state, applied in calculateSpeed()
@@ -265,6 +266,7 @@ class RateControl : public EngineControl {
     double m_lastTargetRate; // speed the platter was ramping to / running at
     bool m_spinningDown;
     bool m_seekedSinceLastBuffer;
+    std::atomic<bool> m_cloneSeekPending;
     bool m_prevPaused;
     bool m_latchedPlay;
     static std::atomic<bool> m_rampUpEnabled;
