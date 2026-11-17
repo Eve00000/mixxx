@@ -316,32 +316,32 @@ mixxx::audio::FramePos Cue::getEndPosition() const {
 }
 
 double Cue::getStem1vol() const {
-    const auto lock = lockMutex(&m_mutex);
+    const auto lock = QMutexLocker(&m_mutex);
     return m_stem1vol;
 }
 
 double Cue::getStem2vol() const {
-    const auto lock = lockMutex(&m_mutex);
+    const auto lock = QMutexLocker(&m_mutex);
     return m_stem2vol;
 }
 
 double Cue::getStem3vol() const {
-    const auto lock = lockMutex(&m_mutex);
+    const auto lock = QMutexLocker(&m_mutex);
     return m_stem3vol;
 }
 
 double Cue::getStem4vol() const {
-    const auto lock = lockMutex(&m_mutex);
+    const auto lock = QMutexLocker(&m_mutex);
     return m_stem4vol;
 }
 
 double Cue::getStem5vol() const {
-    const auto lock = lockMutex(&m_mutex);
+    const auto lock = QMutexLocker(&m_mutex);
     return m_stem5vol;
 }
 
 void Cue::setStem1vol(double stem1vol) {
-    auto lock = lockMutex(&m_mutex);
+    auto lock = QMutexLocker(&m_mutex);
     if (m_stem1vol == stem1vol) {
         return;
     }
@@ -355,7 +355,7 @@ void Cue::setStem1vol(double stem1vol) {
 }
 
 void Cue::setStem2vol(double stem2vol) {
-    auto lock = lockMutex(&m_mutex);
+    auto lock = QMutexLocker(&m_mutex);
     if (m_stem2vol == stem2vol) {
         return;
     }
@@ -369,7 +369,7 @@ void Cue::setStem2vol(double stem2vol) {
 }
 
 void Cue::setStem3vol(double stem3vol) {
-    auto lock = lockMutex(&m_mutex);
+    auto lock = QMutexLocker(&m_mutex);
     if (m_stem3vol == stem3vol) {
         return;
     }
@@ -383,7 +383,7 @@ void Cue::setStem3vol(double stem3vol) {
 }
 
 void Cue::setStem4vol(double stem4vol) {
-    auto lock = lockMutex(&m_mutex);
+    auto lock = QMutexLocker(&m_mutex);
     if (m_stem4vol == stem4vol) {
         return;
     }
@@ -397,7 +397,7 @@ void Cue::setStem4vol(double stem4vol) {
 }
 
 void Cue::setStem5vol(double stem5vol) {
-    auto lock = lockMutex(&m_mutex);
+    auto lock = QMutexLocker(&m_mutex);
     if (m_stem5vol == stem5vol) {
         return;
     }

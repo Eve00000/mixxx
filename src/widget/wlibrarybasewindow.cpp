@@ -1,6 +1,7 @@
 #include "widget/wlibrarybasewindow.h"
 
 #include <QKeyEvent>
+#include <QMutexLocker>
 #include <QtDebug>
 
 #include "library/libraryview.h"
@@ -21,7 +22,7 @@ WLibraryBaseWindow ::WLibraryBaseWindow(QWidget* parent)
           // WBaseWidget(this),
           WBaseWidget(parent),
           m_callingParent("WLibraryBaseWindow"), // Default value for safety
-          m_mutex(QT_RECURSIVE_MUTEX_INIT),
+          m_mutex(QRecursiveMutex()),
           m_trackTableBackgroundColorOpacity(kDefaultTrackTableBackgroundColorOpacity),
           m_bShowButtonText(true) {
     // EVE: to remove a black rectangle overlay from the stacked widget
@@ -69,7 +70,7 @@ bool WLibraryBaseWindow::registerView(const QString& name, QWidget* pView) {
         if (sDebug) {
             qDebug() << "[WLibrary] -> Registering view in Library -> ACTION: " << name;
         }
-        const auto lock = lockMutex(&m_mutex);
+        const auto lock = QMutexLocker(&m_mutex);
         if (m_viewMap.contains(name)) {
             return false;
         }
@@ -100,7 +101,7 @@ bool WLibraryBaseWindow::registerViewInPreparationWindow(const QString& name, QW
                         "LibraryPreparationWindow -> ACTION: "
                      << name;
         }
-        const auto lock = lockMutex(&m_mutex);
+        const auto lock = QMutexLocker(&m_mutex);
         if (m_viewMap.contains(name)) {
             return false;
         }
@@ -139,7 +140,7 @@ void WLibraryBaseWindow::switchToView(const QString& name) {
         if (sDebug) {
             qDebug() << "[WLibrary] -> Switching to view in Library -> ACTION: " << name;
         }
-        const auto lock = lockMutex(&m_mutex);
+        const auto lock = QMutexLocker(&m_mutex);
         LibraryView* pOldLibraryView = dynamic_cast<LibraryView*>(currentWidget());
         QWidget* pWidget = m_viewMap.value(name, nullptr);
         if (pWidget != nullptr) {
@@ -179,7 +180,7 @@ void WLibraryBaseWindow::switchToViewInPreparationWindow(const QString& name) {
                         "PreparationWindow -> ACTION: "
                      << name;
         }
-        const auto lock = lockMutex(&m_mutex);
+        const auto lock = QMutexLocker(&m_mutex);
         LibraryView* pOldLibraryView = dynamic_cast<LibraryView*>(currentWidget());
         QWidget* pWidget = m_viewMap.value(name, nullptr);
         if (pWidget != nullptr) {
@@ -274,7 +275,7 @@ void WLibraryBaseWindow::search(const QString& name) {
         if (sDebug) {
             qDebug() << "[WLibrary] -> Search in Library -> ACTION";
         }
-        auto lock = lockMutex(&m_mutex);
+        auto lock = QMutexLocker(&m_mutex);
         QWidget* pCurrent = currentWidget();
         LibraryView* pView = dynamic_cast<LibraryView*>(pCurrent);
         if (pView == nullptr) {
@@ -298,7 +299,7 @@ void WLibraryBaseWindow::searchInPreparationWindow(const QString& name) {
         if (sDebug) {
             qDebug() << "[WLibraryPreparationWindow] -> Search in PreparationWindow -> ACTION";
         }
-        auto lock = lockMutex(&m_mutex);
+        auto lock = QMutexLocker(&m_mutex);
         QWidget* pCurrent = currentWidget();
         LibraryView* pView = dynamic_cast<LibraryView*>(pCurrent);
         if (pView == nullptr) {

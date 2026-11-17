@@ -712,8 +712,8 @@ class Track : public QObject {
     QList<KeySegmentsPointer> m_keySegments;
     bool m_bpmSegmentsDirty = false;
     bool m_keySegmentsDirty = false;
-    void afterBpmSegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
-    void afterKeySegmentsUpdated(QT_RECURSIVE_MUTEX_LOCKER* pLock);
+    void afterBpmSegmentsUpdated(QMutexLocker<QRecursiveMutex>* pLock);
+    void afterKeySegmentsUpdated(QMutexLocker<QRecursiveMutex>* pLock);
 
     friend class GlobalTrackCache;
     friend class GlobalTrackCacheResolver;
