@@ -1,6 +1,7 @@
 #include "engine/enginebuffer.h"
 
 #include <QtDebug>
+#include <utility>
 
 #include "control/controllinpotmeter.h"
 #include "control/controlpotmeter.h"
@@ -1708,7 +1709,7 @@ void EngineBuffer::processSeek(bool paused) {
         position = pOtherChannel->getEngineBuffer()->getExactPlayPos();
         // Let EngineControls (notably RateControl) know this start is a
         // clone so they don't apply a spin-up ramp.
-        for (const auto& pControl : m_engineControls) {
+        for (const auto& pControl : std::as_const(m_engineControls)) {
             pControl->notifyCloneSeek();
         }
     } break;

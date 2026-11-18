@@ -69,6 +69,7 @@ repos:
     rev: v10.11.0
     hooks:
       - id: eslint
+        language_version: lts
         args: [--fix, --report-unused-disable-directives]
         files: \.m?[jt]s$
         types: [file]
