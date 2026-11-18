@@ -73,7 +73,8 @@
                       </WidgetGroup>
                       <!-- QSplitter between LibrarySidebar and CoverArt -->
                       <Splitter>
-                        <ObjectName>LibraryCoverArtSplitter</ObjectName>
+                        <!--ObjectName>LibraryCoverArtSplitter</ObjectName-->
+                        <ObjectName>SidebarCoverSplitter</ObjectName>
                         <Orientation>vertical</Orientation>
                         <SizePolicy>me,me</SizePolicy>
                         <MinimumSize>30,30</MinimumSize>
