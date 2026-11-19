@@ -223,6 +223,78 @@ void SoundSourceSTEM::close() {
     }
 }
 
+// ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
+//         const WritableSampleFrames& globalSampleFrames) {
+//     VERIFY_OR_DEBUG_ASSERT(m_requestedChannelCount.isValid()) {
+//         return ReadableSampleFrames();
+//     }
+//     VERIFY_OR_DEBUG_ASSERT(globalSampleFrames.writableLength() %
+//                     m_requestedChannelCount ==
+//             0) {
+//         return ReadableSampleFrames();
+//     };
+//
+//     const SINT frameCount = globalSampleFrames.frameLength();
+//     const SINT stereoSampleCount =
+//             mixxx::audio::SignalInfo(mixxx::audio::ChannelCount::stereo(),
+//                     getSignalInfo().getSampleRate())
+//                     .frames2samples(frameCount);
+//     const std::size_t streamCount = m_pStereoStreams.size();
+//     CSAMPLE* pOutput = globalSampleFrames.writableData();
+//
+//     const ReadableSampleFrames read(
+//             globalSampleFrames.frameIndexRange(),
+//             SampleBuffer::ReadableSlice(
+//                     pOutput,
+//                     globalSampleFrames.writableLength()));
+//
+//     const bool stereoOutput =
+//             m_requestedChannelCount == mixxx::audio::ChannelCount::stereo();
+//
+//     if (stereoOutput && streamCount == 1) {
+//         // Single stream (premix or one selected stem): decode directly
+//         const auto stemRead = m_pStereoStreams[0]->readSampleFrames(globalSampleFrames);
+//         const SINT framesRead = stemRead.frameIndexRange().length();
+//         if (framesRead < frameCount) {
+//             SampleUtil::clear(pOutput + framesRead * 2, (frameCount - framesRead) * 2);
+//         }
+//         return read;
+//     }
+//
+//     // The same buffer is reused between requests to prevent reallocation
+//     if (stereoSampleCount > m_buffer.size()) {
+//         m_buffer = SampleBuffer(stereoSampleCount);
+//     }
+//     if (stereoOutput) {
+//         SampleUtil::clear(pOutput, globalSampleFrames.writableLength());
+//     }
+//
+//     for (std::size_t streamIdx = 0; streamIdx < streamCount; ++streamIdx) {
+//         WritableSampleFrames stemFrames(
+//                 globalSampleFrames.frameIndexRange(),
+//                 SampleBuffer::WritableSlice(m_buffer.data(), stereoSampleCount));
+//         const auto stemRead = m_pStereoStreams[streamIdx]->readSampleFrames(stemFrames);
+//         const SINT framesRead = stemRead.frameIndexRange().length();
+//         if (framesRead < frameCount) {
+//             // This stream ends before the reference stream
+//             SampleUtil::clear(m_buffer.data() + framesRead * 2,
+//                     (frameCount - framesRead) * 2);
+//         }
+//
+//         if (stereoOutput) {
+//             // Mix the selected streams together
+//             SampleUtil::add(pOutput, m_buffer.data(), stereoSampleCount);
+//         } else {
+//             // Interleave: 1L1R2L2R3L3R4L4R5L5R, 1L1R2L2R...
+//             for (SINT i = 0; i < frameCount; ++i) {
+//                 pOutput[2 * streamCount * i + 2 * streamIdx] = m_buffer[2 * i];
+//                 pOutput[2 * streamCount * i + 2 * streamIdx + 1] = m_buffer[2 * i + 1];
+//             }
+//         }
+//     }
+//     return read;
+// }
+
 ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
         const WritableSampleFrames& globalSampleFrames) {
     VERIFY_OR_DEBUG_ASSERT(m_requestedChannelCount.isValid()) {
@@ -234,6 +306,7 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
         return ReadableSampleFrames();
     };
 
+    const auto frameRange = globalSampleFrames.frameIndexRange();
     const SINT frameCount = globalSampleFrames.frameLength();
     const SINT stereoSampleCount =
             mixxx::audio::SignalInfo(mixxx::audio::ChannelCount::stereo(),
@@ -242,23 +315,33 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
     const std::size_t streamCount = m_pStereoStreams.size();
     CSAMPLE* pOutput = globalSampleFrames.writableData();
 
-    const ReadableSampleFrames read(
-            globalSampleFrames.frameIndexRange(),
-            SampleBuffer::ReadableSlice(
-                    pOutput,
-                    globalSampleFrames.writableLength()));
-
     const bool stereoOutput =
             m_requestedChannelCount == mixxx::audio::ChannelCount::stereo();
 
     if (stereoOutput && streamCount == 1) {
-        // Single stream (premix or one selected stem): decode directly
+        // Single stream (premix or one selected stem): decode directly into
+        // the caller's buffer, then pad around the actually decoded range so
+        // that no stale samples from a previous call survive.
         const auto stemRead = m_pStereoStreams[0]->readSampleFrames(globalSampleFrames);
-        const SINT framesRead = stemRead.frameIndexRange().length();
-        if (framesRead < frameCount) {
-            SampleUtil::clear(pOutput + framesRead * 2, (frameCount - framesRead) * 2);
+        const auto decodedRange = stemRead.frameIndexRange();
+        if (decodedRange.empty()) {
+            SampleUtil::clear(pOutput, globalSampleFrames.writableLength());
+            return ReadableSampleFrames();
         }
-        return read;
+        const SINT prefix =
+                (decodedRange.start() - frameRange.start()) * 2;
+        const SINT end =
+                (decodedRange.end() - frameRange.start()) * 2;
+        if (prefix > 0) {
+            SampleUtil::clear(pOutput, prefix);
+        }
+        if (end < globalSampleFrames.writableLength()) {
+            SampleUtil::clear(pOutput + end,
+                    globalSampleFrames.writableLength() - end);
+        }
+        return ReadableSampleFrames(frameRange,
+                SampleBuffer::ReadableSlice(
+                        pOutput, globalSampleFrames.writableLength()));
     }
 
     // The same buffer is reused between requests to prevent reallocation
@@ -267,18 +350,40 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
     }
     if (stereoOutput) {
         SampleUtil::clear(pOutput, globalSampleFrames.writableLength());
+    } else {
+        DEBUG_ASSERT(stereoSampleCount * static_cast<SINT>(streamCount) ==
+                globalSampleFrames.writableLength());
     }
 
+    bool decodedAnyStem = false;
     for (std::size_t streamIdx = 0; streamIdx < streamCount; ++streamIdx) {
         WritableSampleFrames stemFrames(
-                globalSampleFrames.frameIndexRange(),
+                frameRange,
                 SampleBuffer::WritableSlice(m_buffer.data(), stereoSampleCount));
         const auto stemRead = m_pStereoStreams[streamIdx]->readSampleFrames(stemFrames);
-        const SINT framesRead = stemRead.frameIndexRange().length();
-        if (framesRead < frameCount) {
-            // This stream ends before the reference stream
-            SampleUtil::clear(m_buffer.data() + framesRead * 2,
-                    (frameCount - framesRead) * 2);
+        const auto decodedRange = stemRead.frameIndexRange();
+
+        if (decodedRange.empty()) {
+            if (stereoOutput) {
+                // Nothing decoded from this stream; contribute nothing to the mix.
+                continue;
+            }
+            // Interleaved stem output must still contain this stream's slot.
+            SampleUtil::clear(m_buffer.data(), stereoSampleCount);
+        } else {
+            decodedAnyStem = true;
+            // Pad around the actually decoded range so stale samples from a
+            // previous request don't leak into the output (or the waveform).
+            const SINT prefix =
+                    (decodedRange.start() - frameRange.start()) * 2;
+            const SINT end =
+                    (decodedRange.end() - frameRange.start()) * 2;
+            if (prefix > 0) {
+                SampleUtil::clear(m_buffer.data(), prefix);
+            }
+            if (end < stereoSampleCount) {
+                SampleUtil::clear(m_buffer.data(end), stereoSampleCount - end);
+            }
         }
 
         if (stereoOutput) {
@@ -292,7 +397,19 @@ ReadableSampleFrames SoundSourceSTEM::readSampleFramesClamped(
             }
         }
     }
-    return read;
+
+    if (!decodedAnyStem) {
+        // Nothing decoded at all for this window: let the engine treat it as
+        // silence instead of reading whatever was left in pOutput.
+        if (!stereoOutput) {
+            SampleUtil::clear(pOutput, globalSampleFrames.writableLength());
+        }
+        return ReadableSampleFrames();
+    }
+
+    return ReadableSampleFrames(frameRange,
+            SampleBuffer::ReadableSlice(
+                    pOutput, globalSampleFrames.writableLength()));
 }
 
 } // namespace mixxx
