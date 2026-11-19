@@ -196,27 +196,24 @@ class AudioSource : public UrlResource, public virtual /*implements*/ IAudioSour
 #ifdef __STEM__
         OpenParams()
                 : m_signalInfo(),
-                  m_stemMask(mixxx::StemChannelSelection()) {
+                  m_stemMask(mixxx::StemChannelSelection()),
+                  m_premixIncluded(true),
+                  m_upSampleStems(true) {
         }
 
         OpenParams(
                 audio::ChannelCount channelCount,
                 audio::SampleRate sampleRate,
                 mixxx::StemChannelSelection stemMask = mixxx::StemChannelSelection())
-                : m_signalInfo(
-                          channelCount,
-                          sampleRate),
-                  m_stemMask(stemMask) {
+                : m_signalInfo(channelCount, sampleRate),
+                  m_stemMask(stemMask),
+                  m_premixIncluded(true),
+                  m_upSampleStems(true) {
         }
 #else
         OpenParams() = default;
-
-        OpenParams(
-                audio::ChannelCount channelCount,
-                audio::SampleRate sampleRate)
-                : m_signalInfo(
-                          channelCount,
-                          sampleRate) {
+        OpenParams(audio::ChannelCount channelCount, audio::SampleRate sampleRate)
+                : m_signalInfo(channelCount, sampleRate) {
         }
 #endif
 
@@ -230,23 +227,36 @@ class AudioSource : public UrlResource, public virtual /*implements*/ IAudioSour
         }
 #endif
 
-        void setChannelCount(
-                audio::ChannelCount channelCount) {
+        void setChannelCount(audio::ChannelCount channelCount) {
             m_signalInfo.setChannelCount(channelCount);
         }
 
 #ifdef __STEM__
-        void setStemMask(
-                mixxx::StemChannelSelection stemMask) {
-            VERIFY_OR_DEBUG_ASSERT(stemMask <= 2 << mixxx::kMaxSupportedStems) {
+        void setStemMask(mixxx::StemChannelSelection stemMask) {
+            // VERIFY_OR_DEBUG_ASSERT(stemMask <= 2 << mixxx::kMaxSupportedStems) {
+            //     return;
+            // }
+            VERIFY_OR_DEBUG_ASSERT(
+                    (stemMask & ~mixxx::StemChannelSelection(mixxx::StemChannel::All)) ==
+                    mixxx::StemChannelSelection(mixxx::StemChannel::None)) {
                 return;
             }
             m_stemMask = stemMask;
         }
+
+        void setPremixIncludedVars(bool premixIncluded, bool upsample) {
+            m_premixIncluded = premixIncluded;
+            m_upSampleStems = upsample;
+        }
+        bool getPremixIncluded() const {
+            return m_premixIncluded;
+        }
+        bool getUpSampleStems() const {
+            return m_upSampleStems;
+        }
 #endif
 
-        void setSampleRate(
-                audio::SampleRate sampleRate) {
+        void setSampleRate(audio::SampleRate sampleRate) {
             m_signalInfo.setSampleRate(sampleRate);
         }
 
@@ -254,6 +264,8 @@ class AudioSource : public UrlResource, public virtual /*implements*/ IAudioSour
         audio::SignalInfo m_signalInfo;
 #ifdef __STEM__
         mixxx::StemChannelSelection m_stemMask;
+        bool m_premixIncluded;
+        bool m_upSampleStems;
 #endif
     };
 

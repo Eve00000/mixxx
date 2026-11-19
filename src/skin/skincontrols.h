@@ -19,4 +19,6 @@ class SkinControls {
     ControlPushButton m_showSettings;
     ControlPushButton m_showSpinnies;
     ControlPushButton m_showVinylControl;
+    ControlPushButton m_showOriginalPremix;
+    ControlPushButton m_stemPremixMuteToggleMode;
 };
