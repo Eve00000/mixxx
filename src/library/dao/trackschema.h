@@ -80,6 +80,26 @@ const QString PLAYLISTTRACKSTABLE_DATETIMEADDED = QStringLiteral("pl_datetime_ad
 
 const QString REKORDBOX_ANALYZE_PATH = "analyze_path";
 
+#define RELATIONS_TABLE "relations"
+#define RELATION_GROUPS_TABLE "relation_groups"
+#define RELATION_GROUP_TRACKS_TABLE "relation_group_tracks"
+
+const QString RELATIONSTABLE_ID = QStringLiteral("id");
+const QString RELATIONSTABLE_TYPE = QStringLiteral("rel_type");
+const QString RELATIONSTABLE_DESCRIPTION = QStringLiteral("rel_description");
+const QString RELATIONSTABLE_DATETIMEADDED = QStringLiteral("rel_datetime_added");
+
+const QString RELATIONGROUPSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPSTABLE_REL_ID = QStringLiteral("rg_rel_id");
+const QString RELATIONGROUPSTABLE_COMMENT = QStringLiteral("rg_comment");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED = QStringLiteral("rg_datetime_added");
+
+const QString RELATIONGROUPTRACKSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPTRACKSTABLE_GROUP_ID = QStringLiteral("rgt_group_id");
+const QString RELATIONGROUPTRACKSTABLE_TRACK_ID = QStringLiteral("rgt_track_id");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT = QStringLiteral("rgt_comment");
+const QString RELATIONGROUPTRACKSTABLE_DATETIMEADDED = QStringLiteral("rgt_datetime_added");
+
 namespace mixxx {
 namespace trackschema {
 // TableForColumn returns the name of the table that contains the named column.

@@ -65,4 +65,7 @@ class RelationsDao : public DAO {
 
     // Deck view query
     QList<TrackRelationRow> relationsForTrack(TrackId trackId) const;
+
+    RelationGroup getGroupById(DbId groupId) const;
+    QList<RelationGroup> allGroups() const;
 };

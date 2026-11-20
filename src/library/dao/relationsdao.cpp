@@ -396,3 +396,33 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
     }
     return rows;
 }
+
+RelationsDao::RelationGroup RelationsDao::getGroupById(DbId groupId) const {
+    if (!m_database.isOpen() || !groupId.isValid())
+        return RelationGroup{};
+
+    FwdSqlQuery query(m_database,
+            QStringLiteral(
+                    "SELECT * FROM " RELATION_GROUPS_TABLE " WHERE id=:id"));
+    query.bindValue(":id", groupId.toVariant());
+    if (query.execPrepared() && query.next()) {
+        return relationGroupFromRow(query.record());
+    }
+    return RelationGroup{};
+}
+
+QList<RelationsDao::RelationGroup> RelationsDao::allGroups() const {
+    QList<RelationGroup> groups;
+    if (!m_database.isOpen())
+        return groups;
+
+    FwdSqlQuery query(m_database,
+            QStringLiteral(
+                    "SELECT * FROM " RELATION_GROUPS_TABLE " ORDER BY id"));
+    if (query.execPrepared()) {
+        while (query.next()) {
+            groups.append(relationGroupFromRow(query.record()));
+        }
+    }
+    return groups;
+}
