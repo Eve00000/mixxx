@@ -25,4 +25,6 @@ class RelationsTableModel final : public BaseSqlTableModel {
 
   private:
     TrackPointer m_pDeckTrack;
+
+    friend class WRelationTableView;
 };
