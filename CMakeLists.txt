@@ -1472,6 +1472,10 @@ add_library(
   src/library/recording/recordingfeature.cpp
   src/library/rekordbox/rekordboxfeature.cpp
   src/library/relations/relationstablemodel.cpp
+  src/library/relations/dlgrelationinfo.cpp
+  src/library/relations/dlgrelationinfo.ui
+  src/library/relations/dlgrelations.cpp
+  src/library/relations/dlgrelations.ui
   src/library/rhythmbox/rhythmboxfeature.cpp
   src/library/scanner/importfilestask.cpp
   src/library/scanner/libraryscanner.cpp
