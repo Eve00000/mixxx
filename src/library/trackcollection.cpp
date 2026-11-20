@@ -16,12 +16,15 @@ mixxx::Logger kLogger("TrackCollection");
 } // anonymous namespace
 
 TrackCollection::TrackCollection(
-        QObject* parent,
-        const UserSettingsPointer& pConfig)
+        QObject* parent, const UserSettingsPointer& pConfig)
         : QObject(parent),
           m_analysisDao(pConfig),
-          m_trackDao(m_cueDao, m_playlistDao,
-                     m_analysisDao, m_libraryHashDao, pConfig) {
+          m_trackDao(m_cueDao,
+                  m_playlistDao,
+                  m_analysisDao,
+                  m_libraryHashDao,
+                  m_relationsDao,
+                  pConfig) {
     // Forward signals from TrackDAO
     connect(&m_trackDao,
             &TrackDAO::trackDirty,
@@ -78,6 +81,7 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_directoryDao.initialize(database);
     m_analysisDao.initialize(database);
     m_libraryHashDao.initialize(database);
+    m_relationsDao.initialize(database);
     m_crates.connectDatabase(database);
 }
 

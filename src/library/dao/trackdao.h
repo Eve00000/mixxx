@@ -20,6 +20,7 @@ class PlaylistDAO;
 class AnalysisDao;
 class CueDAO;
 class LibraryHashDAO;
+class RelationsDao;
 
 namespace mixxx {
 class FileInfo;
@@ -45,6 +46,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
             PlaylistDAO& playlistDao,
             AnalysisDao& analysisDao,
             LibraryHashDAO& libraryHashDao,
+            RelationsDao& relationsDao,
             UserSettingsPointer pConfig);
     ~TrackDAO() override;
 
@@ -210,6 +212,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     PlaylistDAO& m_playlistDao;
     AnalysisDao& m_analysisDao;
     LibraryHashDAO& m_libraryHashDao;
+    RelationsDao& m_relationsDao;
 
     const UserSettingsPointer m_pConfig;
 
@@ -224,6 +227,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     int m_queryLibraryMixxxDeletedColumn;
 
     QSet<TrackId> m_tracksAddedSet;
+    std::unique_ptr<RelationsDao> m_pRelationsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);
     mutable QSqlQuery m_lastAddedToHistoryQuery;
