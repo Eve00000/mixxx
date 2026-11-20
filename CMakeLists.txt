@@ -2857,6 +2857,7 @@ if(STEM)
       src/track/steminfoimporter.cpp
       src/track/steminfo.cpp
       src/widget/wtrackstemmenu.cpp
+      src/widget/wstemcontrolborder.cpp
       src/widget/wstemlabel.cpp
   )
   if(QOPENGL)
