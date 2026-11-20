@@ -22,6 +22,7 @@ class TrackCollectionManager;
 class Library;
 class SkinControls;
 class ControlPushButton;
+class MixxxDb;
 struct LibraryScanResultSummary;
 
 namespace mixxx {
@@ -106,6 +107,10 @@ class CoreServices : public QObject {
     std::shared_ptr<QDialog> makeDlgPreferences(
             bool includeWaveformPreferences = true) const;
 
+    MixxxDb* getMixxxDb() const {
+        return m_pMixxxDb.get();
+    }
+
   signals:
     void initializationProgressUpdate(int progress, const QString& serviceName);
     void libraryScanSummary(const LibraryScanResultSummary& result);
@@ -151,6 +156,8 @@ class CoreServices : public QObject {
     Timer m_runtime_timer;
     const CmdlineArgs& m_cmdlineArgs;
     bool m_isInitialized;
+
+    std::unique_ptr<MixxxDb> m_pMixxxDb;
 };
 
 } // namespace mixxx
