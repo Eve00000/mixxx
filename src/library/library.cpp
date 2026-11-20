@@ -30,6 +30,7 @@
 #include "library/trackmodel.h"
 #include "library/trackset/crate/cratefeature.h"
 #include "library/trackset/playlistfeature.h"
+#include "library/trackset/searchcrate/searchcratefeature.h"
 #include "library/trackset/setlogfeature.h"
 #include "library/traktor/traktorfeature.h"
 #include "mixer/playermanager.h"
@@ -130,6 +131,8 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+    m_pSearchCrateFeature = make_parented<SearchCrateFeature>(this, m_pConfig);
+    addFeature(m_pSearchCrateFeature);
 
     m_pBrowseFeature = make_parented<BrowseFeature>(
             this, m_pConfig, pRecordingManager);
@@ -158,6 +161,10 @@ Library::Library(
             &AnalysisFeature::analyzeTracks);
     connect(m_pCrateFeature,
             &CrateFeature::analyzeTracks,
+            m_pAnalysisFeature,
+            &AnalysisFeature::analyzeTracks);
+    connect(m_pSearchCrateFeature,
+            &SearchCrateFeature::analyzeTracks,
             m_pAnalysisFeature,
             &AnalysisFeature::analyzeTracks);
     connect(this,
@@ -323,6 +330,10 @@ void Library::bindSearchboxWidget(WSearchLineEdit* pSearchboxWidget) {
             &WSearchLineEdit::search,
             this,
             &Library::search);
+    connect(pSearchboxWidget,
+            &WSearchLineEdit::newSearchCrate,
+            this,
+            &Library::slotCreateSearchCrateFromSearch);
     connect(this,
             &Library::disableSearch,
             pSearchboxWidget,
@@ -614,6 +625,14 @@ void Library::slotCreatePlaylist() {
 
 void Library::slotCreateCrate() {
     m_pCrateFeature->slotCreateCrate();
+}
+
+void Library::slotCreateSearchCrate() {
+    m_pSearchCrateFeature->slotCreateSearchCrate();
+}
+
+void Library::slotCreateSearchCrateFromSearch(const QString& text) {
+    m_pSearchCrateFeature->slotCreateSearchCrateFromSearch(text);
 }
 
 void Library::onSkinLoadFinished() {

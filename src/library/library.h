@@ -10,6 +10,7 @@
 #ifdef __ENGINEPRIME__
 #include "library/trackset/crate/crateid.h"
 #endif
+#include "library/trackset/searchcrate/searchcrateid.h"
 #include "preferences/usersettings.h"
 #include "track/track_decl.h"
 #include "util/db/dbconnectionpool.h"
@@ -28,6 +29,7 @@ class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
 class RecordingManager;
+class SearchCrateFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
@@ -43,7 +45,7 @@ class LibraryExporter;
 
 // A Library class is a container for all the model-side aspects of the library.
 // A library widget can be attached to the Library object by calling bindLibraryWidget.
-class Library: public QObject {
+class Library : public QObject {
     Q_OBJECT
 
   public:
@@ -70,7 +72,7 @@ class Library: public QObject {
     void bindSearchboxWidget(WSearchLineEdit* pSearchboxWidget);
     void bindSidebarWidget(WLibrarySidebar* sidebarWidget);
     void bindLibraryWidget(WLibrary* libraryWidget,
-                    KeyboardEventFilter* pKeyboard);
+            KeyboardEventFilter* pKeyboard);
 
     void addFeature(LibraryFeature* feature);
 
@@ -91,7 +93,7 @@ class Library: public QObject {
         return m_editMetadataSelectedClick;
     }
 
-    //static Library* buildDefaultLibrary();
+    // static Library* buildDefaultLibrary();
 
     static const int kDefaultRowHeightPx;
 
@@ -134,6 +136,8 @@ class Library: public QObject {
     void slotRefreshLibraryModels();
     void slotCreatePlaylist();
     void slotCreateCrate();
+    void slotCreateSearchCrate();
+    void slotCreateSearchCrateFromSearch(const QString& text);
     void slotSearchInCurrentView();
     void slotSearchInAllTracks();
     void onSkinLoadFinished();
@@ -180,8 +184,8 @@ class Library: public QObject {
     void onTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
 
   private slots:
-      void onPlayerManagerTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
-      void onPlayerManagerTrackAnalyzerIdle();
+    void onPlayerManagerTrackAnalyzerProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
+    void onPlayerManagerTrackAnalyzerIdle();
 
   private:
     const UserSettingsPointer m_pConfig;
@@ -201,6 +205,7 @@ class Library: public QObject {
     parented_ptr<AutoDJFeature> m_pAutoDJFeature;
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
+    parented_ptr<SearchCrateFeature> m_pSearchCrateFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
     QFont m_trackTableFont;
