@@ -56,6 +56,18 @@ class DragAndDropHelper final {
             const QString& group,
             UserSettingsPointer pConfig);
 
+    /// Returns true if the MIME data carries streaming-service tracks.
+    static bool isStreamingTracksMimeData(const QMimeData& mimeData);
+
+    /// Handles dropping streaming-service tracks. Returns true if the event
+    /// was consumed, i.e. it carried streaming tracks, a drop handler is
+    /// registered for the provider and loading to the target group is allowed.
+    static bool handleStreamingDropEvent(
+            QDropEvent* pEvent,
+            TrackDropTarget& target,
+            const QString& group,
+            UserSettingsPointer pConfig);
+
     static void mousePressed(QMouseEvent* pEvent);
 
     static bool mouseMoveInitiatesDrag(QMouseEvent* pEvent);
