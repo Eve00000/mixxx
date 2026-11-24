@@ -6,6 +6,7 @@
 #include "library/trackcollectionmanager.h"
 #include "mixer/playermanager.h"
 #include "moc_relationstablemodel.cpp"
+#include "track/track.h"
 
 namespace {
 const QString kModelName = QStringLiteral("relations");
@@ -34,6 +35,7 @@ QString relationSearchClause(const QString& searchText, const QString& keyword) 
             QStringLiteral("gt.rgt_comment")};
 
     QStringList wordConditions;
+    QStringList columnConditions;
     for (const QString& word : words) {
         QString escaped = word;
         escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
@@ -42,7 +44,6 @@ QString relationSearchClause(const QString& searchText, const QString& keyword) 
         escaped.replace(QLatin1Char('\''), QStringLiteral("''"));
         const QString pattern = QStringLiteral("'%") + escaped + QStringLiteral("%'");
 
-        QStringList columnConditions;
         for (const QString& column : columns) {
             columnConditions.append(column + QStringLiteral(" LIKE ") + pattern +
                     QStringLiteral(" ESCAPE '\\'"));

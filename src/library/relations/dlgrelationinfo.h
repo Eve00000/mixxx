@@ -13,7 +13,7 @@ class DlgRelationInfo : public QDialog, public Ui::DlgRelationInfo {
     Q_OBJECT
   public:
     explicit DlgRelationInfo(
-            RelationsDao::RelationGroup group,
+            const RelationsDao::RelationGroup& group,
             Library* pLibrary = nullptr);
     ~DlgRelationInfo() override = default;
 

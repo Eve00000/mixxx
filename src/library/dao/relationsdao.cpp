@@ -404,19 +404,6 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
         return rows;
     }
 
-    const QSqlRecord record = query.record();
-    const int idxRelationId = record.indexOf("relation_id");
-    const int idxRelType = record.indexOf("rel_type");
-    const int idxRelDescription = record.indexOf("rel_description");
-    const int idxGroupId = record.indexOf("group_id");
-    const int idxGroupComment = record.indexOf("rg_comment");
-    const int idxTrackComment = record.indexOf("rgt_comment");
-    const int idxLinkedTrackId = record.indexOf("rgt_track_id");
-    const int idxArtist = record.indexOf("artist");
-    const int idxTitle = record.indexOf("title");
-    const int idxAlbum = record.indexOf("album");
-    const int idxYear = record.indexOf("year");
-
     while (query.next()) {
         const QSqlRecord rowRecord = query.record();
         rows.append(TrackRelationRow{

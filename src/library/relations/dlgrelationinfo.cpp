@@ -22,7 +22,9 @@ constexpr int kColumnTrack = 0;
 constexpr int kColumnComment = 1;
 } // namespace
 
-DlgRelationInfo::DlgRelationInfo(RelationsDao::RelationGroup group, Library* pLibrary)
+DlgRelationInfo::DlgRelationInfo(
+        const RelationsDao::RelationGroup& group,
+        Library* pLibrary)
         : QDialog(nullptr),
           m_group(group),
           m_pLibrary(pLibrary) {
