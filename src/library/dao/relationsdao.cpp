@@ -186,7 +186,7 @@ DbId RelationsDao::createGroup(DbId relationId,
 
         if (!trackQuery.exec()) {
             LOG_FAILED_QUERY(trackQuery);
-            removeGroup(groupId); // Cleanup partial group
+            removeGroup(groupId);
             return DbId();
         }
     }
@@ -233,6 +233,8 @@ bool RelationsDao::removeGroup(DbId groupId) const {
             LOG_FAILED_QUERY(delTracks);
             return false;
         }
+        // qDebug() << "[RelationsDao] removeGroup" << groupId.toString()
+        //         << "deleted track rows:" << delTracks.numRowsAffected();
     }
 
     QSqlQuery delGroup(m_database);
@@ -243,6 +245,8 @@ bool RelationsDao::removeGroup(DbId groupId) const {
         LOG_FAILED_QUERY(delGroup);
         return false;
     }
+    // qDebug() << "[RelationsDao] removeGroup" << groupId.toString()
+    //         << "deleted group rows:" << delGroup.numRowsAffected();
     return true;
 }
 
@@ -280,11 +284,34 @@ QList<TrackId> RelationsDao::tracksInGroup(DbId groupId) const {
     if (!query.execPrepared()) {
         return tracks;
     }
-    const QSqlRecord record = query.record();
-    const int idxTrackId = record.indexOf("rgt_track_id");
-
     while (query.next()) {
-        tracks.append(TrackId(record.value(idxTrackId)));
+        const QSqlRecord record = query.record();
+        tracks.append(TrackId(record.value(record.indexOf("rgt_track_id"))));
+    }
+    return tracks;
+}
+
+QList<RelationsDao::GroupTrack> RelationsDao::groupTracks(DbId groupId) const {
+    QList<GroupTrack> tracks;
+    if (!m_database.isOpen() || !groupId.isValid()) {
+        return tracks;
+    }
+
+    FwdSqlQuery query(m_database,
+            QStringLiteral(
+                    "SELECT rgt_track_id, rgt_comment FROM " RELATION_GROUP_TRACKS_TABLE " "
+                    "WHERE rgt_group_id=:id ORDER BY id"));
+    DEBUG_ASSERT(query.isPrepared() && !query.hasError());
+    query.bindValue(":id", groupId.toVariant());
+
+    if (!query.execPrepared()) {
+        return tracks;
+    }
+    while (query.next()) {
+        const QSqlRecord record = query.record();
+        tracks.append(GroupTrack{
+                TrackId(record.value(record.indexOf("rgt_track_id"))),
+                record.value(record.indexOf("rgt_comment")).toString()});
     }
     return tracks;
 }
@@ -327,6 +354,11 @@ bool RelationsDao::removeTrackFromGroup(DbId groupId, TrackId trackId) const {
         LOG_FAILED_QUERY(query);
         return false;
     }
+
+    // A group needs at least 2 tracks: delete the group when fewer remain
+    if (tracksInGroup(groupId).size() < 2) {
+        return removeGroup(groupId);
+    }
     return true;
 }
 
@@ -347,7 +379,9 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
                     "  other_track.rgt_comment AS rgt_comment,"
                     "  other_track.rgt_track_id AS rgt_track_id,"
                     "  library.artist AS artist,"
-                    "  library.title AS title "
+                    "  library.title AS title, "
+                    "  library.album AS album, "
+                    "  library.year AS year "
                     "FROM " RELATION_GROUP_TRACKS_TABLE " AS self_track "
                     "JOIN " RELATION_GROUPS_TABLE " AS relation_groups "
                     "  ON relation_groups.id = self_track.rgt_group_id "
@@ -360,7 +394,7 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
                     "  ON library.id = other_track.rgt_track_id "
                     "WHERE self_track.rgt_track_id=:track_id "
                     "ORDER BY relations.rel_type, relation_groups.id, "
-                    "library.artist, library.title"));
+                    "library.artist, library.title, library.album, library.year"));
 
     DEBUG_ASSERT(query.isPrepared() && !query.hasError());
     query.bindValue(":track_id", trackId.toVariant());
@@ -380,18 +414,23 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
     const int idxLinkedTrackId = record.indexOf("rgt_track_id");
     const int idxArtist = record.indexOf("artist");
     const int idxTitle = record.indexOf("title");
+    const int idxAlbum = record.indexOf("album");
+    const int idxYear = record.indexOf("year");
 
     while (query.next()) {
+        const QSqlRecord rowRecord = query.record();
         rows.append(TrackRelationRow{
-                DbId(record.value(idxRelationId)),
-                record.value(idxRelType).toString(),
-                record.value(idxRelDescription).toString(),
-                DbId(record.value(idxGroupId)),
-                record.value(idxGroupComment).toString(),
-                record.value(idxTrackComment).toString(),
-                TrackId(record.value(idxLinkedTrackId)),
-                record.value(idxArtist).toString(),
-                record.value(idxTitle).toString(),
+                DbId(rowRecord.value(QStringLiteral("relation_id"))),
+                rowRecord.value(QStringLiteral("rel_type")).toString(),
+                rowRecord.value(QStringLiteral("rel_description")).toString(),
+                DbId(rowRecord.value(QStringLiteral("group_id"))),
+                rowRecord.value(QStringLiteral("rg_comment")).toString(),
+                rowRecord.value(QStringLiteral("rgt_comment")).toString(),
+                TrackId(rowRecord.value(QStringLiteral("rgt_track_id"))),
+                rowRecord.value(QStringLiteral("artist")).toString(),
+                rowRecord.value(QStringLiteral("title")).toString(),
+                rowRecord.value(QStringLiteral("album")).toString(),
+                rowRecord.value(QStringLiteral("year")).toString(),
         });
     }
     return rows;

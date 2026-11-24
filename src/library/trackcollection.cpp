@@ -16,7 +16,8 @@ mixxx::Logger kLogger("TrackCollection");
 } // anonymous namespace
 
 TrackCollection::TrackCollection(
-        QObject* parent, const UserSettingsPointer& pConfig)
+        QObject* parent,
+        const UserSettingsPointer& pConfig)
         : QObject(parent),
           m_analysisDao(pConfig),
           m_trackDao(m_cueDao,

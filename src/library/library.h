@@ -28,6 +28,7 @@ class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
 class RecordingManager;
+class RelationsFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
@@ -202,6 +203,7 @@ class Library: public QObject {
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
+    parented_ptr<RelationsFeature> m_pRelationsFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;

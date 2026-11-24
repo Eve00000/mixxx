@@ -187,9 +187,8 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
                 kDefaultColumnWidth * 4},
         DI(ColumnCache::COLUMN_RELATIONSTABLE_DATETIMEADDED){
                 &RELATIONSTABLE_DATETIMEADDED,
-                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Relation Added"),
-                kDefaultColumnWidth * 3},
-
+                QT_TRANSLATE_NOOP("BaseSqlTableModel", "Timestamp"),
+                kDefaultColumnWidth * 80 / 50},
         DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID){
                 &RELATIONGROUPSTABLE_ID, nullptr, 0},
         DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_REL_ID){
@@ -200,19 +199,38 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
                 kDefaultColumnWidth * 4},
         DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED){
                 &RELATIONGROUPSTABLE_DATETIMEADDED, nullptr, 0},
-
         DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_ID){
                 &RELATIONGROUPTRACKSTABLE_ID, nullptr, 0},
         DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_GROUP_ID){
                 &RELATIONGROUPTRACKSTABLE_GROUP_ID, nullptr, 0},
         DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_TRACK_ID){
                 &RELATIONGROUPTRACKSTABLE_TRACK_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID_ALIAS){
+                &RELATIONGROUPSTABLE_ID_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Group ID"),
+                kDefaultColumnWidth},
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_TYPE_ALIAS){
+                &RELATIONSTABLE_TYPE_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Type"),
+                kDefaultColumnWidth * 2},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS){
+                &RELATIONGROUPSTABLE_COMMENT_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Group Comment"),
+                kDefaultColumnWidth * 4},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS){
+                &RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS,
+                QT_TRANSLATE_NOOP("BaseSqlTableModel", "Rel Added Date"),
+                kDefaultColumnWidth * 3},
         DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT){
                 &RELATIONGROUPTRACKSTABLE_COMMENT,
-                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Track Comment"),
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Track Comment"),
                 kDefaultColumnWidth * 3},
         DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_DATETIMEADDED){
                 &RELATIONGROUPTRACKSTABLE_DATETIMEADDED, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS){
+                &RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Track Comment"),
+                kDefaultColumnWidth * 3},
         DI(ColumnCache::COLUMN_REKORDBOX_ANALYZE_PATH){
                 &REKORDBOX_ANALYZE_PATH, nullptr, 0}};
 static_assert(std::size(kColumnPropertiesByEnum) == ColumnCache::NUM_COLUMNS);
@@ -278,6 +296,11 @@ void ColumnCache::setColumns(QStringList columns) {
     insertColumnSortByEnum(COLUMN_RELATIONSTABLE_DESCRIPTION, kSortNoCaseLex);
     insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_COMMENT, kSortNoCaseLex);
     insertColumnSortByEnum(COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONSTABLE_TYPE_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_ID_ALIAS, kSortInt);
 
     slotSetKeySortOrder(m_pKeyNotationCP->get());
 }

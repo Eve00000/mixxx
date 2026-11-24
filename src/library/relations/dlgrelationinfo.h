@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QList>
+#include <QSet>
 
 #include "library/dao/relationsdao.h"
 #include "library/relations/ui_dlgrelationinfo.h"
@@ -19,11 +20,13 @@ class DlgRelationInfo : public QDialog, public Ui::DlgRelationInfo {
   private slots:
     void slotOk();
     void slotCancel();
+    void slotRemoveTrack();
 
   private:
     void init();
-    void saveRelation();
+    bool saveRelation();
 
     RelationsDao::RelationGroup m_group;
     Library* m_pLibrary;
+    QSet<TrackId> m_originalTrackIds;
 };

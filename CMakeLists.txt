@@ -1476,6 +1476,8 @@ add_library(
   src/library/relations/dlgrelationinfo.ui
   src/library/relations/dlgrelations.cpp
   src/library/relations/dlgrelations.ui
+  src/library/relations/dlgsaverelation.cpp
+  src/library/relations/relationsfeature.cpp
   src/library/rhythmbox/rhythmboxfeature.cpp
   src/library/scanner/importfilestask.cpp
   src/library/scanner/libraryscanner.cpp

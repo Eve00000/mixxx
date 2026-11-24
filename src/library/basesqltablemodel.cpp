@@ -137,6 +137,21 @@ void BaseSqlTableModel::initSortColumnMapping() {
     m_columnIndexBySortColumnId[static_cast<int>(
             TrackModel::SortColumnId::PlaylistDateTimeAdded)] =
             fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::RelationGroupId)] =
+            fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID_ALIAS);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::RelationType)] =
+            fieldIndex(ColumnCache::COLUMN_RELATIONSTABLE_TYPE_ALIAS);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::RelationGroupComment)] =
+            fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::RelationDateTimeAdded)] =
+            fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS);
+    m_columnIndexBySortColumnId[static_cast<int>(
+            TrackModel::SortColumnId::RelationTrackComment)] =
+            fieldIndex(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS);
 
     m_sortColumnIdByColumnIndex.clear();
     for (int i = static_cast<int>(TrackModel::SortColumnId::IdMin);
@@ -363,9 +378,21 @@ void BaseSqlTableModel::setTable(QString tableName,
     if (sDebug) {
         qDebug() << this << "setTable" << tableName << tableColumns << idColumn;
     }
+    const QString oldTableName = m_tableName;
     m_tableName = std::move(tableName);
     m_idColumn = std::move(idColumn);
     m_tableColumns = std::move(tableColumns);
+
+    // The table sort clause is prefixed with the table name
+    // to keep it valid when the model switches to another table
+    // eg all_relations -> relations_track_5)
+    // otherwise select() fails with "no such column"
+    if (!m_tableOrderBy.isEmpty() &&
+            !oldTableName.isEmpty() &&
+            oldTableName != m_tableName) {
+        m_tableOrderBy.replace(oldTableName + QLatin1Char('.'),
+                m_tableName + QLatin1Char('.'));
+    }
 
     if (m_trackSource) {
         disconnect(m_trackSource.data(),
@@ -535,6 +562,12 @@ void BaseSqlTableModel::setSort(int column, Qt::SortOrder order) {
             QString sort_field = QString("%1.%2").arg(m_tableName, field);
             m_tableOrderBy.append(mixxx::DbConnection::collateLexicographically(sort_field));
             m_tableOrderBy.append((order == Qt::AscendingOrder) ? " ASC" : " DESC");
+            if (field != RELATIONGROUPSTABLE_ID_ALIAS &&
+                    m_tableColumns.contains(RELATIONGROUPSTABLE_ID_ALIAS)) {
+                // Keep the rows of a relation group together
+                m_tableOrderBy.append(
+                        QString(", %1.%2 ASC").arg(m_tableName, RELATIONGROUPSTABLE_ID_ALIAS));
+            }
         }
         m_sortColumns.clear();
         m_sortColumns.prepend(SortColumn(column, order));

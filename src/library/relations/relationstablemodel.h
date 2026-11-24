@@ -17,6 +17,13 @@ class RelationsTableModel final : public BaseSqlTableModel {
 
     void showRelatedTracks(TrackPointer pTrack);
 
+    // Search in the track columns and in the relation columns
+    // (type, group comment, track comment)
+    void searchRelations(const QString& searchText);
+    QString relationSearch() const {
+        return m_relationSearch;
+    }
+
     Capabilities getCapabilities() const final;
     QString modelKey(bool noSearch) const override;
 
@@ -25,6 +32,7 @@ class RelationsTableModel final : public BaseSqlTableModel {
 
   private:
     TrackPointer m_pDeckTrack;
+    QString m_relationSearch;
 
     friend class WRelationTableView;
 };

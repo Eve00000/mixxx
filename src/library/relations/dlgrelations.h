@@ -35,9 +35,10 @@ class DlgRelations : public QWidget, public Ui::DlgRelations, public LibraryView
     void showAllRelations();
     void showRelatedTracks(TrackPointer pTrack);
     void selectionChanged(const QItemSelection&, const QItemSelection&);
-    void slotShowDlgRelationInfo();
-    void slotLoadRelationToDecks();
+    void slotSaveRelationFromDecks();
+    void slotEditRelation();
     void slotDeleteRelation();
+    void slotRemoveTrackFromRelation();
 
   signals:
     void trackSelected(TrackPointer pTrack);
@@ -51,8 +52,6 @@ class DlgRelations : public QWidget, public Ui::DlgRelations, public LibraryView
     WRelationTableView* m_pRelationTableView;
 
     Library* m_pLibrary;
-
-    std::unique_ptr<DlgRelationInfo> m_pDlgRelationInfo;
 
     bool m_bRelationGroupView;
 };

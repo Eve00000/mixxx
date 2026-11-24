@@ -30,6 +30,11 @@ class RelationsDao : public DAO {
         QDateTime dateAdded;
     };
 
+    struct GroupTrack {
+        TrackId trackId;
+        QString comment;
+    };
+
     struct TrackRelationRow {
         DbId relationId;
         QString relationType;
@@ -40,9 +45,10 @@ class RelationsDao : public DAO {
         TrackId linkedTrackId;
         QString artist;
         QString title;
+        QString album;
+        QString year;
     };
 
-    // Taxonomy
     QList<Relation> allRelations() const;
     Relation relationById(DbId id) const;
     DbId addRelation(const QString& type, const QString& description) const;
@@ -56,8 +62,9 @@ class RelationsDao : public DAO {
     bool removeGroup(DbId groupId) const;
     bool updateGroupComment(DbId groupId, const QString& comment) const;
 
-    // Membership
+    // MemberTracks
     QList<TrackId> tracksInGroup(DbId groupId) const;
+    QList<GroupTrack> groupTracks(DbId groupId) const;
     bool setTrackComment(DbId groupId,
             TrackId trackId,
             const QString& comment) const;

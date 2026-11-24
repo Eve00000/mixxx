@@ -227,7 +227,6 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     int m_queryLibraryMixxxDeletedColumn;
 
     QSet<TrackId> m_tracksAddedSet;
-    std::unique_ptr<RelationsDao> m_pRelationsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);
     mutable QSqlQuery m_lastAddedToHistoryQuery;

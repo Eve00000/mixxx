@@ -9,6 +9,49 @@
 
 namespace {
 const QString kModelName = QStringLiteral("relations");
+
+// Builds a SQL condition for the relation views: every word of the search
+// text must be found in at least one of the track or relation columns.
+// keyword is "WHERE" or "AND", depending on the query it is appended to.
+QString relationSearchClause(const QString& searchText, const QString& keyword) {
+    const QStringList words =
+            searchText.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    if (words.isEmpty()) {
+        return QString();
+    }
+    const QStringList columns = {
+            QStringLiteral("library.artist"),
+            QStringLiteral("library.title"),
+            QStringLiteral("library.album"),
+            QStringLiteral("library.album_artist"),
+            QStringLiteral("library.genre"),
+            QStringLiteral("library.composer"),
+            QStringLiteral("library.grouping"),
+            QStringLiteral("library.comment"),
+            QStringLiteral("library.year"),
+            QStringLiteral("r.rel_type"),
+            QStringLiteral("g.rg_comment"),
+            QStringLiteral("gt.rgt_comment")};
+
+    QStringList wordConditions;
+    for (const QString& word : words) {
+        QString escaped = word;
+        escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+        escaped.replace(QLatin1Char('%'), QStringLiteral("\\%"));
+        escaped.replace(QLatin1Char('_'), QStringLiteral("\\_"));
+        escaped.replace(QLatin1Char('\''), QStringLiteral("''"));
+        const QString pattern = QStringLiteral("'%") + escaped + QStringLiteral("%'");
+
+        QStringList columnConditions;
+        for (const QString& column : columns) {
+            columnConditions.append(column + QStringLiteral(" LIKE ") + pattern +
+                    QStringLiteral(" ESCAPE '\\'"));
+        }
+        wordConditions.append(QStringLiteral("(") +
+                columnConditions.join(QStringLiteral(" OR ")) + QStringLiteral(")"));
+    }
+    return keyword + QLatin1Char(' ') + wordConditions.join(QStringLiteral(" AND "));
+}
 } // anonymous namespace
 
 RelationsTableModel::RelationsTableModel(
@@ -23,7 +66,6 @@ RelationsTableModel::RelationsTableModel(
 
 bool RelationsTableModel::isColumnInternal(int column) {
     return column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ID) ||
-            column == fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_PLAYED) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_MIXXXDELETED) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_BPM_LOCK) ||
@@ -41,16 +83,15 @@ bool RelationsTableModel::isColumnInternal(int column) {
 bool RelationsTableModel::isColumnHiddenByDefault(int column) {
     return column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED) ||
             column == fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_COMMENT) ||
-            column == fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED) ||
             BaseSqlTableModel::isColumnHiddenByDefault(column);
 }
 
 DbId RelationsTableModel::getRelationId(const QModelIndex& index) const {
     if (index.isValid()) {
-        // Return the Group ID, since that identifies the relation group
+        // -> GroupID = relation identifier
         return DbId(
                 index.sibling(index.row(),
-                             fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID))
+                             fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID_ALIAS))
                         .data());
     } else {
         return DbId();
@@ -58,36 +99,39 @@ DbId RelationsTableModel::getRelationId(const QModelIndex& index) const {
 }
 
 void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
-    if (!pTrack) {
+    if (!pTrack)
         return;
-    }
     m_pDeckTrack = pTrack;
     TrackId trackId = pTrack->getId();
     QString trackTableName = QStringLiteral("relations_track_%1").arg(trackId.toString());
 
-    QStringList columns;
-    columns << "library." + LIBRARYTABLE_ID
-            << "g." + RELATIONGROUPSTABLE_ID
-            << "r." + RELATIONSTABLE_TYPE
-            << "g." + RELATIONGROUPSTABLE_COMMENT
-            << "g." + RELATIONGROUPSTABLE_DATETIMEADDED
-            << "gt." + RELATIONGROUPTRACKSTABLE_COMMENT
-            << "'' AS " + LIBRARYTABLE_PREVIEW
-            << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+    QSqlQuery dropQuery(m_database);
+    dropQuery.exec(QStringLiteral("DROP VIEW IF EXISTS %1").arg(trackTableName));
 
-    // Fetch the OTHER tracks in every group that this track belongs to
     QString queryString = QStringLiteral(
-            "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
-            "SELECT %2 "
+            "CREATE TEMPORARY VIEW %1 AS "
+            "SELECT "
+            "  library.id AS id,"
+            "  g.id AS group_id,"
+            "  r.rel_type AS rel_type_alias,"
+            "  g.rg_comment AS rg_comment_alias,"
+            "  g.rg_datetime_added AS relation_date_added_alias,"
+            "  gt.rgt_comment AS track_comment,"
+            "  '' AS preview,"
+            "  library.coverart_digest AS coverart "
             "FROM relation_group_tracks self "
             "JOIN relation_groups g ON g.id = self.rgt_group_id "
             "JOIN relations r ON r.id = g.rg_rel_id "
             "JOIN relation_group_tracks gt ON gt.rgt_group_id = g.id "
             "JOIN library ON library.id = gt.rgt_track_id "
-            "WHERE self.rgt_track_id = %3 "
-            "AND gt.rgt_track_id != %3 "
+            "WHERE self.rgt_track_id = %2 "
+            "AND gt.rgt_track_id != %2 "
+            "%3 "
             "ORDER BY g.id, library.artist, library.title")
-                                  .arg(trackTableName, columns.join(','), trackId.toString());
+                                  .arg(trackTableName,
+                                          trackId.toString(),
+                                          relationSearchClause(m_relationSearch,
+                                                  QStringLiteral("AND")));
 
     QSqlQuery query(m_database);
     query.prepare(queryString);
@@ -95,47 +139,55 @@ void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
         LOG_FAILED_QUERY(query);
     }
 
-    // Strip table prefixes so BaseSqlTableModel can parse the column names
-    columns[0] = LIBRARYTABLE_ID;
-    columns[1] = RELATIONGROUPSTABLE_ID;
-    columns[2] = RELATIONSTABLE_TYPE;
-    columns[3] = RELATIONGROUPSTABLE_COMMENT;
-    columns[4] = RELATIONGROUPSTABLE_DATETIMEADDED;
-    columns[5] = RELATIONGROUPTRACKSTABLE_COMMENT;
-    columns[6] = LIBRARYTABLE_PREVIEW;
-    columns[7] = LIBRARYTABLE_COVERART;
+    QStringList columns;
+    columns << "id"
+            << "group_id"
+            << "rel_type_alias"
+            << "rg_comment_alias"
+            << "relation_date_added_alias"
+            << "track_comment"
+            << "preview"
+            << "coverart";
 
     setTable(trackTableName,
-            LIBRARYTABLE_ID,
+            "id",
             columns,
             m_pTrackCollectionManager->internalCollection()->getTrackSource());
+    // qDebug() << "RelationsTableModel::showAllRelations() - Columns and headers:";
+    // for (int i = 0; i < columns.size(); ++i) {
+    //    qDebug() << "Column" << i << ":" << columns[i]
+    //             << "| Header:" << headerData(i, Qt::Horizontal).toString();
+    //}
     setSearch("");
-    setDefaultSort(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST), Qt::AscendingOrder);
+    setDefaultSort(fieldIndex("artist"), Qt::AscendingOrder);
 }
 
 void RelationsTableModel::showAllRelations() {
     QString tableName = QStringLiteral("all_relations");
 
-    QStringList columns;
-    columns << "library." + LIBRARYTABLE_ID
-            << "g." + RELATIONGROUPSTABLE_ID
-            << "r." + RELATIONSTABLE_TYPE
-            << "g." + RELATIONGROUPSTABLE_COMMENT
-            << "g." + RELATIONGROUPSTABLE_DATETIMEADDED
-            << "gt." + RELATIONGROUPTRACKSTABLE_COMMENT
-            << "'' AS " + LIBRARYTABLE_PREVIEW
-            << LIBRARYTABLE_COVERART_DIGEST + " AS " + LIBRARYTABLE_COVERART;
+    QSqlQuery dropQuery(m_database);
+    dropQuery.exec(QStringLiteral("DROP VIEW IF EXISTS %1").arg(tableName));
 
-    // Fetch ALL tracks in ALL groups
     QString queryString = QStringLiteral(
-            "CREATE TEMPORARY VIEW IF NOT EXISTS %1 AS "
-            "SELECT %2 "
+            "CREATE TEMPORARY VIEW %1 AS "
+            "SELECT "
+            "  library.id AS id,"
+            "  g.id AS group_id,"
+            "  r.rel_type AS rel_type_alias,"
+            "  g.rg_comment AS rg_comment_alias,"
+            "  g.rg_datetime_added AS relation_date_added_alias,"
+            "  gt.rgt_comment AS track_comment,"
+            "  '' AS preview,"
+            "  library.coverart_digest AS coverart "
             "FROM library "
             "JOIN relation_group_tracks gt ON gt.rgt_track_id = library.id "
             "JOIN relation_groups g ON g.id = gt.rgt_group_id "
             "JOIN relations r ON r.id = g.rg_rel_id "
+            "%2 "
             "ORDER BY g.id, library.artist, library.title")
-                                  .arg(tableName, columns.join(','));
+                                  .arg(tableName,
+                                          relationSearchClause(m_relationSearch,
+                                                  QStringLiteral("WHERE")));
 
     QSqlQuery query(m_database);
     query.prepare(queryString);
@@ -143,23 +195,45 @@ void RelationsTableModel::showAllRelations() {
         LOG_FAILED_QUERY(query);
     }
 
-    columns[0] = LIBRARYTABLE_ID;
-    columns[1] = RELATIONGROUPSTABLE_ID;
-    columns[2] = RELATIONSTABLE_TYPE;
-    columns[3] = RELATIONGROUPSTABLE_COMMENT;
-    columns[4] = RELATIONGROUPSTABLE_DATETIMEADDED;
-    columns[5] = RELATIONGROUPTRACKSTABLE_COMMENT;
-    columns[6] = LIBRARYTABLE_PREVIEW;
-    columns[7] = LIBRARYTABLE_COVERART;
+    QStringList columns;
+    columns << "id"
+            << "group_id"
+            << "rel_type_alias"
+            << "rg_comment_alias"
+            << "relation_date_added_alias"
+            << "track_comment"
+            << "preview"
+            << "coverart";
 
     setTable(tableName,
-            LIBRARYTABLE_ID,
+            "id",
             columns,
             m_pTrackCollectionManager->internalCollection()->getTrackSource());
+    // qDebug() << "RelationsTableModel::showAllRelations() - Columns and headers:";
+    // for (int i = 0; i < columns.size(); ++i) {
+    //    qDebug() << "Column" << i << ":" << columns[i]
+    //             << "| Header:" << headerData(i, Qt::Horizontal).toString();
+    // }
+}
+
+void RelationsTableModel::searchRelations(const QString& searchText) {
+    if (m_relationSearch == searchText) {
+        return;
+    }
+    m_relationSearch = searchText;
+    // The search is part of the SQL of the relation views,
+    // rebuild the current view and reload it
+    if (m_pDeckTrack) {
+        showRelatedTracks(m_pDeckTrack);
+    } else {
+        showAllRelations();
+    }
+    select();
 }
 
 TrackModel::Capabilities RelationsTableModel::getCapabilities() const {
     Capabilities caps =
+            Capability::Sorting |
             Capability::AddToTrackSet |
             Capability::EditMetadata |
             Capability::LoadToDeck |
@@ -181,12 +255,12 @@ QString RelationsTableModel::modelKey(bool noSearch) const {
         return kModelName + QChar(':') +
                 m_pDeckTrack->getId().toString() +
                 QChar('#') +
-                currentSearch();
+                m_relationSearch;
     } else {
         if (noSearch) {
             return kModelName;
         }
         return kModelName + QChar('#') +
-                currentSearch();
+                m_relationSearch;
     }
 }

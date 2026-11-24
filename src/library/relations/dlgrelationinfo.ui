@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>400</height>
+    <width>560</width>
+    <height>460</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Relation Group Info</string>
+   <string>Edit Relation</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -71,23 +71,32 @@
    <item>
     <widget class="QLabel" name="lblTracks">
      <property name="text">
-      <string>Tracks in this group:</string>
+      <string>Tracks in this relation (double-click a comment to edit it):</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="listTracks">
-     <property name="selectionMode">
-      <enum>QAbstractItemView::NoSelection</enum>
-     </property>
-    </widget>
+    <widget class="QTableWidget" name="tableTracks"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="buttonLayout">
      <item>
+      <widget class="QPushButton" name="btnRemoveTrack">
+       <property name="text">
+        <string>Remove Selected Track(s)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
        </property>
       </spacer>
      </item>

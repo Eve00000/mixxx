@@ -100,6 +100,12 @@ const QString RELATIONGROUPTRACKSTABLE_TRACK_ID = QStringLiteral("rgt_track_id")
 const QString RELATIONGROUPTRACKSTABLE_COMMENT = QStringLiteral("rgt_comment");
 const QString RELATIONGROUPTRACKSTABLE_DATETIMEADDED = QStringLiteral("rgt_datetime_added");
 
+const QString RELATIONSTABLE_TYPE_ALIAS = QStringLiteral("rel_type_alias");
+const QString RELATIONGROUPSTABLE_COMMENT_ALIAS = QStringLiteral("rg_comment_alias");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS = QStringLiteral("relation_date_added_alias");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS = QStringLiteral("track_comment");
+const QString RELATIONGROUPSTABLE_ID_ALIAS = QStringLiteral("group_id");
+
 namespace mixxx {
 namespace trackschema {
 // TableForColumn returns the name of the table that contains the named column.

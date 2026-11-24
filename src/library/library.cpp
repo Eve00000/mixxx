@@ -22,6 +22,7 @@
 #include "library/mixxxlibraryfeature.h"
 #include "library/recording/recordingfeature.h"
 #include "library/rekordbox/rekordboxfeature.h"
+#include "library/relations/relationsfeature.h"
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
@@ -130,6 +131,9 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+
+    m_pRelationsFeature = make_parented<RelationsFeature>(this, m_pConfig);
+    addFeature(m_pRelationsFeature);
 
     m_pBrowseFeature = make_parented<BrowseFeature>(
             this, m_pConfig, pRecordingManager);

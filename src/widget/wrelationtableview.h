@@ -17,7 +17,13 @@ class WRelationTableView : public WTrackTableView {
             double trackTableBackgroundColorOpacity,
             bool drawGroupSeparators);
 
+    struct GroupTrack {
+        DbId groupId;
+        TrackId trackId;
+    };
+
     QList<DbId> getSelectedRelationIds() const;
+    QList<GroupTrack> getSelectedGroupTracks() const;
     RelationsDao::RelationGroup getSelectedGroup();
 
   protected:
@@ -27,3 +33,5 @@ class WRelationTableView : public WTrackTableView {
     Library* m_pLibrary;
     bool m_bDrawGroupSeparators;
 };
+
+Q_DECLARE_TYPEINFO(WRelationTableView::GroupTrack, Q_RELOCATABLE_TYPE);

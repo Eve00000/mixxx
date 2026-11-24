@@ -48,28 +48,28 @@
               <number>0</number>
             </property>
             <item>
-              <widget class="QPushButton" name="pushButtonLoad">
+              <widget class="QPushButton" name="pushButtonSave">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
                 <property name="toolTip">
-                  <string>Load the tracks of the selected group to available decks.</string>
+                  <string>Create a relation between the tracks currently loaded in the decks.</string>
                 </property>
                 <property name="text">
-                  <string>Load</string>
+                  <string>Save</string>
                 </property>
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonInfo">
+              <widget class="QPushButton" name="pushButtonEdit">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
                 <property name="toolTip">
-                  <string>View info and edit the comment of the selected group.</string>
+                  <string>Edit the comments of the selected relation and remove tracks from it.</string>
                 </property>
                 <property name="text">
-                  <string>Info</string>
+                  <string>Edit</string>
                 </property>
               </widget>
             </item>
@@ -79,10 +79,23 @@
                   <enum>Qt::NoFocus</enum>
                 </property>
                 <property name="toolTip">
-                  <string>Delete the selected group.</string>
+                  <string>Delete the selected relation(s) completely.</string>
                 </property>
                 <property name="text">
                   <string>Delete</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRemove">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Remove the selected track(s) from their relation. A relation left with fewer than 2 tracks is deleted.</string>
+                </property>
+                <property name="text">
+                  <string>Remove</string>
                 </property>
               </widget>
             </item>

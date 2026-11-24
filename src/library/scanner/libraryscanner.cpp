@@ -96,7 +96,8 @@ void updateQueryPlannerStatisticsForDatabase(const QSqlDatabase& database) {
 
 } // anonymous namespace
 
-LibraryScanner::LibraryScanner(mixxx::DbConnectionPoolPtr pDbConnectionPool,
+LibraryScanner::LibraryScanner(
+        mixxx::DbConnectionPoolPtr pDbConnectionPool,
         const UserSettingsPointer& pConfig)
         : m_pDbConnectionPool(std::move(pDbConnectionPool)),
           m_analysisDao(pConfig),

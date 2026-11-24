@@ -136,6 +136,8 @@ void BaseTrackTableModel::slotEmitDataChangedForDateColumns() {
     columns.append(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED));
     columns.append(fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED));
     columns.append(fieldIndex(ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT));
+    columns.append(fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS));
+
     const QVector<int> roles{Qt::DisplayRole};
     QModelIndex topLeft;
     QModelIndex bottomRight;
@@ -635,6 +637,16 @@ QVariant BaseTrackTableModel::roleValue(
         QVariant&& rawValue,
         int role) const {
     const auto field = mapColumn(index.column());
+
+    // qDebug() << "roleValue col" << index.column()
+    //          << "name" <<
+    //          m_columnHeaders.value(index.column()).header.value(TrackModel::kHeaderNameRole)
+    //          << "field" << mapColumn(index.column())
+    //          << "idx for alias" <<
+    //          fieldIndex(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS);
+    // qDebug() << "roleValue col" << index.column() << "field" << field <<
+    // "role" << role;
+
     if (field == ColumnCache::COLUMN_LIBRARYTABLE_INVALID) {
         return rawValue;
     }
@@ -714,8 +726,11 @@ QVariant BaseTrackTableModel::roleValue(
             }
             return QString::number(timesPlayed);
         }
+
         case ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED:
+        case ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS:
         case ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED: {
+            // qDebug() << "[BaseTrackTableModel] -> rawvalue:" << rawValue;
             VERIFY_OR_DEBUG_ASSERT(rawValue.canConvert<QDateTime>()) {
                 return QVariant();
             }
@@ -730,6 +745,17 @@ QVariant BaseTrackTableModel::roleValue(
             if (field == ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED) {
                 // Timestamp column in history feature:
                 // Use localized date/time format without text: "5/20/98 03:40 AM"
+                return mixxx::displayLocalDateTime(dt, s_dateFormat);
+                // qDebug() << "[BaseTrackTableModel] -> COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED"
+                //         << mixxx::displayLocalDateTime(dt, s_dateFormat);
+            }
+            if (field == ColumnCache::COLUMN_RELATIONSTABLE_DATETIMEADDED) {
+                return mixxx::displayLocalDateTime(dt, s_dateFormat);
+                // qDebug() << "[BaseTrackTableModel] -> COLUMN_RELATIONSTABLE_DATETIMEADDED"
+                //         << mixxx::displayLocalDateTime(dt, s_dateFormat);
+            }
+            if (field == ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED ||
+                    field == ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS) {
                 return mixxx::displayLocalDateTime(dt, s_dateFormat);
             }
             // For Date Added, use just the date: "5/20/98"
@@ -945,6 +971,7 @@ QVariant BaseTrackTableModel::roleValue(
         }
         case ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED:
         case ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED:
+        case ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS:
         case ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT: {
             return static_cast<int>(Qt::AlignVCenter | Qt::AlignHCenter);
         }
