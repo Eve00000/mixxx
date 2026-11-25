@@ -81,6 +81,33 @@ const QString PLAYLISTTRACKSTABLE_DATETIMEADDED = QStringLiteral("pl_datetime_ad
 
 const QString REKORDBOX_ANALYZE_PATH = "analyze_path";
 
+// relations
+#define RELATIONS_TABLE "relations"
+#define RELATION_GROUPS_TABLE "relation_groups"
+#define RELATION_GROUP_TRACKS_TABLE "relation_group_tracks"
+
+const QString RELATIONSTABLE_ID = QStringLiteral("id");
+const QString RELATIONSTABLE_TYPE = QStringLiteral("rel_type");
+const QString RELATIONSTABLE_DESCRIPTION = QStringLiteral("rel_description");
+const QString RELATIONSTABLE_DATETIMEADDED = QStringLiteral("rel_datetime_added");
+
+const QString RELATIONGROUPSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPSTABLE_REL_ID = QStringLiteral("rg_rel_id");
+const QString RELATIONGROUPSTABLE_COMMENT = QStringLiteral("rg_comment");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED = QStringLiteral("rg_datetime_added");
+
+const QString RELATIONGROUPTRACKSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPTRACKSTABLE_GROUP_ID = QStringLiteral("rgt_group_id");
+const QString RELATIONGROUPTRACKSTABLE_TRACK_ID = QStringLiteral("rgt_track_id");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT = QStringLiteral("rgt_comment");
+const QString RELATIONGROUPTRACKSTABLE_DATETIMEADDED = QStringLiteral("rgt_datetime_added");
+
+const QString RELATIONSTABLE_TYPE_ALIAS = QStringLiteral("rel_type_alias");
+const QString RELATIONGROUPSTABLE_COMMENT_ALIAS = QStringLiteral("rg_comment_alias");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS = QStringLiteral("relation_date_added_alias");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS = QStringLiteral("track_comment");
+const QString RELATIONGROUPSTABLE_ID_ALIAS = QStringLiteral("group_id");
+
 // Fingerprint and CMRT Tables
 const QString FINGERPRINT_METADATA_TABLE = QStringLiteral("fingerprint_metadata");
 const QString CMRT_GROUPS_TABLE = QStringLiteral("cmrt_groups");

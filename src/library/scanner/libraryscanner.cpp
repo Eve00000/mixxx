@@ -106,6 +106,7 @@ LibraryScanner::LibraryScanner(mixxx::DbConnectionPoolPtr pDbConnectionPool,
                   m_analysisDao,
                   m_segmentsDao,
                   m_libraryHashDao,
+                  m_relationsDao,
                   m_fingerprintDao,
                   pConfig),
           m_stateSema(1), // only one transaction is possible at a time

@@ -21,6 +21,7 @@ class AnalysisDao;
 class SegmentsDAO;
 class CueDAO;
 class LibraryHashDAO;
+class RelationsDao;
 class TrackFingerprintDao;
 
 namespace mixxx {
@@ -48,6 +49,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
             AnalysisDao& analysisDao,
             SegmentsDAO& segmentsDao,
             LibraryHashDAO& libraryHashDao,
+            RelationsDao& relationsDao,
             TrackFingerprintDao& fingerprintDao,
             UserSettingsPointer pConfig);
     ~TrackDAO() override;
@@ -260,6 +262,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     AnalysisDao& m_analysisDao;
     SegmentsDAO& m_segmentsDao;
     LibraryHashDAO& m_libraryHashDao;
+    RelationsDao& m_relationsDao;
     TrackFingerprintDao& m_fingerprintDao;
 
     const UserSettingsPointer m_pConfig;

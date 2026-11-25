@@ -26,6 +26,7 @@ TrackCollection::TrackCollection(
                   m_analysisDao,
                   m_segmentsDao,
                   m_libraryHashDao,
+                  m_relationsDao,
                   m_trackFingerprintDao,
                   pConfig) {
     // Forward signals from TrackDAO
@@ -86,6 +87,7 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_directoryDao.initialize(database);
     m_analysisDao.initialize(database);
     m_libraryHashDao.initialize(database);
+    m_relationsDao.initialize(database);
     m_trackFingerprintDao.initialize(database);
     m_crates.connectDatabase(database);
     m_searchCrates.connectDatabase(database);

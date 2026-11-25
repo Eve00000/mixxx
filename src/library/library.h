@@ -33,6 +33,7 @@ class PlaylistFeature;
 class PreparationFeature;
 class GroupedPlaylistsFeature;
 class RecordingManager;
+class RelationsFeature;
 class SearchCrateFeature;
 class GroupedSearchCratesFeature;
 class SidebarModel;
@@ -240,6 +241,7 @@ class Library : public QObject {
     parented_ptr<GroupedSearchCratesFeature> m_pGroupedSearchCratesFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
     parented_ptr<PreparationFeature> m_pPreparationFeature;
+    parented_ptr<RelationsFeature> m_pRelationsFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;

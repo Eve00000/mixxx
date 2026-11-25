@@ -9,7 +9,9 @@
 #include "control/pollingcontrolproxy.h"
 #include "library/coverart.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/trackprocessing.h"
+#include "mixer/playerinfo.h"
 #include "preferences/usersettings.h"
 #include "track/beats.h"
 #include "track/track_decl.h"
@@ -60,11 +62,12 @@ class WTrackMenu : public QMenu {
         SelectInLibrary = 1 << 15,
         Analyze = 1 << 16,
         FindOnWeb = 1 << 17,
+        Relations = 1 << 18,
         TrackModelFeatures = Remove | HideUnhidePurge,
         All = AutoDJ | LoadTo | Playlist | Crate | Remove | Metadata | Reset | Analyze |
                 BPM | Color | HideUnhidePurge | RemoveFromDisk | FileBrowser |
                 Properties | SearchRelated | UpdateReplayGainFromPregain | SelectInLibrary |
-                FindOnWeb
+                FindOnWeb | Relations
     };
     Q_DECLARE_FLAGS(Features, Feature)
 
@@ -84,6 +87,7 @@ class WTrackMenu : public QMenu {
             WTrackMenu::Feature::Properties |
             WTrackMenu::Feature::UpdateReplayGainFromPregain |
             WTrackMenu::Feature::FindOnWeb |
+            WTrackMenu::Feature::Relations |
             WTrackMenu::Feature::SelectInLibrary};
 
     WTrackMenu(QWidget* parent,
@@ -159,6 +163,11 @@ class WTrackMenu : public QMenu {
     void slotClearFingerprint();
     void slotClearMusicBrainz();
     void slotClearAllMetadata();
+
+    void slotPopulateRelationMenu();
+    void slotCreateRelationGroup(DbId relationId);
+    void slotCreateNewRelationType();
+    void slotPopulateLinkedTracksMenu();
 
     // Analysis
     void slotAnalyze();
@@ -327,6 +336,8 @@ class WTrackMenu : public QMenu {
     parented_ptr<WSearchRelatedTracksMenu> m_pSearchRelatedMenu;
     parented_ptr<QMenu> m_pFindOnWebMenu;
     parented_ptr<FindOnWebLast> m_pFindOnWebLastAct;
+    parented_ptr<QMenu> m_pSetRelationMenu;
+    parented_ptr<QMenu> m_pLinkedTracksMenu;
 
     // Update ReplayGain from Track
     parented_ptr<QAction> m_pUpdateReplayGainAct;
@@ -436,6 +447,7 @@ class WTrackMenu : public QMenu {
     bool m_bFindOnWebMenuLoaded;
     bool m_bPlaylistMenuLoaded;
     bool m_bCrateMenuLoaded;
+    bool m_bSetRelationMenuLoaded;
 
     Features m_eActiveFeatures;
     const Features m_eTrackModelFeatures;
@@ -444,6 +456,16 @@ class WTrackMenu : public QMenu {
 
     static bool s_showPurgeSuccessPopup;
     static bool s_confirmForAutoDjReplace;
+
+    void generateDeckRelationMenu(
+            DbId relationId,
+            const QString& label,
+            QMenu* pParentMenu,
+            int deckIndex,
+            TrackPointer pDeckTrack);
+
+    bool showLinkGroupDialog(DbId relationId, const TrackIdList& trackIds);
+    void selectLinkedTrackInLibrary(TrackId trackId);
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WTrackMenu::Features)

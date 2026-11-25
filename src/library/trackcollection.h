@@ -11,6 +11,7 @@
 #include "library/dao/directorydao.h"
 #include "library/dao/libraryhashdao.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/dao/segmentsdao.h"
 #include "library/dao/trackdao.h"
 #include "library/dao/trackfingerprintdao.h"
@@ -76,6 +77,11 @@ class TrackCollection : public QObject,
     AnalysisDao& getAnalysisDAO() {
         DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
         return m_analysisDao;
+    }
+
+    RelationsDao& getRelationsDAO() {
+        DEBUG_ASSERT_QOBJECT_THREAD_AFFINITY(this);
+        return m_relationsDao;
     }
 
     SegmentsDAO& getSegmentsDAO() {
@@ -217,6 +223,7 @@ class TrackCollection : public QObject,
     LibraryHashDAO m_libraryHashDao;
     TrackFingerprintDao m_trackFingerprintDao;
     TrackDAO m_trackDao;
+    RelationsDao m_relationsDao;
     SegmentsDAO m_segmentsDao;
 
     QSharedPointer<BaseTrackCache> m_pTrackSource;

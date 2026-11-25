@@ -17,6 +17,7 @@
 #include "library/dao/cuedao.h"
 #include "library/dao/libraryhashdao.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/dao/segmentsdao.h"
 #include "library/dao/trackfingerprintdao.h"
 #include "library/dao/trackschema.h"
@@ -97,6 +98,7 @@ TrackDAO::TrackDAO(CueDAO& cueDao,
         AnalysisDao& analysisDao,
         SegmentsDAO& segmentsDao,
         LibraryHashDAO& libraryHashDao,
+        RelationsDao& relationsDao,
         TrackFingerprintDao& fingerprintDao,
         UserSettingsPointer pConfig)
         : m_cueDao(cueDao),
@@ -104,6 +106,7 @@ TrackDAO::TrackDAO(CueDAO& cueDao,
           m_analysisDao(analysisDao),
           m_segmentsDao(segmentsDao),
           m_libraryHashDao(libraryHashDao),
+          m_relationsDao(relationsDao),
           m_fingerprintDao(fingerprintDao),
           m_pConfig(pConfig),
           m_trackLocationIdColumn(UndefinedRecordIndex),

@@ -229,4 +229,5 @@ class WTrackTableView : public WLibraryTableView {
     int m_dropRow;
 
     bool viewportEvent(QEvent* pEvent) override;
+    friend class WRelationTableView;
 };

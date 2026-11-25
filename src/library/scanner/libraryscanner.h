@@ -13,6 +13,7 @@
 #include "library/dao/directorydao.h"
 #include "library/dao/libraryhashdao.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/dao/segmentsdao.h"
 #include "library/dao/trackdao.h"
 #include "library/dao/trackfingerprintdao.h"
@@ -114,6 +115,7 @@ class LibraryScanner : public QThread {
     PlaylistDAO m_playlistDao;
     DirectoryDAO m_directoryDao;
     AnalysisDao m_analysisDao;
+    RelationsDao m_relationsDao;
     SegmentsDAO m_segmentsDao;
     TrackFingerprintDao m_fingerprintDao;
     TrackDAO m_trackDao;

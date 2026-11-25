@@ -1,11 +1,19 @@
 #include "widget/wtrackmenu.h"
 
 #include <QCheckBox>
+#include <QDialog>
 #include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QInputDialog>
+#include <QLabel>
+#include <QLineEdit>
 #include <QList>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QModelIndex>
+#include <QScrollArea>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "analyzer/analyzerscheduledtrack.h"
@@ -23,6 +31,7 @@
 #include "library/externaltrackcollection.h"
 #include "library/library.h"
 #include "library/playlisttablemodel.h"
+#include "library/relations/dlgsaverelation.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackmodel.h"
@@ -124,6 +133,7 @@ WTrackMenu::WTrackMenu(
           m_bFindOnWebMenuLoaded(false),
           m_bPlaylistMenuLoaded(false),
           m_bCrateMenuLoaded(false),
+          m_bSetRelationMenuLoaded(false),
           m_eActiveFeatures(flags),
           m_eTrackModelFeatures(Feature::TrackModelFeatures) {
     // Warn if any of the chosen features depend on a TrackModel
@@ -305,6 +315,24 @@ void WTrackMenu::createMenus() {
                             !m_pFindOnWebMenu->isEmpty());
                     m_bFindOnWebMenuLoaded = true;
                 });
+    }
+
+    if (featureIsEnabled(Feature::Relations)) {
+        m_pSetRelationMenu = make_parented<QMenu>(this);
+        m_pSetRelationMenu->setTitle(tr("Link Tracks (Relations)"));
+        connect(m_pSetRelationMenu,
+                &QMenu::aboutToShow,
+                this,
+                &WTrackMenu::slotPopulateRelationMenu);
+        addMenu(m_pSetRelationMenu.get());
+
+        m_pLinkedTracksMenu = make_parented<QMenu>(this);
+        m_pLinkedTracksMenu->setTitle(tr("Linked Tracks (Relations)"));
+        connect(m_pLinkedTracksMenu,
+                &QMenu::aboutToShow,
+                this,
+                &WTrackMenu::slotPopulateLinkedTracksMenu);
+        addMenu(m_pLinkedTracksMenu.get());
     }
 }
 
@@ -3372,6 +3400,8 @@ bool WTrackMenu::featureIsEnabled(Feature flag) const {
         return m_pTrackModel->hasCapabilities(TrackModel::Capability::Properties);
     case Feature::SearchRelated:
         return m_pLibrary != nullptr;
+    case Feature::Relations:
+        return m_pLibrary != nullptr;
     case Feature::SelectInLibrary:
         return m_pTrack != nullptr;
     default:
@@ -3388,4 +3418,228 @@ void WTrackMenu::slotAnalyzeFingerprint() {
     AnalyzerTrack::Options options;
     options.fingerprintOnly = true;
     addToAnalysis(options);
+}
+
+bool WTrackMenu::showLinkGroupDialog(DbId relationId, const TrackIdList& trackIds) {
+    RelationsDao& relationsDao = m_pLibrary->trackCollectionManager()
+                                         ->internalCollection()
+                                         ->getRelationsDAO();
+
+    QList<DlgSaveRelation::Entry> entries;
+    for (const TrackId& trackId : trackIds) {
+        TrackPointer pTrack = m_pLibrary->trackCollectionManager()->getTrackById(trackId);
+        if (pTrack) {
+            entries.append(DlgSaveRelation::Entry{pTrack, QString()});
+        }
+    }
+    return DlgSaveRelation::execute(this, relationsDao, entries, relationId).isValid();
+}
+
+void WTrackMenu::slotPopulateRelationMenu() {
+    const QList<QMenu*> oldSubMenus =
+            m_pSetRelationMenu->findChildren<QMenu*>(Qt::FindDirectChildrenOnly);
+    m_pSetRelationMenu->clear();
+    for (QMenu* pOldSubMenu : oldSubMenus) {
+        pOldSubMenu->deleteLater();
+    }
+
+    TrackIdList trackIds = getTrackIds();
+    if (trackIds.isEmpty()) {
+        QAction* pAction = m_pSetRelationMenu->addAction(tr("Select at least 1 track"));
+        pAction->setEnabled(false);
+        return;
+    }
+
+    auto& pRelationsDao = m_pLibrary->trackCollectionManager()
+                                  ->internalCollection()
+                                  ->getRelationsDAO();
+    QList<RelationsDao::Relation> relations = pRelationsDao.allRelations();
+
+    // submenu for every relation type
+    for (const auto& rel : std::as_const(relations)) {
+        QMenu* pRelSubMenu = m_pSetRelationMenu->addMenu(rel.type);
+
+        // 1. Link Selected Tracks Together > 2
+        if (trackIds.size() >= 2) {
+            QAction* pSelectedAction = pRelSubMenu->addAction(tr("Link Selected Tracks Together"));
+            connect(pSelectedAction, &QAction::triggered, this, [this, rel]() {
+                slotCreateRelationGroup(rel.id);
+            });
+            pRelSubMenu->addSeparator();
+        }
+
+        // 2. Link to Deck
+        pRelSubMenu->addSection(tr("Link to Deck"));
+        int iNumDecks = static_cast<int>(m_pNumDecks.get());
+
+        bool deckFound = false;
+        for (int i = 0; i < iNumDecks; ++i) {
+            QString deckGroup = PlayerManager::groupForDeck(i);
+            TrackPointer pDeckTrack = PlayerInfo::instance().getTrackInfo(deckGroup);
+
+            if (pDeckTrack && pDeckTrack->getId().isValid()) {
+                deckFound = true;
+                generateDeckRelationMenu(rel.id,
+                        tr("Deck %1: %2")
+                                .arg(i + 1)
+                                .arg(pDeckTrack->getTitle()),
+                        pRelSubMenu,
+                        i,
+                        pDeckTrack);
+            }
+        }
+
+        if (!deckFound) {
+            QAction* pNoDecks = pRelSubMenu->addAction(tr("No tracks loaded in decks"));
+            pNoDecks->setEnabled(false);
+        }
+    }
+
+    // "Create New Type" at the bottom
+    m_pSetRelationMenu->addSeparator();
+    QAction* pCreateAction = m_pSetRelationMenu->addAction(tr("Create New Relation Type..."));
+    connect(pCreateAction, &QAction::triggered, this, &WTrackMenu::slotCreateNewRelationType);
+}
+
+void WTrackMenu::slotCreateNewRelationType() {
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Create Relation Type"));
+
+    QFormLayout* layout = new QFormLayout(&dlg);
+
+    QLineEdit* nameEdit = new QLineEdit(&dlg);
+    nameEdit->setPlaceholderText(tr("e.g., BPM, Energy, Vibe"));
+    layout->addRow(tr("Name:"), nameEdit);
+
+    QLineEdit* descEdit = new QLineEdit(&dlg);
+    descEdit->setPlaceholderText(tr("Optional description"));
+    layout->addRow(tr("Description:"), descEdit);
+
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    layout->addRow(buttonBox);
+
+    connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QString typeName = nameEdit->text().trimmed();
+    QString description = descEdit->text().trimmed();
+
+    if (typeName.isEmpty()) {
+        QMessageBox::warning(this, tr("Error"), tr("The relation name cannot be empty."));
+        return;
+    }
+
+    auto& pRelationsDao = m_pLibrary->trackCollectionManager()
+                                  ->internalCollection()
+                                  ->getRelationsDAO();
+
+    DbId newTypeId = pRelationsDao.addRelation(typeName, description);
+
+    if (newTypeId.isValid()) {
+        slotCreateRelationGroup(newTypeId);
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to create relation type."));
+    }
+}
+
+void WTrackMenu::slotPopulateLinkedTracksMenu() {
+    const QList<QMenu*> oldSubMenus =
+            m_pLinkedTracksMenu->findChildren<QMenu*>(Qt::FindDirectChildrenOnly);
+    m_pLinkedTracksMenu->clear();
+    for (QMenu* pOldSubMenu : oldSubMenus) {
+        pOldSubMenu->deleteLater();
+    }
+
+    const TrackIdList trackIds = getTrackIds();
+    if (trackIds.size() != 1) {
+        QAction* pHint = m_pLinkedTracksMenu->addAction(
+                trackIds.isEmpty() ? tr("Select a track") : tr("Select a single track"));
+        pHint->setEnabled(false);
+        return;
+    }
+
+    RelationsDao& relationsDao = m_pLibrary->trackCollectionManager()
+                                         ->internalCollection()
+                                         ->getRelationsDAO();
+    const QList<RelationsDao::TrackRelationRow> rows =
+            relationsDao.relationsForTrack(trackIds.first());
+    if (rows.isEmpty()) {
+        QAction* pNone = m_pLinkedTracksMenu->addAction(tr("No linked tracks"));
+        pNone->setEnabled(false);
+        return;
+    }
+
+    DbId currentGroupId;
+    QMenu* pGroupMenu = nullptr;
+    for (const RelationsDao::TrackRelationRow& row : rows) {
+        if (!pGroupMenu || !(row.groupId == currentGroupId)) {
+            currentGroupId = row.groupId;
+            QString title = row.relationType;
+            if (!row.groupComment.isEmpty()) {
+                title += QStringLiteral(": ") + row.groupComment;
+            }
+            title.replace(QLatin1Char('&'), QStringLiteral("&&"));
+            pGroupMenu = m_pLinkedTracksMenu->addMenu(title);
+        }
+
+        QString label = DlgSaveRelation::trackLabel(row.artist, row.title, row.album, row.year);
+        if (!row.groupTrackComment.isEmpty()) {
+            label += QStringLiteral("  [") + row.groupTrackComment + QLatin1Char(']');
+        }
+        label.replace(QLatin1Char('&'), QStringLiteral("&&"));
+
+        QAction* pAction = pGroupMenu->addAction(label);
+        const TrackId linkedTrackId = row.linkedTrackId;
+        connect(pAction, &QAction::triggered, this, [this, linkedTrackId]() {
+            selectLinkedTrackInLibrary(linkedTrackId);
+        });
+    }
+}
+
+void WTrackMenu::selectLinkedTrackInLibrary(TrackId trackId) {
+    VERIFY_OR_DEBUG_ASSERT(m_pLibrary) {
+        return;
+    }
+    TrackPointer pLinkedTrack = m_pLibrary->trackCollectionManager()->getTrackById(trackId);
+    if (!pLinkedTrack) {
+        return;
+    }
+
+    // Tracks view without a search filter & select the linked track
+    m_pLibrary->searchTracksInCollection(QString());
+    QTimer::singleShot(0, m_pLibrary, [pLibrary = m_pLibrary, trackId]() {
+        emit pLibrary->selectTrack(trackId);
+    });
+}
+
+void WTrackMenu::slotCreateRelationGroup(DbId relationId) {
+    TrackIdList trackIds = getTrackIds();
+    if (trackIds.size() >= 2) {
+        showLinkGroupDialog(relationId, trackIds);
+    } else {
+        QMessageBox::information(this,
+                tr("Relation Type Created"),
+                tr("Select at least 2 tracks, or use \"Link to Deck\", to "
+                   "create a group in this relation type."));
+    }
+}
+
+void WTrackMenu::generateDeckRelationMenu(DbId relationId,
+        const QString& label,
+        QMenu* pParentMenu,
+        int deckIndex,
+        TrackPointer pDeckTrack) {
+    Q_UNUSED(deckIndex)
+    QAction* pAction = new QAction(label, pParentMenu);
+    pParentMenu->addAction(pAction);
+    connect(pAction, &QAction::triggered, this, [this, relationId, pDeckTrack]() {
+        TrackIdList trackIds = getTrackIds();
+        trackIds.append(pDeckTrack->getId());
+        showLinkGroupDialog(relationId, trackIds);
+    });
 }
