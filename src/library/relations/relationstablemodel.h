@@ -27,12 +27,21 @@ class RelationsTableModel final : public BaseSqlTableModel {
     Capabilities getCapabilities() const final;
     QString modelKey(bool noSearch) const override;
 
+    // Sorts on up to 3 columns, lifo,
+    // including the relation columns
+    bool sortOverride(int column, Qt::SortOrder order) override;
+
   public slots:
     void showAllRelations();
 
   private:
     TrackPointer m_pDeckTrack;
     QString m_relationSearch;
+
+    QString relationSortClause() const;
+    void loadSortSettings();
+    QStringList m_sortFields;
+    QList<Qt::SortOrder> m_sortOrders;
 
     friend class WRelationTableView;
 };

@@ -1,5 +1,7 @@
 #include "library/relations/relationstablemodel.h"
 
+#include <QTextStream>
+
 #include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "library/trackcollection.h"
@@ -7,6 +9,7 @@
 #include "mixer/playermanager.h"
 #include "moc_relationstablemodel.cpp"
 #include "track/track.h"
+#include "util/db/dbconnection.h"
 
 namespace {
 const QString kModelName = QStringLiteral("relations");
@@ -52,6 +55,87 @@ QString relationSearchClause(const QString& searchText, const QString& keyword) 
                 columnConditions.join(QStringLiteral(" OR ")) + QStringLiteral(")"));
     }
     return keyword + QLatin1Char(' ') + wordConditions.join(QStringLiteral(" AND "));
+}
+
+constexpr int kMaxSortColumns = 3;
+const QString kColumnsSortingSetting = QStringLiteral("ColumnsSorting");
+
+// Returns the SQL expressions to sort the relation views on a column.
+// Empty if the column cannot be sorted.
+QStringList relationSortExpressions(const QString& field) {
+    const auto textSort = [](const QString& sqlColumn) {
+        return mixxx::DbConnection::collateLexicographically(
+                QStringLiteral("lower(") + sqlColumn + QStringLiteral(")"));
+    };
+    // Comments often start with a number (a BPM value, a sequence number):
+    // sort on that number first, then on the text
+    const auto numberFirstSort = [&textSort](const QString& sqlColumn) {
+        return QStringList{
+                QStringLiteral("CAST(") + sqlColumn + QStringLiteral(" AS REAL)"),
+                textSort(sqlColumn)};
+    };
+
+    // Columns of the relation views
+    if (field == RELATIONGROUPSTABLE_ID_ALIAS) {
+        return QStringList{QStringLiteral("g.id")};
+    }
+    if (field == RELATIONSTABLE_TYPE_ALIAS) {
+        return QStringList{textSort(QStringLiteral("r.rel_type"))};
+    }
+    if (field == RELATIONGROUPSTABLE_COMMENT_ALIAS) {
+        return numberFirstSort(QStringLiteral("g.rg_comment"));
+    }
+    if (field == RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS) {
+        return QStringList{QStringLiteral("g.rg_datetime_added")};
+    }
+    if (field == RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS) {
+        return numberFirstSort(QStringLiteral("gt.rgt_comment"));
+    }
+
+    // Track columns, from the joined library table
+    static const QStringList kTextFields = {
+            LIBRARYTABLE_ARTIST,
+            LIBRARYTABLE_TITLE,
+            LIBRARYTABLE_ALBUM,
+            LIBRARYTABLE_ALBUMARTIST,
+            LIBRARYTABLE_GENRE,
+            LIBRARYTABLE_COMPOSER,
+            LIBRARYTABLE_GROUPING,
+            LIBRARYTABLE_COMMENT,
+            LIBRARYTABLE_FILETYPE,
+            LIBRARYTABLE_YEAR};
+    static const QStringList kIntegerFields = {
+            LIBRARYTABLE_TRACKNUMBER,
+            LIBRARYTABLE_BITRATE,
+            LIBRARYTABLE_SAMPLERATE,
+            LIBRARYTABLE_TIMESPLAYED};
+    static const QStringList kPlainFields = {
+            LIBRARYTABLE_DURATION,
+            LIBRARYTABLE_BPM,
+            LIBRARYTABLE_REPLAYGAIN,
+            LIBRARYTABLE_DATETIMEADDED,
+            LIBRARYTABLE_LAST_PLAYED_AT,
+            LIBRARYTABLE_RATING,
+            LIBRARYTABLE_TUNING_FREQUENCY,
+            LIBRARYTABLE_COLOR};
+    if (kTextFields.contains(field)) {
+        return QStringList{textSort(QStringLiteral("library.") + field)};
+    }
+    if (kIntegerFields.contains(field)) {
+        return QStringList{QStringLiteral("CAST(library.") + field +
+                QStringLiteral(" AS INTEGER)")};
+    }
+    if (kPlainFields.contains(field)) {
+        return QStringList{QStringLiteral("library.") + field};
+    }
+    if (field == LIBRARYTABLE_KEY) {
+        return QStringList{QStringLiteral("library.key_id")};
+    }
+    if (field == TRACKLOCATIONSTABLE_LOCATION) {
+        return QStringList{textSort(QStringLiteral(
+                "(SELECT tl.location FROM track_locations tl WHERE tl.id = library.location)"))};
+    }
+    return QStringList();
 }
 } // anonymous namespace
 
@@ -128,11 +212,14 @@ void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
             "WHERE self.rgt_track_id = %2 "
             "AND gt.rgt_track_id != %2 "
             "%3 "
-            "ORDER BY g.id, library.artist, library.title")
+            //"ORDER BY g.id, library.artist, library.title")
+            "%4")
                                   .arg(trackTableName,
                                           trackId.toString(),
                                           relationSearchClause(m_relationSearch,
-                                                  QStringLiteral("AND")));
+                                                  // QStringLiteral("AND")));
+                                                  QStringLiteral("AND")),
+                                          relationSortClause());
 
     QSqlQuery query(m_database);
     query.prepare(queryString);
@@ -185,10 +272,13 @@ void RelationsTableModel::showAllRelations() {
             "JOIN relation_groups g ON g.id = gt.rgt_group_id "
             "JOIN relations r ON r.id = g.rg_rel_id "
             "%2 "
-            "ORDER BY g.id, library.artist, library.title")
+            //"ORDER BY g.id, library.artist, library.title")
+            "%3")
                                   .arg(tableName,
                                           relationSearchClause(m_relationSearch,
-                                                  QStringLiteral("WHERE")));
+                                                  //       QStringLiteral("WHERE")));
+                                                  QStringLiteral("WHERE")),
+                                          relationSortClause());
 
     QSqlQuery query(m_database);
     query.prepare(queryString);
@@ -215,6 +305,99 @@ void RelationsTableModel::showAllRelations() {
     //    qDebug() << "Column" << i << ":" << columns[i]
     //             << "| Header:" << headerData(i, Qt::Horizontal).toString();
     // }
+}
+
+QString RelationsTableModel::relationSortClause() const {
+    QStringList terms;
+    for (int i = 0; i < m_sortFields.size(); ++i) {
+        const QString direction = m_sortOrders.at(i) == Qt::AscendingOrder
+                ? QStringLiteral(" ASC")
+                : QStringLiteral(" DESC");
+        const QStringList expressions = relationSortExpressions(m_sortFields.at(i));
+        for (const QString& expression : expressions) {
+            terms.append(expression + direction);
+        }
+    }
+    // Default order after the chosen columns: keeps the groups together
+    terms.append(QStringLiteral("g.id"));
+    terms.append(QStringLiteral("library.artist"));
+    terms.append(QStringLiteral("library.title"));
+    return QStringLiteral("ORDER BY ") + terms.join(QStringLiteral(", "));
+}
+
+void RelationsTableModel::loadSortSettings() {
+    m_sortFields.clear();
+    m_sortOrders.clear();
+    QString value = getModelSetting(kColumnsSortingSetting);
+    QTextStream in(&value);
+    while (!in.atEnd()) {
+        QString name;
+        int orderValue = -1;
+        in >> name >> orderValue;
+        if (name.isEmpty() ||
+                m_sortFields.contains(name) ||
+                m_sortFields.size() >= kMaxSortColumns ||
+                relationSortExpressions(name).isEmpty()) {
+            continue;
+        }
+        m_sortFields.append(name);
+        m_sortOrders.append(orderValue > 0 ? Qt::AscendingOrder : Qt::DescendingOrder);
+    }
+}
+
+bool RelationsTableModel::sortOverride(int column, Qt::SortOrder order) {
+    const QString field =
+            headerData(column, Qt::Horizontal, TrackModel::kHeaderNameRole).toString();
+    if (field.isEmpty() || relationSortExpressions(field).isEmpty()) {
+        // This column cannot be sorted: nothing to do, but the base class
+        // must not sort on it either
+        return true;
+    }
+
+    if (m_sortFields.isEmpty()) {
+        // No sort history yet: load the last sort from the settings
+        loadSortSettings();
+    }
+
+    if (!m_sortFields.isEmpty() && m_sortFields.first() == field) {
+        // Only the order has changed
+        m_sortOrders.replace(0, order);
+    } else {
+        // Remove the column if it is already in the history,
+        // then make it the primary sort column
+        const int existingIndex = m_sortFields.indexOf(field);
+        if (existingIndex >= 0) {
+            m_sortFields.removeAt(existingIndex);
+            m_sortOrders.removeAt(existingIndex);
+        }
+        m_sortFields.prepend(field);
+        m_sortOrders.prepend(order);
+        while (m_sortFields.size() > kMaxSortColumns) {
+            m_sortFields.removeLast();
+            m_sortOrders.removeLast();
+        }
+    }
+
+    // Write the sort history to the settings
+    QString value;
+    QTextStream out(&value);
+    for (int i = 0; i < m_sortFields.size(); ++i) {
+        out << m_sortFields.at(i) << " "
+            << (m_sortOrders.at(i) == Qt::AscendingOrder ? 1 : -1) << " ";
+    }
+    out.flush();
+    setModelSetting(kColumnsSortingSetting, value);
+
+    // The sort order is part of the SQL of the relation views,
+    // rebuild the current view and reload it
+    if (m_pDeckTrack) {
+        showRelatedTracks(m_pDeckTrack);
+    } else {
+        showAllRelations();
+    }
+    select();
+    // the base class sorting must not run if sort on relationfields
+    return true;
 }
 
 void RelationsTableModel::searchRelations(const QString& searchText) {
