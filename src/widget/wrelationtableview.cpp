@@ -88,7 +88,8 @@ void WRelationTableView::paintEvent(QPaintEvent* event) {
 
     if (m_bDrawGroupSeparators && model()) {
         QPainter painter(viewport());
-        QPen pen(QColor(60, 60, 60), SEPARATOR_SIZE);
+        // QPen pen(QColor(60, 60, 60), SEPARATOR_SIZE);
+        QPen pen(QColor(220, 93, 30), SEPARATOR_SIZE);
         painter.setPen(pen);
 
         int rowCount = model()->rowCount();

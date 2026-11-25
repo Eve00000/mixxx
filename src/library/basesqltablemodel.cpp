@@ -705,6 +705,9 @@ void BaseSqlTableModel::sort(int column, Qt::SortOrder order) {
     if (sDebug) {
         qDebug() << this << "sort()" << column << order;
     }
+    if (sortOverride(column, order)) {
+        return;
+    }
     setSort(column, order);
     select();
 }

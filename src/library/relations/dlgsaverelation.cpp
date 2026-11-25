@@ -1,5 +1,6 @@
 #include "library/relations/dlgsaverelation.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -7,6 +8,7 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QSignalBlocker>
 #include <QStringList>
 #include <QTableWidget>
 #include <QVBoxLayout>
@@ -56,7 +58,7 @@ DbId DlgSaveRelation::execute(
 
     QDialog dlg(pParent);
     dlg.setWindowTitle(tr("Save Relation"));
-    dlg.resize(560, 360);
+    dlg.resize(800, 500);
     auto* pMainLayout = new QVBoxLayout(&dlg);
 
     auto* pFormLayout = new QFormLayout();
@@ -100,6 +102,45 @@ DbId DlgSaveRelation::execute(
         pTable->setItem(row, 1, new QTableWidgetItem());
     }
     pMainLayout->addWidget(pTable);
+
+    auto* pAutoFillCheck = new QCheckBox(
+            tr("Auto fill track order comments (Track 01, Track 02, ...)"), &dlg);
+    pMainLayout->addWidget(pAutoFillCheck);
+
+    // Numbers the checked tracks in the order of the table
+    const auto autoFillTrackOrder = [pTable, pAutoFillCheck]() {
+        if (!pAutoFillCheck->isChecked()) {
+            return;
+        }
+        int checkedCount = 0;
+        for (int row = 0; row < pTable->rowCount(); ++row) {
+            if (pTable->item(row, 0)->checkState() == Qt::Checked) {
+                ++checkedCount;
+            }
+        }
+        const int width = qMax(2, QString::number(checkedCount).size());
+        const QSignalBlocker blocker(pTable);
+        int number = 0;
+        for (int row = 0; row < pTable->rowCount(); ++row) {
+            if (pTable->item(row, 0)->checkState() == Qt::Checked) {
+                ++number;
+                pTable->item(row, 1)->setText(
+                        tr("Track %1").arg(number, width, 10, QLatin1Char('0')));
+            } else {
+                pTable->item(row, 1)->setText(QString());
+            }
+        }
+    };
+    QObject::connect(pAutoFillCheck, &QCheckBox::toggled, &dlg, autoFillTrackOrder);
+    // Only (un)checking a track renumbers, editing a comment does not
+    QObject::connect(pTable,
+            &QTableWidget::itemChanged,
+            &dlg,
+            [autoFillTrackOrder](QTableWidgetItem* pItem) {
+                if (pItem->column() == 0) {
+                    autoFillTrackOrder();
+                }
+            });
 
     auto* pButtons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);

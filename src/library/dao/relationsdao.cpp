@@ -147,9 +147,22 @@ DbId RelationsDao::createGroup(DbId relationId,
         return DbId();
     }
 
-    QList<TrackId> unique = tracks;
+    /*QList<TrackId> unique = tracks;
     std::sort(unique.begin(), unique.end());
     unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
+    if (unique.size() < 2) {
+        return DbId();
+    }*/
+    // Remove duplicates but keep the order chosen by the user: the order in
+    // which the tracks are inserted is the order of the group
+    QList<TrackId> unique;
+    QSet<TrackId> seenTrackIds;
+    for (const TrackId& trackId : tracks) {
+        if (trackId.isValid() && !seenTrackIds.contains(trackId)) {
+            seenTrackIds.insert(trackId);
+            unique.append(trackId);
+        }
+    }
     if (unique.size() < 2) {
         return DbId();
     }
