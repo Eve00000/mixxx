@@ -43,34 +43,34 @@ void DlgRelationInfo::init() {
     connect(btnCancel, &QPushButton::clicked, this, &DlgRelationInfo::slotCancel);
     connect(btnRemoveTrack, &QPushButton::clicked, this, &DlgRelationInfo::slotRemoveTrack);
 
-    tableTracks->setColumnCount(3);
-    tableTracks->setHorizontalHeaderLabels({tr("#"), tr("Track"), tr("Comment")});
-    tableTracks->verticalHeader()->setVisible(false);
-    tableTracks->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tableTracks->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableTracks->horizontalHeader()->setSectionResizeMode(
+    tableRelationTracks->setColumnCount(3);
+    tableRelationTracks->setHorizontalHeaderLabels({tr("#"), tr("Track"), tr("Comment")});
+    tableRelationTracks->verticalHeader()->setVisible(false);
+    tableRelationTracks->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableRelationTracks->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableRelationTracks->horizontalHeader()->setSectionResizeMode(
             kColumnOrder, QHeaderView::ResizeToContents);
-    tableTracks->horizontalHeader()->setSectionResizeMode(
+    tableRelationTracks->horizontalHeader()->setSectionResizeMode(
             kColumnTrack, QHeaderView::ResizeToContents);
-    tableTracks->horizontalHeader()->setStretchLastSection(true);
+    tableRelationTracks->horizontalHeader()->setStretchLastSection(true);
 
     // Sort the tracks of the group by clicking a header: # = order in which
     // the tracks were saved, Track = artist - title - album - year,
     // Comment = order / value in the comment. Clicking the same header again
     // reverses the order. The table is sorted once per click, so editing a
     // comment does not make the rows jump.
-    tableTracks->horizontalHeader()->setSectionsClickable(true);
-    tableTracks->horizontalHeader()->setSortIndicatorShown(true);
-    connect(tableTracks->horizontalHeader(),
+    tableRelationTracks->horizontalHeader()->setSectionsClickable(true);
+    tableRelationTracks->horizontalHeader()->setSortIndicatorShown(true);
+    connect(tableRelationTracks->horizontalHeader(),
             &QHeaderView::sectionClicked,
             this,
             [this](int section) {
                 // The header has already flipped its sort indicator when this
                 // signal arrives (ascending for a new column, reversed for the
                 // same column), so just sort with the order it shows
-                tableTracks->sortItems(
+                tableRelationTracks->sortItems(
                         section,
-                        tableTracks->horizontalHeader()->sortIndicatorOrder());
+                        tableRelationTracks->horizontalHeader()->sortIndicatorOrder());
             });
 
     if (!m_pLibrary) {
@@ -83,16 +83,16 @@ void DlgRelationInfo::init() {
 
     // relation type name
     RelationsDao::Relation rel = relationsDao.relationById(m_group.relationId);
-    txtType->setText(rel.type);
+    txtRelationType->setText(rel.type);
 
-    txtComment->setPlainText(m_group.comment);
-    txtDateAdded->setText(QLocale().toString(
+    txtRelationComment->setPlainText(m_group.comment);
+    txtRelationDateAdded->setText(QLocale().toString(
             mixxx::localDateTimeFromUtc(m_group.dateAdded),
             QLocale::ShortFormat));
 
     // track list
     const QList<RelationsDao::GroupTrack> groupTracks = relationsDao.groupTracks(m_group.id);
-    tableTracks->setRowCount(groupTracks.size());
+    tableRelationTracks->setRowCount(groupTracks.size());
     int row = 0;
     for (const RelationsDao::GroupTrack& groupTrack : groupTracks) {
         m_originalTrackIds.insert(groupTrack.trackId);
@@ -110,23 +110,23 @@ void DlgRelationInfo::init() {
         auto* pOrderItem = new QTableWidgetItem();
         pOrderItem->setData(Qt::DisplayRole, row + 1);
         pOrderItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        tableTracks->setItem(row, kColumnOrder, pOrderItem);
+        tableRelationTracks->setItem(row, kColumnOrder, pOrderItem);
 
         auto* pTrackItem = new RelationSortItem(display, false);
         pTrackItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         pTrackItem->setData(Qt::UserRole, groupTrack.trackId.toVariant());
-        tableTracks->setItem(row, kColumnTrack, pTrackItem);
+        tableRelationTracks->setItem(row, kColumnTrack, pTrackItem);
 
         auto* pCommentItem = new RelationSortItem(groupTrack.comment, true);
         pCommentItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
-        tableTracks->setItem(row, kColumnComment, pCommentItem);
+        tableRelationTracks->setItem(row, kColumnComment, pCommentItem);
         ++row;
     }
-    tableTracks->horizontalHeader()->setSortIndicator(kColumnOrder, Qt::AscendingOrder);
+    tableRelationTracks->horizontalHeader()->setSortIndicator(kColumnOrder, Qt::AscendingOrder);
 }
 
 void DlgRelationInfo::slotRemoveTrack() {
-    const QModelIndexList selectedRows = tableTracks->selectionModel()->selectedRows();
+    const QModelIndexList selectedRows = tableRelationTracks->selectionModel()->selectedRows();
     QList<int> rows;
     rows.reserve(selectedRows.size());
     for (const QModelIndex& index : selectedRows) {
@@ -134,7 +134,7 @@ void DlgRelationInfo::slotRemoveTrack() {
     }
     std::sort(rows.begin(), rows.end(), std::greater<int>());
     for (int row : std::as_const(rows)) {
-        tableTracks->removeRow(row);
+        tableRelationTracks->removeRow(row);
     }
 }
 
@@ -160,9 +160,9 @@ bool DlgRelationInfo::saveRelation() {
 
     QList<RelationsDao::GroupTrack> remainingTracks;
     QSet<TrackId> remainingIds;
-    for (int row = 0; row < tableTracks->rowCount(); ++row) {
-        QTableWidgetItem* pTrackItem = tableTracks->item(row, kColumnTrack);
-        QTableWidgetItem* pCommentItem = tableTracks->item(row, kColumnComment);
+    for (int row = 0; row < tableRelationTracks->rowCount(); ++row) {
+        QTableWidgetItem* pTrackItem = tableRelationTracks->item(row, kColumnTrack);
+        QTableWidgetItem* pCommentItem = tableRelationTracks->item(row, kColumnComment);
         if (!pTrackItem) {
             continue;
         }
@@ -188,7 +188,7 @@ bool DlgRelationInfo::saveRelation() {
     }
 
     // Save the new group comment
-    relationsDao.updateGroupComment(m_group.id, txtComment->toPlainText().trimmed());
+    relationsDao.updateGroupComment(m_group.id, txtRelationComment->toPlainText().trimmed());
 
     for (const TrackId& trackId : std::as_const(m_originalTrackIds)) {
         if (!remainingIds.contains(trackId)) {

@@ -62,16 +62,25 @@ DlgRelations::DlgRelations(
     m_pRelationTableModel = new RelationsTableModel(this, pLibrary->trackCollectionManager());
     m_pRelationTableView->loadTrackModel(m_pRelationTableModel);
 
-    connect(pushButtonSave, &QPushButton::clicked, this, &DlgRelations::slotSaveRelationFromDecks);
-    connect(pushButtonEdit, &QPushButton::clicked, this, &DlgRelations::slotEditRelation);
-    connect(pushButtonDelete, &QPushButton::clicked, this, &DlgRelations::slotDeleteRelation);
-    connect(pushButtonTypes, &QPushButton::clicked, this, &DlgRelations::slotManageRelationTypes);
-    connect(comboBoxType,
+    connect(pushButtonRelationSave,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotSaveRelationFromDecks);
+    connect(pushButtonRelationEdit, &QPushButton::clicked, this, &DlgRelations::slotEditRelation);
+    connect(pushButtonRelationDelete,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotDeleteRelation);
+    connect(pushButtonRelationTypes,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotManageRelationTypes);
+    connect(comboBoxRelationType,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             &DlgRelations::slotTypeFilterChanged);
     refreshTypeFilter();
-    connect(pushButtonRemove,
+    connect(pushButtonRelationRemove,
             &QPushButton::clicked,
             this,
             &DlgRelations::slotRemoveTrackFromRelation);
@@ -263,17 +272,17 @@ void DlgRelations::refreshTypeFilter() {
         return trackRelations;
     }();
 
-    const QSignalBlocker blocker(comboBoxType);
-    comboBoxType->clear();
-    comboBoxType->addItem(tr("All types"), QVariant());
+    const QSignalBlocker blocker(comboBoxRelationType);
+    comboBoxRelationType->clear();
+    comboBoxRelationType->addItem(tr("All types"), QVariant());
     int selectedIndex = 0;
     for (const RelationsDao::Relation& relation : relations) {
-        comboBoxType->addItem(relation.type, relation.id.toVariant());
+        comboBoxRelationType->addItem(relation.type, relation.id.toVariant());
         if (relation.id == selectedId) {
-            selectedIndex = comboBoxType->count() - 1;
+            selectedIndex = comboBoxRelationType->count() - 1;
         }
     }
-    comboBoxType->setCurrentIndex(selectedIndex);
+    comboBoxRelationType->setCurrentIndex(selectedIndex);
 
     // The chosen type may have been deleted: show all types again
     if (selectedIndex == 0 && selectedId.isValid()) {
@@ -282,7 +291,7 @@ void DlgRelations::refreshTypeFilter() {
 }
 
 void DlgRelations::slotTypeFilterChanged(int index) {
-    m_pRelationTableModel->setTypeFilter(DbId(comboBoxType->itemData(index)));
+    m_pRelationTableModel->setTypeFilter(DbId(comboBoxRelationType->itemData(index)));
     activateButtons(false);
 }
 
@@ -312,10 +321,10 @@ void DlgRelations::showRelatedTracks(TrackPointer pTrack) {
 }
 
 void DlgRelations::activateButtons(bool enable) {
-    pushButtonSave->setEnabled(true);
-    pushButtonEdit->setEnabled(enable);
-    pushButtonDelete->setEnabled(enable);
-    pushButtonRemove->setEnabled(enable);
+    pushButtonRelationSave->setEnabled(true);
+    pushButtonRelationEdit->setEnabled(enable);
+    pushButtonRelationDelete->setEnabled(enable);
+    pushButtonRelationRemove->setEnabled(enable);
 }
 
 void DlgRelations::selectionChanged(const QItemSelection& selected,

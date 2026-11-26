@@ -83,4 +83,8 @@ class RelationsDao : public DAO {
 
     RelationGroup getGroupById(DbId groupId) const;
     QList<RelationGroup> allGroups() const;
+
+    // Maintenance: removes relation data of library purged tracks, of
+    // non-existent groups and relation types, and groups with fewer than 2 tracks
+    void repairDatabase(const QSqlDatabase& database) const;
 };

@@ -42,7 +42,7 @@ void DlgLinkedTracks::showForTrack(QWidget* pParent, Library* pLibrary, TrackId 
 DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId trackId)
         : QDialog(pParent),
           m_pLibrary(pLibrary),
-          m_pTable(new QTableWidget(this)) {
+          m_pTableLinkedTracks(new QTableWidget(this)) {
     setAttribute(Qt::WA_DeleteOnClose);
 
     RelationsDao& relationsDao = m_pLibrary->trackCollectionManager()
@@ -55,14 +55,14 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
                     : tr("Linked Tracks"));
 
     auto* pLayout = new QVBoxLayout(this);
-    pLayout->addWidget(m_pTable);
+    pLayout->addWidget(m_pTableLinkedTracks);
     pLayout->addWidget(new QLabel(
             tr("Click a track to select it in the library. "
                "Click a column header to sort."),
             this));
 
-    m_pTable->setColumnCount(kColumnCount);
-    m_pTable->setHorizontalHeaderLabels({tr("Type"),
+    m_pTableLinkedTracks->setColumnCount(kColumnCount);
+    m_pTableLinkedTracks->setHorizontalHeaderLabels({tr("Type"),
             tr("Group"),
             tr("Group Comment"),
             tr("Artist"),
@@ -70,48 +70,54 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
             tr("Album"),
             tr("Year"),
             tr("Comment")});
-    m_pTable->verticalHeader()->setVisible(false);
-    m_pTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_pTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_pTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_pTable->horizontalHeader()->setStretchLastSection(true);
+    m_pTableLinkedTracks->verticalHeader()->setVisible(false);
+    m_pTableLinkedTracks->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_pTableLinkedTracks->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_pTableLinkedTracks->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_pTableLinkedTracks->horizontalHeader()->setStretchLastSection(true);
 
     const QList<RelationsDao::TrackRelationRow> rows =
             relationsDao.relationsForTrack(trackId);
-    m_pTable->setRowCount(rows.size());
+    m_pTableLinkedTracks->setRowCount(rows.size());
     for (int row = 0; row < rows.size(); ++row) {
         const RelationsDao::TrackRelationRow& relationRow = rows.at(row);
 
         auto* pTypeItem = new RelationSortItem(relationRow.relationType, false);
         // The linked track of this row
         pTypeItem->setData(Qt::UserRole, relationRow.linkedTrackId.toVariant());
-        m_pTable->setItem(row, kColumnType, pTypeItem);
+        m_pTableLinkedTracks->setItem(row, kColumnType, pTypeItem);
 
         auto* pGroupItem = new QTableWidgetItem();
         pGroupItem->setData(Qt::DisplayRole, relationRow.groupId.toVariant());
-        m_pTable->setItem(row, kColumnGroup, pGroupItem);
+        m_pTableLinkedTracks->setItem(row, kColumnGroup, pGroupItem);
 
-        m_pTable->setItem(row,
+        m_pTableLinkedTracks->setItem(row,
                 kColumnGroupComment,
                 new RelationSortItem(relationRow.groupComment, true));
-        m_pTable->setItem(row, kColumnArtist, new RelationSortItem(relationRow.artist, false));
-        m_pTable->setItem(row, kColumnTitle, new RelationSortItem(relationRow.title, false));
-        m_pTable->setItem(row, kColumnAlbum, new RelationSortItem(relationRow.album, false));
-        m_pTable->setItem(row,
+        m_pTableLinkedTracks->setItem(row,
+                kColumnArtist,
+                new RelationSortItem(relationRow.artist, false));
+        m_pTableLinkedTracks->setItem(row,
+                kColumnTitle,
+                new RelationSortItem(relationRow.title, false));
+        m_pTableLinkedTracks->setItem(row,
+                kColumnAlbum,
+                new RelationSortItem(relationRow.album, false));
+        m_pTableLinkedTracks->setItem(row,
                 kColumnYear,
                 new RelationSortItem(relationRow.year.trimmed().left(4), true));
-        m_pTable->setItem(row,
+        m_pTableLinkedTracks->setItem(row,
                 kColumnComment,
                 new RelationSortItem(relationRow.groupTrackComment, true));
     }
-    m_pTable->resizeColumnsToContents();
+    m_pTableLinkedTracks->resizeColumnsToContents();
 
     // Initial order: type, then the order of the query (group, artist, title)
-    m_pTable->horizontalHeader()->setSortIndicator(kColumnType, Qt::AscendingOrder);
-    m_pTable->setSortingEnabled(true);
+    m_pTableLinkedTracks->horizontalHeader()->setSortIndicator(kColumnType, Qt::AscendingOrder);
+    m_pTableLinkedTracks->setSortingEnabled(true);
 
-    connect(m_pTable, &QTableWidget::cellClicked, this, [this](int row, int) {
-        QTableWidgetItem* pItem = m_pTable->item(row, kColumnType);
+    connect(m_pTableLinkedTracks, &QTableWidget::cellClicked, this, [this](int row, int) {
+        QTableWidgetItem* pItem = m_pTableLinkedTracks->item(row, kColumnType);
         if (pItem) {
             selectInLibrary(TrackId(pItem->data(Qt::UserRole)));
         }

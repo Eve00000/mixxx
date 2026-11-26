@@ -30,7 +30,7 @@ constexpr int kColumnCount = 4;
 DlgRelationTypes::DlgRelationTypes(QWidget* pParent, Library* pLibrary)
         : QDialog(pParent),
           m_pLibrary(pLibrary),
-          m_pTable(new QTableWidget(this)) {
+          m_pTableRelationTypes(new QTableWidget(this)) {
     setWindowTitle(tr("Relation Types"));
     resize(640, 360);
 
@@ -39,38 +39,41 @@ DlgRelationTypes::DlgRelationTypes(QWidget* pParent, Library* pLibrary)
             tr("Double-click a type or a description to edit it. "
                "Renaming a type to an existing name merges the two."),
             this));
-    pLayout->addWidget(m_pTable);
+    pLayout->addWidget(m_pTableRelationTypes);
 
-    m_pTable->setColumnCount(kColumnCount);
-    m_pTable->setHorizontalHeaderLabels(
+    m_pTableRelationTypes->setColumnCount(kColumnCount);
+    m_pTableRelationTypes->setHorizontalHeaderLabels(
             {tr("Type"), tr("Description"), tr("Groups"), tr("Added")});
-    m_pTable->verticalHeader()->setVisible(false);
-    m_pTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_pTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_pTable->setEditTriggers(
+    m_pTableRelationTypes->verticalHeader()->setVisible(false);
+    m_pTableRelationTypes->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_pTableRelationTypes->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_pTableRelationTypes->setEditTriggers(
             QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
-    m_pTable->horizontalHeader()->setStretchLastSection(true);
+    m_pTableRelationTypes->horizontalHeader()->setStretchLastSection(true);
 
     auto* pButtonLayout = new QHBoxLayout();
-    auto* pMergeButton = new QPushButton(tr("Merge into..."), this);
-    auto* pDeleteButton = new QPushButton(tr("Delete"), this);
-    auto* pDeleteUnusedButton = new QPushButton(tr("Delete unused"), this);
+    auto* pMergeRelationButton = new QPushButton(tr("Merge into..."), this);
+    auto* pDeleteRelationButton = new QPushButton(tr("Delete"), this);
+    auto* pDeleteUnusedRelationsButton = new QPushButton(tr("Delete unused"), this);
     auto* pCloseButton = new QPushButton(tr("Close"), this);
-    pButtonLayout->addWidget(pMergeButton);
-    pButtonLayout->addWidget(pDeleteButton);
-    pButtonLayout->addWidget(pDeleteUnusedButton);
+    pButtonLayout->addWidget(pMergeRelationButton);
+    pButtonLayout->addWidget(pDeleteRelationButton);
+    pButtonLayout->addWidget(pDeleteUnusedRelationsButton);
     pButtonLayout->addStretch();
     pButtonLayout->addWidget(pCloseButton);
     pLayout->addLayout(pButtonLayout);
 
-    connect(pMergeButton, &QPushButton::clicked, this, &DlgRelationTypes::slotMerge);
-    connect(pDeleteButton, &QPushButton::clicked, this, &DlgRelationTypes::slotDelete);
-    connect(pDeleteUnusedButton,
+    connect(pMergeRelationButton, &QPushButton::clicked, this, &DlgRelationTypes::slotMerge);
+    connect(pDeleteRelationButton, &QPushButton::clicked, this, &DlgRelationTypes::slotDelete);
+    connect(pDeleteUnusedRelationsButton,
             &QPushButton::clicked,
             this,
             &DlgRelationTypes::slotDeleteUnused);
     connect(pCloseButton, &QPushButton::clicked, this, &QDialog::accept);
-    connect(m_pTable, &QTableWidget::itemChanged, this, &DlgRelationTypes::slotItemChanged);
+    connect(m_pTableRelationTypes,
+            &QTableWidget::itemChanged,
+            this,
+            &DlgRelationTypes::slotItemChanged);
 
     reload();
 }
@@ -80,48 +83,51 @@ RelationsDao& DlgRelationTypes::relationsDao() const {
 }
 
 DbId DlgRelationTypes::selectedRelationId() const {
-    const int row = m_pTable->currentRow();
+    const int row = m_pTableRelationTypes->currentRow();
     if (row < 0) {
         return DbId();
     }
-    QTableWidgetItem* pItem = m_pTable->item(row, kColumnType);
+    QTableWidgetItem* pItem = m_pTableRelationTypes->item(row, kColumnType);
     return pItem ? DbId(pItem->data(Qt::UserRole)) : DbId();
 }
 
 void DlgRelationTypes::reload() {
-    const QSignalBlocker blocker(m_pTable);
+    const QSignalBlocker blocker(m_pTableRelationTypes);
 
     const QList<RelationsDao::Relation> relations = relationsDao().allRelations();
-    m_pTable->setRowCount(relations.size());
+    m_pTableRelationTypes->setRowCount(relations.size());
     for (int row = 0; row < relations.size(); ++row) {
         const RelationsDao::Relation& relation = relations.at(row);
 
         auto* pTypeItem = new QTableWidgetItem(relation.type);
         pTypeItem->setData(Qt::UserRole, relation.id.toVariant());
-        m_pTable->setItem(row, kColumnType, pTypeItem);
+        m_pTableRelationTypes->setItem(row, kColumnType, pTypeItem);
 
-        m_pTable->setItem(row, kColumnDescription, new QTableWidgetItem(relation.description));
+        m_pTableRelationTypes->setItem(row,
+                kColumnDescription,
+                new QTableWidgetItem(relation.description));
 
         auto* pGroupsItem = new QTableWidgetItem();
         pGroupsItem->setData(Qt::DisplayRole, relationsDao().groupCountForRelation(relation.id));
         pGroupsItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        m_pTable->setItem(row, kColumnGroups, pGroupsItem);
+        m_pTableRelationTypes->setItem(row, kColumnGroups, pGroupsItem);
 
         auto* pAddedItem = new QTableWidgetItem(QLocale().toString(
                 mixxx::localDateTimeFromUtc(relation.dateAdded),
                 QLocale::ShortFormat));
         pAddedItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        m_pTable->setItem(row, kColumnAdded, pAddedItem);
+        m_pTableRelationTypes->setItem(row, kColumnAdded, pAddedItem);
     }
-    m_pTable->resizeColumnToContents(kColumnType);
+    m_pTableRelationTypes->resizeColumnToContents(kColumnType);
 }
 
 void DlgRelationTypes::slotItemChanged(QTableWidgetItem* pItem) {
     if (pItem->column() != kColumnType && pItem->column() != kColumnDescription) {
         return;
     }
-    QTableWidgetItem* pTypeItem = m_pTable->item(pItem->row(), kColumnType);
-    QTableWidgetItem* pDescriptionItem = m_pTable->item(pItem->row(), kColumnDescription);
+    QTableWidgetItem* pTypeItem = m_pTableRelationTypes->item(pItem->row(), kColumnType);
+    QTableWidgetItem* pDescriptionItem =
+            m_pTableRelationTypes->item(pItem->row(), kColumnDescription);
     if (!pTypeItem || !pDescriptionItem) {
         return;
     }
@@ -138,7 +144,7 @@ void DlgRelationTypes::slotItemChanged(QTableWidgetItem* pItem) {
     };
 
     if (type.isEmpty()) {
-        QMessageBox::warning(this, tr("Relation Types"), tr("A relation type needs a name."));
+        QMessageBox::warning(this, tr("Relation Types"), tr("A Relation type needs a name."));
         reloadLater();
         return;
     }
@@ -149,7 +155,7 @@ void DlgRelationTypes::slotItemChanged(QTableWidgetItem* pItem) {
         if (!(other.id == id) && other.type.compare(type, Qt::CaseInsensitive) == 0) {
             const QMessageBox::StandardButton answer = QMessageBox::question(this,
                     tr("Merge Relation Types"),
-                    tr("The type \"%1\" already exists. Merge this type into it? "
+                    tr("The Relation Type \"%1\" already exists. Merge this type into it? "
                        "All its groups move to \"%1\".")
                             .arg(other.type),
                     QMessageBox::Yes | QMessageBox::No,
@@ -229,7 +235,7 @@ void DlgRelationTypes::slotDelete() {
     } else {
         const QMessageBox::StandardButton answer = QMessageBox::question(this,
                 tr("Delete Relation Type"),
-                tr("The type \"%1\" is used by %2 relation group(s). Delete the type "
+                tr("The Relation Type \"%1\" is used by %2 relation group(s). Delete the type "
                    "and these groups? The tracks themselves are not affected.")
                         .arg(relation.type, QString::number(groupCount)),
                 QMessageBox::Yes | QMessageBox::No,
@@ -244,7 +250,7 @@ void DlgRelationTypes::slotDelete() {
 
 void DlgRelationTypes::slotDeleteUnused() {
     const QMessageBox::StandardButton answer = QMessageBox::question(this,
-            tr("Delete Unused Types"),
+            tr("Delete Unused Relation Types"),
             tr("Delete all relation types that have no groups?"),
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No);
@@ -253,7 +259,7 @@ void DlgRelationTypes::slotDeleteUnused() {
     }
     const int removed = relationsDao().removeUnusedRelations();
     QMessageBox::information(this,
-            tr("Delete Unused Types"),
-            tr("%1 unused type(s) deleted.").arg(removed));
+            tr("Delete Unused Relation Types"),
+            tr("%1 unused relation type(s) deleted.").arg(removed));
     reload();
 }

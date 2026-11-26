@@ -48,7 +48,7 @@
               <number>0</number>
             </property>
             <item>
-              <widget class="QComboBox" name="comboBoxType">
+              <widget class="QComboBox" name="comboBoxRelationType">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -58,7 +58,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonSave">
+              <widget class="QPushButton" name="pushButtonRelationSave">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -71,7 +71,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonEdit">
+              <widget class="QPushButton" name="pushButtonRelationEdit">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -84,7 +84,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonDelete">
+              <widget class="QPushButton" name="pushButtonRelationDelete">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -97,7 +97,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonRemove">
+              <widget class="QPushButton" name="pushButtonRelationRemove">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -110,7 +110,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonTypes">
+              <widget class="QPushButton" name="pushButtonRelationTypes">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>

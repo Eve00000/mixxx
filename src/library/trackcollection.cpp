@@ -72,6 +72,7 @@ void TrackCollection::repairDatabase(const QSqlDatabase& database) {
     m_crates.repairDatabase(database);
     m_searchCrates.repairDatabase(database);
     m_directoryDao.repairDatabase(database);
+    m_relationsDao.repairDatabase(database);
 }
 
 void TrackCollection::connectDatabase(const QSqlDatabase& database) {
@@ -88,6 +89,9 @@ void TrackCollection::connectDatabase(const QSqlDatabase& database) {
     m_analysisDao.initialize(database);
     m_libraryHashDao.initialize(database);
     m_relationsDao.initialize(database);
+    // Remove relation data of tracks that are no longer in the library
+    // Test without repair flag set
+    m_relationsDao.repairDatabase(database);
     m_trackFingerprintDao.initialize(database);
     m_crates.connectDatabase(database);
     m_searchCrates.connectDatabase(database);

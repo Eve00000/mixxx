@@ -26,5 +26,5 @@ class DlgRelationTypes : public QDialog {
     void reload();
 
     Library* m_pLibrary;
-    QTableWidget* m_pTable;
+    QTableWidget* m_pTableRelationTypes;
 };

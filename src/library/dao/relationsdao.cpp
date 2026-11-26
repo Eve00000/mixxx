@@ -3,6 +3,7 @@
 #include <QSqlQuery>
 #include <QtDebug>
 
+#include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "util/assert.h"
 #include "util/db/fwdsqlquery.h"
@@ -574,6 +575,82 @@ RelationsDao::RelationGroup RelationsDao::getGroupById(DbId groupId) const {
         return relationGroupFromRow(query.record());
     }
     return RelationGroup{};
+}
+
+void RelationsDao::repairDatabase(const QSqlDatabase& database) const {
+    // NOTE: No transactions, all queries are independent maintenance
+    // operations (same as the other repairDatabase() functions).
+    // The passed database is used instead of m_database, because the DAOs
+    // are not necessarily connected yet when this is called.
+
+    // Tracks of relation groups
+    {
+        // Remove library purged tracks from relation groups
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_track_id NOT IN (SELECT id FROM " LIBRARY_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "library purged tracks from relation groups";
+        }
+    }
+    {
+        // Remove the tracks of groups that refer to a non-existent relation type
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id IN (SELECT id FROM " RELATION_GROUPS_TABLE
+                               " WHERE rg_rel_id NOT IN (SELECT id FROM " RELATIONS_TABLE "))"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from relation groups of non-existent relation types";
+        }
+    }
+    {
+        // Delete groups of non-existent relation types
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE
+                               " WHERE rg_rel_id NOT IN (SELECT id FROM " RELATIONS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Deleted" << query.numRowsAffected()
+                              << "relation groups of non-existent relation types";
+        }
+    }
+    {
+        // Remove tracks from non-existent groups
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id NOT IN (SELECT id "
+                               "FROM " RELATION_GROUPS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from non-existent relation groups";
+        }
+    }
+
+    // A relation group needs at least 2 tracks
+    {
+        // Remove the single track of groups that have fewer than 2 tracks left
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id IN (SELECT rgt_group_id "
+                               "FROM " RELATION_GROUP_TRACKS_TABLE
+                               " GROUP BY rgt_group_id HAVING COUNT(*) < 2)"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from relation groups with fewer than 2 tracks";
+        }
+    }
+    {
+        // Delete groups without tracks
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE
+                               " WHERE id NOT IN (SELECT rgt_group_id "
+                               "FROM " RELATION_GROUP_TRACKS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Deleted" << query.numRowsAffected()
+                              << "relation groups without tracks";
+        }
+    }
 }
 
 QList<RelationsDao::RelationGroup> RelationsDao::allGroups() const {

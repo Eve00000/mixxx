@@ -184,8 +184,9 @@ DbId RelationsTableModel::getRelationId(const QModelIndex& index) const {
 }
 
 void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
-    if (!pTrack)
+    if (!pTrack) {
         return;
+    }
     m_pDeckTrack = pTrack;
     TrackId trackId = pTrack->getId();
     QString trackTableName = QStringLiteral("relations_track_%1").arg(trackId.toString());

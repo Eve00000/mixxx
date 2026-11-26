@@ -22,5 +22,5 @@ class DlgLinkedTracks : public QDialog {
     void selectInLibrary(TrackId trackId);
 
     Library* m_pLibrary;
-    QTableWidget* m_pTable;
+    QTableWidget* m_pTableLinkedTracks;
 };
