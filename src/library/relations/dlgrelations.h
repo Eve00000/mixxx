@@ -40,6 +40,7 @@ class DlgRelations : public QWidget, public Ui::DlgRelations, public LibraryView
     void slotDeleteRelation();
     void slotRemoveTrackFromRelation();
     void slotManageRelationTypes();
+    void slotTypeFilterChanged(int index);
 
   signals:
     void trackSelected(TrackPointer pTrack);
@@ -48,6 +49,7 @@ class DlgRelations : public QWidget, public Ui::DlgRelations, public LibraryView
 
   private:
     void activateButtons(bool enable);
+    void refreshTypeFilter();
 
     RelationsTableModel* m_pRelationTableModel;
     WRelationTableView* m_pRelationTableView;
