@@ -31,6 +31,7 @@
 #include "library/externaltrackcollection.h"
 #include "library/library.h"
 #include "library/playlisttablemodel.h"
+#include "library/relations/dlglinkedtracks.h"
 #include "library/relations/dlgsaverelation.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
@@ -3599,6 +3600,15 @@ void WTrackMenu::slotPopulateLinkedTracksMenu() {
             selectLinkedTrackInLibrary(linkedTrackId);
         });
     }
+
+    // Detailed view: all linked tracks in a sortable table
+    m_pLinkedTracksMenu->addSeparator();
+    QAction* pShowTableAct = m_pLinkedTracksMenu->addAction(
+            tr("Show linked tracks in table..."));
+    connect(pShowTableAct, &QAction::triggered, this, [this, trackId = trackIds.first()]() {
+        QWidget* pParentWindow = parentWidget() ? parentWidget()->window() : nullptr;
+        DlgLinkedTracks::showForTrack(pParentWindow, m_pLibrary, trackId);
+    });
 }
 
 void WTrackMenu::selectLinkedTrackInLibrary(TrackId trackId) {

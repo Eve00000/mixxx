@@ -13,6 +13,7 @@
 #include "defs_urls.h"
 #include "library/library.h"
 #include "library/relations/dlgsaverelation.h"
+#include "library/relations/relationsortitem.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "moc_dlgrelationinfo.cpp"
@@ -23,53 +24,6 @@ namespace {
 constexpr int kColumnOrder = 0;
 constexpr int kColumnTrack = 1;
 constexpr int kColumnComment = 2;
-
-// Leading number of a text ("117", "-1.2%"), 0 when the text does not start
-// with a number. Used to sort comments that start with a value.
-double leadingNumber(const QString& text) {
-    static const QRegularExpression kNumber(
-            QStringLiteral("^\\s*([-+]?\\d+(?:[.,]\\d+)?)"));
-    const QRegularExpressionMatch match = kNumber.match(text);
-    if (!match.hasMatch()) {
-        return 0.0;
-    }
-    QString number = match.captured(1);
-    number.replace(QLatin1Char(','), QLatin1Char('.'));
-    return number.toDouble();
-}
-
-// Table item that sorts like the relation list: optionally on the leading
-// number first, then on the text (numbers in the text in numeric order)
-class SortItem : public QTableWidgetItem {
-  public:
-    SortItem(const QString& text, bool numberFirst)
-            : QTableWidgetItem(text),
-              m_numberFirst(numberFirst) {
-    }
-
-    bool operator<(const QTableWidgetItem& other) const override {
-        if (m_numberFirst) {
-            const double a = leadingNumber(text());
-            const double b = leadingNumber(other.text());
-            if (a < b) {
-                return true;
-            }
-            if (a > b) {
-                return false;
-            }
-        }
-        static const QCollator kCollator = []() {
-            QCollator collator;
-            collator.setNumericMode(true);
-            collator.setCaseSensitivity(Qt::CaseInsensitive);
-            return collator;
-        }();
-        return kCollator.compare(text(), other.text()) < 0;
-    }
-
-  private:
-    bool m_numberFirst;
-};
 } // namespace
 
 DlgRelationInfo::DlgRelationInfo(
@@ -158,12 +112,12 @@ void DlgRelationInfo::init() {
         pOrderItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         tableTracks->setItem(row, kColumnOrder, pOrderItem);
 
-        auto* pTrackItem = new SortItem(display, false);
+        auto* pTrackItem = new RelationSortItem(display, false);
         pTrackItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         pTrackItem->setData(Qt::UserRole, groupTrack.trackId.toVariant());
         tableTracks->setItem(row, kColumnTrack, pTrackItem);
 
-        auto* pCommentItem = new SortItem(groupTrack.comment, true);
+        auto* pCommentItem = new RelationSortItem(groupTrack.comment, true);
         pCommentItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
         tableTracks->setItem(row, kColumnComment, pCommentItem);
         ++row;
