@@ -986,6 +986,13 @@ void Library::searchTracksInCollection() {
     m_pLibraryControl->setLibraryFocus(FocusWidget::Searchbar, Qt::ShortcutFocusReason);
 }
 
+void Library::showRelationsForDeck(const QString& deckGroup) {
+    VERIFY_OR_DEBUG_ASSERT(m_pRelationsFeature) {
+        return;
+    }
+    m_pRelationsFeature->showRelationsForDeck(deckGroup);
+}
+
 void Library::searchTracksInCollection(const QString& query) {
     VERIFY_OR_DEBUG_ASSERT(m_pMixxxLibraryFeature) {
         return;

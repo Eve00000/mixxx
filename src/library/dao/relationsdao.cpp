@@ -520,7 +520,10 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
                     "  library.artist AS artist,"
                     "  library.title AS title, "
                     "  library.album AS album, "
-                    "  library.year AS year "
+                    "  library.filetype AS filetype, "
+                    "  library.year AS year, "
+                    "  library.bpm AS bpm, "
+                    "  library.key AS key, library.key_id AS key_id "
                     "FROM " RELATION_GROUP_TRACKS_TABLE " AS self_track "
                     "JOIN " RELATION_GROUPS_TABLE " AS relation_groups "
                     "  ON relation_groups.id = self_track.rgt_group_id "
@@ -556,7 +559,11 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
                 rowRecord.value(QStringLiteral("artist")).toString(),
                 rowRecord.value(QStringLiteral("title")).toString(),
                 rowRecord.value(QStringLiteral("album")).toString(),
+                rowRecord.value(QStringLiteral("filetype")).toString(),
                 rowRecord.value(QStringLiteral("year")).toString(),
+                rowRecord.value(QStringLiteral("bpm")).toString(),
+                rowRecord.value(QStringLiteral("key")).toString(),
+                rowRecord.value(QStringLiteral("key_id")).toString(),
         });
     }
     return rows;

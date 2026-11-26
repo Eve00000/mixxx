@@ -3609,6 +3609,22 @@ void WTrackMenu::slotPopulateLinkedTracksMenu() {
         QWidget* pParentWindow = parentWidget() ? parentWidget()->window() : nullptr;
         DlgLinkedTracks::showForTrack(pParentWindow, m_pLibrary, trackId);
     });
+    // Menu of a track in a deck: link to the relations view of that deck in
+    // the sidebar (a track can be loaded in more than one deck)
+    if (m_pTrack) {
+        const int numDecks = static_cast<int>(m_pNumDecks.get());
+        for (int deck = 0; deck < numDecks; ++deck) {
+            const QString deckGroup = PlayerManager::groupForDeck(deck);
+            const TrackPointer pDeckTrack = PlayerInfo::instance().getTrackInfo(deckGroup);
+            if (pDeckTrack && pDeckTrack->getId() == m_pTrack->getId()) {
+                QAction* pDeckAct = m_pLinkedTracksMenu->addAction(
+                        tr("Show in Relations sidebar (Deck %1)").arg(deck + 1));
+                connect(pDeckAct, &QAction::triggered, this, [this, deckGroup]() {
+                    m_pLibrary->showRelationsForDeck(deckGroup);
+                });
+            }
+        }
+    }
 }
 
 void WTrackMenu::selectLinkedTrackInLibrary(TrackId trackId) {

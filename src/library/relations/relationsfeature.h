@@ -31,6 +31,10 @@ class RelationsFeature : public BaseTrackSetFeature {
     void activate() override;
     void activateChild(const QModelIndex& index) override;
 
+    // Selects the Relations -> Deck N entry of the deck group in the sidebar
+    // and shows the relations of the track in that deck
+    void showRelationsForDeck(const QString& deckGroup);
+
   private:
     QString getEmptyDeckViewHtml() const;
     QString deckGroupFromIndex(const QModelIndex& index) const;

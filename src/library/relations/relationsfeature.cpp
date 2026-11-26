@@ -123,6 +123,15 @@ void RelationsFeature::activateChild(const QModelIndex& index) {
     emit enableCoverArtDisplay(true);
 }
 
+void RelationsFeature::showRelationsForDeck(const QString& deckGroup) {
+    for (int row = 0; row < m_DeckRelationItemList.size(); ++row) {
+        if (m_DeckRelationItemList.at(row)->getData().toString() == deckGroup) {
+            selectAndActivate(m_pSidebarModel->index(row, 0));
+            return;
+        }
+    }
+}
+
 QString RelationsFeature::getEmptyDeckViewHtml() const {
     QString browseTitle = tr("Selected Deck is Empty");
     QString browseSummary = tr(

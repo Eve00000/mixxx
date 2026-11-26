@@ -119,6 +119,8 @@ class Library : public QObject {
     /// Triggers a new search in the internal track collection
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
+    // Shows the relations of the track in a deck in the sidebar
+    void showRelationsForDeck(const QString& deckGroup);
     void showAutoDJ();
     void showAutoSuggestions();
 
