@@ -46,7 +46,11 @@ class RelationsDao : public DAO {
         QString artist;
         QString title;
         QString album;
+        QString filetype;
         QString year;
+        QString bpm;
+        QString key;
+        QString keyId;
     };
 
     QList<Relation> allRelations() const;

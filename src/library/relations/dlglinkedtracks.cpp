@@ -9,6 +9,7 @@
 
 #include "library/dao/relationsdao.h"
 #include "library/library.h"
+#include "library/relations/relationformat.h"
 #include "library/relations/relationsortitem.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
@@ -16,17 +17,39 @@
 #include "track/track.h"
 
 namespace {
-constexpr int kColumnType = 0;
+constexpr int kColumnRelationType = 0;
 constexpr int kColumnGroup = 1;
 constexpr int kColumnGroupComment = 2;
 constexpr int kColumnArtist = 3;
 constexpr int kColumnTitle = 4;
 constexpr int kColumnAlbum = 5;
-constexpr int kColumnYear = 6;
-constexpr int kColumnComment = 7;
-constexpr int kColumnCount = 8;
+constexpr int kColumnFileType = 6;
+constexpr int kColumnYear = 7;
+constexpr int kColumnBPM = 8;
+constexpr int kColumnKey = 9;
+constexpr int kColumnComment = 10;
+constexpr int kColumnCount = 11;
 
 QByteArray s_lastGeometry;
+
+// BPM with 2 decimals, right aligned like in the track table
+RelationSortItem* makeBpmItem(const RelationsDao::TrackRelationRow& relationRow) {
+    auto* pItem = new RelationSortItem(relationformat::bpm(relationRow.bpm), true);
+    pItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
+    return pItem;
+}
+
+// Key in the notation chosen by the user, with the key colour when enabled.
+// Sorts on the leading number first, so 8A comes before 10A.
+RelationSortItem* makeKeyItem(const RelationsDao::TrackRelationRow& relationRow) {
+    auto* pItem = new RelationSortItem(
+            relationformat::key(relationRow.key, relationRow.keyId), true);
+    const QColor color = relationformat::keyColor(relationRow.keyId);
+    if (color.isValid()) {
+        pItem->setData(Qt::DecorationRole, relationformat::colorSwatch(color));
+    }
+    return pItem;
+}
 } // namespace
 
 // static
@@ -68,7 +91,10 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
             tr("Artist"),
             tr("Title"),
             tr("Album"),
+            tr("FileType"),
             tr("Year"),
+            tr("BPM"),
+            tr("Key"),
             tr("Comment")});
     m_pTableLinkedTracks->verticalHeader()->setVisible(false);
     m_pTableLinkedTracks->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -85,7 +111,7 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
         auto* pTypeItem = new RelationSortItem(relationRow.relationType, false);
         // The linked track of this row
         pTypeItem->setData(Qt::UserRole, relationRow.linkedTrackId.toVariant());
-        m_pTableLinkedTracks->setItem(row, kColumnType, pTypeItem);
+        m_pTableLinkedTracks->setItem(row, kColumnRelationType, pTypeItem);
 
         auto* pGroupItem = new QTableWidgetItem();
         pGroupItem->setData(Qt::DisplayRole, relationRow.groupId.toVariant());
@@ -104,6 +130,15 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
                 kColumnAlbum,
                 new RelationSortItem(relationRow.album, false));
         m_pTableLinkedTracks->setItem(row,
+                kColumnFileType,
+                new RelationSortItem(relationRow.filetype, false));
+        m_pTableLinkedTracks->setItem(row,
+                kColumnBPM,
+                makeBpmItem(relationRow));
+        m_pTableLinkedTracks->setItem(row,
+                kColumnKey,
+                makeKeyItem(relationRow));
+        m_pTableLinkedTracks->setItem(row,
                 kColumnYear,
                 new RelationSortItem(relationRow.year.trimmed().left(4), true));
         m_pTableLinkedTracks->setItem(row,
@@ -113,18 +148,19 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
     m_pTableLinkedTracks->resizeColumnsToContents();
 
     // Initial order: type, then the order of the query (group, artist, title)
-    m_pTableLinkedTracks->horizontalHeader()->setSortIndicator(kColumnType, Qt::AscendingOrder);
+    m_pTableLinkedTracks->horizontalHeader()->setSortIndicator(
+            kColumnRelationType, Qt::AscendingOrder);
     m_pTableLinkedTracks->setSortingEnabled(true);
 
     connect(m_pTableLinkedTracks, &QTableWidget::cellClicked, this, [this](int row, int) {
-        QTableWidgetItem* pItem = m_pTableLinkedTracks->item(row, kColumnType);
+        QTableWidgetItem* pItem = m_pTableLinkedTracks->item(row, kColumnRelationType);
         if (pItem) {
             selectInLibrary(TrackId(pItem->data(Qt::UserRole)));
         }
     });
 
     if (s_lastGeometry.isEmpty()) {
-        resize(920, 380);
+        resize(900, 500);
     } else {
         restoreGeometry(s_lastGeometry);
     }
