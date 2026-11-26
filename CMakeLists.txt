@@ -1489,6 +1489,7 @@ add_library(
   src/library/relations/dlgrelationinfo.ui
   src/library/relations/dlgrelations.cpp
   src/library/relations/dlgrelations.ui
+  src/library/relations/dlgrelationtypes.cpp
   src/library/relations/dlgsaverelation.cpp
   src/library/relations/dlglinkedtracks.cpp
   src/library/relations/relationsfeature.cpp

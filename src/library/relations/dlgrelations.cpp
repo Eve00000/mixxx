@@ -16,6 +16,7 @@
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/library.h"
 #include "library/relations/dlgrelationinfo.h"
+#include "library/relations/dlgrelationtypes.h"
 #include "library/relations/dlgsaverelation.h"
 #include "library/relations/relationstablemodel.h"
 #include "library/trackcollection.h"
@@ -63,6 +64,7 @@ DlgRelations::DlgRelations(
     connect(pushButtonSave, &QPushButton::clicked, this, &DlgRelations::slotSaveRelationFromDecks);
     connect(pushButtonEdit, &QPushButton::clicked, this, &DlgRelations::slotEditRelation);
     connect(pushButtonDelete, &QPushButton::clicked, this, &DlgRelations::slotDeleteRelation);
+    connect(pushButtonTypes, &QPushButton::clicked, this, &DlgRelations::slotManageRelationTypes);
     connect(pushButtonRemove,
             &QPushButton::clicked,
             this,
@@ -211,6 +213,14 @@ void DlgRelations::slotRemoveTrackFromRelation() {
         relationsDao.removeTrackFromGroup(item.groupId, item.trackId);
     }
 
+    m_pRelationTableModel->select();
+    activateButtons(false);
+}
+
+void DlgRelations::slotManageRelationTypes() {
+    DlgRelationTypes dlgRelationTypes(this, m_pLibrary);
+    dlgRelationTypes.exec();
+    // Types may have been renamed, merged or deleted
     m_pRelationTableModel->select();
     activateButtons(false);
 }

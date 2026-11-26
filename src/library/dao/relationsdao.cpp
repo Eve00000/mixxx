@@ -79,7 +79,8 @@ DbId RelationsDao::addRelation(const QString& type, const QString& description) 
     {
         FwdSqlQuery exists(m_database,
                 QStringLiteral("SELECT id FROM " RELATIONS_TABLE
-                               " WHERE rel_type=:type"));
+                               // " WHERE rel_type=:type"));
+                               " WHERE rel_type=:type COLLATE NOCASE"));
         DEBUG_ASSERT(exists.isPrepared() && !exists.hasError());
         exists.bindValue(":type", type);
         if (exists.execPrepared() && exists.next()) {
@@ -137,6 +138,130 @@ bool RelationsDao::removeRelation(DbId id) const {
         return false;
     }
     return true;
+}
+
+int RelationsDao::groupCountForRelation(DbId id) const {
+    if (!m_database.isOpen() || !id.isValid()) {
+        return 0;
+    }
+
+    FwdSqlQuery query(m_database,
+            QStringLiteral("SELECT COUNT(*) AS cnt FROM " RELATION_GROUPS_TABLE
+                           " WHERE rg_rel_id=:id"));
+    DEBUG_ASSERT(query.isPrepared() && !query.hasError());
+    query.bindValue(":id", id.toVariant());
+
+    if (!query.execPrepared() || !query.next()) {
+        return 0;
+    }
+    const QSqlRecord record = query.record();
+    return record.value(record.indexOf("cnt")).toInt();
+}
+
+bool RelationsDao::updateRelation(DbId id,
+        const QString& type,
+        const QString& description) const {
+    if (!m_database.isOpen() || !id.isValid() || type.isEmpty()) {
+        return false;
+    }
+
+    // Another type with the same name (ignoring case) is not allowed
+    {
+        FwdSqlQuery exists(m_database,
+                QStringLiteral("SELECT id FROM " RELATIONS_TABLE
+                               " WHERE rel_type=:type COLLATE NOCASE AND id<>:id"));
+        DEBUG_ASSERT(exists.isPrepared() && !exists.hasError());
+        exists.bindValue(":type", type);
+        exists.bindValue(":id", id.toVariant());
+        if (exists.execPrepared() && exists.next()) {
+            return false;
+        }
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral("UPDATE " RELATIONS_TABLE
+                                 " SET rel_type=:type, rel_description=:description "
+                                 "WHERE id=:id"));
+    query.bindValue(":type", type);
+    query.bindValue(":description", description);
+    query.bindValue(":id", id.toVariant());
+
+    if (!query.exec()) {
+        LOG_FAILED_QUERY(query);
+        return false;
+    }
+    return true;
+}
+
+bool RelationsDao::mergeRelations(DbId sourceId, DbId targetId) const {
+    if (!m_database.isOpen() || !sourceId.isValid() || !targetId.isValid() ||
+            sourceId == targetId) {
+        return false;
+    }
+
+    ScopedTransaction transaction(m_database);
+
+    QSqlQuery moveGroups(m_database);
+    moveGroups.prepare(QStringLiteral("UPDATE " RELATION_GROUPS_TABLE
+                                      " SET rg_rel_id=:target WHERE rg_rel_id=:source"));
+    moveGroups.bindValue(":target", targetId.toVariant());
+    moveGroups.bindValue(":source", sourceId.toVariant());
+    if (!moveGroups.exec()) {
+        LOG_FAILED_QUERY(moveGroups);
+        return false;
+    }
+
+    QSqlQuery deleteSource(m_database);
+    deleteSource.prepare(QStringLiteral("DELETE FROM " RELATIONS_TABLE " WHERE id=:source"));
+    deleteSource.bindValue(":source", sourceId.toVariant());
+    if (!deleteSource.exec()) {
+        LOG_FAILED_QUERY(deleteSource);
+        return false;
+    }
+
+    return transaction.commit();
+}
+
+bool RelationsDao::removeRelationWithGroups(DbId id) const {
+    if (!m_database.isOpen() || !id.isValid()) {
+        return false;
+    }
+
+    ScopedTransaction transaction(m_database);
+
+    const QStringList statements = {
+            QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                           " WHERE rgt_group_id IN (SELECT id FROM " RELATION_GROUPS_TABLE
+                           " WHERE rg_rel_id=:id)"),
+            QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE " WHERE rg_rel_id=:id"),
+            QStringLiteral("DELETE FROM " RELATIONS_TABLE " WHERE id=:id")};
+    for (const QString& statement : statements) {
+        QSqlQuery query(m_database);
+        query.prepare(statement);
+        query.bindValue(":id", id.toVariant());
+        if (!query.exec()) {
+            LOG_FAILED_QUERY(query);
+            return false;
+        }
+    }
+
+    return transaction.commit();
+}
+
+int RelationsDao::removeUnusedRelations() const {
+    if (!m_database.isOpen()) {
+        return 0;
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral("DELETE FROM " RELATIONS_TABLE
+                                 " WHERE NOT EXISTS (SELECT 1 FROM " RELATION_GROUPS_TABLE
+                                 " WHERE rg_rel_id = " RELATIONS_TABLE ".id)"));
+    if (!query.exec()) {
+        LOG_FAILED_QUERY(query);
+        return 0;
+    }
+    return query.numRowsAffected();
 }
 
 DbId RelationsDao::createGroup(DbId relationId,

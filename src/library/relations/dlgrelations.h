@@ -39,6 +39,7 @@ class DlgRelations : public QWidget, public Ui::DlgRelations, public LibraryView
     void slotEditRelation();
     void slotDeleteRelation();
     void slotRemoveTrackFromRelation();
+    void slotManageRelationTypes();
 
   signals:
     void trackSelected(TrackPointer pTrack);
