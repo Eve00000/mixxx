@@ -10,12 +10,14 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSet>
+#include <QSignalBlocker>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "library/library.h"
 #include "library/relations/dlgrelationinfo.h"
+#include "library/relations/dlgrelationtypes.h"
 #include "library/relations/dlgsaverelation.h"
 #include "library/relations/relationstablemodel.h"
 #include "library/trackcollection.h"
@@ -60,10 +62,25 @@ DlgRelations::DlgRelations(
     m_pRelationTableModel = new RelationsTableModel(this, pLibrary->trackCollectionManager());
     m_pRelationTableView->loadTrackModel(m_pRelationTableModel);
 
-    connect(pushButtonSave, &QPushButton::clicked, this, &DlgRelations::slotSaveRelationFromDecks);
-    connect(pushButtonEdit, &QPushButton::clicked, this, &DlgRelations::slotEditRelation);
-    connect(pushButtonDelete, &QPushButton::clicked, this, &DlgRelations::slotDeleteRelation);
-    connect(pushButtonRemove,
+    connect(pushButtonRelationSave,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotSaveRelationFromDecks);
+    connect(pushButtonRelationEdit, &QPushButton::clicked, this, &DlgRelations::slotEditRelation);
+    connect(pushButtonRelationDelete,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotDeleteRelation);
+    connect(pushButtonRelationTypes,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotManageRelationTypes);
+    connect(comboBoxRelationType,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &DlgRelations::slotTypeFilterChanged);
+    refreshTypeFilter();
+    connect(pushButtonRelationRemove,
             &QPushButton::clicked,
             this,
             &DlgRelations::slotRemoveTrackFromRelation);
@@ -143,6 +160,8 @@ void DlgRelations::slotSaveRelationFromDecks() {
                                          ->getRelationsDAO();
     const DbId groupId = DlgSaveRelation::execute(this, relationsDao, entries);
     if (groupId.isValid()) {
+        // The relation may use a new type
+        refreshTypeFilter();
         m_pRelationTableModel->select();
     }
 }
@@ -215,7 +234,70 @@ void DlgRelations::slotRemoveTrackFromRelation() {
     activateButtons(false);
 }
 
+void DlgRelations::slotManageRelationTypes() {
+    DlgRelationTypes dlgRelationTypes(this, m_pLibrary);
+    dlgRelationTypes.exec();
+    // Types may have been renamed, merged or deleted
+    refreshTypeFilter();
+    m_pRelationTableModel->select();
+    activateButtons(false);
+}
+
+void DlgRelations::refreshTypeFilter() {
+    // Keep the chosen type when the list of types is rebuilt
+    const DbId selectedId = m_pRelationTableModel->typeFilter();
+    const RelationsDao& relationsDao = m_pLibrary->trackCollectionManager()
+                                               ->internalCollection()
+                                               ->getRelationsDAO();
+    const QList<RelationsDao::Relation> relations = [&]() -> QList<RelationsDao::Relation> {
+        const TrackPointer pDeckTrack = m_pRelationTableModel->deckTrack();
+        if (!pDeckTrack) {
+            return relationsDao.allRelations();
+        }
+        // Deck view: only the types this track has relations of
+        QList<RelationsDao::Relation> trackRelations;
+        QList<DbId> seenIds;
+        const QList<RelationsDao::TrackRelationRow> trackRows =
+                relationsDao.relationsForTrack(pDeckTrack->getId());
+        for (const RelationsDao::TrackRelationRow& trackRow : trackRows) {
+            if (!seenIds.contains(trackRow.relationId)) {
+                seenIds.append(trackRow.relationId);
+                trackRelations.append(RelationsDao::Relation{
+                        trackRow.relationId,
+                        trackRow.relationType,
+                        trackRow.relationDescription,
+                        QDateTime()});
+            }
+        }
+        return trackRelations;
+    }();
+
+    const QSignalBlocker blocker(comboBoxRelationType);
+    comboBoxRelationType->clear();
+    comboBoxRelationType->addItem(tr("All types"), QVariant());
+    int selectedIndex = 0;
+    for (const RelationsDao::Relation& relation : relations) {
+        comboBoxRelationType->addItem(relation.type, relation.id.toVariant());
+        if (relation.id == selectedId) {
+            selectedIndex = comboBoxRelationType->count() - 1;
+        }
+    }
+    comboBoxRelationType->setCurrentIndex(selectedIndex);
+
+    // The chosen type may have been deleted: show all types again
+    if (selectedIndex == 0 && selectedId.isValid()) {
+        m_pRelationTableModel->setTypeFilter(DbId());
+    }
+}
+
+void DlgRelations::slotTypeFilterChanged(int index) {
+    m_pRelationTableModel->setTypeFilter(DbId(comboBoxRelationType->itemData(index)));
+    activateButtons(false);
+}
+
 void DlgRelations::onShow() {
+    // New types may have been created since the view was last shown
+    refreshTypeFilter();
     m_pRelationTableModel->select();
     activateButtons(false);
 }
@@ -234,13 +316,15 @@ void DlgRelations::showAllRelations() {
 
 void DlgRelations::showRelatedTracks(TrackPointer pTrack) {
     m_pRelationTableModel->showRelatedTracks(pTrack);
+    // The track of the deck changed: show the types of this track
+    refreshTypeFilter();
 }
 
 void DlgRelations::activateButtons(bool enable) {
-    pushButtonSave->setEnabled(true);
-    pushButtonEdit->setEnabled(enable);
-    pushButtonDelete->setEnabled(enable);
-    pushButtonRemove->setEnabled(enable);
+    pushButtonRelationSave->setEnabled(true);
+    pushButtonRelationEdit->setEnabled(enable);
+    pushButtonRelationDelete->setEnabled(enable);
+    pushButtonRelationRemove->setEnabled(enable);
 }
 
 void DlgRelations::selectionChanged(const QItemSelection& selected,

@@ -20,6 +20,18 @@ class RelationsTableModel final : public BaseSqlTableModel {
     // Search in the track columns and in the relation columns
     // (type, group comment, track comment)
     void searchRelations(const QString& searchText);
+
+    // Show only the relations of one type (an invalid id shows all types)
+    void setTypeFilter(DbId relationId);
+    DbId typeFilter() const {
+        return m_relationTypeFilter;
+    }
+
+    // The track of the deck this view shows the relations for (null in the
+    // view with all relations)
+    TrackPointer deckTrack() const {
+        return m_pDeckTrack;
+    }
     QString relationSearch() const {
         return m_relationSearch;
     }
@@ -37,6 +49,8 @@ class RelationsTableModel final : public BaseSqlTableModel {
   private:
     TrackPointer m_pDeckTrack;
     QString m_relationSearch;
+    DbId m_relationTypeFilter;
+    QString relationFilterClause(const QString& keyword) const;
 
     QString relationSortClause() const;
     void loadSortSettings();

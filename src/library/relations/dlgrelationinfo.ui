@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>560</width>
-    <height>460</height>
+    <width>800</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,14 +17,14 @@
    <item>
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="0">
-      <widget class="QLabel" name="lblType">
+      <widget class="QLabel" name="lblRelationType">
        <property name="text">
         <string>Type:</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLabel" name="txtType">
+      <widget class="QLabel" name="txtRelationType">
        <property name="font">
         <font>
          <bold>true</bold>
@@ -36,14 +36,14 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QLabel" name="lblComment">
+      <widget class="QLabel" name="lblRelationComment">
        <property name="text">
         <string>Group Comment:</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QPlainTextEdit" name="txtComment">
+      <widget class="QPlainTextEdit" name="txtRelationComment">
        <property name="maximumSize">
         <size>
          <width>16777215</width>
@@ -53,14 +53,14 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QLabel" name="lblDateAdded">
+      <widget class="QLabel" name="lblRelationDateAdded">
        <property name="text">
         <string>Date Added:</string>
        </property>
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QLabel" name="txtDateAdded">
+      <widget class="QLabel" name="txtRelationDateAdded">
        <property name="text">
         <string>2026-01-01</string>
        </property>
@@ -69,14 +69,14 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="lblTracks">
+    <widget class="QLabel" name="lblRelationTracks">
      <property name="text">
       <string>Tracks in this relation (double-click a comment to edit it):</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QTableWidget" name="tableTracks"/>
+    <widget class="QTableWidget" name="tableRelationTracks"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="buttonLayout">

@@ -3,6 +3,7 @@
 #include <QSqlQuery>
 #include <QtDebug>
 
+#include "library/dao/trackschema.h"
 #include "library/queryutil.h"
 #include "util/assert.h"
 #include "util/db/fwdsqlquery.h"
@@ -79,7 +80,8 @@ DbId RelationsDao::addRelation(const QString& type, const QString& description) 
     {
         FwdSqlQuery exists(m_database,
                 QStringLiteral("SELECT id FROM " RELATIONS_TABLE
-                               " WHERE rel_type=:type"));
+                               // " WHERE rel_type=:type"));
+                               " WHERE rel_type=:type COLLATE NOCASE"));
         DEBUG_ASSERT(exists.isPrepared() && !exists.hasError());
         exists.bindValue(":type", type);
         if (exists.execPrepared() && exists.next()) {
@@ -139,6 +141,130 @@ bool RelationsDao::removeRelation(DbId id) const {
     return true;
 }
 
+int RelationsDao::groupCountForRelation(DbId id) const {
+    if (!m_database.isOpen() || !id.isValid()) {
+        return 0;
+    }
+
+    FwdSqlQuery query(m_database,
+            QStringLiteral("SELECT COUNT(*) AS cnt FROM " RELATION_GROUPS_TABLE
+                           " WHERE rg_rel_id=:id"));
+    DEBUG_ASSERT(query.isPrepared() && !query.hasError());
+    query.bindValue(":id", id.toVariant());
+
+    if (!query.execPrepared() || !query.next()) {
+        return 0;
+    }
+    const QSqlRecord record = query.record();
+    return record.value(record.indexOf("cnt")).toInt();
+}
+
+bool RelationsDao::updateRelation(DbId id,
+        const QString& type,
+        const QString& description) const {
+    if (!m_database.isOpen() || !id.isValid() || type.isEmpty()) {
+        return false;
+    }
+
+    // Another type with the same name (ignoring case) is not allowed
+    {
+        FwdSqlQuery exists(m_database,
+                QStringLiteral("SELECT id FROM " RELATIONS_TABLE
+                               " WHERE rel_type=:type COLLATE NOCASE AND id<>:id"));
+        DEBUG_ASSERT(exists.isPrepared() && !exists.hasError());
+        exists.bindValue(":type", type);
+        exists.bindValue(":id", id.toVariant());
+        if (exists.execPrepared() && exists.next()) {
+            return false;
+        }
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral("UPDATE " RELATIONS_TABLE
+                                 " SET rel_type=:type, rel_description=:description "
+                                 "WHERE id=:id"));
+    query.bindValue(":type", type);
+    query.bindValue(":description", description);
+    query.bindValue(":id", id.toVariant());
+
+    if (!query.exec()) {
+        LOG_FAILED_QUERY(query);
+        return false;
+    }
+    return true;
+}
+
+bool RelationsDao::mergeRelations(DbId sourceId, DbId targetId) const {
+    if (!m_database.isOpen() || !sourceId.isValid() || !targetId.isValid() ||
+            sourceId == targetId) {
+        return false;
+    }
+
+    ScopedTransaction transaction(m_database);
+
+    QSqlQuery moveGroups(m_database);
+    moveGroups.prepare(QStringLiteral("UPDATE " RELATION_GROUPS_TABLE
+                                      " SET rg_rel_id=:target WHERE rg_rel_id=:source"));
+    moveGroups.bindValue(":target", targetId.toVariant());
+    moveGroups.bindValue(":source", sourceId.toVariant());
+    if (!moveGroups.exec()) {
+        LOG_FAILED_QUERY(moveGroups);
+        return false;
+    }
+
+    QSqlQuery deleteSource(m_database);
+    deleteSource.prepare(QStringLiteral("DELETE FROM " RELATIONS_TABLE " WHERE id=:source"));
+    deleteSource.bindValue(":source", sourceId.toVariant());
+    if (!deleteSource.exec()) {
+        LOG_FAILED_QUERY(deleteSource);
+        return false;
+    }
+
+    return transaction.commit();
+}
+
+bool RelationsDao::removeRelationWithGroups(DbId id) const {
+    if (!m_database.isOpen() || !id.isValid()) {
+        return false;
+    }
+
+    ScopedTransaction transaction(m_database);
+
+    const QStringList statements = {
+            QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                           " WHERE rgt_group_id IN (SELECT id FROM " RELATION_GROUPS_TABLE
+                           " WHERE rg_rel_id=:id)"),
+            QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE " WHERE rg_rel_id=:id"),
+            QStringLiteral("DELETE FROM " RELATIONS_TABLE " WHERE id=:id")};
+    for (const QString& statement : statements) {
+        QSqlQuery query(m_database);
+        query.prepare(statement);
+        query.bindValue(":id", id.toVariant());
+        if (!query.exec()) {
+            LOG_FAILED_QUERY(query);
+            return false;
+        }
+    }
+
+    return transaction.commit();
+}
+
+int RelationsDao::removeUnusedRelations() const {
+    if (!m_database.isOpen()) {
+        return 0;
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral("DELETE FROM " RELATIONS_TABLE
+                                 " WHERE NOT EXISTS (SELECT 1 FROM " RELATION_GROUPS_TABLE
+                                 " WHERE rg_rel_id = " RELATIONS_TABLE ".id)"));
+    if (!query.exec()) {
+        LOG_FAILED_QUERY(query);
+        return 0;
+    }
+    return query.numRowsAffected();
+}
+
 DbId RelationsDao::createGroup(DbId relationId,
         const QList<TrackId>& tracks,
         const QString& comment) const {
@@ -147,9 +273,22 @@ DbId RelationsDao::createGroup(DbId relationId,
         return DbId();
     }
 
-    QList<TrackId> unique = tracks;
+    /*QList<TrackId> unique = tracks;
     std::sort(unique.begin(), unique.end());
     unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
+    if (unique.size() < 2) {
+        return DbId();
+    }*/
+    // Remove duplicates but keep the order chosen by the user: the order in
+    // which the tracks are inserted is the order of the group
+    QList<TrackId> unique;
+    QSet<TrackId> seenTrackIds;
+    for (const TrackId& trackId : tracks) {
+        if (trackId.isValid() && !seenTrackIds.contains(trackId)) {
+            seenTrackIds.insert(trackId);
+            unique.append(trackId);
+        }
+    }
     if (unique.size() < 2) {
         return DbId();
     }
@@ -424,8 +563,9 @@ QList<RelationsDao::TrackRelationRow> RelationsDao::relationsForTrack(TrackId tr
 }
 
 RelationsDao::RelationGroup RelationsDao::getGroupById(DbId groupId) const {
-    if (!m_database.isOpen() || !groupId.isValid())
+    if (!m_database.isOpen() || !groupId.isValid()) {
         return RelationGroup{};
+    }
 
     FwdSqlQuery query(m_database,
             QStringLiteral(
@@ -437,10 +577,87 @@ RelationsDao::RelationGroup RelationsDao::getGroupById(DbId groupId) const {
     return RelationGroup{};
 }
 
+void RelationsDao::repairDatabase(const QSqlDatabase& database) const {
+    // NOTE: No transactions, all queries are independent maintenance
+    // operations (same as the other repairDatabase() functions).
+    // The passed database is used instead of m_database, because the DAOs
+    // are not necessarily connected yet when this is called.
+
+    // Tracks of relation groups
+    {
+        // Remove library purged tracks from relation groups
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_track_id NOT IN (SELECT id FROM " LIBRARY_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "library purged tracks from relation groups";
+        }
+    }
+    {
+        // Remove the tracks of groups that refer to a non-existent relation type
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id IN (SELECT id FROM " RELATION_GROUPS_TABLE
+                               " WHERE rg_rel_id NOT IN (SELECT id FROM " RELATIONS_TABLE "))"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from relation groups of non-existent relation types";
+        }
+    }
+    {
+        // Delete groups of non-existent relation types
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE
+                               " WHERE rg_rel_id NOT IN (SELECT id FROM " RELATIONS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Deleted" << query.numRowsAffected()
+                              << "relation groups of non-existent relation types";
+        }
+    }
+    {
+        // Remove tracks from non-existent groups
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id NOT IN (SELECT id "
+                               "FROM " RELATION_GROUPS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from non-existent relation groups";
+        }
+    }
+
+    // A relation group needs at least 2 tracks
+    {
+        // Remove the single track of groups that have fewer than 2 tracks left
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id IN (SELECT rgt_group_id "
+                               "FROM " RELATION_GROUP_TRACKS_TABLE
+                               " GROUP BY rgt_group_id HAVING COUNT(*) < 2)"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Removed" << query.numRowsAffected()
+                              << "tracks from relation groups with fewer than 2 tracks";
+        }
+    }
+    {
+        // Delete groups without tracks
+        FwdSqlQuery query(database,
+                QStringLiteral("DELETE FROM " RELATION_GROUPS_TABLE
+                               " WHERE id NOT IN (SELECT rgt_group_id "
+                               "FROM " RELATION_GROUP_TRACKS_TABLE ")"));
+        if (query.execPrepared() && (query.numRowsAffected() > 0)) {
+            kLogger.warning() << "Deleted" << query.numRowsAffected()
+                              << "relation groups without tracks";
+        }
+    }
+}
+
 QList<RelationsDao::RelationGroup> RelationsDao::allGroups() const {
     QList<RelationGroup> groups;
-    if (!m_database.isOpen())
+    if (!m_database.isOpen()) {
         return groups;
+    }
 
     FwdSqlQuery query(m_database,
             QStringLiteral(

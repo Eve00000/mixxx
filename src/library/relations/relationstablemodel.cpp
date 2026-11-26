@@ -184,8 +184,9 @@ DbId RelationsTableModel::getRelationId(const QModelIndex& index) const {
 }
 
 void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
-    if (!pTrack)
+    if (!pTrack) {
         return;
+    }
     m_pDeckTrack = pTrack;
     TrackId trackId = pTrack->getId();
     QString trackTableName = QStringLiteral("relations_track_%1").arg(trackId.toString());
@@ -216,7 +217,8 @@ void RelationsTableModel::showRelatedTracks(TrackPointer pTrack) {
             "%4")
                                   .arg(trackTableName,
                                           trackId.toString(),
-                                          relationSearchClause(m_relationSearch,
+                                          // relationSearchClause(m_relationSearch,
+                                          relationFilterClause(
                                                   // QStringLiteral("AND")));
                                                   QStringLiteral("AND")),
                                           relationSortClause());
@@ -275,7 +277,8 @@ void RelationsTableModel::showAllRelations() {
             //"ORDER BY g.id, library.artist, library.title")
             "%3")
                                   .arg(tableName,
-                                          relationSearchClause(m_relationSearch,
+                                          // relationSearchClause(m_relationSearch,
+                                          relationFilterClause(
                                                   //       QStringLiteral("WHERE")));
                                                   QStringLiteral("WHERE")),
                                           relationSortClause());
@@ -398,6 +401,33 @@ bool RelationsTableModel::sortOverride(int column, Qt::SortOrder order) {
     select();
     // the base class sorting must not run if sort on relationfields
     return true;
+}
+
+QString RelationsTableModel::relationFilterClause(const QString& keyword) const {
+    QString clause;
+    QString searchKeyword = keyword;
+    if (m_relationTypeFilter.isValid()) {
+        // Only the relations of the chosen type
+        clause = keyword + QStringLiteral(" r.id = ") + m_relationTypeFilter.toString() +
+                QLatin1Char(' ');
+        searchKeyword = QStringLiteral("AND");
+    }
+    return clause + relationSearchClause(m_relationSearch, searchKeyword);
+}
+
+void RelationsTableModel::setTypeFilter(DbId relationId) {
+    if (m_relationTypeFilter == relationId) {
+        return;
+    }
+    m_relationTypeFilter = relationId;
+    // The filter is part of the SQL of the relation views,
+    // rebuild the current view and reload it
+    if (m_pDeckTrack) {
+        showRelatedTracks(m_pDeckTrack);
+    } else {
+        showAllRelations();
+    }
+    select();
 }
 
 void RelationsTableModel::searchRelations(const QString& searchText) {

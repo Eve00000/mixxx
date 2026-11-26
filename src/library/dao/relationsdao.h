@@ -53,6 +53,14 @@ class RelationsDao : public DAO {
     Relation relationById(DbId id) const;
     DbId addRelation(const QString& type, const QString& description) const;
     bool removeRelation(DbId id) const;
+    bool updateRelation(DbId id, const QString& type, const QString& description) const;
+    // Moves all groups of sourceId to targetId and deletes sourceId
+    bool mergeRelations(DbId sourceId, DbId targetId) const;
+    // Deletes the relation type together with all its groups
+    bool removeRelationWithGroups(DbId id) const;
+    // Deletes all relation types that have no groups, returns how many
+    int removeUnusedRelations() const;
+    int groupCountForRelation(DbId id) const;
 
     // Groups
     DbId createGroup(DbId relationId,
@@ -75,4 +83,8 @@ class RelationsDao : public DAO {
 
     RelationGroup getGroupById(DbId groupId) const;
     QList<RelationGroup> allGroups() const;
+
+    // Maintenance: removes relation data of library purged tracks, of
+    // non-existent groups and relation types, and groups with fewer than 2 tracks
+    void repairDatabase(const QSqlDatabase& database) const;
 };

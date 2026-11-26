@@ -6,8 +6,8 @@
       <rect>
         <x>0</x>
         <y>0</y>
-        <width>560</width>
-        <height>399</height>
+        <width>800</width>
+        <height>500</height>
       </rect>
     </property>
     <property name="windowTitle">
@@ -48,7 +48,17 @@
               <number>0</number>
             </property>
             <item>
-              <widget class="QPushButton" name="pushButtonSave">
+              <widget class="QComboBox" name="comboBoxRelationType">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Show only the relations of one type.</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationSave">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -61,7 +71,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonEdit">
+              <widget class="QPushButton" name="pushButtonRelationEdit">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -74,7 +84,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonDelete">
+              <widget class="QPushButton" name="pushButtonRelationDelete">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -87,7 +97,7 @@
               </widget>
             </item>
             <item>
-              <widget class="QPushButton" name="pushButtonRemove">
+              <widget class="QPushButton" name="pushButtonRelationRemove">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
@@ -96,6 +106,19 @@
                 </property>
                 <property name="text">
                   <string>Remove</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationTypes">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Rename, merge or delete relation types.</string>
+                </property>
+                <property name="text">
+                  <string>Types</string>
                 </property>
               </widget>
             </item>
