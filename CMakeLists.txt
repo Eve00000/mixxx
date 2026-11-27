@@ -1479,6 +1479,7 @@ add_library(
   src/library/relations/dlgrelationtypes.cpp
   src/library/relations/dlgsaverelation.cpp
   src/library/relations/dlglinkedtracks.cpp
+  src/library/relations/relationautogenerator.cpp
   src/library/relations/relationsfeature.cpp
   src/library/rhythmbox/rhythmboxfeature.cpp
   src/library/scanner/importfilestask.cpp

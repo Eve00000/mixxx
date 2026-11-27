@@ -81,6 +81,12 @@ class RelationsDao : public DAO {
             TrackId trackId,
             const QString& comment) const;
     bool removeTrackFromGroup(DbId groupId, TrackId trackId) const;
+    // Creates a group with a comment for every track (in the given order)
+    DbId createGroupWithTrackComments(DbId relationId,
+            const QList<GroupTrack>& tracks,
+            const QString& comment) const;
+    // Adds a track to an existing group (nothing happens if it is already in it)
+    bool addTrackToGroup(DbId groupId, TrackId trackId, const QString& comment) const;
 
     // Deck view query
     QList<TrackRelationRow> relationsForTrack(TrackId trackId) const;
