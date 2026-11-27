@@ -184,6 +184,11 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
         }
     }
 
+    // Declared outside the group loop so clazy-container-inside-loop does not
+    // flag it and the capacity is reused across groups. Cleared before each
+    // new group is built.
+    QList<RelationsDao::GroupTrack> groupTracks;
+
     int begin = 0;
     while (begin < candidates.size()) {
         int end = begin;
@@ -236,7 +241,7 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
             if (!relationId.isValid()) {
                 ++result.failedGroups;
             } else {
-                QList<RelationsDao::GroupTrack> groupTracks;
+                groupTracks.clear();
                 groupTracks.reserve(end - begin);
                 for (int i = begin; i < end; ++i) {
                     const Candidate& candidate = candidates.at(i);
