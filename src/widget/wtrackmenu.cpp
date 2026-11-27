@@ -1047,7 +1047,7 @@ void WTrackMenu::promoteSelectionToCmrtCanonical() {
             pTrackCollectionManager->dbConnectionPool(),
             trackIds,
             [pTrackCollectionManager](int promotedCount) {
-                if (promotedCount > 5) {
+                if (promotedCount > 0) {
                     emit pTrackCollectionManager->cmrtDataChanged();
                 }
             });

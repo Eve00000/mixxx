@@ -130,6 +130,16 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
         }
     }
 
+    // Optional extra join to a second table (eg cmrt_groups). When set, the
+    // joined table has the alias x and is available to the SQL expressions of
+    // the rule. It is a LEFT JOIN because the joined row only matches some
+    // tracks of a group (eg only the canonical track); the other tracks of the
+    // group must still be returned.
+    const QString extraJoin = rule.joinTable.isEmpty()
+            ? QString()
+            : QStringLiteral("LEFT JOIN %1 x ON x.%2 = t.%3 ")
+                      .arg(rule.joinTable, rule.joinKeyColumn, rule.keyColumn);
+
     // The tracks that share their value with at least one other track,
     // grouped by value. Hidden tracks are ignored.
     QList<Candidate> candidates;
@@ -142,6 +152,7 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                         "SELECT t.%2 AS k, t.%3 AS id, %4 AS gc, %5 AS tc FROM "
                         "%1 t "
                         "JOIN " LIBRARY_TABLE " l ON l.id = t.%3 "
+                        "%7"
                         "WHERE l.mixxx_deleted = 0 AND t.%2 IS NOT NULL AND "
                         "TRIM(t.%2) <> '' "
                         "AND t.%2 IN (SELECT t2.%2 FROM %1 t2 "
@@ -155,7 +166,8 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                                 rule.trackIdColumn,
                                 rule.groupCommentExpression,
                                 rule.trackCommentExpression,
-                                orderExpression));
+                                orderExpression,
+                                extraJoin));
         if (!query.isPrepared() || !query.execPrepared()) {
             kLogger.warning() << "Failed to read the tracks for relation type"
                               << rule.relationType;
@@ -254,6 +266,42 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
 // static
 QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
     QList<Rule> allRules = {
+            libraryRule(QStringLiteral("Artist"),
+                    QStringLiteral("Tracks with the same Artist"),
+                    QStringLiteral("artist"),
+                    QStringLiteral("artist")),
+            libraryRule(QStringLiteral("Album"),
+                    QStringLiteral("Tracks with the same Album"),
+                    QStringLiteral("album"),
+                    QStringLiteral("album")),
+            libraryRule(QStringLiteral("Album-Artist"),
+                    QStringLiteral("Tracks with the same Album-Artist"),
+                    QStringLiteral("album_artist"),
+                    QStringLiteral("album_artist")),
+            libraryRule(QStringLiteral("Title"),
+                    QStringLiteral("Tracks with the same Title"),
+                    QStringLiteral("title"),
+                    QStringLiteral("title")),
+            libraryRule(QStringLiteral("Composer"),
+                    QStringLiteral("Tracks with the same Composer"),
+                    QStringLiteral("composer"),
+                    QStringLiteral("composer")),
+            libraryRule(QStringLiteral("Year"),
+                    QStringLiteral("Tracks with the same Year"),
+                    QStringLiteral("year"),
+                    QStringLiteral("year")),
+            libraryRule(QStringLiteral("Color"),
+                    QStringLiteral("Tracks with the same Color"),
+                    QStringLiteral("color"),
+                    QStringLiteral("color")),
+            libraryRule(QStringLiteral("BPM"),
+                    QStringLiteral("Tracks with the same BPM"),
+                    QStringLiteral("bpm"),
+                    QStringLiteral("bpm")),
+            libraryRule(QStringLiteral("KEY"),
+                    QStringLiteral("Tracks with the same KEY"),
+                    QStringLiteral("key_id"),
+                    QStringLiteral("key")),
             libraryRule(QStringLiteral("MB-Recording"),
                     QStringLiteral("Tracks with the same MusicBrainz recording id"),
                     QStringLiteral("musicbrainz_recording_id"),
@@ -272,9 +320,9 @@ QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
                     QStringLiteral("artist")),
     };
 
-    // CMRT: tracks that are members of the same CMRT group. The group is
-    // recognized by its group comment, the track comment tells which track
-    // is the canonical one.
+    //// CMRT: tracks that are members of the same CMRT group. The group is
+    //// recognized by its group comment, the track comment tells which track
+    //// is the canonical one.
     {
         Rule cmrt;
         cmrt.relationType = QStringLiteral("CMRT");
@@ -282,17 +330,32 @@ QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
         cmrt.table = QStringLiteral("cmrt_members");
         cmrt.trackIdColumn = QStringLiteral("track_id");
         cmrt.keyColumn = QStringLiteral("group_id");
+        // The canonical track is the member whose library id equals the
+        // canonical_track_id of the group. It is looked up in cmrt_groups,
+        // which is joined with the alias x.
+        cmrt.joinTable = QStringLiteral("cmrt_groups");
+        cmrt.joinKeyColumn = QStringLiteral("group_id");
         cmrt.groupCommentExpression = QStringLiteral("'CMRT-ID' || t.group_id");
+        // NOTE: compare against t.track_id (the rule's own track id column),
+        // which is the same value as l.id, but is always in scope and clearly
+        // refers to the member row. CAST to INTEGER so a type mismatch between
+        // cmrt_groups.canonical_track_id and cmrt_members.track_id cannot make
+        // the comparison silently fail.
         cmrt.trackCommentExpression = QStringLiteral(
-                "CASE WHEN t.offset_from_canonical = 0.0 THEN 'Canonical' ELSE 'CMRT-MEMBER' END");
-        // The canonical track is the first track of the group
+                "CASE WHEN CAST(x.canonical_track_id AS INTEGER) = "
+                "CAST(t.track_id AS INTEGER) "
+                "THEN 'Canonical' ELSE 'CMRT-MEMBER' END");
+        // The canonical track must be the first track of the group
         cmrt.orderExpression = QStringLiteral(
-                "CASE WHEN t.offset_from_canonical = 0.0 THEN 0 ELSE 1 END");
+                "CASE WHEN CAST(x.canonical_track_id AS INTEGER) = "
+                "CAST(t.track_id AS INTEGER) "
+                "THEN 0 ELSE 1 END");
         cmrt.identifyByGroupComment = true;
         cmrt.requiredColumns = {
                 QStringLiteral("cmrt_members.group_id"),
                 QStringLiteral("cmrt_members.track_id"),
-                QStringLiteral("cmrt_members.offset_from_canonical")};
+                QStringLiteral("cmrt_groups.group_id"),
+                QStringLiteral("cmrt_groups.canonical_track_id")};
         allRules.append(cmrt);
     }
 
@@ -344,265 +407,3 @@ QList<RelationAutoGenerator::RuleResult> RelationAutoGenerator::apply(
     transaction.commit();
     return results;
 }
-
-// #include "library/relations/relationautogenerator.h"
-//
-// #include <QHash>
-// #include <QSet>
-// #include <QSqlQuery>
-// #include <QSqlRecord>
-// #include <QStringList>
-// #include <utility>
-//
-// #include "library/dao/trackschema.h"
-// #include "library/queryutil.h"
-// #include "util/assert.h"
-// #include "util/db/fwdsqlquery.h"
-// #include "util/logger.h"
-//
-// namespace {
-//
-// const mixxx::Logger kLogger("RelationAutoGenerator");
-//
-//// The names of the columns of the library table
-// QSet<QString> libraryColumns(const QSqlDatabase& database) {
-//     QSet<QString> columns;
-//     QSqlQuery query(database);
-//     if (!query.exec(QStringLiteral("PRAGMA table_info(" LIBRARY_TABLE ")")))
-//     {
-//         LOG_FAILED_QUERY(query);
-//         return columns;
-//     }
-//     while (query.next()) {
-//         // Columns of table_info: cid, name, type, notnull, dflt_value, pk
-//         columns.insert(query.value(1).toString());
-//     }
-//     return columns;
-// }
-//
-// struct Candidate {
-//     QString key;
-//     QString groupComment;
-//     TrackId trackId;
-// };
-//
-// RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
-//         RelationsDao& relationsDao,
-//         const RelationAutoGenerator::Rule& rule) {
-//     RelationAutoGenerator::RuleResult result;
-//     result.relationType = rule.relationType;
-//
-//     // The relation type of the rule. It is created when the first group is
-//     needed. DbId relationId;
-//     {
-//         const QList<RelationsDao::Relation> relations =
-//         relationsDao.allRelations(); for (const RelationsDao::Relation&
-//         relation : relations) {
-//             if (relation.type.compare(rule.relationType, Qt::CaseInsensitive)
-//             == 0) {
-//                 relationId = relation.id;
-//                 break;
-//             }
-//         }
-//     }
-//
-//     // The groups that already exist for this relation type. The shared value
-//     // is the track comment, that is how a group is recognized.
-//     QHash<QString, QVariant> groupIdByKey;
-//     QHash<QString, QSet<TrackId>> trackIdsByGroup;
-//     if (relationId.isValid()) {
-//         {
-//             FwdSqlQuery query(database,
-//                     QStringLiteral("SELECT gt.rgt_comment AS k, g.id AS
-//                     group_id FROM " RELATION_GROUPS_TABLE
-//                                    " g JOIN " RELATION_GROUP_TRACKS_TABLE
-//                                    " gt ON gt.rgt_group_id = g.id "
-//                                    "WHERE g.rg_rel_id=:rel_id AND
-//                                    gt.rgt_comment IS NOT NULL " "AND
-//                                    gt.rgt_comment <> ''"));
-//             DEBUG_ASSERT(query.isPrepared() && !query.hasError());
-//             query.bindValue(":rel_id", relationId.toVariant());
-//             if (query.execPrepared()) {
-//                 while (query.next()) {
-//                     const QSqlRecord record = query.record();
-//                     groupIdByKey.insert(record.value(QStringLiteral("k")).toString(),
-//                             record.value(QStringLiteral("group_id")));
-//                 }
-//             }
-//         }
-//         {
-//             FwdSqlQuery query(database,
-//                     QStringLiteral("SELECT rgt_group_id, rgt_track_id FROM "
-//                     RELATION_GROUP_TRACKS_TABLE
-//                                    " WHERE rgt_group_id IN (SELECT id FROM "
-//                                    RELATION_GROUPS_TABLE " WHERE
-//                                    rg_rel_id=:rel_id)"));
-//             DEBUG_ASSERT(query.isPrepared() && !query.hasError());
-//             query.bindValue(":rel_id", relationId.toVariant());
-//             if (query.execPrepared()) {
-//                 while (query.next()) {
-//                     const QSqlRecord record = query.record();
-//                     trackIdsByGroup[record.value(QStringLiteral("rgt_group_id")).toString()]
-//                             .insert(TrackId(record.value(QStringLiteral("rgt_track_id"))));
-//                 }
-//             }
-//         }
-//     }
-//
-//     // The tracks that share their value with at least one other track,
-//     // grouped by value. The first track of a value is the one with the
-//     lowest id. QList<Candidate> candidates;
-//     {
-//         FwdSqlQuery query(database,
-//                 QStringLiteral("SELECT l.%1 AS k, l.id AS id, l.%2 AS gc FROM
-//                 " LIBRARY_TABLE " l "
-//                                "WHERE l.mixxx_deleted = 0 AND l.%1 IS NOT
-//                                NULL AND TRIM(l.%1) <> '' " "AND l.%1 IN
-//                                (SELECT %1 FROM " LIBRARY_TABLE " " "WHERE
-//                                mixxx_deleted = 0 AND %1 IS NOT NULL AND
-//                                TRIM(%1) <> '' " "GROUP BY %1 HAVING COUNT(*)
-//                                >= 2) " "ORDER BY l.%1, l.id")
-//                         .arg(rule.keyColumn, rule.groupCommentColumn));
-//         if (!query.isPrepared() || !query.execPrepared()) {
-//             kLogger.warning() << "Failed to read the tracks for relation
-//             type"
-//                               << rule.relationType;
-//             ++result.failedGroups;
-//             return result;
-//         }
-//         while (query.next()) {
-//             const QSqlRecord record = query.record();
-//             candidates.append(Candidate{
-//                     record.value(QStringLiteral("k")).toString(),
-//                     record.value(QStringLiteral("gc")).toString(),
-//                     TrackId(record.value(QStringLiteral("id")))});
-//         }
-//     }
-//
-//     int begin = 0;
-//     while (begin < candidates.size()) {
-//         int end = begin;
-//         while (end < candidates.size() &&
-//                 candidates.at(end).key == candidates.at(begin).key) {
-//             ++end;
-//         }
-//         const QString key = candidates.at(begin).key;
-//
-//         const auto existing = groupIdByKey.constFind(key);
-//         if (existing != groupIdByKey.constEnd()) {
-//             // The group exists: only add the tracks that are not in it yet
-//             const DbId groupId(existing.value());
-//             const QSet<TrackId> members =
-//             trackIdsByGroup.value(groupId.toString()); int added = 0; bool
-//             failed = false; for (int i = begin; i < end; ++i) {
-//                 const TrackId trackId = candidates.at(i).trackId;
-//                 if (members.contains(trackId)) {
-//                     continue;
-//                 }
-//                 if (relationsDao.addTrackToGroup(groupId, trackId, key)) {
-//                     ++added;
-//                 } else {
-//                     failed = true;
-//                 }
-//             }
-//             if (failed) {
-//                 ++result.failedGroups;
-//             } else if (added > 0) {
-//                 ++result.extendedGroups;
-//             } else {
-//                 ++result.unchangedGroups;
-//             }
-//         } else {
-//             if (!relationId.isValid()) {
-//                 relationId = relationsDao.addRelation(rule.relationType,
-//                 rule.description);
-//             }
-//             if (!relationId.isValid()) {
-//                 ++result.failedGroups;
-//             } else {
-//                 QList<RelationsDao::GroupTrack> groupTracks;
-//                 groupTracks.reserve(end - begin);
-//                 for (int i = begin; i < end; ++i) {
-//                     groupTracks.append(RelationsDao::GroupTrack{candidates.at(i).trackId,
-//                     key});
-//                 }
-//                 const DbId groupId =
-//                 relationsDao.createGroupWithTrackComments(
-//                         relationId,
-//                         groupTracks,
-//                         candidates.at(begin).groupComment.trimmed());
-//                 if (groupId.isValid()) {
-//                     ++result.createdGroups;
-//                 } else {
-//                     ++result.failedGroups;
-//                 }
-//             }
-//         }
-//         begin = end;
-//     }
-//
-//     kLogger.info() << rule.relationType << "created" << result.createdGroups
-//                    << "extended" << result.extendedGroups
-//                    << "unchanged" << result.unchangedGroups
-//                    << "failed" << result.failedGroups;
-//     return result;
-// }
-//
-// } // namespace
-//
-//// static
-// QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
-//     return {
-//             Rule{QStringLiteral("MB-Recording"),
-//                     QStringLiteral("Tracks with the same MusicBrainz
-//                     recording id"),
-//                     QStringLiteral("musicbrainz_recording_id"),
-//                     QStringLiteral("title")},
-//             Rule{QStringLiteral("MB-Release"),
-//                     QStringLiteral("Tracks with the same MusicBrainz release
-//                     id"), QStringLiteral("musicbrainz_release_id"),
-//                     QStringLiteral("album")},
-//             Rule{QStringLiteral("MB-Track"),
-//                     QStringLiteral("Tracks with the same MusicBrainz track
-//                     id"), QStringLiteral("musicbrainz_track_id"),
-//                     QStringLiteral("title")},
-//             Rule{QStringLiteral("MB-Artist"),
-//                     QStringLiteral("Tracks with the same MusicBrainz artist
-//                     id"), QStringLiteral("musicbrainz_artist_id"),
-//                     QStringLiteral("artist")},
-//             Rule{QStringLiteral("CMRT"),
-//                     QStringLiteral("Tracks with the same CMRT id"),
-//                     QStringLiteral("musicbrainz_artist_id"),
-//                     QStringLiteral("artist")},
-//     };
-// }
-//
-//// static
-// QList<RelationAutoGenerator::Rule> RelationAutoGenerator::availableRules(
-//         const QSqlDatabase& database) {
-//     QList<Rule> available;
-//     const QSet<QString> columns = libraryColumns(database);
-//     const QList<Rule> allRules = rules();
-//     for (const Rule& rule : allRules) {
-//         if (columns.contains(rule.keyColumn) &&
-//         columns.contains(rule.groupCommentColumn)) {
-//             available.append(rule);
-//         }
-//     }
-//     return available;
-// }
-//
-//// static
-// QList<RelationAutoGenerator::RuleResult> RelationAutoGenerator::apply(
-//         const QSqlDatabase& database,
-//         RelationsDao& relationsDao,
-//         const QList<Rule>& rules) {
-//     QList<RuleResult> results;
-//     // One transaction for everything: thousands of inserts are much faster
-//     this way ScopedTransaction transaction(database); for (const Rule& rule :
-//     rules) {
-//         results.append(applyRule(database, relationsDao, rule));
-//     }
-//     transaction.commit();
-//     return results;
-// }
