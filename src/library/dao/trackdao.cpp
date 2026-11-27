@@ -4,7 +4,9 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QThread>
+#include <QtConcurrent>
 #include <QtDebug>
 
 #ifdef __SQLITE3__
@@ -33,6 +35,8 @@
 #include "track/track.h"
 #include "util/assert.h"
 #include "util/datetime.h"
+#include "util/db/dbconnectionpooled.h"
+#include "util/db/dbconnectionpooler.h"
 #include "util/db/fwdsqlquery.h"
 #include "util/db/sqlite.h"
 #include "util/db/sqlstringformatter.h"
@@ -1895,6 +1899,56 @@ TrackPointer TrackDAO::getCmrtCanonicalTrack(TrackId trackId, double* pOffsetSec
 bool TrackDAO::promoteCmrtCanonical(TrackId trackId) const {
     mixxx::CmrtGroupingService groupingService(m_fingerprintDao, m_pConfig);
     return groupingService.promoteToCanonical(trackId);
+}
+
+// Trying to solve GUI Freeze when analyzing fingerprints
+// -> Runs the canonical re-election for all given tracks off the GUI
+// thread. The synchronous promoteCmrtCanonical() above is kept unchanged.
+bool TrackDAO::promoteCmrtCanonicalAsync(
+        mixxx::DbConnectionPoolPtr pDbConnectionPool,
+        const QList<TrackId>& trackIds,
+        std::function<void(int)> onFinished) {
+    if (m_cmrtPromotionInProgress || trackIds.isEmpty()) {
+        return false;
+    }
+    m_cmrtPromotionInProgress = true;
+
+    auto* pWatcher = new QFutureWatcher<int>(this);
+    connect(pWatcher,
+            &QFutureWatcher<int>::finished,
+            this,
+            [this, pWatcher, onFinished = std::move(onFinished)]() {
+                const int promotedCount = pWatcher->result();
+                pWatcher->deleteLater();
+                m_cmrtPromotionInProgress = false;
+                if (onFinished) {
+                    onFinished(promotedCount);
+                }
+            });
+
+    const UserSettingsPointer pConfig = m_pConfig;
+    pWatcher->setFuture(QtConcurrent::run([pDbConnectionPool, pConfig, trackIds]() {
+        int promotedCount = 0;
+        // The thread-local database connection must not be closed
+        // before returning from this function.
+        mixxx::DbConnectionPooler dbConnectionPooler(pDbConnectionPool);
+        if (!dbConnectionPooler.isPooling()) {
+            kLogger.warning()
+                    << "Failed to obtain database connection for CMRT promotion";
+            return promotedCount;
+        }
+        QSqlDatabase dbConnection = mixxx::DbConnectionPooled(pDbConnectionPool);
+        TrackFingerprintDao fingerprintDao(pConfig);
+        fingerprintDao.initialize(dbConnection);
+        mixxx::CmrtGroupingService groupingService(fingerprintDao, pConfig);
+        for (const TrackId& trackId : trackIds) {
+            if (groupingService.promoteToCanonical(trackId)) {
+                ++promotedCount;
+            }
+        }
+        return promotedCount;
+    }));
+    return true;
 }
 
 void TrackDAO::applyCmrtOverlayToLoadedTrack(const TrackPointer& pTrack) const {

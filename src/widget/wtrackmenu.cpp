@@ -1008,26 +1008,49 @@ void WTrackMenu::slotMakeCmrtCanonical() {
     promoteSelectionToCmrtCanonical();
 }
 
+// void WTrackMenu::promoteSelectionToCmrtCanonical() {
+//     const TrackIdList trackIds = getTrackIds();
+//     if (trackIds.isEmpty()) {
+//         return;
+//     }
+//
+//     TrackDAO& trackDao = m_pLibrary->trackCollectionManager()
+//                                  ->internalCollection()
+//                                  ->getTrackDAO();
+//
+//     bool anyPromoted = false;
+//     for (const TrackId& id : std::as_const(trackIds)) {
+//         if (trackDao.promoteCmrtCanonical(id)) {
+//             anyPromoted = true;
+//         }
+//     }
+//
+//     if (anyPromoted) {
+//         emit m_pLibrary->trackCollectionManager()->cmrtDataChanged();
+//     }
+// }
+
 void WTrackMenu::promoteSelectionToCmrtCanonical() {
     const TrackIdList trackIds = getTrackIds();
     if (trackIds.isEmpty()) {
         return;
     }
 
-    TrackDAO& trackDao = m_pLibrary->trackCollectionManager()
-                                 ->internalCollection()
-                                 ->getTrackDAO();
+    TrackCollectionManager* pTrackCollectionManager = m_pLibrary->trackCollectionManager();
+    TrackDAO& trackDao = pTrackCollectionManager->internalCollection()->getTrackDAO();
 
-    bool anyPromoted = false;
-    for (const TrackId& id : std::as_const(trackIds)) {
-        if (trackDao.promoteCmrtCanonical(id)) {
-            anyPromoted = true;
-        }
-    }
-
-    if (anyPromoted) {
-        emit m_pLibrary->trackCollectionManager()->cmrtDataChanged();
-    }
+    // Trying to solve GUI Freeze when analyzing fingerprints
+    // -> The re-election runs on a background thread. The callback below is
+    // invoked on the GUI thread once all selected tracks have been processed.
+    // The TrackCollectionManager outlives this menu, so capturing it is safe.
+    trackDao.promoteCmrtCanonicalAsync(
+            pTrackCollectionManager->dbConnectionPool(),
+            trackIds,
+            [pTrackCollectionManager](int promotedCount) {
+                if (promotedCount > 5) {
+                    emit pTrackCollectionManager->cmrtDataChanged();
+                }
+            });
 }
 
 int WTrackMenu::getCommonTrackRating() const {

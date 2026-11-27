@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QString>
 #include <QtSql/QSqlQuery>
+#include <functional>
 #include <memory>
 
 #include "library/dao/dao.h"
@@ -14,6 +15,7 @@
 #include "preferences/usersettings.h"
 #include "track/globaltrackcache.h"
 #include "util/class.h"
+#include "util/db/dbconnectionpool.h"
 
 class SqlTransaction;
 class PlaylistDAO;
@@ -145,6 +147,18 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     // already runs automatically when a fresh AcoustID match's quality score
     // beats the existing canonical, just triggered by user choice
     bool promoteCmrtCanonical(TrackId trackId) const;
+
+    // Trying to solve GUI Freeze when analyzing fingerprints
+    // -> Same as promoteCmrtCanonical(), but promotes all given tracks one
+    // after the other on a background thread with its own thread-local
+    // database connection and TrackFingerprintDao.
+    // onFinished is invoked on the GUI thread with the number of promoted
+    // tracks. Returns false if nothing was started (empty list, or a
+    // promotion is already running).
+    bool promoteCmrtCanonicalAsync(
+            mixxx::DbConnectionPoolPtr pDbConnectionPool,
+            const QList<TrackId>& trackIds,
+            std::function<void(int)> onFinished);
 
     bool clearMusicBrainzData(TrackId trackId) const;
 
@@ -278,6 +292,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     int m_queryLibraryMixxxDeletedColumn;
 
     QSet<TrackId> m_tracksAddedSet;
+    bool m_cmrtPromotionInProgress = false;
     std::unique_ptr<SegmentsDAO> m_pSegmentsDao;
 
     DISALLOW_COPY_AND_ASSIGN(TrackDAO);

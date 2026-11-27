@@ -117,6 +117,10 @@ class TrackCollectionManager : public QObject,
     }
     std::optional<LibraryScanResultSummary> takePendingLibraryScanSummary();
 
+    mixxx::DbConnectionPoolPtr dbConnectionPool() const {
+        return m_pDbConnectionPool;
+    }
+
   signals:
     void libraryScanStarted();
     void libraryScanFinished();
@@ -169,4 +173,6 @@ class TrackCollectionManager : public QObject,
     std::atomic_bool m_libraryScanActive{false};
     std::mutex m_libraryScanSummaryMutex;
     std::optional<LibraryScanResultSummary> m_pendingLibraryScanSummary;
+
+    mixxx::DbConnectionPoolPtr m_pDbConnectionPool;
 };
