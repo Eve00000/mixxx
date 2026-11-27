@@ -39,9 +39,9 @@ TrackCollectionManager::TrackCollectionManager(QObject* parent,
         deleteTrackFn_t /*only-needed-for-testing*/ deleteTrackForTestingFn)
         : QObject(parent),
           m_pConfig(pConfig),
-          m_pDbConnectionPool(pDbConnectionPool),
           m_pInternalCollection(createInternalTrackCollection(
-                  this, pConfig, deleteTrackForTestingFn)) {
+                  this, pConfig, deleteTrackForTestingFn)),
+          m_pDbConnectionPool(pDbConnectionPool) {
     const QSqlDatabase dbConnection = mixxx::DbConnectionPooled(pDbConnectionPool);
 
     // TODO(XXX): Add a checkbox in the library preferences for checking
