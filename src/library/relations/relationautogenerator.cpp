@@ -239,8 +239,9 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                 QList<RelationsDao::GroupTrack> groupTracks;
                 groupTracks.reserve(end - begin);
                 for (int i = begin; i < end; ++i) {
+                    const Candidate& candidate = candidates.at(i);
                     groupTracks.append(RelationsDao::GroupTrack{
-                            candidates.at(i).trackId, candidates.at(i).trackComment});
+                            candidate.trackId, candidate.trackComment});
                 }
                 const DbId groupId = relationsDao.createGroupWithTrackComments(
                         relationId, groupTracks, groupComment);

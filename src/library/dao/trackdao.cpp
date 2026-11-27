@@ -6,7 +6,7 @@
 #include <QFileInfo>
 #include <QFutureWatcher>
 #include <QThread>
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QtDebug>
 
 #ifdef __SQLITE3__
