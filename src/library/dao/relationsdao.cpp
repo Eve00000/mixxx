@@ -476,6 +476,84 @@ bool RelationsDao::setTrackComment(DbId groupId, TrackId trackId, const QString&
     return true;
 }
 
+DbId RelationsDao::createGroupWithTrackComments(DbId relationId,
+        const QList<GroupTrack>& tracks,
+        const QString& comment) const {
+    if (!m_database.isOpen() || !relationId.isValid() || tracks.size() < 2) {
+        kLogger.warning() << "createGroupWithTrackComments: need at least 2 tracks and an open DB";
+        return DbId();
+    }
+
+    QSqlQuery groupQuery(m_database);
+    groupQuery.prepare(QStringLiteral(
+            "INSERT INTO " RELATION_GROUPS_TABLE
+            " (rg_rel_id, rg_comment, rg_datetime_added) "
+            "VALUES (:rg_rel_id, :rg_comment, :rg_datetime_added)"));
+    groupQuery.bindValue(":rg_rel_id", relationId.toVariant());
+    groupQuery.bindValue(":rg_comment", comment);
+    groupQuery.bindValue(":rg_datetime_added", QDateTime::currentDateTimeUtc());
+    if (!groupQuery.exec()) {
+        LOG_FAILED_QUERY(groupQuery);
+        return DbId();
+    }
+    const DbId groupId(groupQuery.lastInsertId());
+    if (!groupId.isValid()) {
+        return DbId();
+    }
+
+    QSqlQuery trackQuery(m_database);
+    trackQuery.prepare(QStringLiteral(
+            "INSERT INTO " RELATION_GROUP_TRACKS_TABLE
+            " (rgt_group_id, rgt_track_id, rgt_comment, rgt_datetime_added) "
+            "VALUES (:rgt_group_id, :rgt_track_id, :rgt_comment, :rgt_datetime_added)"));
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    for (const GroupTrack& track : tracks) {
+        trackQuery.bindValue(":rgt_group_id", groupId.toVariant());
+        trackQuery.bindValue(":rgt_track_id", track.trackId.toVariant());
+        trackQuery.bindValue(":rgt_comment", track.comment);
+        trackQuery.bindValue(":rgt_datetime_added", now);
+        if (!trackQuery.exec()) {
+            LOG_FAILED_QUERY(trackQuery);
+            removeGroup(groupId); // Cleanup partial group
+            return DbId();
+        }
+    }
+    return groupId;
+}
+
+bool RelationsDao::addTrackToGroup(DbId groupId, TrackId trackId, const QString& comment) const {
+    if (!m_database.isOpen() || !groupId.isValid() || !trackId.isValid()) {
+        return false;
+    }
+
+    {
+        FwdSqlQuery exists(m_database,
+                QStringLiteral("SELECT 1 FROM " RELATION_GROUP_TRACKS_TABLE
+                               " WHERE rgt_group_id=:group_id AND rgt_track_id=:track_id"));
+        DEBUG_ASSERT(exists.isPrepared() && !exists.hasError());
+        exists.bindValue(":group_id", groupId.toVariant());
+        exists.bindValue(":track_id", trackId.toVariant());
+        if (exists.execPrepared() && exists.next()) {
+            return true;
+        }
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(QStringLiteral(
+            "INSERT INTO " RELATION_GROUP_TRACKS_TABLE
+            " (rgt_group_id, rgt_track_id, rgt_comment, rgt_datetime_added) "
+            "VALUES (:rgt_group_id, :rgt_track_id, :rgt_comment, :rgt_datetime_added)"));
+    query.bindValue(":rgt_group_id", groupId.toVariant());
+    query.bindValue(":rgt_track_id", trackId.toVariant());
+    query.bindValue(":rgt_comment", comment);
+    query.bindValue(":rgt_datetime_added", QDateTime::currentDateTimeUtc());
+    if (!query.exec()) {
+        LOG_FAILED_QUERY(query);
+        return false;
+    }
+    return true;
+}
+
 bool RelationsDao::removeTrackFromGroup(DbId groupId, TrackId trackId) const {
     if (!m_database.isOpen() || !groupId.isValid() || !trackId.isValid()) {
         return false;

@@ -123,6 +123,19 @@
               </widget>
             </item>
             <item>
+              <widget class="QPushButton" name="pushButtonRelationAuto">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Create relations automatically from the MusicBrainz ids of the tracks.</string>
+                </property>
+                <property name="text">
+                  <string>Auto</string>
+                </property>
+              </widget>
+            </item>
+            <item>
               <spacer name="horizontalSpacer">
                 <property name="orientation">
                   <enum>Qt::Horizontal</enum>

@@ -1,11 +1,14 @@
 #include "library/relations/dlgrelations.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QGuiApplication>
 #include <QHeaderView>
 #include <QItemSelection>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -19,6 +22,7 @@
 #include "library/relations/dlgrelationinfo.h"
 #include "library/relations/dlgrelationtypes.h"
 #include "library/relations/dlgsaverelation.h"
+#include "library/relations/relationautogenerator.h"
 #include "library/relations/relationstablemodel.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
@@ -75,6 +79,16 @@ DlgRelations::DlgRelations(
             &QPushButton::clicked,
             this,
             &DlgRelations::slotManageRelationTypes);
+    connect(pushButtonRelationAuto,
+            &QPushButton::clicked,
+            this,
+            &DlgRelations::slotAutoCreateRelations);
+    // The button is only available when the library table has the columns of
+    // at least one rule (not in the standard database)
+    pushButtonRelationAuto->setVisible(
+            !RelationAutoGenerator::availableRules(
+                    m_pLibrary->trackCollectionManager()->internalCollection()->database())
+                    .isEmpty());
     connect(comboBoxRelationType,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -288,6 +302,83 @@ void DlgRelations::refreshTypeFilter() {
     if (selectedIndex == 0 && selectedId.isValid()) {
         m_pRelationTableModel->setTypeFilter(DbId());
     }
+}
+
+void DlgRelations::slotAutoCreateRelations() {
+    TrackCollection* pCollection = m_pLibrary->trackCollectionManager()->internalCollection();
+    const QList<RelationAutoGenerator::Rule> rules =
+            RelationAutoGenerator::availableRules(pCollection->database());
+    if (rules.isEmpty()) {
+        return;
+    }
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Create Relations Automatically"));
+    auto* pLayout = new QVBoxLayout(&dlg);
+    pLayout->addWidget(new QLabel(
+            tr("Create relations between the tracks that have the same:"), &dlg));
+    QList<QCheckBox*> checkBoxes;
+    for (const RelationAutoGenerator::Rule& rule : rules) {
+        auto* pCheckBox = new QCheckBox(
+                tr("%1  (same %2)")
+                        .arg(rule.relationType,
+                                rule.table + QLatin1Char('.') + rule.keyColumn),
+                &dlg);
+
+        pCheckBox->setChecked(true);
+        pLayout->addWidget(pCheckBox);
+        checkBoxes.append(pCheckBox);
+    }
+    auto* pNote = new QLabel(
+            tr("Relations that already exist are not created again. An existing "
+               "relation is only extended with tracks that are new in the collection."),
+            &dlg);
+    pNote->setWordWrap(true);
+    pLayout->addWidget(pNote);
+    auto* pButtons = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    pLayout->addWidget(pButtons);
+    connect(pButtons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(pButtons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    if (dlg.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QList<RelationAutoGenerator::Rule> selectedRules;
+    for (int i = 0; i < rules.size(); ++i) {
+        if (checkBoxes.at(i)->isChecked()) {
+            selectedRules.append(rules.at(i));
+        }
+    }
+    if (selectedRules.isEmpty()) {
+        return;
+    }
+
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+    const QList<RelationAutoGenerator::RuleResult> results = RelationAutoGenerator::apply(
+            pCollection->database(), pCollection->getRelationsDAO(), selectedRules);
+    QGuiApplication::restoreOverrideCursor();
+
+    QStringList lines;
+    for (const RelationAutoGenerator::RuleResult& result : results) {
+        QString line = tr("%1: %2 new, %3 extended, %4 unchanged")
+                               .arg(result.relationType)
+                               .arg(result.createdGroups)
+                               .arg(result.extendedGroups)
+                               .arg(result.unchangedGroups);
+        if (result.failedGroups > 0) {
+            line += tr(", %1 failed (see the log)").arg(result.failedGroups);
+        }
+        lines.append(line);
+    }
+    QMessageBox::information(this,
+            tr("Create Relations Automatically"),
+            lines.join(QLatin1Char('\n')));
+
+    // New relation types may have been created
+    refreshTypeFilter();
+    m_pRelationTableModel->select();
+    activateButtons(false);
 }
 
 void DlgRelations::slotTypeFilterChanged(int index) {
