@@ -10,6 +10,7 @@
 #include "library/coverartcache.h"
 #include "library/dao/trackschema.h"
 #include "library/dateformatbroadcaster.h"
+#include "library/relations/relationformat.h"
 #include "library/starrating.h"
 #include "library/tabledelegates/bpmdelegate.h"
 #include "library/tabledelegates/checkboxdelegate.h"
@@ -673,6 +674,11 @@ QVariant BaseTrackTableModel::roleValue(
     // will be empty
     case Qt::DisplayRole:
         switch (field) {
+        case ColumnCache::COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS:
+        case ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS:
+            // Comments of generated relations can contain a key ({key:NN}):
+            // show it in the key notation chosen by the user
+            return relationformat::expandComment(rawValue.toString());
         case ColumnCache::COLUMN_LIBRARYTABLE_DURATION: {
             if (rawValue.isNull()) {
                 return QVariant();

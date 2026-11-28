@@ -32,7 +32,7 @@ DlgRelationTypes::DlgRelationTypes(QWidget* pParent, Library* pLibrary)
           m_pLibrary(pLibrary),
           m_pTableRelationTypes(new QTableWidget(this)) {
     setWindowTitle(tr("Relation Types"));
-    resize(640, 360);
+    resize(800, 500);
 
     auto* pLayout = new QVBoxLayout(this);
     pLayout->addWidget(new QLabel(

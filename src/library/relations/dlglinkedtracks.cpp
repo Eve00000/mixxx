@@ -1,7 +1,10 @@
 #include "library/relations/dlglinkedtracks.h"
 
+#include <QComboBox>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMap>
 #include <QPointer>
 #include <QTableWidget>
 #include <QTimer>
@@ -31,6 +34,8 @@ constexpr int kColumnComment = 10;
 constexpr int kColumnCount = 11;
 
 QByteArray s_lastGeometry;
+// The relation type chosen in the type selector, kept for the next window
+QString s_lastRelationType;
 
 // BPM with 2 decimals, right aligned like in the track table
 RelationSortItem* makeBpmItem(const RelationsDao::TrackRelationRow& relationRow) {
@@ -78,6 +83,12 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
                     : tr("Linked Tracks"));
 
     auto* pLayout = new QVBoxLayout(this);
+    auto* pTypeLayout = new QHBoxLayout();
+    pTypeLayout->addWidget(new QLabel(tr("Relation type:"), this));
+    m_pComboBoxLinkedTracksType = new QComboBox(this);
+    pTypeLayout->addWidget(m_pComboBoxLinkedTracksType);
+    pTypeLayout->addStretch();
+    pLayout->addLayout(pTypeLayout);
     pLayout->addWidget(m_pTableLinkedTracks);
     pLayout->addWidget(new QLabel(
             tr("Click a track to select it in the library. "
@@ -119,7 +130,9 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
 
         m_pTableLinkedTracks->setItem(row,
                 kColumnGroupComment,
-                new RelationSortItem(relationRow.groupComment, true));
+                new RelationSortItem(
+                        relationformat::expandComment(relationRow.groupComment),
+                        true));
         m_pTableLinkedTracks->setItem(row,
                 kColumnArtist,
                 new RelationSortItem(relationRow.artist, false));
@@ -143,7 +156,9 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
                 new RelationSortItem(relationRow.year.trimmed().left(4), true));
         m_pTableLinkedTracks->setItem(row,
                 kColumnComment,
-                new RelationSortItem(relationRow.groupTrackComment, true));
+                new RelationSortItem(relationformat::expandComment(
+                                             relationRow.groupTrackComment),
+                        true));
     }
     m_pTableLinkedTracks->resizeColumnsToContents();
 
@@ -151,6 +166,39 @@ DlgLinkedTracks::DlgLinkedTracks(QWidget* pParent, Library* pLibrary, TrackId tr
     m_pTableLinkedTracks->horizontalHeader()->setSortIndicator(
             kColumnRelationType, Qt::AscendingOrder);
     m_pTableLinkedTracks->setSortingEnabled(true);
+
+    // Type selector: show only the linked tracks of one relation type
+    QMap<QString, int> trackCountByType;
+    for (const RelationsDao::TrackRelationRow& typeRow : rows) {
+        ++trackCountByType[typeRow.relationType];
+    }
+    m_pComboBoxLinkedTracksType->addItem(tr("All types (%1)").arg(rows.size()), QString());
+    int selectedTypeIndex = 0;
+    for (auto it = trackCountByType.constBegin(); it != trackCountByType.constEnd(); ++it) {
+        m_pComboBoxLinkedTracksType->addItem(
+                QStringLiteral("%1 (%2)").arg(it.key()).arg(it.value()), it.key());
+        if (it.key() == s_lastRelationType) {
+            selectedTypeIndex = m_pComboBoxLinkedTracksType->count() - 1;
+        }
+    }
+    const auto applyTypeFilter = [this]() {
+        const QString type = m_pComboBoxLinkedTracksType->currentData().toString();
+        for (int row = 0; row < m_pTableLinkedTracks->rowCount(); ++row) {
+            const QTableWidgetItem* pTypeItem =
+                    m_pTableLinkedTracks->item(row, kColumnRelationType);
+            m_pTableLinkedTracks->setRowHidden(
+                    row, !type.isEmpty() && pTypeItem && pTypeItem->text() != type);
+        }
+    };
+    connect(m_pComboBoxLinkedTracksType,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            [this, applyTypeFilter](int) {
+                s_lastRelationType = m_pComboBoxLinkedTracksType->currentData().toString();
+                applyTypeFilter();
+            });
+    m_pComboBoxLinkedTracksType->setCurrentIndex(selectedTypeIndex);
+    applyTypeFilter();
 
     connect(m_pTableLinkedTracks, &QTableWidget::cellClicked, this, [this](int row, int) {
         QTableWidgetItem* pItem = m_pTableLinkedTracks->item(row, kColumnRelationType);

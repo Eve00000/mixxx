@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QLocale>
 #include <QPixmap>
+#include <QRegularExpression>
 #include <QString>
 #include <QVariant>
 
@@ -50,6 +51,27 @@ inline QColor keyColor(const QString& keyIdText) {
     }
     return KeyUtils::keyToColor(
             chromaticKey, BaseTrackTableModel::keyColorPalette().value());
+}
+
+// Comments of generated relations can contain {key:NN}: the key with number
+// NN, shown in the key notation chosen by the user
+inline QString expandComment(const QString& comment) {
+    if (!comment.contains(QLatin1String("{key:"))) {
+        return comment;
+    }
+    static const QRegularExpression kKeyToken(QStringLiteral("\\{key:(\\d+)\\}"));
+    QString result;
+    qsizetype last = 0;
+    QRegularExpressionMatchIterator it = kKeyToken.globalMatch(comment);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch match = it.next();
+        result += comment.mid(last, match.capturedStart() - last);
+        const QString keyText = key(QString(), match.captured(1));
+        result += keyText.isEmpty() ? match.captured(0) : keyText;
+        last = match.capturedEnd();
+    }
+    result += comment.mid(last);
+    return result;
 }
 
 inline QPixmap colorSwatch(const QColor& color) {

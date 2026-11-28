@@ -5,6 +5,7 @@
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHash>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -30,6 +31,7 @@
 #include "library/library.h"
 #include "library/relations/dlglinkedtracks.h"
 #include "library/relations/dlgsaverelation.h"
+#include "library/relations/relationformat.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackmodel.h"
@@ -3157,6 +3159,14 @@ void WTrackMenu::slotPopulateLinkedTracksMenu() {
         return;
     }
 
+    // Large groups (eg all tracks of the same year) would make a huge menu:
+    // only the first tracks are listed, the table shows all of them
+    constexpr int kMaxTracksPerGroupMenu = 25;
+    QHash<QString, int> groupSizes;
+    for (const RelationsDao::TrackRelationRow& row : rows) {
+        ++groupSizes[row.groupId.toString()];
+    }
+    int tracksInGroupMenu = 0;
     DbId currentGroupId;
     QMenu* pGroupMenu = nullptr;
     for (const RelationsDao::TrackRelationRow& row : rows) {
@@ -3164,18 +3174,34 @@ void WTrackMenu::slotPopulateLinkedTracksMenu() {
             currentGroupId = row.groupId;
             QString title = row.relationType;
             if (!row.groupComment.isEmpty()) {
-                title += QStringLiteral(": ") + row.groupComment;
+                title += QStringLiteral(": ") + relationformat::expandComment(row.groupComment);
             }
+            title += tr(" (%1)").arg(groupSizes.value(row.groupId.toString()));
             title.replace(QLatin1Char('&'), QStringLiteral("&&"));
             pGroupMenu = m_pLinkedTracksMenu->addMenu(title);
+            tracksInGroupMenu = 0;
         }
 
         QString label = DlgSaveRelation::trackLabel(row.artist, row.title, row.album, row.year);
         if (!row.groupTrackComment.isEmpty()) {
-            label += QStringLiteral("  [") + row.groupTrackComment + QLatin1Char(']');
+            label += QStringLiteral("  [") +
+                    relationformat::expandComment(row.groupTrackComment) +
+                    QLatin1Char(']');
         }
         label.replace(QLatin1Char('&'), QStringLiteral("&&"));
 
+        if (tracksInGroupMenu >= kMaxTracksPerGroupMenu) {
+            if (tracksInGroupMenu == kMaxTracksPerGroupMenu) {
+                QAction* pMore = pGroupMenu->addAction(
+                        tr("... and %1 more (see the table)")
+                                .arg(groupSizes.value(row.groupId.toString()) -
+                                        kMaxTracksPerGroupMenu));
+                pMore->setEnabled(false);
+                ++tracksInGroupMenu;
+            }
+            continue;
+        }
+        ++tracksInGroupMenu;
         QAction* pAction = pGroupMenu->addAction(label);
         const TrackId linkedTrackId = row.linkedTrackId;
         connect(pAction, &QAction::triggered, this, [this, linkedTrackId]() {

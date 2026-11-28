@@ -61,6 +61,25 @@ RelationAutoGenerator::Rule libraryRule(const QString& relationType,
     return rule;
 }
 
+// The value of a track in the form in which values are compared with each other
+QString normalizeKey(const RelationAutoGenerator::Rule& rule, const QString& value) {
+    switch (rule.match) {
+    case RelationAutoGenerator::Rule::Match::Text:
+        return value.simplified().toCaseFolded();
+    case RelationAutoGenerator::Rule::Match::Number: {
+        bool ok = false;
+        const double number = value.toDouble(&ok);
+        if (!ok) {
+            return QString();
+        }
+        return QString::number(number, 'f', rule.matchDecimals);
+    }
+    case RelationAutoGenerator::Rule::Match::Exact:
+        break;
+    }
+    return value;
+}
+
 RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
         RelationsDao& relationsDao,
         const RelationAutoGenerator::Rule& rule) {
@@ -106,7 +125,10 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
             if (query.execPrepared()) {
                 while (query.next()) {
                     const QSqlRecord record = query.record();
-                    groupIdByIdentity.insert(record.value(QStringLiteral("k")).toString(),
+                    groupIdByIdentity.insert(
+                            normalizeKey(rule,
+                                    record.value(QStringLiteral("k"))
+                                            .toString()),
                             record.value(QStringLiteral("group_id")));
                 }
             }
@@ -130,6 +152,11 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
         }
     }
 
+    // Optional condition on the tracks, eg to skip tracks without a value
+    const QString valueCondition = rule.valueCondition.isEmpty()
+            ? QString()
+            : QStringLiteral("AND (") + rule.valueCondition + QStringLiteral(") ");
+
     // Optional extra join to a second table (eg cmrt_groups). When set, the
     // joined table has the alias x and is available to the SQL expressions of
     // the rule. It is a LEFT JOIN because the joined row only matches some
@@ -140,13 +167,28 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
             : QStringLiteral("LEFT JOIN %1 x ON x.%2 = t.%3 ")
                       .arg(rule.joinTable, rule.joinKeyColumn, rule.keyColumn);
 
-    // The tracks that share their value with at least one other track,
-    // grouped by value. Hidden tracks are ignored.
+    // The tracks of the rule. Tracks with the same value are related, how the
+    // values are compared depends on the match mode of the rule. Hidden tracks
+    // are ignored.
     QList<Candidate> candidates;
     {
         const QString orderExpression = rule.orderExpression.isEmpty()
                 ? QStringLiteral("l.id")
                 : rule.orderExpression + QStringLiteral(", l.id");
+        // Exactly matching values: the tracks that have no partner are already
+        // left out by the query. The other match modes compare the values in the
+        // code below, because the same value can be written in different ways.
+        const QString partnerFilter =
+                rule.match == RelationAutoGenerator::Rule::Match::Exact
+                ? QStringLiteral(
+                          "AND t.%2 IN (SELECT t2.%2 FROM %1 t2 "
+                          "JOIN " LIBRARY_TABLE
+                          " l2 ON l2.id = t2.%3 "
+                          "WHERE l2.mixxx_deleted = 0 AND t2.%2 IS NOT NULL "
+                          "AND TRIM(t2.%2) <> '' GROUP BY t2.%2 HAVING COUNT(*) "
+                          ">= 2) ")
+                          .arg(rule.table, rule.keyColumn, rule.trackIdColumn)
+                : QString();
         FwdSqlQuery query(database,
                 QStringLiteral(
                         "SELECT t.%2 AS k, t.%3 AS id, %4 AS gc, %5 AS tc FROM "
@@ -155,19 +197,18 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                         "%7"
                         "WHERE l.mixxx_deleted = 0 AND t.%2 IS NOT NULL AND "
                         "TRIM(t.%2) <> '' "
-                        "AND t.%2 IN (SELECT t2.%2 FROM %1 t2 "
-                        "JOIN " LIBRARY_TABLE " l2 ON l2.id = t2.%3 "
-                        "WHERE l2.mixxx_deleted = 0 AND t2.%2 IS NOT NULL "
-                        "AND TRIM(t2.%2) <> '' GROUP BY t2.%2 HAVING COUNT(*) "
-                        ">= 2) "
-                        "ORDER BY t.%2, %6")
+                        "%8"
+                        "%9"
+                        "ORDER BY %6")
                         .arg(rule.table,
                                 rule.keyColumn,
                                 rule.trackIdColumn,
                                 rule.groupCommentExpression,
                                 rule.trackCommentExpression,
                                 orderExpression,
-                                extraJoin));
+                                extraJoin,
+                                valueCondition,
+                                partnerFilter));
         if (!query.isPrepared() || !query.execPrepared()) {
             kLogger.warning() << "Failed to read the tracks for relation type"
                               << rule.relationType;
@@ -184,27 +225,40 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
         }
     }
 
+    // Group the tracks by value (compared as the match mode of the rule says).
+    // Within a group the order of the query is kept: the first track of a
+    // group is the first one of the query.
+    QHash<QString, QList<int>> candidateIndexesByKey;
+    QStringList keys;
+    for (int i = 0; i < candidates.size(); ++i) {
+        const QString normalizedKey = normalizeKey(rule, candidates.at(i).key);
+        if (normalizedKey.isEmpty()) {
+            continue;
+        }
+        QList<int>& indexes = candidateIndexesByKey[normalizedKey];
+        if (indexes.isEmpty()) {
+            keys.append(normalizedKey);
+        }
+        indexes.append(i);
+    }
+
     // Declared outside the group loop so clazy-container-inside-loop does not
     // flag it and the capacity is reused across groups. Cleared before each
     // new group is built.
     QList<RelationsDao::GroupTrack> groupTracks;
 
-    int begin = 0;
-    while (begin < candidates.size()) {
-        int end = begin;
-        while (end < candidates.size() &&
-                candidates.at(end).key == candidates.at(begin).key) {
-            ++end;
+    for (const QString& key : std::as_const(keys)) {
+        const QList<int> indexes = candidateIndexesByKey.value(key);
+        if (indexes.size() < 2) {
+            continue;
         }
-        const QString key = candidates.at(begin).key;
-        const QString groupComment = candidates.at(begin).groupComment.trimmed();
+        const QString groupComment = candidates.at(indexes.first()).groupComment.trimmed();
         const QString identity = rule.identifyByGroupComment ? groupComment : key;
 
         if (rule.identifyByGroupComment && groupComment.isEmpty()) {
             // Such a group could not be recognized the next time
             kLogger.warning() << rule.relationType << "empty group comment for" << key;
             ++result.failedGroups;
-            begin = end;
             continue;
         }
 
@@ -215,13 +269,13 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
             const QSet<TrackId> members = trackIdsByGroup.value(groupId.toString());
             int added = 0;
             bool failed = false;
-            for (int i = begin; i < end; ++i) {
-                const TrackId trackId = candidates.at(i).trackId;
-                if (members.contains(trackId)) {
+            for (const int index : indexes) {
+                const Candidate& candidate = candidates.at(index);
+                if (members.contains(candidate.trackId)) {
                     continue;
                 }
                 if (relationsDao.addTrackToGroup(
-                            groupId, trackId, candidates.at(i).trackComment)) {
+                            groupId, candidate.trackId, candidate.trackComment)) {
                     ++added;
                 } else {
                     failed = true;
@@ -242,9 +296,9 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                 ++result.failedGroups;
             } else {
                 groupTracks.clear();
-                groupTracks.reserve(end - begin);
-                for (int i = begin; i < end; ++i) {
-                    const Candidate& candidate = candidates.at(i);
+                groupTracks.reserve(indexes.size());
+                for (const int index : indexes) {
+                    const Candidate& candidate = candidates.at(index);
                     groupTracks.append(RelationsDao::GroupTrack{
                             candidate.trackId, candidate.trackComment});
                 }
@@ -257,7 +311,6 @@ RelationAutoGenerator::RuleResult applyRule(const QSqlDatabase& database,
                 }
             }
         }
-        begin = end;
     }
 
     kLogger.info() << rule.relationType << "created" << result.createdGroups
@@ -308,6 +361,14 @@ QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
                     QStringLiteral("Tracks with the same KEY"),
                     QStringLiteral("key_id"),
                     QStringLiteral("key")),
+            libraryRule(QStringLiteral("Genre"),
+                    QStringLiteral("Tracks with the same Genre"),
+                    QStringLiteral("genre"),
+                    QStringLiteral("genre")),
+            libraryRule(QStringLiteral("Rating"),
+                    QStringLiteral("Tracks with the same Rating"),
+                    QStringLiteral("rating"),
+                    QStringLiteral("rating")),
             libraryRule(QStringLiteral("MB-Recording"),
                     QStringLiteral("Tracks with the same MusicBrainz recording id"),
                     QStringLiteral("musicbrainz_recording_id"),
@@ -325,6 +386,50 @@ QList<RelationAutoGenerator::Rule> RelationAutoGenerator::rules() {
                     QStringLiteral("musicbrainz_artist_id"),
                     QStringLiteral("artist")),
     };
+
+    // "No value" conditions (0 means: not analyzed or not set) and readable group
+    // comments for numeric columns. The rules that create very large groups are
+    // not checked by default in the dialog.
+    const QStringList textMatchTypes = {QStringLiteral("Artist"),
+            QStringLiteral("Album"),
+            QStringLiteral("Album-Artist"),
+            QStringLiteral("Title"),
+            QStringLiteral("Composer"),
+            QStringLiteral("Year"),
+            QStringLiteral("Genre"),
+            QStringLiteral("Rating")};
+    const QStringList largeGroupTypes = {QStringLiteral("Title"),
+            QStringLiteral("Year"),
+            QStringLiteral("Color"),
+            QStringLiteral("BPM"),
+            QStringLiteral("KEY")};
+    for (Rule& rule : allRules) {
+        if (rule.relationType == QStringLiteral("BPM")) {
+            rule.valueCondition = QStringLiteral("t.bpm > 0");
+            //  Tracks with the same BPM, rounded to whole BPM, are related
+            //  (matchDecimals: 0 = whole BPM, 1 = 0.1 BPM)
+            rule.match = Rule::Match::Number;
+            rule.matchDecimals = 0;
+            rule.groupCommentExpression =
+                    QStringLiteral("printf('%.%1f', l.bpm)").arg(rule.matchDecimals);
+            rule.trackCommentExpression = QStringLiteral("printf('%.2f', t.bpm)");
+        } else if (rule.relationType == QStringLiteral("KEY")) {
+            rule.valueCondition = QStringLiteral("t.key_id > 0");
+            // The comments contain the key as {key:NN}: it is shown in the key
+            // notation chosen by the user, see relationformat::expandComment()
+            rule.groupCommentExpression = QStringLiteral("printf('{key:%02d}', l.key_id)");
+            rule.trackCommentExpression = QStringLiteral("printf('{key:%02d}', t.key_id)");
+        } else if (rule.relationType == QStringLiteral("Color")) {
+            rule.groupCommentExpression = QStringLiteral("printf('#%06X', l.color)");
+        }
+        // Text values are compared ignoring case and white space (Abba = ABBA)
+        if (textMatchTypes.contains(rule.relationType)) {
+            rule.match = Rule::Match::Text;
+        }
+        if (largeGroupTypes.contains(rule.relationType)) {
+            rule.enabledByDefault = false;
+        }
+    }
 
     //// CMRT: tracks that are members of the same CMRT group. The group is
     //// recognized by its group comment, the track comment tells which track
