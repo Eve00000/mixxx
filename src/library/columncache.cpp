@@ -37,9 +37,7 @@ constexpr int kDefaultColumnWidth = 50;
 #endif
 
 constexpr ColumnProperties kColumnPropertiesByEnum[] = {
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_ID){&LIBRARYTABLE_ID,
-                nullptr,
-                0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_ID){&LIBRARYTABLE_ID, nullptr, 0},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_ARTIST){&LIBRARYTABLE_ARTIST,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Artist"),
                 kDefaultColumnWidth * 4},
@@ -49,7 +47,8 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
         DI(ColumnCache::COLUMN_LIBRARYTABLE_ALBUM){&LIBRARYTABLE_ALBUM,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Album"),
                 kDefaultColumnWidth * 4},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_ALBUMARTIST){&LIBRARYTABLE_ALBUMARTIST,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_ALBUMARTIST){
+                &LIBRARYTABLE_ALBUMARTIST,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Album Artist"),
                 kDefaultColumnWidth * 4},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_YEAR){&LIBRARYTABLE_YEAR,
@@ -64,7 +63,8 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
         DI(ColumnCache::COLUMN_LIBRARYTABLE_GROUPING){&LIBRARYTABLE_GROUPING,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Grouping"),
                 kDefaultColumnWidth * 4},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_TRACKNUMBER){&LIBRARYTABLE_TRACKNUMBER,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_TRACKNUMBER){
+                &LIBRARYTABLE_TRACKNUMBER,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Track #"),
                 kDefaultColumnWidth},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_FILETYPE){&LIBRARYTABLE_FILETYPE,
@@ -82,58 +82,54 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
         DI(ColumnCache::COLUMN_LIBRARYTABLE_BPM){&LIBRARYTABLE_BPM,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "BPM"),
                 kDefaultColumnWidth * 2},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_REPLAYGAIN){&LIBRARYTABLE_REPLAYGAIN,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_REPLAYGAIN){
+                &LIBRARYTABLE_REPLAYGAIN,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "ReplayGain"),
                 kDefaultColumnWidth * 2},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_CUEPOINT){&LIBRARYTABLE_CUEPOINT,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_URL){&LIBRARYTABLE_URL,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_SAMPLERATE){&LIBRARYTABLE_SAMPLERATE,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_CUEPOINT){
+                &LIBRARYTABLE_CUEPOINT, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_URL){&LIBRARYTABLE_URL, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_SAMPLERATE){
+                &LIBRARYTABLE_SAMPLERATE,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Samplerate"),
                 kDefaultColumnWidth},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX){&LIBRARYTABLE_WAVESUMMARYHEX,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_WAVESUMMARYHEX){
+                &LIBRARYTABLE_WAVESUMMARYHEX,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Overview"),
                 kDefaultColumnWidth * 8},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_CHANNELS){&LIBRARYTABLE_CHANNELS,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Channels"),
                 kDefaultColumnWidth / 2},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_MIXXXDELETED){&LIBRARYTABLE_MIXXXDELETED,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED){&LIBRARYTABLE_DATETIMEADDED,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_MIXXXDELETED){
+                &LIBRARYTABLE_MIXXXDELETED, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED){
+                &LIBRARYTABLE_DATETIMEADDED,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Date Added"),
                 kDefaultColumnWidth * 3},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_HEADERPARSED){&LIBRARYTABLE_HEADERPARSED,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_TIMESPLAYED){&LIBRARYTABLE_TIMESPLAYED,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_HEADERPARSED){
+                &LIBRARYTABLE_HEADERPARSED, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_TIMESPLAYED){
+                &LIBRARYTABLE_TIMESPLAYED,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Played"),
                 kDefaultColumnWidth * 2},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_PLAYED){&LIBRARYTABLE_PLAYED,
-                nullptr,
-                0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_PLAYED){
+                &LIBRARYTABLE_PLAYED, nullptr, 0},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_RATING){&LIBRARYTABLE_RATING,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rating"),
                 kDefaultColumnWidth * 2},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_KEY){&LIBRARYTABLE_KEY,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Key"),
                 kDefaultColumnWidth},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID){&LIBRARYTABLE_KEY_ID,
-                nullptr,
-                0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID){
+                &LIBRARYTABLE_KEY_ID, nullptr, 0},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_TUNING_FREQUENCY){
                 &LIBRARYTABLE_TUNING_FREQUENCY,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "A4 Pitch (Hz)"),
                 kDefaultColumnWidth},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_BPM_LOCK){&LIBRARYTABLE_BPM_LOCK,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_BEATS_VERSION){&LIBRARYTABLE_BEATS_VERSION,
-                nullptr,
-                0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_BPM_LOCK){
+                &LIBRARYTABLE_BPM_LOCK, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_BEATS_VERSION){
+                &LIBRARYTABLE_BEATS_VERSION, nullptr, 0},
         DI(ColumnCache::COLUMN_LIBRARYTABLE_PREVIEW){&LIBRARYTABLE_PREVIEW,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Preview"),
                 kDefaultColumnWidth / 2},
@@ -143,50 +139,100 @@ constexpr ColumnProperties kColumnPropertiesByEnum[] = {
         DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART){&LIBRARYTABLE_COVERART,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Cover Art"),
                 kDefaultColumnWidth / 2},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_SOURCE){&LIBRARYTABLE_COVERART_SOURCE,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_TYPE){&LIBRARYTABLE_COVERART_TYPE,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_LOCATION){&LIBRARYTABLE_COVERART_LOCATION,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_COLOR){&LIBRARYTABLE_COVERART_COLOR,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_DIGEST){&LIBRARYTABLE_COVERART_DIGEST,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_HASH){&LIBRARYTABLE_COVERART_HASH,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT){&LIBRARYTABLE_LAST_PLAYED_AT,
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_SOURCE){
+                &LIBRARYTABLE_COVERART_SOURCE, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_TYPE){
+                &LIBRARYTABLE_COVERART_TYPE, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_LOCATION){
+                &LIBRARYTABLE_COVERART_LOCATION, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_COLOR){
+                &LIBRARYTABLE_COVERART_COLOR, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_DIGEST){
+                &LIBRARYTABLE_COVERART_DIGEST, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_COVERART_HASH){
+                &LIBRARYTABLE_COVERART_HASH, nullptr, 0},
+        DI(ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT){
+                &LIBRARYTABLE_LAST_PLAYED_AT,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Last Played"),
                 kDefaultColumnWidth * 3},
-        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_LOCATION){&TRACKLOCATIONSTABLE_LOCATION,
+        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_LOCATION){
+                &TRACKLOCATIONSTABLE_LOCATION,
                 QT_TRANSLATE_NOOP("BaseTrackTableModel", "Location"),
                 kDefaultColumnWidth * 6},
-        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_DIRECTORY){&TRACKLOCATIONSTABLE_DIRECTORY,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_FSDELETED){&TRACKLOCATIONSTABLE_FSDELETED,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_TRACKID){&PLAYLISTTRACKSTABLE_TRACKID,
-                nullptr,
-                0},
-        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_POSITION){&PLAYLISTTRACKSTABLE_POSITION,
+        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_DIRECTORY){
+                &TRACKLOCATIONSTABLE_DIRECTORY, nullptr, 0},
+        DI(ColumnCache::COLUMN_TRACKLOCATIONSTABLE_FSDELETED){
+                &TRACKLOCATIONSTABLE_FSDELETED, nullptr, 0},
+        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_TRACKID){
+                &PLAYLISTTRACKSTABLE_TRACKID, nullptr, 0},
+        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_POSITION){
+                &PLAYLISTTRACKSTABLE_POSITION,
                 QT_TRANSLATE_NOOP("BaseSqlTableModel", "#"),
                 kDefaultColumnWidth * 30 / 50},
-        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_PLAYLISTID){&PLAYLISTTRACKSTABLE_PLAYLISTID,
-                nullptr,
-                0},
+        DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_PLAYLISTID){
+                &PLAYLISTTRACKSTABLE_PLAYLISTID, nullptr, 0},
         DI(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_DATETIMEADDED){
                 &PLAYLISTTRACKSTABLE_DATETIMEADDED,
                 QT_TRANSLATE_NOOP("BaseSqlTableModel", "Timestamp"),
                 kDefaultColumnWidth * 80 / 50},
-        DI(ColumnCache::COLUMN_REKORDBOX_ANALYZE_PATH){&REKORDBOX_ANALYZE_PATH, nullptr, 0}};
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_ID){
+                &RELATIONSTABLE_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_TYPE){&RELATIONSTABLE_TYPE,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Relation Type"),
+                kDefaultColumnWidth * 2},
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_DESCRIPTION){
+                &RELATIONSTABLE_DESCRIPTION,
+                QT_TRANSLATE_NOOP(
+                        "BaseTrackTableModel", "Relation Description"),
+                kDefaultColumnWidth * 4},
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_DATETIMEADDED){
+                &RELATIONSTABLE_DATETIMEADDED,
+                QT_TRANSLATE_NOOP("BaseSqlTableModel", "Timestamp"),
+                kDefaultColumnWidth * 80 / 50},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID){
+                &RELATIONGROUPSTABLE_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_REL_ID){
+                &RELATIONGROUPSTABLE_REL_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_COMMENT){
+                &RELATIONGROUPSTABLE_COMMENT,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Group Comment"),
+                kDefaultColumnWidth * 4},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED){
+                &RELATIONGROUPSTABLE_DATETIMEADDED, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_ID){
+                &RELATIONGROUPTRACKSTABLE_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_GROUP_ID){
+                &RELATIONGROUPTRACKSTABLE_GROUP_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_TRACK_ID){
+                &RELATIONGROUPTRACKSTABLE_TRACK_ID, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_ID_ALIAS){
+                &RELATIONGROUPSTABLE_ID_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Group ID"),
+                kDefaultColumnWidth},
+        DI(ColumnCache::COLUMN_RELATIONSTABLE_TYPE_ALIAS){
+                &RELATIONSTABLE_TYPE_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Type"),
+                kDefaultColumnWidth * 2},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS){
+                &RELATIONGROUPSTABLE_COMMENT_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Group Comment"),
+                kDefaultColumnWidth * 4},
+        DI(ColumnCache::COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS){
+                &RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS,
+                QT_TRANSLATE_NOOP("BaseSqlTableModel", "Rel Added Date"),
+                kDefaultColumnWidth * 3},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT){
+                &RELATIONGROUPTRACKSTABLE_COMMENT,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Track Comment"),
+                kDefaultColumnWidth * 3},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_DATETIMEADDED){
+                &RELATIONGROUPTRACKSTABLE_DATETIMEADDED, nullptr, 0},
+        DI(ColumnCache::COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS){
+                &RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS,
+                QT_TRANSLATE_NOOP("BaseTrackTableModel", "Rel Track Comment"),
+                kDefaultColumnWidth * 3},
+        DI(ColumnCache::COLUMN_REKORDBOX_ANALYZE_PATH){
+                &REKORDBOX_ANALYZE_PATH, nullptr, 0}};
 static_assert(std::size(kColumnPropertiesByEnum) == ColumnCache::NUM_COLUMNS);
 
 #if defined(__clang__)
@@ -246,6 +292,15 @@ void ColumnCache::setColumns(QStringList columns) {
     insertColumnSortByEnum(COLUMN_LIBRARYTABLE_TIMESPLAYED, kSortInt);
 
     insertColumnSortByEnum(COLUMN_TRACKLOCATIONSTABLE_LOCATION, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONSTABLE_TYPE, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONSTABLE_DESCRIPTION, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_COMMENT, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_DATETIMEADDED, kSortNoCaseLex);
+    insertColumnSortByEnum(COLUMN_RELATIONSTABLE_TYPE_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_COMMENT_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS, kSortNoCase);
+    insertColumnSortByEnum(COLUMN_RELATIONGROUPSTABLE_ID_ALIAS, kSortInt);
 
     slotSetKeySortOrder(m_pKeyNotationCP->get());
 }

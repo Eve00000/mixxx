@@ -22,6 +22,7 @@
 #include "library/mixxxlibraryfeature.h"
 #include "library/recording/recordingfeature.h"
 #include "library/rekordbox/rekordboxfeature.h"
+#include "library/relations/relationsfeature.h"
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
@@ -130,6 +131,9 @@ Library::Library(
             &Library::exportCrate, // signal-to-signal
             Qt::DirectConnection);
 #endif
+
+    m_pRelationsFeature = make_parented<RelationsFeature>(this, m_pConfig);
+    addFeature(m_pRelationsFeature);
 
     m_pBrowseFeature = make_parented<BrowseFeature>(
             this, m_pConfig, pRecordingManager);
@@ -773,6 +777,13 @@ void Library::searchTracksInCollection() {
     }
     m_pMixxxLibraryFeature->selectAndActivate();
     m_pLibraryControl->setLibraryFocus(FocusWidget::Searchbar, Qt::ShortcutFocusReason);
+}
+
+void Library::showRelationsForDeck(const QString& deckGroup) {
+    VERIFY_OR_DEBUG_ASSERT(m_pRelationsFeature) {
+        return;
+    }
+    m_pRelationsFeature->showRelationsForDeck(deckGroup);
 }
 
 void Library::searchTracksInCollection(const QString& query) {

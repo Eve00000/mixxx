@@ -28,6 +28,7 @@ class MixxxLibraryFeature;
 class PlayerManager;
 class PlaylistFeature;
 class RecordingManager;
+class RelationsFeature;
 class SidebarModel;
 class TrackCollectionManager;
 class WSearchLineEdit;
@@ -106,6 +107,8 @@ class Library: public QObject {
     /// Triggers a new search in the internal track collection
     /// and shows the results by switching the view.
     void searchTracksInCollection(const QString& query);
+    // Shows the relations of the track in a deck in the sidebar
+    void showRelationsForDeck(const QString& deckGroup);
     void showAutoDJ();
 
     static const QString kAutoDJViewName;
@@ -202,6 +205,7 @@ class Library: public QObject {
     parented_ptr<PlaylistFeature> m_pPlaylistFeature;
     parented_ptr<CrateFeature> m_pCrateFeature;
     parented_ptr<BrowseFeature> m_pBrowseFeature;
+    parented_ptr<RelationsFeature> m_pRelationsFeature;
     parented_ptr<AnalysisFeature> m_pAnalysisFeature;
     QFont m_trackTableFont;
     int m_iTrackTableRowHeight;

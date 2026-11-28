@@ -16,6 +16,7 @@
 #include "library/dao/cuedao.h"
 #include "library/dao/libraryhashdao.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/dao/trackschema.h"
 #include "library/library_prefs.h"
 #include "library/queryutil.h"
@@ -89,14 +90,16 @@ QSet<QString> collectTrackLocations(FwdSqlQuery& query) {
 } // anonymous namespace
 
 TrackDAO::TrackDAO(CueDAO& cueDao,
-                   PlaylistDAO& playlistDao,
-                   AnalysisDao& analysisDao,
-                   LibraryHashDAO& libraryHashDao,
-                   UserSettingsPointer pConfig)
+        PlaylistDAO& playlistDao,
+        AnalysisDao& analysisDao,
+        LibraryHashDAO& libraryHashDao,
+        RelationsDao& relationsDao,
+        UserSettingsPointer pConfig)
         : m_cueDao(cueDao),
           m_playlistDao(playlistDao),
           m_analysisDao(analysisDao),
           m_libraryHashDao(libraryHashDao),
+          m_relationsDao(relationsDao),
           m_pConfig(pConfig),
           m_trackLocationIdColumn(UndefinedRecordIndex),
           m_queryLibraryIdColumn(UndefinedRecordIndex),

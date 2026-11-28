@@ -218,4 +218,6 @@ class WTrackTableView : public WLibraryTableView {
     ControlProxy* m_pSortOrder;
 
     int m_dropRow;
+
+    friend class WRelationTableView;
 };

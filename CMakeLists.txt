@@ -1422,6 +1422,7 @@ add_library(
   src/library/dao/directorydao.cpp
   src/library/dao/libraryhashdao.cpp
   src/library/dao/playlistdao.cpp
+  src/library/dao/relationsdao.cpp
   src/library/dao/settingsdao.cpp
   src/library/dao/trackdao.cpp
   src/library/dao/trackschema.cpp
@@ -1470,6 +1471,16 @@ add_library(
   src/library/recording/dlgrecording.ui
   src/library/recording/recordingfeature.cpp
   src/library/rekordbox/rekordboxfeature.cpp
+  src/library/relations/relationstablemodel.cpp
+  src/library/relations/dlgrelationinfo.cpp
+  src/library/relations/dlgrelationinfo.ui
+  src/library/relations/dlgrelations.cpp
+  src/library/relations/dlgrelations.ui
+  src/library/relations/dlgrelationtypes.cpp
+  src/library/relations/dlgsaverelation.cpp
+  src/library/relations/dlglinkedtracks.cpp
+  src/library/relations/relationautogenerator.cpp
+  src/library/relations/relationsfeature.cpp
   src/library/rhythmbox/rhythmboxfeature.cpp
   src/library/scanner/importfilestask.cpp
   src/library/scanner/libraryscanner.cpp
@@ -1811,6 +1822,7 @@ add_library(
   src/widget/wraterange.cpp
   src/widget/wstarratingaction.cpp
   src/widget/wrecordingduration.cpp
+  src/widget/wrelationtableview.cpp
   src/widget/wscrollable.cpp
   src/widget/wsearchlineedit.cpp
   src/widget/wsearchrelatedtracksmenu.cpp

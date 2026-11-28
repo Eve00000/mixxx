@@ -593,4 +593,32 @@ reapplying those migrations.
       ALTER TABLE library ADD COLUMN tuning_frequency_hz FLOAT DEFAULT 0.0;
     </sql>
   </revision>
+  <revision version="41" min_compatible="40">
+    <description>
+      Add tables for track relations feature.
+    </description>
+    <sql>
+      CREATE TABLE IF NOT EXISTS relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rel_type TEXT NOT NULL,
+      rel_description TEXT,
+      rel_datetime_added DATETIME
+      );
+      CREATE TABLE IF NOT EXISTS relation_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rg_rel_id INTEGER NOT NULL REFERENCES relations(id),
+      rg_comment TEXT,
+      rg_datetime_added DATETIME
+      );
+      CREATE TABLE IF NOT EXISTS relation_group_tracks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rgt_group_id INTEGER NOT NULL REFERENCES relation_groups(id),
+      rgt_track_id INTEGER NOT NULL REFERENCES library(id),
+      rgt_comment TEXT,
+      rgt_datetime_added DATETIME
+      );
+      CREATE INDEX IF NOT EXISTS idx_rgt_group_id ON relation_group_tracks(rgt_group_id);
+      CREATE INDEX IF NOT EXISTS idx_rgt_track_id ON relation_group_tracks(rgt_track_id);
+    </sql>
+  </revision>
 </schema>

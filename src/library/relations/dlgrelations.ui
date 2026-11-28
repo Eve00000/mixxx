@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+  <class>DlgRelations</class>
+  <widget class="QWidget" name="DlgRelations">
+    <property name="geometry">
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>800</width>
+        <height>500</height>
+      </rect>
+    </property>
+    <property name="windowTitle">
+      <string>Relations</string>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="spacing">
+        <number>0</number>
+      </property>
+      <property name="leftMargin">
+        <number>0</number>
+      </property>
+      <property name="topMargin">
+        <number>0</number>
+      </property>
+      <property name="rightMargin">
+        <number>0</number>
+      </property>
+      <property name="bottomMargin">
+        <number>0</number>
+      </property>
+      <item>
+        <widget class="QWidget" name="LibraryFeatureControls">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+            <property name="spacing">
+              <number>0</number>
+            </property>
+            <property name="leftMargin">
+              <number>0</number>
+            </property>
+            <property name="topMargin">
+              <number>0</number>
+            </property>
+            <property name="rightMargin">
+              <number>0</number>
+            </property>
+            <property name="bottomMargin">
+              <number>0</number>
+            </property>
+            <item>
+              <widget class="QComboBox" name="comboBoxRelationType">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Show only the relations of one type.</string>
+                </property>
+                <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                  </sizepolicy>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationSave">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Create a relation between the tracks currently loaded in the decks.</string>
+                </property>
+                <property name="text">
+                  <string>Save</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationEdit">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Edit the comments of the selected relation and remove tracks from it.</string>
+                </property>
+                <property name="text">
+                  <string>Edit</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationDelete">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Delete the selected relation(s) completely.</string>
+                </property>
+                <property name="text">
+                  <string>Delete</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationRemove">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Remove the selected track(s) from their relation. A relation left with fewer than 2 tracks is deleted.</string>
+                </property>
+                <property name="text">
+                  <string>Remove</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationTypes">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Rename, merge or delete relation types.</string>
+                </property>
+                <property name="text">
+                  <string>Types</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QPushButton" name="pushButtonRelationAuto">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="toolTip">
+                  <string>Create relations automatically from the MusicBrainz ids of the tracks.</string>
+                </property>
+                <property name="text">
+                  <string>Auto</string>
+                </property>
+              </widget>
+            </item>
+            <item>
+              <spacer name="horizontalSpacer">
+                <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                  <size>
+                    <width>40</width>
+                    <height>20</height>
+                  </size>
+                </property>
+              </spacer>
+            </item>
+          </layout>
+        </widget>
+      </item>
+      <item>
+        <widget class="QTableView" name="m_pRelationTablePlaceholder">
+          <property name="showGrid">
+            <bool>true</bool>
+          </property>
+        </widget>
+      </item>
+    </layout>
+  </widget>
+  <resources>
+    <include location="../res/mixxx.qrc"/>
+  </resources>
+  <connections/>
+</ui>

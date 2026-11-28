@@ -40,6 +40,15 @@ class BaseSqlTableModel : public BaseTrackTableModel {
 
     void sort(int column, Qt::SortOrder order) final;
 
+    // Allows a derived model to handle the sorting itself
+    // eg on columns that are not in the track source
+    // Return true when it was handled
+    virtual bool sortOverride(int column, Qt::SortOrder order) {
+        Q_UNUSED(column)
+        Q_UNUSED(order)
+        return false;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Inherited from TrackModel
     ///////////////////////////////////////////////////////////////////////////

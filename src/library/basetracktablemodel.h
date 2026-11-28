@@ -127,6 +127,12 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
 
     static constexpr bool kKeyColorsEnabledDefault = true;
     static void setKeyColorsEnabled(bool keyColorsEnabled);
+    static bool keyColorsEnabled() {
+        return s_keyColorsEnabled;
+    }
+    static const std::optional<ColorPalette>& keyColorPalette() {
+        return s_keyColorPalette;
+    }
 
     static void setKeyColorPalette(const ColorPalette& palette);
 
