@@ -5,6 +5,7 @@
 #include "track/trackid.h"
 
 class Library;
+class QComboBox;
 class QTableWidget;
 
 class DlgLinkedTracks : public QDialog {
@@ -23,4 +24,5 @@ class DlgLinkedTracks : public QDialog {
 
     Library* m_pLibrary;
     QTableWidget* m_pTableLinkedTracks;
+    QComboBox* m_pComboBoxLinkedTracksType;
 };

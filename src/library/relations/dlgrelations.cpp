@@ -325,7 +325,7 @@ void DlgRelations::slotAutoCreateRelations() {
                                 rule.table + QLatin1Char('.') + rule.keyColumn),
                 &dlg);
 
-        pCheckBox->setChecked(true);
+        pCheckBox->setChecked(rule.enabledByDefault);
         pLayout->addWidget(pCheckBox);
         checkBoxes.append(pCheckBox);
     }
