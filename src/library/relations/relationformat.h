@@ -65,12 +65,12 @@ inline QString expandComment(const QString& comment) {
     QRegularExpressionMatchIterator it = kKeyToken.globalMatch(comment);
     while (it.hasNext()) {
         const QRegularExpressionMatch match = it.next();
-        result += comment.mid(last, match.capturedStart() - last);
+        result += QStringView(comment).sliced(last, match.capturedStart() - last);
         const QString keyText = key(QString(), match.captured(1));
         result += keyText.isEmpty() ? match.captured(0) : keyText;
         last = match.capturedEnd();
     }
-    result += comment.mid(last);
+    result += QStringView(comment).sliced(last);
     return result;
 }
 
