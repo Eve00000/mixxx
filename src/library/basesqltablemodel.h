@@ -40,6 +40,15 @@ class BaseSqlTableModel : public BaseTrackTableModel {
 
     void sort(int column, Qt::SortOrder order) final;
 
+    // Allows a derived model to handle the sorting itself
+    // eg on columns that are not in the track source
+    // Return true when it was handled
+    virtual bool sortOverride(int column, Qt::SortOrder order) {
+        Q_UNUSED(column)
+        Q_UNUSED(order)
+        return false;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Inherited from TrackModel
     ///////////////////////////////////////////////////////////////////////////
@@ -108,6 +117,16 @@ class BaseSqlTableModel : public BaseTrackTableModel {
         return fieldIndex(ColumnCache::COLUMN_PLAYLISTTRACKSTABLE_POSITION) >= 0;
     }
 
+    // Updates a single cell in the in-memory row cache without a full
+    // select(). Use after a direct DAO write (e.g. CMRT_USE_DATA toggle)
+    // so rawValue() returns the new value immediately on the next paint.
+    void updateRowColumnValue(int row, int column, const QVariant& value) override {
+        if (row >= 0 && row < m_rowInfo.size() &&
+                column >= 0 && column < m_rowInfo[row].columnValues.size()) {
+            m_rowInfo[row].columnValues[column] = value;
+        }
+    }
+
     QSqlDatabase m_database;
     QString m_tableName;
 
@@ -126,6 +145,8 @@ class BaseSqlTableModel : public BaseTrackTableModel {
     // names in the table provided to setTable. Must be called after setTable is
     // called.
     QString orderByClause() const;
+
+    QString buildCmrtOrderByClause(Qt::SortOrder order) const;
 
     struct RowInfo {
         TrackId trackId;

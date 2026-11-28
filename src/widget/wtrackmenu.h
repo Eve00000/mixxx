@@ -9,7 +9,9 @@
 #include "control/pollingcontrolproxy.h"
 #include "library/coverart.h"
 #include "library/dao/playlistdao.h"
+#include "library/dao/relationsdao.h"
 #include "library/trackprocessing.h"
+#include "mixer/playerinfo.h"
 #include "preferences/usersettings.h"
 #include "track/beats.h"
 #include "track/track_decl.h"
@@ -30,6 +32,7 @@ class WCoverArtMenu;
 class WFindOnWebMenu;
 class WSearchRelatedTracksMenu;
 class WStarRatingAction;
+class WTrackTableView;
 
 /// A context menu for track(s).
 /// Can be used with individual track type widgets based on TrackPointer
@@ -59,11 +62,12 @@ class WTrackMenu : public QMenu {
         SelectInLibrary = 1 << 15,
         Analyze = 1 << 16,
         FindOnWeb = 1 << 17,
+        Relations = 1 << 18,
         TrackModelFeatures = Remove | HideUnhidePurge,
         All = AutoDJ | LoadTo | Playlist | Crate | Remove | Metadata | Reset | Analyze |
                 BPM | Color | HideUnhidePurge | RemoveFromDisk | FileBrowser |
                 Properties | SearchRelated | UpdateReplayGainFromPregain | SelectInLibrary |
-                FindOnWeb
+                FindOnWeb | Relations
     };
     Q_DECLARE_FLAGS(Features, Feature)
 
@@ -83,6 +87,7 @@ class WTrackMenu : public QMenu {
             WTrackMenu::Feature::Properties |
             WTrackMenu::Feature::UpdateReplayGainFromPregain |
             WTrackMenu::Feature::FindOnWeb |
+            WTrackMenu::Feature::Relations |
             WTrackMenu::Feature::SelectInLibrary};
 
     WTrackMenu(QWidget* parent,
@@ -155,13 +160,22 @@ class WTrackMenu : public QMenu {
     void slotClearKey();
     void slotClearReplayGain();
     void slotClearWaveform();
+    void slotClearFingerprint();
+    void slotClearMusicBrainz();
     void slotClearAllMetadata();
+
+    void slotPopulateRelationMenu();
+    void slotCreateRelationGroup(DbId relationId);
+    void slotCreateNewRelationType();
+    void slotPopulateLinkedTracksMenu();
 
     // Analysis
     void slotAnalyze();
     void slotReanalyze();
     void slotReanalyzeWithFixedTempo();
     void slotReanalyzeWithVariableTempo();
+    void slotReanalyzeSegments();
+    void slotAnalyzeFingerprint();
 
     // BPM
     void slotLockBpm();
@@ -172,6 +186,9 @@ class WTrackMenu : public QMenu {
 
     // Hotcues
     void slotSortHotcuesByPosition(HotcueSortMode sortMode);
+    void slotCopyCmrtHotcues();
+    void slotAddCmrtHotcues();
+    void slotMakeCmrtCanonical();
 
     // Info and metadata
     void slotUpdateReplayGainFromPregain();
@@ -184,6 +201,10 @@ class WTrackMenu : public QMenu {
     void slotPopulatePlaylistMenu();
     void slotPopulateCrateMenu();
     void addSelectionToNewCrate();
+
+    // PreparationList
+    void slotAddToPreparationListBottom();
+    void slotAddToPreparationListTop();
 
     // Auto DJ
     void slotAddToAutoDJBottom();
@@ -245,11 +266,26 @@ class WTrackMenu : public QMenu {
     void addSelectionToPlaylist(int iPlaylistId);
     void updateSelectionCrates(QWidget* pWidget);
 
+    void addToPreparationList(PlaylistDAO::PreparationListSendLoc loc);
     void addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc);
     void addToAnalysis(AnalyzerTrack::Options options = AnalyzerTrack::Options());
 
     void clearBeats();
+    void clearFingerprintDataForSelection();
+    void clearMusicBrainzDataForSelection();
+    // Pulls the canonical (CMRT) track's hotcues into each selected
+    // member track's own storage, shifted by that member's
+    // offset_from_canonical
+    // replaceExisting selects between the "Copy" and "Add" actions.
+    void copyOrAddCmrtHotcuesForSelection(bool replaceExisting);
+    bool anySelectedTrackUsesCmrtOverlay() const;
+    // Whether any currently selected track is a non-canonical member of
+    // a CMRT group (use: has a canonical track to copy/add hotcues from).
+    bool anySelectedTrackIsCmrtMember() const;
+    void promoteSelectionToCmrtCanonical();
     void lockBpm(bool lock);
+
+    int getShowedPreparationListIdOrLatestCreated(WTrackTableView* pTrackTableView);
 
 #ifdef __STEM__
     void loadSelectionToGroup(const QString& group,
@@ -300,6 +336,8 @@ class WTrackMenu : public QMenu {
     parented_ptr<WSearchRelatedTracksMenu> m_pSearchRelatedMenu;
     parented_ptr<QMenu> m_pFindOnWebMenu;
     parented_ptr<FindOnWebLast> m_pFindOnWebLastAct;
+    parented_ptr<QMenu> m_pSetRelationMenu;
+    parented_ptr<QMenu> m_pLinkedTracksMenu;
 
     // Update ReplayGain from Track
     parented_ptr<QAction> m_pUpdateReplayGainAct;
@@ -310,6 +348,10 @@ class WTrackMenu : public QMenu {
 
     // Save Track Metadata Action:
     parented_ptr<QAction> m_pExportMetadataAct;
+
+    // Send To PreparationList
+    parented_ptr<QAction> m_pPreparationListBottomAct;
+    parented_ptr<QAction> m_pPreparationListTopAct;
 
     // Send to Auto-DJ Action
     parented_ptr<QAction> m_pAutoDJBottomAct;
@@ -356,8 +398,10 @@ class WTrackMenu : public QMenu {
     // Analysis actions
     parented_ptr<QAction> m_pAnalyzeAction;
     parented_ptr<QAction> m_pReanalyzeAction;
+    parented_ptr<QAction> m_pReanalyzeSegmentsAction;
     parented_ptr<QAction> m_pReanalyzeConstBpmAction;
     parented_ptr<QAction> m_pReanalyzeVarBpmAction;
+    parented_ptr<QAction> m_pAnalyzeFingerprintAction;
 
     // Clear track metadata actions
     parented_ptr<QAction> m_pClearBeatsAction;
@@ -372,9 +416,14 @@ class WTrackMenu : public QMenu {
     parented_ptr<QAction> m_pClearCommentAction;
     parented_ptr<QAction> m_pClearKeyAction;
     parented_ptr<QAction> m_pClearReplayGainAction;
+    parented_ptr<QAction> m_pClearFingerprintAction;
+    parented_ptr<QAction> m_pClearMusicBrainzAction;
     parented_ptr<QAction> m_pClearAllMetadataAction;
     parented_ptr<QAction> m_pSortHotcuesByPositionAction{};
     parented_ptr<QAction> m_pSortHotcuesByPositionCompressAction{};
+    parented_ptr<QAction> m_pCopyCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pAddCmrtHotcuesAction{};
+    parented_ptr<QAction> m_pMakeCmrtCanonicalAction{};
 
     const UserSettingsPointer m_pConfig;
     Library* const m_pLibrary;
@@ -398,6 +447,7 @@ class WTrackMenu : public QMenu {
     bool m_bFindOnWebMenuLoaded;
     bool m_bPlaylistMenuLoaded;
     bool m_bCrateMenuLoaded;
+    bool m_bSetRelationMenuLoaded;
 
     Features m_eActiveFeatures;
     const Features m_eTrackModelFeatures;
@@ -406,6 +456,16 @@ class WTrackMenu : public QMenu {
 
     static bool s_showPurgeSuccessPopup;
     static bool s_confirmForAutoDjReplace;
+
+    void generateDeckRelationMenu(
+            DbId relationId,
+            const QString& label,
+            QMenu* pParentMenu,
+            int deckIndex,
+            TrackPointer pDeckTrack);
+
+    bool showLinkGroupDialog(DbId relationId, const TrackIdList& trackIds);
+    void selectLinkedTrackInLibrary(TrackId trackId);
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WTrackMenu::Features)

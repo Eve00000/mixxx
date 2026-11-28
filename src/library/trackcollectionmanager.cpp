@@ -33,14 +33,15 @@ parented_ptr<TrackCollection> createInternalTrackCollection(
 
 } // anonymous namespace
 
-TrackCollectionManager::TrackCollectionManager(
-        QObject* parent,
+TrackCollectionManager::TrackCollectionManager(QObject* parent,
         UserSettingsPointer pConfig,
         mixxx::DbConnectionPoolPtr pDbConnectionPool,
         deleteTrackFn_t /*only-needed-for-testing*/ deleteTrackForTestingFn)
-    : QObject(parent),
-      m_pConfig(pConfig),
-      m_pInternalCollection(createInternalTrackCollection(this, pConfig, deleteTrackForTestingFn)) {
+        : QObject(parent),
+          m_pConfig(pConfig),
+          m_pInternalCollection(createInternalTrackCollection(
+                  this, pConfig, deleteTrackForTestingFn)),
+          m_pDbConnectionPool(pDbConnectionPool) {
     const QSqlDatabase dbConnection = mixxx::DbConnectionPooled(pDbConnectionPool);
 
     // TODO(XXX): Add a checkbox in the library preferences for checking
@@ -63,6 +64,38 @@ TrackCollectionManager::TrackCollectionManager(
                 << "Connecting to"
                 << externalCollection->name();
         externalCollection->establishConnection();
+    }
+
+    // AcoustID background worker
+    // Disabled in test mode — tests do not have a real database connection pool
+    // that would satisfy the worker's thread-local connection requirement.
+    if (!deleteTrackForTestingFn) {
+        kLogger.info() << "Starting AcoustID worker thread";
+        m_pAcoustIdWorker = std::make_unique<mixxx::AcoustIdWorker>(
+                pConfig, pDbConnectionPool);
+
+        // The worker emits acoustidResultReady from its own thread.
+        // TrackDAO's m_database belongs to this (main) thread, so we use
+        // a queued connection — Qt will safely marshal the call across threads.
+        connect(m_pAcoustIdWorker.get(),
+                &mixxx::AcoustIdWorker::acoustidResultReady,
+                &m_pInternalCollection->getTrackDAO(),
+                &TrackDAO::updateAcoustIdResult,
+                Qt::QueuedConnection);
+
+        connect(m_pAcoustIdWorker.get(),
+                &mixxx::AcoustIdWorker::cmrtDataChanged,
+                this,
+                &TrackCollectionManager::cmrtDataChanged,
+                Qt::QueuedConnection);
+
+        connect(m_pAcoustIdWorker.get(),
+                &mixxx::AcoustIdWorker::queueDrained,
+                this,
+                &TrackCollectionManager::acoustIdQueueDrained,
+                Qt::QueuedConnection);
+
+        m_pAcoustIdWorker->start(QThread::LowPriority);
     }
 
     // TODO: Extract and decouple LibraryScanner from TrackCollectionManager
@@ -155,6 +188,17 @@ TrackCollectionManager::TrackCollectionManager(
 }
 
 TrackCollectionManager::~TrackCollectionManager() {
+    // Stop AcoustID worker first
+    // The worker holds a thread-local DB connection. We must stop it before
+    // disconnectDatabase() closes the connection pool underneath it.
+    if (m_pAcoustIdWorker) {
+        kLogger.info() << "Stopping AcoustID worker thread";
+        m_pAcoustIdWorker->stop();
+        m_pAcoustIdWorker->wait();
+        kLogger.info() << "Stopped AcoustID worker thread";
+        m_pAcoustIdWorker.reset();
+    }
+
     if (m_pScanner) {
         while (m_pScanner->isRunning()) {
             kLogger.info() << "Stopping library scanner thread";

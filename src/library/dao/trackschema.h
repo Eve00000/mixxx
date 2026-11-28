@@ -9,6 +9,7 @@
 #define PLAYLIST_TRACKS_TABLE "PlaylistTracks"
 
 #define AUTODJ_TABLE "Auto DJ"
+#define AUTOSUGGESTIONS_TABLE "AutoSuggestions"
 
 const QString LIBRARYTABLE_ID = QStringLiteral("id");
 const QString LIBRARYTABLE_ARTIST = QStringLiteral("artist");
@@ -79,6 +80,76 @@ const QString PLAYLISTTRACKSTABLE_PLAYLISTID = QStringLiteral("playlist_id");
 const QString PLAYLISTTRACKSTABLE_DATETIMEADDED = QStringLiteral("pl_datetime_added");
 
 const QString REKORDBOX_ANALYZE_PATH = "analyze_path";
+
+// relations
+#define RELATIONS_TABLE "relations"
+#define RELATION_GROUPS_TABLE "relation_groups"
+#define RELATION_GROUP_TRACKS_TABLE "relation_group_tracks"
+
+const QString RELATIONSTABLE_ID = QStringLiteral("id");
+const QString RELATIONSTABLE_TYPE = QStringLiteral("rel_type");
+const QString RELATIONSTABLE_DESCRIPTION = QStringLiteral("rel_description");
+const QString RELATIONSTABLE_DATETIMEADDED = QStringLiteral("rel_datetime_added");
+
+const QString RELATIONGROUPSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPSTABLE_REL_ID = QStringLiteral("rg_rel_id");
+const QString RELATIONGROUPSTABLE_COMMENT = QStringLiteral("rg_comment");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED = QStringLiteral("rg_datetime_added");
+
+const QString RELATIONGROUPTRACKSTABLE_ID = QStringLiteral("id");
+const QString RELATIONGROUPTRACKSTABLE_GROUP_ID = QStringLiteral("rgt_group_id");
+const QString RELATIONGROUPTRACKSTABLE_TRACK_ID = QStringLiteral("rgt_track_id");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT = QStringLiteral("rgt_comment");
+const QString RELATIONGROUPTRACKSTABLE_DATETIMEADDED = QStringLiteral("rgt_datetime_added");
+
+const QString RELATIONSTABLE_TYPE_ALIAS = QStringLiteral("rel_type_alias");
+const QString RELATIONGROUPSTABLE_COMMENT_ALIAS = QStringLiteral("rg_comment_alias");
+const QString RELATIONGROUPSTABLE_DATETIMEADDED_ALIAS = QStringLiteral("relation_date_added_alias");
+const QString RELATIONGROUPTRACKSTABLE_COMMENT_ALIAS = QStringLiteral("track_comment");
+const QString RELATIONGROUPSTABLE_ID_ALIAS = QStringLiteral("group_id");
+
+// Fingerprint and CMRT Tables
+const QString FINGERPRINT_METADATA_TABLE = QStringLiteral("fingerprint_metadata");
+const QString CMRT_GROUPS_TABLE = QStringLiteral("cmrt_groups");
+
+// Columns for fingerprint_metadata
+const QString FINGERPRINT_TABLE_TRACK_ID = QStringLiteral("track_id");
+const QString FINGERPRINT_TABLE_HASH = QStringLiteral("fingerprint_hash");
+const QString FINGERPRINT_TABLE_SHA256 = QStringLiteral("chroma_sha256");
+const QString FINGERPRINT_TABLE_DURATION = QStringLiteral("fingerprint_duration");
+const QString FINGERPRINT_TABLE_VERSION = QStringLiteral("fingerprint_version");
+const QString FINGERPRINT_TABLE_GROUP_ID = QStringLiteral("cmrt_group_id");
+const QString FINGERPRINT_TABLE_OFFSET = QStringLiteral("cmrt_offset_seconds");
+const QString FINGERPRINT_TABLE_CANONICAL = QStringLiteral("is_canonical");
+const QString FINGERPRINT_TABLE_VALID = QStringLiteral("fingerprint_valid");
+const QString FINGERPRINT_TABLE_NEEDS_REGEN = QStringLiteral("fingerprint_needs_regen");
+const QString FINGERPRINT_TABLE_COMPUTED_AT = QStringLiteral("computed_at");
+
+// Columns for cmrt_groups
+const QString CMRT_GROUPS_TABLE_ID = QStringLiteral("group_id");
+const QString CMRT_GROUPS_TABLE_HASH = QStringLiteral("fingerprint_hash");
+const QString CMRT_GROUPS_TABLE_SHA256 = QStringLiteral("chroma_sha256");
+const QString CMRT_GROUPS_TABLE_CANONICAL_TRACK_ID = QStringLiteral("canonical_track_id");
+const QString CMRT_GROUPS_TABLE_TRACK_COUNT = QStringLiteral("track_count");
+const QString CMRT_GROUPS_TABLE_CREATED_AT = QStringLiteral("created_at");
+const QString CMRT_GROUPS_TABLE_LAST_UPDATED = QStringLiteral("last_updated");
+// MusicBrainz CMRT fields deferred to later PR
+
+// Virtual columns exposed by library_view (and any other BaseTrackCache-backed
+// view that wants the CMRT column) — these come from a self-join of library
+// against cmrt_groups/cmrt_members, not from a single physical table. Same
+// idea as LIBRARYTABLE_COVERART (coverart_digest AS coverart) already used
+// in library_view; see LibraryTableModel::setTableModel().
+const QString LIBRARYTABLE_CMRT_NAME = QStringLiteral("cmrt_track_name");
+const QString LIBRARYTABLE_CMRT_CANONICAL = QStringLiteral("cmrt_is_canonical");
+const QString LIBRARYTABLE_CMRT_OFFSET = QStringLiteral("cmrt_offset");
+const QString LIBRARYTABLE_CMRT_CANONICAL_ARTIST = QStringLiteral("cmrt_canonical_artist");
+const QString LIBRARYTABLE_CMRT_CANONICAL_TITLE = QStringLiteral("cmrt_canonical_title");
+const QString LIBRARYTABLE_CMRT_GROUP_ID = QStringLiteral("cmrt_group_num");
+const QString LIBRARYTABLE_CMRT_MATCH_SCORE = QStringLiteral("cmrt_match_score");
+const QString LIBRARYTABLE_CMRT_QUALITY_SCORE = QStringLiteral("cmrt_quality_score");
+const QString LIBRARYTABLE_CMRT_USE_DATA = QStringLiteral("cmrt_use_data");
+const QString LIBRARYTABLE_CMRT_HAS_GROUP = QStringLiteral("cmrt_has_group");
 
 namespace mixxx {
 namespace trackschema {
